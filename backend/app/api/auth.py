@@ -1,0 +1,283 @@
+from __future__ import annotations
+
+from datetime import datetime, timezone
+import hashlib
+import secrets
+from typing import Any
+
+from fastapi import APIRouter, Depends, Header, HTTPException
+from sqlalchemy import delete as sa_delete, func, select, update
+from sqlalchemy.orm import Session
+
+from app.core.config import get_settings
+from app.core.security import create_access_token, decode_token, hash_password, verify_password
+from app.db.session import get_db
+from app.models import EsiSyncJob, EsiToken, EveCharacter, User, UserInvite
+
+router = APIRouter(prefix="/auth", tags=["auth"])
+ROLES = ["admin", "director", "officer", "member", "view_only"]
+ROLE_RANK = {"view_only": 0, "rookie": 0, "member": 1, "officer": 2, "director": 3, "admin": 4}
+
+
+def serialize_user(user: User) -> dict[str, Any]:
+    return {
+        "id": user.id,
+        "email": user.email,
+        "display_name": user.display_name,
+        "role": user.role,
+        "created_at": user.created_at.isoformat() if user.created_at else None,
+    }
+
+
+def hash_invite_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def is_invite_usable(invite: UserInvite | None) -> bool:
+    if invite is None or invite.accepted_at or invite.revoked_at:
+        return False
+    return invite.expires_at is None or invite.expires_at > datetime.now(timezone.utc)
+
+
+def serialize_invite(invite: UserInvite, include_status: bool = True) -> dict[str, Any]:
+    payload = {
+        "id": invite.id,
+        "email": invite.email,
+        "role": invite.role,
+        "created_by_display_name": invite.created_by_user.display_name if invite.created_by_user else None,
+        "created_at": invite.created_at.isoformat() if invite.created_at else None,
+        "expires_at": invite.expires_at.isoformat() if invite.expires_at else None,
+        "accepted_at": invite.accepted_at.isoformat() if invite.accepted_at else None,
+        "revoked_at": invite.revoked_at.isoformat() if invite.revoked_at else None,
+    }
+    if include_status:
+        payload["status"] = "accepted" if invite.accepted_at else "revoked" if invite.revoked_at else "expired" if not is_invite_usable(invite) else "pending"
+    return payload
+
+
+def admin_count(db: Session) -> int:
+    return db.scalar(select(func.count()).select_from(User).where(User.role == "admin", User.password_hash.is_not(None))) or 0
+
+
+def get_current_user(authorization: str | None = Header(default=None), db: Session = Depends(get_db)) -> User:
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="Sign in is required")
+    token = authorization.split(" ", 1)[1]
+    try:
+        payload = decode_token(token)
+        user_id = int(payload.get("sub"))
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(status_code=401, detail="Invalid sign-in token") from exc
+    user = db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=401, detail="User no longer exists")
+    return user
+
+
+def require_role(user: User, minimum_role: str) -> None:
+    if ROLE_RANK.get(user.role, -1) < ROLE_RANK[minimum_role]:
+        raise HTTPException(status_code=403, detail=f"{minimum_role} role is required")
+
+
+def can_view_all_characters(user: User) -> bool:
+    return ROLE_RANK.get(user.role, -1) >= ROLE_RANK["director"]
+
+
+@router.get("/bootstrap")
+def bootstrap_status(db: Session = Depends(get_db)) -> dict[str, Any]:
+    return {"needs_admin": admin_count(db) == 0, "roles": ROLES}
+
+
+@router.post("/bootstrap")
+def bootstrap_admin(payload: dict[str, Any], db: Session = Depends(get_db)) -> dict[str, Any]:
+    if admin_count(db):
+        raise HTTPException(status_code=400, detail="Initial admin already exists")
+    email = str(payload.get("email", "")).strip().lower()
+    password = str(payload.get("password", ""))
+    display_name = str(payload.get("display_name") or email).strip()
+    if not email or not password or len(password) < 8:
+        raise HTTPException(status_code=400, detail="Email and an 8+ character password are required")
+    user = db.scalar(select(User).where(User.email == email))
+    if user is None:
+        user = User(email=email, display_name=display_name, role="admin")
+        db.add(user)
+    user.display_name = display_name
+    user.role = "admin"
+    user.password_hash = hash_password(password)
+    db.commit()
+    db.refresh(user)
+    token = create_access_token(str(user.id), {"role": user.role})
+    return {"access_token": token, "token_type": "bearer", "user": serialize_user(user)}
+
+
+@router.post("/login")
+def login(payload: dict[str, Any], db: Session = Depends(get_db)) -> dict[str, Any]:
+    email = str(payload.get("email", "")).strip().lower()
+    password = str(payload.get("password", ""))
+    user = db.scalar(select(User).where(User.email == email))
+    if user is None or not verify_password(password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    token = create_access_token(str(user.id), {"role": user.role})
+    return {"access_token": token, "token_type": "bearer", "user": serialize_user(user)}
+
+
+@router.get("/me")
+def me(current_user: User = Depends(get_current_user)) -> dict[str, Any]:
+    return serialize_user(current_user)
+
+
+@router.get("/users")
+def list_users(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[dict[str, Any]]:
+    require_role(current_user, "admin")
+    users = db.scalars(select(User).order_by(User.display_name)).all()
+    return [serialize_user(user) for user in users]
+
+
+@router.post("/users")
+def create_user(payload: dict[str, Any], current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+    require_role(current_user, "admin")
+    email = str(payload.get("email", "")).strip().lower()
+    password = str(payload.get("password", ""))
+    display_name = str(payload.get("display_name") or email).strip()
+    role = str(payload.get("role") or "member")
+    if role not in ROLES:
+        raise HTTPException(status_code=400, detail="Unknown role")
+    if not email or not password or len(password) < 8:
+        raise HTTPException(status_code=400, detail="Email and an 8+ character password are required")
+    if db.scalar(select(User).where(User.email == email)):
+        raise HTTPException(status_code=400, detail="Email is already in use")
+    user = User(email=email, display_name=display_name, role=role, password_hash=hash_password(password))
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return serialize_user(user)
+
+
+@router.patch("/users/{user_id}")
+def update_user(user_id: int, payload: dict[str, Any], current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+    require_role(current_user, "admin")
+    user = db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="User was not found")
+    if payload.get("display_name"):
+        user.display_name = str(payload["display_name"]).strip()
+    if payload.get("role"):
+        role = str(payload["role"])
+        if role not in ROLES:
+            raise HTTPException(status_code=400, detail="Unknown role")
+        if user.role == "admin" and role != "admin" and admin_count(db) <= 1:
+            raise HTTPException(status_code=400, detail="At least one admin account is required")
+        user.role = role
+    if payload.get("password"):
+        password = str(payload["password"])
+        if len(password) < 8:
+            raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+        user.password_hash = hash_password(password)
+    db.commit()
+    db.refresh(user)
+    return serialize_user(user)
+
+
+@router.delete("/users/{user_id}")
+def delete_user(user_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+    require_role(current_user, "admin")
+    if user_id == current_user.id:
+        raise HTTPException(status_code=400, detail="You cannot delete your own signed-in account")
+    user = db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="User was not found")
+    if user.role == "admin" and admin_count(db) <= 1:
+        raise HTTPException(status_code=400, detail="At least one admin account is required")
+
+    token_ids = db.scalars(select(EsiToken.id).where(EsiToken.user_id == user_id)).all()
+    if token_ids:
+        db.execute(update(EsiSyncJob).where(EsiSyncJob.token_id.in_(token_ids)).values(token_id=None))
+    db.execute(sa_delete(EsiToken).where(EsiToken.user_id == user_id))
+    db.execute(update(EveCharacter).where(EveCharacter.owner_user_id == user_id).values(owner_user_id=None))
+    db.delete(user)
+    db.commit()
+    return {"status": "deleted", "user_id": user_id}
+
+
+@router.get("/invites")
+def list_invites(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[dict[str, Any]]:
+    require_role(current_user, "admin")
+    invites = db.scalars(select(UserInvite).order_by(UserInvite.created_at.desc(), UserInvite.id.desc())).all()
+    return [serialize_invite(invite) for invite in invites]
+
+
+@router.post("/invites")
+def create_invite(payload: dict[str, Any], current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+    require_role(current_user, "admin")
+    email = str(payload.get("email", "")).strip().lower()
+    role = str(payload.get("role") or "member")
+    if role not in ROLES:
+        raise HTTPException(status_code=400, detail="Unknown role")
+    if not email or "@" not in email:
+        raise HTTPException(status_code=400, detail="A valid email is required")
+    if db.scalar(select(User).where(User.email == email, User.password_hash.is_not(None))):
+        raise HTTPException(status_code=400, detail="A user already exists for that email")
+
+    token = secrets.token_urlsafe(32)
+    invite = UserInvite(email=email, role=role, token_hash=hash_invite_token(token), created_by_user_id=current_user.id)
+    db.add(invite)
+    db.commit()
+    db.refresh(invite)
+
+    # Only the raw token can create the account. The database stores a hash so
+    # an exported database cannot be used as an invite link list.
+    invite_url = f"{get_settings().frontend_url.rstrip('/')}/?invite={token}"
+    payload = serialize_invite(invite)
+    payload["invite_url"] = invite_url
+    return payload
+
+
+@router.delete("/invites/{invite_id}")
+def revoke_invite(invite_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+    require_role(current_user, "admin")
+    invite = db.get(UserInvite, invite_id)
+    if invite is None:
+        raise HTTPException(status_code=404, detail="Invite was not found")
+    if invite.accepted_at:
+        raise HTTPException(status_code=400, detail="Accepted invites cannot be revoked")
+    invite.revoked_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(invite)
+    return serialize_invite(invite)
+
+
+@router.get("/invites/{token}")
+def inspect_invite(token: str, db: Session = Depends(get_db)) -> dict[str, Any]:
+    invite = db.scalar(select(UserInvite).where(UserInvite.token_hash == hash_invite_token(token)))
+    if not is_invite_usable(invite):
+        raise HTTPException(status_code=404, detail="Invite is invalid or expired")
+    return {"email": invite.email, "role": invite.role, "expires_at": invite.expires_at.isoformat() if invite.expires_at else None}
+
+
+@router.post("/invites/{token}/accept")
+def accept_invite(token: str, payload: dict[str, Any], db: Session = Depends(get_db)) -> dict[str, Any]:
+    invite = db.scalar(select(UserInvite).where(UserInvite.token_hash == hash_invite_token(token)))
+    if not is_invite_usable(invite):
+        raise HTTPException(status_code=404, detail="Invite is invalid or expired")
+
+    display_name = str(payload.get("display_name") or invite.email).strip()
+    password = str(payload.get("password", ""))
+    if not display_name or not password or len(password) < 8:
+        raise HTTPException(status_code=400, detail="Display name and an 8+ character password are required")
+
+    user = db.scalar(select(User).where(User.email == invite.email))
+    if user and user.password_hash:
+        raise HTTPException(status_code=400, detail="An account already exists for this invite email")
+    if user is None:
+        user = User(email=invite.email, display_name=display_name, role=invite.role)
+        db.add(user)
+        db.flush()
+    user.display_name = display_name
+    user.role = invite.role
+    user.password_hash = hash_password(password)
+    invite.accepted_at = datetime.now(timezone.utc)
+    invite.accepted_by_user_id = user.id
+    db.commit()
+    db.refresh(user)
+    token = create_access_token(str(user.id), {"role": user.role})
+    return {"access_token": token, "token_type": "bearer", "user": serialize_user(user)}

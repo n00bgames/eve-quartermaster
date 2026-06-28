@@ -1,0 +1,72 @@
+name: eve-quartermaster
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: eve_quartermaster
+      POSTGRES_USER: eve
+      POSTGRES_PASSWORD: eve
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eve -d eve_quartermaster"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  backend:
+    build: ./backend
+    environment:
+      APP_NAME: eve-quartermaster
+      DATABASE_URL: postgresql+psycopg://eve:eve@postgres:5432/eve_quartermaster
+      REDIS_URL: redis://redis:6379/0
+      EVE_SSO_CLIENT_ID: ${EVE_SSO_CLIENT_ID:-}
+      EVE_SSO_CLIENT_SECRET: ${EVE_SSO_CLIENT_SECRET:-}
+      EVE_SSO_CALLBACK_URL: ${EVE_SSO_CALLBACK_URL:-http://localhost:8000/api/esi/auth/callback}
+      TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:-}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173,https://eqm.easyduneadmin.app}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  worker:
+    build: ./backend
+    command: rq worker --url redis://redis:6379/0 eve-quartermaster
+    environment:
+      APP_NAME: eve-quartermaster
+      DATABASE_URL: postgresql+psycopg://eve:eve@postgres:5432/eve_quartermaster
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    environment:
+      VITE_API_BASE: ${VITE_API_BASE:-/api}
+      VITE_ALLOWED_HOSTS: ${VITE_ALLOWED_HOSTS:-eqm.easyduneadmin.app}
+      VITE_PROXY_API_TARGET: ${VITE_PROXY_API_TARGET:-http://backend:8000}
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
