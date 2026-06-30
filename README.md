@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/n00bgames/eve-quartermaster"><img alt="Project" src="https://img.shields.io/badge/project-eve--quartermaster-e8b84d?style=for-the-badge"></a>
-  <img alt="Version" src="https://img.shields.io/badge/version-0.0.2--alpha-4fb3c7?style=for-the-badge">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.0.4--alpha-4fb3c7?style=for-the-badge">
   <img alt="License" src="https://img.shields.io/badge/license-AGPL--3.0--or--later-70c894?style=for-the-badge">
 </p>
 
@@ -37,6 +37,7 @@ This repo now contains the first usable quartermaster slice:
 - Admin invite flow for generating one-time account creation links with assigned roles
 - Corporations workspace for discovering enrolled corporations and syncing corporation asset ledgers
 - Corp member/CEO metadata, stale sync warnings, corp blueprint sync, and asset owner-type filters
+- Admin SDE import for categories, groups, types, blueprint activities, and recipe inputs
 
 ## Run locally
 
@@ -89,6 +90,13 @@ docker compose logs backend
 
 The frontend can load by itself, but it needs the backend listening on port `8000` before the data views populate.
 
+
+## SDE import
+
+The app can import EVE Static Data Export files from a local read-only mount. Put an extracted SDE folder or SDE zip under `./sde`, or set `SDE_HOST_PATH` in `.env` to another host folder. Inside the containers this is mounted as `/sde` by default.
+
+Expected files are `categories.yaml`, `groups.yaml`, `types.yaml`, and `blueprints.yaml` in the SDE root. Older `fsd/categoryIDs.yaml`, `fsd/groupIDs.yaml`, `fsd/typeIDs.yaml`, and `fsd/blueprints.yaml` layouts are also accepted. Admins can run the import from Settings -> SDE Import.
+
 ## Expanded ESI scope note
 
 The EVE developer app is intentionally configured with broad scopes so eve-quartermaster can become a full-featured project. When scopes are added or changed, linked characters need to run EVE SSO again before the new permissions are available to sync workers.
@@ -98,9 +106,14 @@ The EVE developer app is intentionally configured with broad scopes so eve-quart
 1. Add EVE SSO token exchange and encrypted refresh-token storage.
 2. Add ESI sync workers for character assets, corporation assets, and blueprints.
 3. Add edit/delete flows and better validation for the core records.
-4. Add SDE import for authoritative item, blueprint, and recipe data.
+4. Expand SDE import coverage into market groups, dogma attributes, icons, and station/system geography.
 5. Add production plans that calculate owned vs missing materials.
 6. Add market/procurement planning for build-vs-buy decisions.
+## AI collaboration notice
+
+This project is collaboratively created with generative AI. Human project direction, review, testing, deployment choices, EVE domain decisions, and final stewardship remain with the project maintainers.
+
+
 
 
 

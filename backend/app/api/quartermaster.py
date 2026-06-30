@@ -3,7 +3,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
@@ -26,6 +26,7 @@ from app.models import (
     User,
 )
 from app.models.enums import ActivityKind, AssetSource, LocationKind, OwnerKind, ProcurementKind
+from app.services.permissions import ROLE_RANK, role_rank
 
 router = APIRouter(prefix="/quartermaster", tags=["quartermaster"], dependencies=[Depends(get_current_user)])
 
@@ -52,19 +53,40 @@ def get_or_404(db: Session, model: Any, object_id: int) -> Any:
     return item
 
 
+def can_view_owner_records(owner: OwnershipEntity | None, current_user: User, db: Session) -> bool:
+    if role_rank(current_user, db) >= ROLE_RANK["officer"]:
+        return True
+    if owner is None or owner.character is None:
+        return False
+    character = owner.character
+    if character.owner_user_id == current_user.id:
+        return True
+    return bool(character.public_assets_visible and not character.sync_opt_out)
+
+
 @router.get("/summary")
-def summary(db: Session = Depends(get_db)) -> dict[str, Any]:
-    asset_units = db.scalar(select(func.coalesce(func.sum(Asset.quantity), 0))) or 0
+def summary(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+    assets = db.scalars(
+        select(Asset)
+        .options(selectinload(Asset.ownership_entity).selectinload(OwnershipEntity.character))
+    ).all()
+    blueprints = db.scalars(
+        select(Blueprint)
+        .options(selectinload(Blueprint.ownership_entity).selectinload(OwnershipEntity.character))
+    ).all()
+    visible_assets = [asset for asset in assets if can_view_owner_records(asset.ownership_entity, current_user, db)]
+    visible_blueprints = [blueprint for blueprint in blueprints
+        if can_view_owner_records(blueprint.ownership_entity, current_user, db)]
+    asset_units = sum(asset.quantity for asset in visible_assets)
     return {
         "owners": db.scalar(select(func.count()).select_from(OwnershipEntity)) or 0,
         "locations": db.scalar(select(func.count()).select_from(Location)) or 0,
         "types": db.scalar(select(func.count()).select_from(EveType)) or 0,
-        "asset_stacks": db.scalar(select(func.count()).select_from(Asset)) or 0,
+        "asset_stacks": len(visible_assets),
         "asset_units": asset_units,
-        "blueprints": db.scalar(select(func.count()).select_from(Blueprint)) or 0,
+        "blueprints": len(visible_blueprints),
         "industry_activities": db.scalar(select(func.count()).select_from(IndustryActivity)) or 0,
     }
-
 
 @router.get("/owners")
 def list_owners(db: Session = Depends(get_db)) -> list[dict[str, Any]]:
@@ -137,11 +159,11 @@ def create_location(payload: dict[str, Any], db: Session = Depends(get_db)) -> d
 
 
 @router.get("/assets")
-def list_assets(db: Session = Depends(get_db)) -> list[dict[str, Any]]:
+def list_assets(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[dict[str, Any]]:
     assets = db.scalars(
         select(Asset)
         .options(
-            selectinload(Asset.ownership_entity),
+            selectinload(Asset.ownership_entity).selectinload(OwnershipEntity.character),
             selectinload(Asset.item_type),
             selectinload(Asset.location),
             selectinload(Asset.parent_asset).selectinload(Asset.item_type),
@@ -150,6 +172,8 @@ def list_assets(db: Session = Depends(get_db)) -> list[dict[str, Any]]:
     ).all()
     results = []
     for asset in assets:
+        if not can_view_owner_records(asset.ownership_entity, current_user, db):
+            continue
         parent_type_name = asset.parent_asset.item_type.name if asset.parent_asset and asset.parent_asset.item_type else None
         if asset.location:
             location_name = asset.location.name
@@ -203,11 +227,11 @@ def create_asset(payload: dict[str, Any], db: Session = Depends(get_db)) -> dict
 
 
 @router.get("/blueprints")
-def list_blueprints(db: Session = Depends(get_db)) -> list[dict[str, Any]]:
+def list_blueprints(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[dict[str, Any]]:
     blueprints = db.scalars(
         select(Blueprint)
         .options(
-            selectinload(Blueprint.ownership_entity),
+            selectinload(Blueprint.ownership_entity).selectinload(OwnershipEntity.character),
             selectinload(Blueprint.blueprint_type),
             selectinload(Blueprint.product_type),
             selectinload(Blueprint.location),
@@ -225,6 +249,7 @@ def list_blueprints(db: Session = Depends(get_db)) -> list[dict[str, Any]]:
             },
         )
         for blueprint in blueprints
+        if can_view_owner_records(blueprint.ownership_entity, current_user, db)
     ]
 
 
@@ -258,17 +283,55 @@ def create_blueprint(payload: dict[str, Any], db: Session = Depends(get_db)) -> 
 
 
 @router.get("/industry-activities")
-def list_industry_activities(db: Session = Depends(get_db)) -> list[dict[str, Any]]:
-    activities = db.scalars(select(IndustryActivity).options(selectinload(IndustryActivity.inputs)).order_by(IndustryActivity.id)).all()
+def list_industry_activities(
+    q: str | None = Query(default=None),
+    activity_kind: ActivityKind | None = Query(default=None),
+    limit: int = Query(default=250, ge=1, le=1000),
+    offset: int = Query(default=0, ge=0),
+    include_inputs: bool = Query(default=True),
+    db: Session = Depends(get_db),
+) -> list[dict[str, Any]]:
+    query = select(IndustryActivity).options(selectinload(IndustryActivity.inputs)).order_by(IndustryActivity.id)
+    if activity_kind is not None:
+        query = query.where(IndustryActivity.activity_kind == activity_kind)
+    if q:
+        matching_type_ids = select(EveType.type_id).where(EveType.name.ilike(f"%{q.strip()}%"))
+        query = query.where(
+            IndustryActivity.blueprint_type_id.in_(matching_type_ids)
+            | IndustryActivity.product_type_id.in_(matching_type_ids)
+        )
+    activities = db.scalars(query.offset(offset).limit(limit)).all()
+
+    type_ids: set[int] = set()
+    for activity in activities:
+        type_ids.add(activity.blueprint_type_id)
+        if activity.product_type_id:
+            type_ids.add(activity.product_type_id)
+        if include_inputs:
+            type_ids.update(input_row.input_type_id for input_row in activity.inputs)
+    type_names = {
+        item_type.type_id: item_type.name
+        for item_type in db.scalars(select(EveType).where(EveType.type_id.in_(type_ids))).all()
+    } if type_ids else {}
+
     results = []
     for activity in activities:
-        blueprint_type = db.get(EveType, activity.blueprint_type_id)
-        product_type = db.get(EveType, activity.product_type_id) if activity.product_type_id else None
         inputs = []
-        for input_row in activity.inputs:
-            input_type = db.get(EveType, input_row.input_type_id)
-            inputs.append(row_dict(input_row, {"input_type_name": input_type.name if input_type else None}))
-        results.append(row_dict(activity, {"blueprint_type_name": blueprint_type.name if blueprint_type else None, "product_type_name": product_type.name if product_type else None, "inputs": inputs}))
+        if include_inputs:
+            inputs = [
+                row_dict(input_row, {"input_type_name": type_names.get(input_row.input_type_id)})
+                for input_row in activity.inputs
+            ]
+        results.append(
+            row_dict(
+                activity,
+                {
+                    "blueprint_type_name": type_names.get(activity.blueprint_type_id),
+                    "product_type_name": type_names.get(activity.product_type_id) if activity.product_type_id else None,
+                    "inputs": inputs,
+                },
+            )
+        )
     return results
 
 
@@ -368,6 +431,10 @@ def seed_dev_data(db: Session = Depends(get_db)) -> dict[str, Any]:
     ])
     db.commit()
     return {"status": "seeded"}
+
+
+
+
 
 
 

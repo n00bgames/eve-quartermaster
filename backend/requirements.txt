@@ -10,3 +10,5 @@ httpx==0.28.1
 redis==5.2.1
 rq==2.0.0
 cryptography==44.0.0
+PyYAML==6.0.2
+

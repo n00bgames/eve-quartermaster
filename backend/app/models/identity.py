@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -19,6 +19,38 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
+
+
+
+class RoleDefinition(Base):
+    __tablename__ = "role_definitions"
+
+    name: Mapped[str] = mapped_column(String(40), primary_key=True)
+    display_name: Mapped[str] = mapped_column(String(80), nullable=False)
+    base_role: Mapped[str] = mapped_column(String(40), default="member", nullable=False)
+    is_system: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    sort_order: Mapped[int] = mapped_column(Integer, default=100, nullable=False)
+
+class RoleSectionPermission(Base):
+    __tablename__ = "role_section_permissions"
+    __table_args__ = (UniqueConstraint("role", "section"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    role: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
+    section: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
+    can_view: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+
+class UserSectionPermission(Base):
+    __tablename__ = "user_section_permissions"
+    __table_args__ = (UniqueConstraint("user_id", "section"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    section: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
+    can_view: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    user: Mapped[User] = relationship()
 
 class UserInvite(Base):
     __tablename__ = "user_invites"
@@ -59,6 +91,19 @@ class EveCorporation(Base):
     last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+
+class CorporationWalletDivision(Base):
+    __tablename__ = "corporation_wallet_divisions"
+    __table_args__ = (UniqueConstraint("corporation_id", "division"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    corporation_id: Mapped[int] = mapped_column(ForeignKey("eve_corporations.id"), nullable=False, index=True)
+    division: Mapped[int] = mapped_column(Integer, nullable=False)
+    balance: Mapped[float] = mapped_column(Numeric(20, 2), default=0, nullable=False)
+    last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    corporation: Mapped[EveCorporation] = relationship()
+
 class EveCharacter(Base):
     __tablename__ = "eve_characters"
 
@@ -70,6 +115,11 @@ class EveCharacter(Base):
     owner_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     portrait_url: Mapped[str | None] = mapped_column(String(500))
     public_assets_visible: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    sync_opt_out: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    total_skill_points: Mapped[int | None] = mapped_column(Integer)
+    unallocated_skill_points: Mapped[int | None] = mapped_column(Integer)
+    skills_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    skill_queue_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     corporation: Mapped[EveCorporation | None] = relationship()
@@ -94,8 +144,6 @@ class OwnershipEntity(Base):
     character: Mapped[EveCharacter | None] = relationship()
     corporation: Mapped[EveCorporation | None] = relationship()
     alliance: Mapped[EveAlliance | None] = relationship()
-
-
 
 
 

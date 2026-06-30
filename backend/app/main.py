@@ -5,7 +5,7 @@ from app.api.router import api_router
 from app.core.config import get_settings
 
 settings = get_settings()
-app = FastAPI(title="eve-quartermaster", version="0.1.0")
+app = FastAPI(title="eve-quartermaster", version="0.0.6-alpha")
 
 app.add_middleware(
     CORSMiddleware,
@@ -16,3 +16,5 @@ app.add_middleware(
 )
 
 app.include_router(api_router, prefix=settings.api_prefix)
+
+

@@ -7,14 +7,16 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.api.auth import ROLE_RANK, get_current_user
+from app.api.auth import get_current_user
 from app.db.session import get_db
-from app.models import Asset, Blueprint, EsiSyncJob, EsiToken, EveAlliance, EveCharacter, EveCorporation, OwnershipEntity, User
+from app.models import Asset, Blueprint, CorporationWalletDivision, EsiSyncJob, EsiToken, EveAlliance, EveCharacter, EveCorporation, OwnershipEntity, User
 from app.models.enums import OwnerKind
+from app.services.permissions import ROLE_RANK, can_view_section, role_rank
 
 router = APIRouter(prefix="/corporations", tags=["corporations"])
 CORPORATION_ASSET_SCOPE = "esi-assets.read_corporation_assets.v1"
 CORPORATION_BLUEPRINT_SCOPE = "esi-corporations.read_blueprints.v1"
+CORPORATION_WALLET_SCOPE = "esi-wallet.read_corporation_wallets.v1"
 STALE_AFTER = timedelta(hours=24)
 
 
@@ -22,13 +24,13 @@ def token_scope_set(token: EsiToken) -> set[str]:
     return {scope.strip() for scope in (token.scopes or "").split() if scope.strip()}
 
 
-def require_corporation_view(user: User) -> None:
-    if ROLE_RANK.get(user.role, -1) < ROLE_RANK["officer"]:
-        raise HTTPException(status_code=403, detail="officer role is required")
+def require_corporation_view(user: User, db: Session) -> None:
+    if not can_view_section(user, "corporations", db):
+        raise HTTPException(status_code=403, detail="Corporations permission is required")
 
 
-def can_sync_corporation(user: User) -> bool:
-    return ROLE_RANK.get(user.role, -1) >= ROLE_RANK["director"]
+def can_sync_corporation(user: User, db: Session) -> bool:
+    return role_rank(user, db) >= ROLE_RANK["director"]
 
 
 def job_time(job: EsiSyncJob | None) -> datetime | None:
@@ -47,6 +49,7 @@ def serialize_corporation(corp: EveCorporation, current_user: User, db: Session)
     owner = db.scalar(select(OwnershipEntity).where(OwnershipEntity.owner_kind == OwnerKind.CORPORATION, OwnershipEntity.corporation_id == corp.id))
     latest_asset_job = None
     latest_blueprint_job = None
+    latest_wallet_job = None
     asset_rows = 0
     blueprint_rows = 0
     if owner:
@@ -64,11 +67,19 @@ def serialize_corporation(corp: EveCorporation, current_user: User, db: Session)
             .order_by(EsiSyncJob.finished_at.desc().nullslast(), EsiSyncJob.created_at.desc())
             .limit(1)
         )
+        latest_wallet_job = db.scalar(
+            select(EsiSyncJob)
+            .where(EsiSyncJob.ownership_entity_id == owner.id, EsiSyncJob.sync_type == "corporation_wallets")
+            .order_by(EsiSyncJob.finished_at.desc().nullslast(), EsiSyncJob.created_at.desc())
+            .limit(1)
+        )
 
     alliance = db.get(EveAlliance, corp.alliance_id) if corp.alliance_id else None
     ceo = db.scalar(select(EveCharacter).where(EveCharacter.character_id == corp.ceo_character_eve_id)) if corp.ceo_character_eve_id else None
     asset_sync_time = job_time(latest_asset_job)
     blueprint_sync_time = job_time(latest_blueprint_job)
+    wallet_sync_time = job_time(latest_wallet_job)
+    wallet_divisions = db.scalars(select(CorporationWalletDivision).where(CorporationWalletDivision.corporation_id == corp.id).order_by(CorporationWalletDivision.division)).all()
     token_rows = db.execute(
         select(EsiToken, EveCharacter, User)
         .join(EveCharacter, EveCharacter.id == EsiToken.character_id)
@@ -81,7 +92,8 @@ def serialize_corporation(corp: EveCorporation, current_user: User, db: Session)
         scopes = token_scope_set(token)
         has_asset_scope = CORPORATION_ASSET_SCOPE in scopes
         has_blueprint_scope = CORPORATION_BLUEPRINT_SCOPE in scopes
-        visible_token = token.user_id == current_user.id or can_sync_corporation(current_user)
+        has_wallet_scope = CORPORATION_WALLET_SCOPE in scopes
+        visible_token = token.user_id == current_user.id or can_sync_corporation(current_user, db)
         if not visible_token:
             continue
         eligible_tokens.append(
@@ -90,9 +102,11 @@ def serialize_corporation(corp: EveCorporation, current_user: User, db: Session)
                 "character_name": character.name,
                 "user_display_name": user.display_name,
                 "has_corporation_asset_scope": has_asset_scope,
-                "can_sync": has_asset_scope and can_sync_corporation(current_user),
+                "can_sync": has_asset_scope and can_sync_corporation(current_user, db),
                 "has_corporation_blueprint_scope": has_blueprint_scope,
-                "can_sync_blueprints": has_blueprint_scope and can_sync_corporation(current_user),
+                "can_sync_blueprints": has_blueprint_scope and can_sync_corporation(current_user, db),
+                "has_corporation_wallet_scope": has_wallet_scope,
+                "can_sync_wallets": has_wallet_scope and can_sync_corporation(current_user, db),
             }
         )
 
@@ -116,12 +130,34 @@ def serialize_corporation(corp: EveCorporation, current_user: User, db: Session)
         "last_blueprint_sync_status": latest_blueprint_job.status.value if latest_blueprint_job else None,
         "last_blueprint_sync_message": latest_blueprint_job.message if latest_blueprint_job else None,
         "blueprint_sync_stale": is_stale(blueprint_sync_time),
+        "last_wallet_sync_at": wallet_sync_time.isoformat() if wallet_sync_time else None,
+        "last_wallet_sync_status": latest_wallet_job.status.value if latest_wallet_job else None,
+        "last_wallet_sync_message": latest_wallet_job.message if latest_wallet_job else None,
+        "wallet_sync_stale": is_stale(wallet_sync_time),
+        "wallet_divisions": [
+            {
+                "division": wallet.division,
+                "balance": float(wallet.balance),
+                "last_synced_at": wallet.last_synced_at.isoformat() if wallet.last_synced_at else None,
+            }
+            for wallet in wallet_divisions
+        ],
         "eligible_tokens": eligible_tokens,
     }
 
 
 @router.get("")
 def list_corporations(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[dict[str, Any]]:
-    require_corporation_view(current_user)
+    require_corporation_view(current_user, db)
     corporations = db.scalars(select(EveCorporation).order_by(EveCorporation.name)).all()
     return [serialize_corporation(corp, current_user, db) for corp in corporations]
+
+
+
+
+
+
+
+
+
+

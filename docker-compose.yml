@@ -34,8 +34,11 @@ services:
       TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:-}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173,https://eqm.easyduneadmin.app}
+      SDE_SOURCE_PATH: ${SDE_SOURCE_PATH:-/sde}
     ports:
       - "8000:8000"
+    volumes:
+      - ${SDE_HOST_PATH:-./sde}:/sde:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -49,6 +52,9 @@ services:
       APP_NAME: eve-quartermaster
       DATABASE_URL: postgresql+psycopg://eve:eve@postgres:5432/eve_quartermaster
       REDIS_URL: redis://redis:6379/0
+      SDE_SOURCE_PATH: ${SDE_SOURCE_PATH:-/sde}
+    volumes:
+      - ${SDE_HOST_PATH:-./sde}:/sde:ro
     depends_on:
       postgres:
         condition: service_healthy

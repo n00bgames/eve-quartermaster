@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import base64
+import asyncio
 import secrets
 import urllib.parse
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from typing import Any
 
 import httpx
@@ -11,16 +13,19 @@ from jose import jwt
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import RedirectResponse
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy import delete, select
+from sqlalchemy.orm import Session, selectinload
 
 from app.core.config import get_settings
 from app.core.security import create_sso_state, decode_sso_state, decrypt_secret, encrypt_secret
 from app.db.session import get_db
-from app.models import Asset, Blueprint, EsiSyncJob, EsiToken, EveAlliance, EveCharacter, EveCorporation, EveSystem, EveType, Location, OwnershipEntity, User
+from app.models import Asset, Blueprint, CharacterSkill, CharacterSkillQueueEntry, CorporationWalletDivision, EsiSyncJob, EsiToken, EveAlliance, EveCategory, EveCharacter, EveCorporation, EveGroup, EveSystem, EveType, Location, OwnershipEntity, User
 from app.models.enums import AssetSource, LocationKind, OwnerKind, SyncStatus
 from app.services.esi_client import EsiClient, esi_status, resolve_names
+from app.services.audit import notify_if_other_user_synced_character
+from app.services.analytics import create_snapshot
 from app.api.auth import can_view_all_characters, get_current_user
+from app.services.permissions import can_view_section
 
 router = APIRouter(prefix="/esi", tags=["esi"])
 
@@ -69,6 +74,11 @@ PUBLIC_SCOPES = [
     "esi-structures.read_character.v1",
 ]
 
+SKILL_SYNC_SCOPES = [
+    "esi-skills.read_skills.v1",
+    "esi-skills.read_skillqueue.v1",
+]
+
 CONTACT_SYNC_SCOPES = [
     "esi-characters.read_contacts.v1",
     "esi-characters.write_contacts.v1",
@@ -104,6 +114,12 @@ async def refresh_access_token(token: EsiToken) -> str:
 
 def chunked(values: list[int], size: int = 1000) -> list[list[int]]:
     return [values[index:index + size] for index in range(0, len(values), size)]
+
+
+def parse_esi_datetime(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
 def location_kind_from_esi(location_type: str | None, location_id: int | None = None) -> LocationKind:
@@ -161,6 +177,107 @@ async def apply_type_names(client: EsiClient, db: Session, type_ids: set[int]) -
     return updated
 
 
+
+async def apply_type_metadata(client: EsiClient, db: Session, type_ids: set[int], max_fetch: int | None = None) -> int:
+    updated = 0
+    fetched = 0
+    for type_id in sorted(type_ids):
+        if max_fetch is not None and fetched >= max_fetch:
+            break
+        item_type = ensure_type(db, type_id)
+        if item_type.group_id is not None and item_type.group is not None:
+            continue
+        try:
+            payload = await client.get(f"/universe/types/{type_id}/", params={"language": "en"})
+        except HTTPException:
+            continue
+        item_type.name = payload.get("name", item_type.name)
+        item_type.description = payload.get("description")
+        item_type.group_id = payload.get("group_id")
+        item_type.volume = payload.get("volume")
+        item_type.packaged_volume = payload.get("packaged_volume")
+        item_type.market_group_id = payload.get("market_group_id")
+        item_type.published = bool(payload.get("published", True))
+        if item_type.group_id is not None:
+            group = db.get(EveGroup, item_type.group_id)
+            if group is None or group.category_id is None:
+                try:
+                    group_payload = await client.get(f"/universe/groups/{item_type.group_id}/", params={"language": "en"})
+                except HTTPException:
+                    group_payload = None
+                if group_payload:
+                    group = group or EveGroup(group_id=item_type.group_id, name=group_payload.get("name", f"Group {item_type.group_id}"))
+                    db.add(group)
+                    group.name = group_payload.get("name", group.name)
+                    group.category_id = group_payload.get("category_id")
+                    group.published = bool(group_payload.get("published", True))
+                    if group.category_id is not None:
+                        category = db.get(EveCategory, group.category_id)
+                        if category is None:
+                            try:
+                                category_payload = await client.get(f"/universe/categories/{group.category_id}/", params={"language": "en"})
+                            except HTTPException:
+                                category_payload = None
+                            category = EveCategory(category_id=group.category_id, name=(category_payload or {}).get("name", f"Category {group.category_id}"), published=bool((category_payload or {}).get("published", True)))
+                            db.add(category)
+                        elif category.name.startswith("Category "):
+                            try:
+                                category_payload = await client.get(f"/universe/categories/{group.category_id}/", params={"language": "en"})
+                                category.name = category_payload.get("name", category.name)
+                                category.published = bool(category_payload.get("published", category.published))
+                            except HTTPException:
+                                pass
+        updated += 1
+    db.flush()
+    return updated
+
+async def apply_skill_metadata(client: EsiClient, db: Session, type_ids: set[int]) -> int:
+    if not type_ids:
+        return 0
+    try:
+        category_payload = await client.get("/universe/categories/16/", params={"language": "en"})
+    except HTTPException:
+        return 0
+
+    category = db.get(EveCategory, 16)
+    if category is None:
+        category = EveCategory(category_id=16, name=category_payload.get("name", "Skill"), published=bool(category_payload.get("published", True)))
+        db.add(category)
+    else:
+        category.name = category_payload.get("name", category.name)
+        category.published = bool(category_payload.get("published", category.published))
+
+    pending_type_ids = set(type_ids)
+    updated = 0
+    for group_id in category_payload.get("groups", []) or []:
+        if not pending_type_ids:
+            break
+        try:
+            group_payload = await client.get(f"/universe/groups/{group_id}/", params={"language": "en"})
+        except HTTPException:
+            continue
+        group_type_ids = {int(type_id) for type_id in group_payload.get("types", []) or []}
+        matched_type_ids = pending_type_ids.intersection(group_type_ids)
+        if not matched_type_ids:
+            continue
+
+        group = db.get(EveGroup, int(group_id))
+        if group is None:
+            group = EveGroup(group_id=int(group_id), name=group_payload.get("name", f"Group {group_id}"))
+            db.add(group)
+        group.name = group_payload.get("name", group.name)
+        group.category_id = 16
+        group.published = bool(group_payload.get("published", True))
+
+        for type_id in matched_type_ids:
+            item_type = ensure_type(db, type_id)
+            if item_type.group_id != int(group_id):
+                item_type.group_id = int(group_id)
+                updated += 1
+        pending_type_ids.difference_update(matched_type_ids)
+
+    db.flush()
+    return updated
 async def apply_location_names(client: EsiClient, db: Session, location_ids: set[int], location_types: dict[int, str]) -> int:
     updated = 0
     ids = sorted(location_ids)
@@ -278,8 +395,10 @@ def upsert_blueprint_rows(db: Session, owner: OwnershipEntity, blueprints_payloa
     db.flush()
     return synced
 
-async def apply_character_affiliation(client: EsiClient, db: Session, character: EveCharacter, character_payload: dict[str, Any]) -> None:
-    corp_payload = await client.get(f"/corporations/{character_payload['corporation_id']}/")
+
+async def apply_corporation_metadata(client: EsiClient, db: Session, corp: EveCorporation, corp_payload: dict[str, Any] | None = None) -> EveCorporation:
+    if corp_payload is None:
+        corp_payload = await client.get(f"/corporations/{corp.corporation_id}/")
     alliance_row = None
     if corp_payload.get("alliance_id"):
         alliance_payload = await client.get(f"/alliances/{corp_payload['alliance_id']}/")
@@ -290,17 +409,38 @@ async def apply_character_affiliation(client: EsiClient, db: Session, character:
         alliance_row.name = alliance_payload["name"]
         alliance_row.ticker = alliance_payload.get("ticker")
         db.flush()
+    corp.name = corp_payload["name"]
+    corp.ticker = corp_payload.get("ticker")
+    corp.alliance_id = alliance_row.id if alliance_row else None
+    corp.ceo_character_eve_id = corp_payload.get("ceo_id")
+    corp.member_count = corp_payload.get("member_count")
+    if corp.ceo_character_eve_id:
+        try:
+            ceo_payload = await client.get(f"/characters/{corp.ceo_character_eve_id}/")
+            ceo = db.scalar(select(EveCharacter).where(EveCharacter.character_id == corp.ceo_character_eve_id))
+            if ceo is None:
+                ceo = EveCharacter(character_id=corp.ceo_character_eve_id, name=ceo_payload["name"])
+                db.add(ceo)
+            ceo.name = ceo_payload["name"]
+            ceo.corporation_id = corp.id
+            ceo.alliance_id = alliance_row.id if alliance_row else None
+        except Exception:
+            pass
+    ensure_owner(db, OwnerKind.CORPORATION, corp.name, corporation_id=corp.id)
+    db.flush()
+    return corp
+
+
+async def apply_character_affiliation(client: EsiClient, db: Session, character: EveCharacter, character_payload: dict[str, Any]) -> None:
+    corp_payload = await client.get(f"/corporations/{character_payload['corporation_id']}/")
     corp_row = db.scalar(select(EveCorporation).where(EveCorporation.corporation_id == character_payload["corporation_id"]))
     if corp_row is None:
         corp_row = EveCorporation(corporation_id=character_payload["corporation_id"], name=corp_payload["name"])
         db.add(corp_row)
-    corp_row.name = corp_payload["name"]
-    corp_row.ticker = corp_payload.get("ticker")
-    corp_row.alliance_id = alliance_row.id if alliance_row else None
-    corp_row.ceo_character_eve_id = corp_payload.get("ceo_id")
+        db.flush()
+    await apply_corporation_metadata(client, db, corp_row, corp_payload)
     character.corporation_id = corp_row.id
-    character.alliance_id = alliance_row.id if alliance_row else None
-    ensure_owner(db, OwnerKind.CORPORATION, corp_row.name, corporation_id=corp_row.id)
+    character.alliance_id = corp_row.alliance_id
     db.flush()
 
 
@@ -415,20 +555,12 @@ async def import_character(character_id: int, db: Session = Depends(get_db)) -> 
 async def import_corporation(corporation_id: int, db: Session = Depends(get_db)) -> dict[str, Any]:
     client = EsiClient()
     payload = await client.get(f"/corporations/{corporation_id}/")
-    alliance_row = None
-    if payload.get("alliance_id"):
-        alliance_row = db.scalar(select(EveAlliance).where(EveAlliance.alliance_id == payload["alliance_id"]))
     corp = db.scalar(select(EveCorporation).where(EveCorporation.corporation_id == corporation_id))
     if corp is None:
         corp = EveCorporation(corporation_id=corporation_id, name=payload["name"])
         db.add(corp)
-    corp.name = payload["name"]
-    corp.ticker = payload.get("ticker")
-    corp.alliance_id = alliance_row.id if alliance_row else None
-    corp.ceo_character_eve_id = payload.get("ceo_id")
-    corp.member_count = payload.get("member_count")
-    await apply_corporation_ceo(client, db, corp)
-    db.flush()
+        db.flush()
+    await apply_corporation_metadata(client, db, corp, payload)
     owner = ensure_owner(db, OwnerKind.CORPORATION, corp.name, corporation_id=corp.id)
     db.commit()
     return {"status": "imported", "corporation_id": corporation_id, "name": corp.name, "owner_id": owner.id}
@@ -489,14 +621,19 @@ async def import_station(station_id: int, db: Session = Depends(get_db)) -> dict
 
 @router.get("/linked-characters")
 def linked_characters(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[dict[str, Any]]:
-    rows = db.execute(
-        select(EsiToken, EveCharacter)
+    query = (
+        select(EsiToken, EveCharacter, User)
         .join(EveCharacter, EveCharacter.id == EsiToken.character_id)
+        .join(User, User.id == EsiToken.user_id)
         .where(EsiToken.revoked_at.is_(None))
         .order_by(EveCharacter.name)
-    ).all()
+    )
+    if current_user.role != "admin":
+        query = query.where(EsiToken.user_id == current_user.id)
+    rows = db.execute(query).all()
     results = []
-    for token, character in rows:
+    for token, character, linked_user in rows:
+        can_manage_link = token.user_id == current_user.id or current_user.role == "admin"
         latest_job = db.scalar(
             select(EsiSyncJob)
             .where(EsiSyncJob.token_id == token.id)
@@ -511,6 +648,10 @@ def linked_characters(current_user: User = Depends(get_current_user), db: Sessio
                 "token_id": token.id,
                 "character_id": character.character_id,
                 "character_name": character.name,
+                "linked_user_id": token.user_id,
+                "linked_user_display_name": linked_user.display_name,
+                "can_sync_assets": can_manage_link,
+                "can_unlink": can_manage_link,
                 "scopes": token.scopes,
                 "access_token_expires_at": token.access_token_expires_at.isoformat() if token.access_token_expires_at else None,
                 "linked_at": token.created_at.isoformat() if token.created_at else None,
@@ -525,10 +666,157 @@ def linked_characters(current_user: User = Depends(get_current_user), db: Sessio
 
 
 
+def serialize_character_skill_record(skill: CharacterSkill) -> dict[str, Any]:
+    skill_type = skill.skill_type
+    group = skill_type.group if skill_type else None
+    category = group.category if group else None
+    return {
+        "id": skill.id,
+        "skill_type_id": skill.skill_type_id,
+        "skill_name": skill_type.name if skill_type else f"Type {skill.skill_type_id}",
+        "skill_group_name": group.name if group else "Uncategorized",
+        "skill_category_name": group.name if group else (category.name if category and category.name != "Skill" else "Uncategorized"),
+        "trained_skill_level": skill.trained_skill_level,
+        "active_skill_level": skill.active_skill_level,
+        "skillpoints_in_skill": skill.skillpoints_in_skill,
+        "last_synced_at": skill.last_synced_at.isoformat() if skill.last_synced_at else None,
+    }
+
+
+def serialize_skill_queue_entry(entry: CharacterSkillQueueEntry) -> dict[str, Any]:
+    return {
+        "id": entry.id,
+        "queue_position": entry.queue_position,
+        "skill_type_id": entry.skill_type_id,
+        "skill_name": entry.skill_type.name if entry.skill_type else f"Type {entry.skill_type_id}",
+        "finished_level": entry.finished_level,
+        "training_start_sp": entry.training_start_sp,
+        "level_start_sp": entry.level_start_sp,
+        "level_end_sp": entry.level_end_sp,
+        "start_date": entry.start_date.isoformat() if entry.start_date else None,
+        "finish_date": entry.finish_date.isoformat() if entry.finish_date else None,
+    }
+
+
+@router.get("/character-skills")
+def list_character_skills(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[dict[str, Any]]:
+    rows = db.execute(
+        select(EsiToken, EveCharacter)
+        .join(EveCharacter, EveCharacter.id == EsiToken.character_id)
+        .where(EsiToken.revoked_at.is_(None))
+        .order_by(EveCharacter.name)
+    ).all()
+    can_view_all_skills = can_view_section(current_user, "skills", db)
+    results = []
+    for token, character in rows:
+        if token.user_id != current_user.id and not can_view_all_skills:
+            continue
+        skills = db.scalars(select(CharacterSkill).options(selectinload(CharacterSkill.skill_type).selectinload(EveType.group).selectinload(EveGroup.category)).where(CharacterSkill.character_id == character.id).order_by(CharacterSkill.skillpoints_in_skill.desc(), CharacterSkill.skill_type_id)).all()
+        queue = db.scalars(select(CharacterSkillQueueEntry).options(selectinload(CharacterSkillQueueEntry.skill_type)).where(CharacterSkillQueueEntry.character_id == character.id).order_by(CharacterSkillQueueEntry.queue_position)).all()
+        results.append(
+            {
+                "token_id": token.id,
+                "character_id": character.character_id,
+                "character_name": character.name,
+                "owner_user_id": token.user_id,
+                "sync_opt_out": character.sync_opt_out,
+                "admin_override_visible": character.sync_opt_out and current_user.role == "admin" and token.user_id != current_user.id,
+                "can_sync": token.user_id == current_user.id or current_user.role == "admin",
+                "total_skill_points": character.total_skill_points,
+                "unallocated_skill_points": character.unallocated_skill_points,
+                "skills_synced_at": character.skills_synced_at.isoformat() if character.skills_synced_at else None,
+                "skill_queue_synced_at": character.skill_queue_synced_at.isoformat() if character.skill_queue_synced_at else None,
+                "missing_skill_scopes": missing_scopes(token, SKILL_SYNC_SCOPES),
+                "skill_count": len(skills),
+                "queue_count": len(queue),
+                "skills": [serialize_character_skill_record(skill) for skill in skills],
+                "queue": [serialize_skill_queue_entry(entry) for entry in queue],
+            }
+        )
+    return results
+
+
+@router.post("/sync/character-skills/{token_id}")
+async def sync_character_skills(token_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+    token, character = get_linked_token(db, token_id)
+    if token.user_id != current_user.id and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can force-sync another account character skills")
+    if character.sync_opt_out and token.user_id != current_user.id and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail=f"{character.name} has opted out of Quartermaster sync")
+    require_scope(token, "esi-skills.read_skills.v1", f"Reading skills for {character.name}")
+    require_scope(token, "esi-skills.read_skillqueue.v1", f"Reading skill queue for {character.name}")
+
+    job = EsiSyncJob(token_id=token.id, sync_type="character_skills", status=SyncStatus.RUNNING, started_at=datetime.now(timezone.utc))
+    db.add(job)
+    db.flush()
+
+    try:
+        access_token = await refresh_access_token(token)
+        client = EsiClient(access_token=access_token)
+        skills_payload = await client.get(f"/characters/{character.character_id}/skills/")
+        queue_payload = await client.get(f"/characters/{character.character_id}/skillqueue/")
+        skill_rows = skills_payload.get("skills", []) or []
+        queue_rows = queue_payload or []
+        type_ids = {int(row["skill_id"]) for row in skill_rows if row.get("skill_id") is not None}
+        type_ids.update({int(row["skill_id"]) for row in queue_rows if row.get("skill_id") is not None})
+        type_names = await apply_type_names(client, db, type_ids)
+        type_metadata = await apply_skill_metadata(client, db, type_ids)
+        metadata_note = " Skill group metadata refreshed from the EVE Skill category."
+        now = datetime.now(timezone.utc)
+
+        for row in skill_rows:
+            skill_type_id = int(row["skill_id"])
+            skill = db.scalar(select(CharacterSkill).where(CharacterSkill.character_id == character.id, CharacterSkill.skill_type_id == skill_type_id))
+            if skill is None:
+                skill = CharacterSkill(character_id=character.id, skill_type_id=skill_type_id)
+                db.add(skill)
+            skill.trained_skill_level = int(row.get("trained_skill_level", 0))
+            skill.active_skill_level = int(row.get("active_skill_level", 0))
+            skill.skillpoints_in_skill = int(row.get("skillpoints_in_skill", 0))
+            skill.last_synced_at = now
+
+        db.execute(delete(CharacterSkillQueueEntry).where(CharacterSkillQueueEntry.character_id == character.id))
+        for row in queue_rows:
+            db.add(
+                CharacterSkillQueueEntry(
+                    character_id=character.id,
+                    queue_position=int(row.get("queue_position", 0)),
+                    skill_type_id=int(row["skill_id"]),
+                    finished_level=int(row.get("finished_level", 0)),
+                    training_start_sp=row.get("training_start_sp"),
+                    level_start_sp=row.get("level_start_sp"),
+                    level_end_sp=row.get("level_end_sp"),
+                    start_date=parse_esi_datetime(row.get("start_date")),
+                    finish_date=parse_esi_datetime(row.get("finish_date")),
+                    last_synced_at=now,
+                )
+            )
+
+        character.total_skill_points = int(skills_payload.get("total_sp", 0))
+        character.unallocated_skill_points = skills_payload.get("unallocated_sp")
+        character.skills_synced_at = now
+        character.skill_queue_synced_at = now
+        character.last_synced_at = now
+        job.status = SyncStatus.SUCCESS
+        opt_out_note = " Admin override used for opted-out character." if character.sync_opt_out and current_user.role == "admin" and token.user_id != current_user.id else ""
+        job.message = f"Synced {len(skill_rows)} trained skills and {len(queue_rows)} queued skills. Resolved {type_names} skill names and {type_metadata} skill metadata records during the foreground sync.{metadata_note}{opt_out_note}"
+        notify_if_other_user_synced_character(db, sync_label="skills", actor_user=current_user, character=character, detail=f"{len(skill_rows)} trained skills and {len(queue_rows)} queue entries were refreshed.")
+        job.finished_at = now
+        create_snapshot(db, scope_type="character", scope_id=character.id, source="character_skills", message=job.message)
+        db.commit()
+        return {"status": "synced", "character_name": character.name, "skill_count": len(skill_rows), "queue_count": len(queue_rows), "total_skill_points": character.total_skill_points, "job_id": job.id}
+    except Exception as exc:
+        job.status = SyncStatus.FAILED
+        job.message = str(exc)
+        job.finished_at = datetime.now(timezone.utc)
+        db.commit()
+        raise
+
 @router.delete("/linked-characters/{token_id}")
 def unlink_character(token_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
     token, character = get_linked_token(db, token_id)
-    require_token_access(token, current_user)
+    if token.user_id != current_user.id and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Only admins or the account that authorized SSO can unlink this character")
     token.revoked_at = datetime.now(timezone.utc)
     db.commit()
     return {"status": "unlinked", "token_id": token.id, "character_name": character.name}
@@ -538,10 +826,13 @@ async def sync_character_assets(token_id: int, current_user: User = Depends(get_
     token = db.get(EsiToken, token_id)
     if token is None or token.revoked_at is not None:
         raise HTTPException(status_code=404, detail="Linked character token was not found")
-    require_token_access(token, current_user)
+    if token.user_id != current_user.id and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Only admins or the account that authorized SSO can sync this character")
     character = db.get(EveCharacter, token.character_id)
     if character is None:
         raise HTTPException(status_code=404, detail="Linked character was not found")
+    if character.sync_opt_out and token.user_id != current_user.id and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail=f"{character.name} has opted out of Quartermaster sync")
 
     owner = ensure_owner(db, OwnerKind.CHARACTER, character.name, character_id=character.id)
     job = EsiSyncJob(token_id=token.id, ownership_entity_id=owner.id, sync_type="character_assets", status=SyncStatus.RUNNING, started_at=datetime.now(timezone.utc))
@@ -595,7 +886,9 @@ async def sync_character_assets(token_id: int, current_user: User = Depends(get_
 
         job.status = SyncStatus.SUCCESS
         job.message = f"Synced {synced} character asset rows. Resolved {type_names} type names and {location_names} location names. Linked {linked_parents} contained assets."
+        notify_if_other_user_synced_character(db, sync_label="inventory", actor_user=current_user, character=character, detail=f"{synced} asset rows were refreshed.")
         job.finished_at = datetime.now(timezone.utc)
+        create_snapshot(db, scope_type="character", scope_id=character.id, source="character_assets", message=job.message)
         db.commit()
         return {"status": "synced", "character_name": character.name, "asset_rows": synced, "job_id": job.id}
     except Exception as exc:
@@ -618,24 +911,42 @@ async def sync_linked_corporations(current_user: User = Depends(get_current_user
         .order_by(EveCharacter.name)
     ).all()
     refreshed = 0
+    metadata_refreshed = 0
     skipped = 0
+    failed = 0
+    errors: list[str] = []
     for token, character in rows:
-        if token.user_id != current_user.id and not can_view_all_characters(current_user):
+        if token.user_id != current_user.id and not can_view_all_characters(current_user, db):
             skipped += 1
             continue
-        access_token = await refresh_access_token(token)
-        client = EsiClient(access_token=access_token)
-        character_payload = await client.get(f"/characters/{character.character_id}/")
-        character.name = character_payload["name"]
-        await apply_character_affiliation(client, db, character, character_payload)
-        refreshed += 1
-    db.commit()
-    return {"status": "refreshed", "characters_refreshed": refreshed, "skipped": skipped}
+        try:
+            access_token = await refresh_access_token(token)
+            client = EsiClient(access_token=access_token)
+            character_payload = await client.get(f"/characters/{character.character_id}/")
+            character.name = character_payload["name"]
+            await apply_character_affiliation(client, db, character, character_payload)
+            await asyncio.to_thread(db.commit)
+            refreshed += 1
+        except Exception as exc:
+            await asyncio.to_thread(db.rollback)
+            failed += 1
+            errors.append(f"{character.name}: {exc}")
+    public_client = EsiClient()
+    for corp in db.scalars(select(EveCorporation).order_by(EveCorporation.name)).all():
+        try:
+            await apply_corporation_metadata(public_client, db, corp)
+            await asyncio.to_thread(db.commit)
+            metadata_refreshed += 1
+        except Exception as exc:
+            await asyncio.to_thread(db.rollback)
+            failed += 1
+            errors.append(f"{corp.name}: {exc}")
+    return {"status": "refreshed", "characters_refreshed": refreshed, "corporations_refreshed": metadata_refreshed, "skipped": skipped, "failed": failed, "errors": errors[:5]}
 
 @router.post("/sync/corporation-assets/{token_id}")
 async def sync_corporation_assets(token_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
     token, character = get_linked_token(db, token_id)
-    require_token_access(token, current_user)
+    require_token_access(token, current_user, db)
     require_scope(token, "esi-assets.read_corporation_assets.v1", f"Syncing corporation assets for {character.name}")
 
     access_token = await refresh_access_token(token)
@@ -661,25 +972,27 @@ async def sync_corporation_assets(token_id: int, current_user: User = Depends(ge
         }
         type_names = await apply_type_names(client, db, type_ids)
         location_names = await apply_location_names(client, db, set(location_types.keys()), location_types)
-        synced, linked_parents = upsert_asset_rows(db, owner, assets_payload)
+        synced, linked_parents = await asyncio.to_thread(upsert_asset_rows, db, owner, assets_payload)
         corporation.last_synced_at = datetime.now(timezone.utc)
         job.status = SyncStatus.SUCCESS
         job.message = f"Synced {synced} corporation asset rows. Resolved {type_names} type names and {location_names} location names. Linked {linked_parents} contained assets."
+        notify_if_other_user_synced_character(db, sync_label="corporation assets", actor_user=current_user, character=character, detail=f"{synced} corporation asset rows for {corporation.name} were refreshed using this character token.")
         job.finished_at = datetime.now(timezone.utc)
-        db.commit()
+        create_snapshot(db, scope_type="corporation", scope_id=corporation.id, source="corporation_assets", message=job.message)
+        await asyncio.to_thread(db.commit)
         return {"status": "synced", "corporation_name": corporation.name, "asset_rows": synced, "job_id": job.id}
     except Exception as exc:
         job.status = SyncStatus.FAILED
         job.message = str(exc)
         job.finished_at = datetime.now(timezone.utc)
-        db.commit()
+        await asyncio.to_thread(db.commit)
         raise
 
 
 @router.post("/sync/corporation-blueprints/{token_id}")
 async def sync_corporation_blueprints(token_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
     token, character = get_linked_token(db, token_id)
-    require_token_access(token, current_user)
+    require_token_access(token, current_user, db)
     require_scope(token, "esi-corporations.read_blueprints.v1", f"Syncing corporation blueprints for {character.name}")
 
     access_token = await refresh_access_token(token)
@@ -701,19 +1014,77 @@ async def sync_corporation_blueprints(token_id: int, current_user: User = Depend
         type_names = await apply_type_names(client, db, blueprint_type_ids)
         location_ids = {int(row["location_id"]) for row in blueprints_payload if row.get("location_id") is not None}
         location_names = await apply_location_names(client, db, location_ids, {location_id: "unknown" for location_id in location_ids})
-        synced = upsert_blueprint_rows(db, owner, blueprints_payload)
+        synced = await asyncio.to_thread(upsert_blueprint_rows, db, owner, blueprints_payload)
         job.status = SyncStatus.SUCCESS
         job.message = f"Synced {synced} corporation blueprint rows. Resolved {type_names} blueprint names and {location_names} locations."
+        notify_if_other_user_synced_character(db, sync_label="corporation blueprints", actor_user=current_user, character=character, detail=f"{synced} corporation blueprint rows for {corporation.name} were refreshed using this character token.")
         job.finished_at = datetime.now(timezone.utc)
-        db.commit()
+        create_snapshot(db, scope_type="corporation", scope_id=corporation.id, source="corporation_blueprints", message=job.message)
+        await asyncio.to_thread(db.commit)
         return {"status": "synced", "corporation_name": corporation.name, "blueprint_rows": synced, "job_id": job.id}
     except Exception as exc:
         job.status = SyncStatus.FAILED
         job.message = str(exc)
         job.finished_at = datetime.now(timezone.utc)
-        db.commit()
+        await asyncio.to_thread(db.commit)
         raise
 
+
+def upsert_corporation_wallet_rows(db: Session, corporation: EveCorporation, rows: list[dict[str, Any]]) -> int:
+    synced_at = datetime.now(timezone.utc)
+    synced = 0
+    for row in rows:
+        division = int(row["division"])
+        wallet = db.scalar(
+            select(CorporationWalletDivision).where(
+                CorporationWalletDivision.corporation_id == corporation.id,
+                CorporationWalletDivision.division == division,
+            )
+        )
+        if wallet is None:
+            wallet = CorporationWalletDivision(corporation_id=corporation.id, division=division)
+            db.add(wallet)
+        wallet.balance = Decimal(str(row.get("balance", 0)))
+        wallet.last_synced_at = synced_at
+        synced += 1
+    return synced
+
+@router.post("/sync/corporation-wallets/{token_id}")
+async def sync_corporation_wallets(token_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+    token, character = get_linked_token(db, token_id)
+    require_token_access(token, current_user, db)
+    require_scope(token, "esi-wallet.read_corporation_wallets.v1", f"Syncing corporation wallet divisions for {character.name}")
+
+    access_token = await refresh_access_token(token)
+    client = EsiClient(access_token=access_token)
+    character_payload = await client.get(f"/characters/{character.character_id}/")
+    await apply_character_affiliation(client, db, character, character_payload)
+    corporation = db.get(EveCorporation, character.corporation_id) if character.corporation_id else None
+    if corporation is None:
+        raise HTTPException(status_code=400, detail="Linked character does not have a known corporation")
+
+    owner = ensure_owner(db, OwnerKind.CORPORATION, corporation.name, corporation_id=corporation.id)
+    job = EsiSyncJob(token_id=token.id, ownership_entity_id=owner.id, sync_type="corporation_wallets", status=SyncStatus.RUNNING, started_at=datetime.now(timezone.utc))
+    db.add(job)
+    db.flush()
+
+    try:
+        wallet_payload = await client.get(f"/corporations/{corporation.corporation_id}/wallets/")
+        synced = await asyncio.to_thread(upsert_corporation_wallet_rows, db, corporation, wallet_payload or [])
+        corporation.last_synced_at = datetime.now(timezone.utc)
+        job.status = SyncStatus.SUCCESS
+        job.message = f"Synced {synced} corporation wallet division balances."
+        notify_if_other_user_synced_character(db, sync_label="corporation wallets", actor_user=current_user, character=character, detail=f"{synced} wallet division balances for {corporation.name} were refreshed using this character token.")
+        job.finished_at = datetime.now(timezone.utc)
+        create_snapshot(db, scope_type="corporation", scope_id=corporation.id, source="corporation_wallets", message=job.message)
+        await asyncio.to_thread(db.commit)
+        return {"status": "synced", "corporation_name": corporation.name, "wallet_divisions": synced, "job_id": job.id}
+    except Exception as exc:
+        job.status = SyncStatus.FAILED
+        job.message = str(exc)
+        job.finished_at = datetime.now(timezone.utc)
+        await asyncio.to_thread(db.commit)
+        raise
 def token_scopes(token: EsiToken) -> set[str]:
     return {scope.strip() for scope in (token.scopes or "").split() if scope.strip()}
 
@@ -739,8 +1110,8 @@ def get_linked_token(db: Session, token_id: int) -> tuple[EsiToken, EveCharacter
 
 
 
-def require_token_access(token: EsiToken, current_user: User) -> None:
-    if token.user_id != current_user.id and not can_view_all_characters(current_user):
+def require_token_access(token: EsiToken, current_user: User, db: Session) -> None:
+    if token.user_id != current_user.id and not can_view_all_characters(current_user, db):
         raise HTTPException(status_code=403, detail="You can only use your own linked characters")
 
 async def fetch_character_contacts(db: Session, token: EsiToken, character: EveCharacter) -> list[dict[str, Any]]:
@@ -836,7 +1207,7 @@ def parse_contact_sync_payload(payload: dict[str, Any]) -> tuple[int, list[int],
 @router.get("/contacts/{token_id}")
 async def character_contacts(token_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
     token, character = get_linked_token(db, token_id)
-    require_token_access(token, current_user)
+    require_token_access(token, current_user, db)
     contacts = await fetch_character_contacts(db, token, character)
     access_token = await refresh_access_token(token)
     names = await resolve_contact_names(EsiClient(access_token=access_token), {int(contact["contact_id"]) for contact in contacts})
@@ -1118,27 +1489,6 @@ async def auth_callback(code: str | None = None, state: str | None = None, db: S
         }
     )
     return RedirectResponse(url=f"{settings.frontend_url}/?{query}#esi", status_code=303)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
