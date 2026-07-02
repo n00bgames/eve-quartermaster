@@ -44,18 +44,59 @@ This is an early beta candidate for private/public testing. It is already useful
 
 ## Screenshots
 
-Screenshots are coming as the public-test UI settles. Suggested capture set:
+A quick tour of the current beta surface, ordered roughly the way a new Quartermaster operator would encounter the tool.
 
-1. Login / invite flow.
-2. Quartermaster overview.
-3. Asset ledger filters and export controls.
-4. Corporation sync and wallet divisions.
-5. Character skills with expandable categories.
-6. Analytics platform widgets.
-7. Navigation planner, operational map, and gatechecker.
-8. Jump Freighter plotter with station/cyno cards.
-9. Local Threat queue while a large system is processing.
-10. Mobile APK view.
+### Command Center
+
+| Overview | Analytics Platform |
+| --- | --- |
+| ![Quartermaster overview](static/ss/overview.png) | ![Analytics platform](static/ss/analytics.png) |
+
+### Assets, Industry, And Corporations
+
+| Asset Ledger | Blueprint And Recipe Library |
+| --- | --- |
+| ![Asset ledger](static/ss/assets.png) | ![Blueprint and recipe library](static/ss/industry.png) |
+
+| Corporation Sync | ESI Sync And Character Contacts |
+| --- | --- |
+| ![Corporation sync and wallet divisions](static/ss/corps.png) | ![ESI sync and character contacts](static/ss/esi.png) |
+
+| Character Skills |
+| --- |
+| ![Character skills](static/ss/skills.png) |
+
+### Navigation And Hauling Intel
+
+| Navigation Hub | Route Checker |
+| --- | --- |
+| ![Navigation hub](static/ss/navigation.png) | ![Route checker](static/ss/routecheck.png) |
+
+| Industrial System Threat | PvP Intel Report |
+| --- | --- |
+| ![Industrial system threat](static/ss/indythreat.png) | ![PvP intel report](static/ss/pvpintel.png) |
+
+| Local Threat Analysis | Jump Freighter Plotter |
+| --- | --- |
+| ![Local threat analysis](static/ss/localthreat.png) | ![Jump Freighter plotter](static/ss/jfplotter.png) |
+
+| Operational Jump Freighter Map |
+| --- |
+| ![Operational Jump Freighter map](static/ss/jfpmap.png) |
+
+### Account, Settings, And Audit
+
+| Profile And Messages | Audit Log |
+| --- | --- |
+| ![Profile and private messages](static/ss/profile.png) | ![Audit log](static/ss/audit.png) |
+
+| Settings And SDE Import | Permissions And Privacy |
+| --- | --- |
+| ![Settings and SDE import](static/ss/settings1.png) | ![Permissions and privacy settings](static/ss/settings2.png) |
+
+| Additional Settings |
+| --- |
+| ![Additional settings](static/ss/settings3.png) |
 
 ## Stack
 

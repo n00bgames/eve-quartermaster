@@ -2042,15 +2042,41 @@ code {
 .operational-route-map {
   display: block;
   width: 100%;
-  min-height: 260px;
+  min-height: 360px;
+  max-height: 68vh;
   border: 1px solid rgba(79, 179, 199, .2);
   border-radius: 8px;
   background:
     radial-gradient(circle at 18% 22%, rgba(79, 179, 199, .16), transparent 18%),
     radial-gradient(circle at 84% 18%, rgba(232, 184, 77, .11), transparent 16%),
     rgba(3, 6, 10, .82);
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
 }
 
+
+.operational-route-map.dragging {
+  cursor: grabbing;
+}
+
+.operational-map-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.operational-map-actions button {
+  min-height: 30px;
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
+.operational-map-actions .version-badge {
+  min-height: 30px;
+}
 .operational-map-bg {
   fill: transparent;
 }
@@ -2076,7 +2102,7 @@ code {
   font-weight: 800;
   paint-order: stroke;
   stroke: rgba(3, 6, 10, .95);
-  stroke-width: 5px;
+  stroke-width: 4px;
   pointer-events: none;
 }
 
@@ -2118,17 +2144,25 @@ code {
 
 .operational-map-route-node text {
   fill: #f5f7fa;
-  font-size: 20px;
+  font-size: 15px;
   font-weight: 850;
   paint-order: stroke;
   stroke: rgba(3, 6, 10, .94);
-  stroke-width: 5px;
+  stroke-width: 4px;
   pointer-events: none;
+}
+
+.operational-map-route-node.compact circle:not(.operational-map-node-glow) {
+  stroke-width: 1.4;
+}
+
+.operational-map-route-node.labeled text {
+  opacity: .96;
 }
 
 .operational-map-route-node .operational-map-node-meta {
   fill: #aab4c2;
-  font-size: 14px;
+  font-size: 10px;
   font-weight: 700;
 }
 

@@ -1309,7 +1309,7 @@ async def apply_contact_sync(payload: dict[str, Any], current_user: User = Depen
 
     owner = ensure_owner(db, OwnerKind.CHARACTER, source_character.name, character_id=source_character.id)
     job = EsiSyncJob(token_id=source_token.id, ownership_entity_id=owner.id, sync_type="character_contact_sync", status=SyncStatus.SUCCESS, started_at=datetime.now(timezone.utc), finished_at=datetime.now(timezone.utc))
-    job.message = f"Copied standings from {source_character.name}: created {total_created}, updated {total_updated}."
+    job.message = f"Copied contacts from {source_character.name}: created {total_created}, updated {total_updated}."
     db.add(job)
     db.commit()
     return {

@@ -143,6 +143,10 @@ def _known_space_systems(db: Session) -> list[EveSystem]:
     ).all()
 
 
+def _npc_station_system_ids(db: Session) -> set[int]:
+    return set(db.scalars(select(EveStation.system_id).where(EveStation.system_id.is_not(None)).distinct()).all())
+
+
 def _grid_key(system: EveSystem, cell_meters: float) -> tuple[int, int, int]:
     return (floor((system.x or 0) / cell_meters), floor((system.y or 0) / cell_meters), floor((system.z or 0) / cell_meters))
 
@@ -162,6 +166,9 @@ def _jump_path(db: Session, origin: EveSystem, destination: EveSystem, max_range
         return [origin.system_id]
     if not cyno_eligible(destination):
         raise ValueError("Jump freighter destination must be lowsec/nullsec for a cyno. Use a nearby cyno system, then plan the gate leg separately.")
+    station_system_ids = _npc_station_system_ids(db)
+    if destination.system_id not in station_system_ids:
+        raise ValueError(f"{destination.name} has no imported NPC stations. Jump freighter cyno targets must have an NPC station; choose a nearby station system and gate the final leg.")
 
     systems = _known_space_systems(db)
     by_id = {system.system_id: system for system in systems}
@@ -189,6 +196,8 @@ def _jump_path(db: Session, origin: EveSystem, destination: EveSystem, max_range
             if candidate.system_id == current_id or candidate.system_id in visited:
                 continue
             if candidate.system_id != destination.system_id and not cyno_eligible(candidate):
+                continue
+            if candidate.system_id != origin.system_id and candidate.system_id not in station_system_ids:
                 continue
             jump_distance = distance_ly(current, candidate)
             if jump_distance > max_range_ly:
@@ -439,7 +448,7 @@ def plan_jump_freighter_route(
             {"station_type": name, **guide} for name, guide in sorted(STATION_CYNO_GUIDE.items(), key=lambda item: (item[1]["range_km"], item[0]))
         ],
         "notes": [
-            "Highsec origins are allowed; each jump target still needs a usable cyno destination.",
+            "Highsec origins are allowed; every jump target must be low/null and have an imported NPC station.",
             "Station guidance is operational reference data. Verify bookmarks and station geometry before risking a live jump freighter.",
         ],
     }
