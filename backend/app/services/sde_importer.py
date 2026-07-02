@@ -10,7 +10,18 @@ import yaml
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app.models import EveCategory, EveGroup, EveType, IndustryActivity, IndustryActivityInput
+from app.models import (
+    EveCategory,
+    EveConstellation,
+    EveGroup,
+    EveRegion,
+    EveStargate,
+    EveStation,
+    EveSystem,
+    EveType,
+    IndustryActivity,
+    IndustryActivityInput,
+)
 from app.models.enums import ActivityKind
 
 
@@ -19,6 +30,12 @@ SDE_FILES = {
     "groups": ("groups.yaml", "groupIDs.yaml"),
     "types": ("types.yaml", "typeIDs.yaml"),
     "blueprints": ("blueprints.yaml",),
+    "regions": ("mapRegions.yaml",),
+    "constellations": ("mapConstellations.yaml",),
+    "systems": ("mapSolarSystems.yaml",),
+    "stargates": ("mapStargates.yaml",),
+    "stations": ("npcStations.yaml",),
+    "station_operations": ("stationOperations.yaml",),
 }
 
 ACTIVITY_MAP = {
@@ -39,6 +56,11 @@ class SdeImportStats:
     categories: int = 0
     groups: int = 0
     types: int = 0
+    regions: int = 0
+    constellations: int = 0
+    systems: int = 0
+    stargates: int = 0
+    stations: int = 0
     blueprint_activities: int = 0
     activity_inputs: int = 0
     skipped_activities: int = 0
@@ -82,9 +104,10 @@ class SdeSource:
     def _find_archive_member(self, filenames: tuple[str, ...]) -> str | None:
         expected = {filename for filename in filenames} | {f"fsd/{filename}" for filename in filenames}
         fsd_suffixes = tuple(f"/fsd/{filename}" for filename in filenames)
+        root_suffixes = tuple(f"/{filename}" for filename in filenames)
         for member in self.archive.namelist() if self.archive is not None else []:
             normalized = PurePosixPath(member).as_posix().lstrip("/")
-            if normalized in expected or normalized.endswith(fsd_suffixes):
+            if normalized in expected or normalized.endswith(fsd_suffixes) or normalized.endswith(root_suffixes):
                 return member
         return None
 
@@ -106,6 +129,47 @@ def optional_float(value: Any) -> float | None:
     if value in (None, ""):
         return None
     return float(value)
+
+
+def position_value(payload: dict[str, Any], axis: str) -> float | None:
+    position = payload.get("position") or {}
+    if not isinstance(position, dict):
+        return None
+    return optional_float(position.get(axis))
+
+
+def ensure_region(db: Session, region_id: int, name: str | None = None) -> EveRegion:
+    region = db.get(EveRegion, region_id)
+    if region is None:
+        region = EveRegion(region_id=region_id, name=name or f"Region {region_id}")
+        db.add(region)
+    elif name:
+        region.name = name
+    return region
+
+
+def ensure_constellation(db: Session, constellation_id: int, region_id: int | None = None, name: str | None = None) -> EveConstellation:
+    if region_id is not None:
+        ensure_region(db, region_id)
+    constellation = db.get(EveConstellation, constellation_id)
+    if constellation is None:
+        constellation = EveConstellation(constellation_id=constellation_id, name=name or f"Constellation {constellation_id}")
+        db.add(constellation)
+    if region_id is not None:
+        constellation.region_id = region_id
+    if name:
+        constellation.name = name
+    return constellation
+
+
+def ensure_system(db: Session, system_id: int, name: str | None = None) -> EveSystem:
+    system = db.get(EveSystem, system_id)
+    if system is None:
+        system = EveSystem(system_id=system_id, name=name or f"System {system_id}")
+        db.add(system)
+    elif name:
+        system.name = name
+    return system
 
 
 def upsert_category(db: Session, category_id: int, payload: dict[str, Any]) -> EveCategory:
@@ -150,6 +214,89 @@ def upsert_type(db: Session, type_id: int, payload: dict[str, Any]) -> EveType:
     return item_type
 
 
+def upsert_region(db: Session, region_id: int, payload: dict[str, Any]) -> EveRegion:
+    return ensure_region(db, region_id, localized_text(payload.get("name"), f"Region {region_id}"))
+
+
+def upsert_constellation(db: Session, constellation_id: int, payload: dict[str, Any]) -> EveConstellation:
+    region_id = int(payload["regionID"]) if payload.get("regionID") is not None else None
+    return ensure_constellation(
+        db,
+        constellation_id,
+        region_id,
+        localized_text(payload.get("name"), f"Constellation {constellation_id}"),
+    )
+
+
+def upsert_system(db: Session, system_id: int, payload: dict[str, Any]) -> EveSystem:
+    region_id = int(payload["regionID"]) if payload.get("regionID") is not None else None
+    constellation_id = int(payload["constellationID"]) if payload.get("constellationID") is not None else None
+    if constellation_id is not None:
+        ensure_constellation(db, constellation_id, region_id)
+    system = ensure_system(db, system_id, localized_text(payload.get("name"), f"System {system_id}"))
+    system.constellation_id = constellation_id
+    system.security_status = optional_float(payload.get("securityStatus"))
+    system.security_class = str(payload.get("securityClass")) if payload.get("securityClass") is not None else None
+    system.x = position_value(payload, "x")
+    system.y = position_value(payload, "y")
+    system.z = position_value(payload, "z")
+    return system
+
+
+def upsert_stargate(db: Session, stargate_id: int, payload: dict[str, Any]) -> EveStargate:
+    system_id = int(payload["solarSystemID"])
+    destination = payload.get("destination") or {}
+    destination_system_id = int(destination["solarSystemID"]) if destination.get("solarSystemID") is not None else None
+    ensure_system(db, system_id)
+    if destination_system_id is not None:
+        ensure_system(db, destination_system_id)
+    stargate = db.get(EveStargate, stargate_id)
+    if stargate is None:
+        stargate = EveStargate(stargate_id=stargate_id, system_id=system_id)
+        db.add(stargate)
+    stargate.system_id = system_id
+    stargate.destination_system_id = destination_system_id
+    stargate.destination_stargate_id = int(destination["stargateID"]) if destination.get("stargateID") is not None else None
+    stargate.type_id = int(payload["typeID"]) if payload.get("typeID") is not None else None
+    stargate.x = position_value(payload, "x")
+    stargate.y = position_value(payload, "y")
+    stargate.z = position_value(payload, "z")
+    return stargate
+
+
+def station_operation_names(operations: dict[Any, Any]) -> dict[int, str]:
+    names: dict[int, str] = {}
+    for raw_id, payload in operations.items():
+        if not isinstance(payload, dict):
+            continue
+        names[int(raw_id)] = localized_text(payload.get("operationName"), f"Operation {raw_id}")
+    return names
+
+
+def upsert_station(db: Session, station_id: int, payload: dict[str, Any], operation_names: dict[int, str]) -> EveStation:
+    system_id = int(payload["solarSystemID"])
+    type_id = int(payload["typeID"]) if payload.get("typeID") is not None else None
+    operation_id = int(payload["operationID"]) if payload.get("operationID") is not None else None
+    ensure_system(db, system_id)
+    if type_id is not None:
+        ensure_placeholder_type(db, type_id)
+    station = db.get(EveStation, station_id)
+    if station is None:
+        station = EveStation(station_id=station_id, system_id=system_id)
+        db.add(station)
+    station.system_id = system_id
+    station.type_id = type_id
+    station.operation_id = operation_id
+    station.operation_name = operation_names.get(operation_id, f"Operation {operation_id}" if operation_id is not None else None)
+    station.name = localized_text(payload.get("stationName"), "") or None
+    station.owner_id = int(payload["ownerID"]) if payload.get("ownerID") is not None else None
+    station.orbit_id = int(payload["orbitID"]) if payload.get("orbitID") is not None else None
+    station.x = position_value(payload, "x")
+    station.y = position_value(payload, "y")
+    station.z = position_value(payload, "z")
+    return station
+
+
 def ensure_placeholder_type(db: Session, type_id: int) -> None:
     if db.get(EveType, type_id) is None:
         db.add(EveType(type_id=type_id, name=f"Type {type_id}", published=True))
@@ -163,7 +310,7 @@ def import_sde(
 ) -> dict[str, Any]:
     source = SdeSource(source_path)
     stats = SdeImportStats(source_path=source_path)
-    wanted = sections or {"categories", "groups", "types", "blueprints"}
+    wanted = sections or {"categories", "groups", "types", "blueprints", "regions", "constellations", "systems", "stargates", "stations"}
 
     def mark(stage: str) -> None:
         if progress is not None:
@@ -199,6 +346,64 @@ def import_sde(
                     mark(f"types imported: {stats.types}")
             db.commit()
             mark("types complete")
+
+        if "regions" in wanted:
+            mark("loading regions")
+            regions = source.load_yaml("regions")
+            for raw_id, payload in regions.items():
+                upsert_region(db, int(raw_id), payload or {})
+                stats.regions += 1
+            db.commit()
+            mark("regions complete")
+
+        if "constellations" in wanted:
+            mark("loading constellations")
+            constellations = source.load_yaml("constellations")
+            for raw_id, payload in constellations.items():
+                upsert_constellation(db, int(raw_id), payload or {})
+                stats.constellations += 1
+                if stats.constellations % 1000 == 0:
+                    db.commit()
+                    mark(f"constellations imported: {stats.constellations}")
+            db.commit()
+            mark("constellations complete")
+
+        if "systems" in wanted:
+            mark("loading solar systems")
+            systems = source.load_yaml("systems")
+            for raw_id, payload in systems.items():
+                upsert_system(db, int(raw_id), payload or {})
+                stats.systems += 1
+                if stats.systems % 2500 == 0:
+                    db.commit()
+                    mark(f"systems imported: {stats.systems}")
+            db.commit()
+            mark("systems complete")
+
+        if "stargates" in wanted:
+            mark("loading stargates")
+            stargates = source.load_yaml("stargates")
+            for raw_id, payload in stargates.items():
+                upsert_stargate(db, int(raw_id), payload or {})
+                stats.stargates += 1
+                if stats.stargates % 2500 == 0:
+                    db.commit()
+                    mark(f"stargates imported: {stats.stargates}")
+            db.commit()
+            mark("stargates complete")
+
+        if "stations" in wanted:
+            mark("loading npc stations")
+            operation_names = station_operation_names(source.load_yaml("station_operations"))
+            stations = source.load_yaml("stations")
+            for raw_id, payload in stations.items():
+                upsert_station(db, int(raw_id), payload or {}, operation_names)
+                stats.stations += 1
+                if stats.stations % 2500 == 0:
+                    db.commit()
+                    mark(f"stations imported: {stats.stations}")
+            db.commit()
+            mark("stations complete")
 
         if "blueprints" in wanted:
             mark("loading blueprints")
@@ -258,3 +463,5 @@ def import_sde(
         raise
     finally:
         source.close()
+
+

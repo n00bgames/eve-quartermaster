@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.api.auth import get_current_user, require_role
 from app.core.config import get_settings
 from app.db.session import get_db
-from app.models import EveCategory, EveGroup, EveType, IndustryActivity, IndustryActivityInput, User
+from app.models import EveCategory, EveConstellation, EveGroup, EveRegion, EveStargate, EveStation, EveSystem, EveType, IndustryActivity, IndustryActivityInput, User
 from app.services.sde_importer import import_sde
 
 router = APIRouter(prefix="/sde", tags=["sde"])
@@ -27,6 +27,11 @@ def sde_status(_: User = Depends(require_admin), db: Session = Depends(get_db)) 
         "categories": db.scalar(select(func.count()).select_from(EveCategory)) or 0,
         "groups": db.scalar(select(func.count()).select_from(EveGroup)) or 0,
         "types": db.scalar(select(func.count()).select_from(EveType)) or 0,
+        "regions": db.scalar(select(func.count()).select_from(EveRegion)) or 0,
+        "constellations": db.scalar(select(func.count()).select_from(EveConstellation)) or 0,
+        "systems": db.scalar(select(func.count()).select_from(EveSystem)) or 0,
+        "stargates": db.scalar(select(func.count()).select_from(EveStargate)) or 0,
+        "stations": db.scalar(select(func.count()).select_from(EveStation)) or 0,
         "blueprint_activities": db.scalar(select(func.count()).select_from(IndustryActivity)) or 0,
         "activity_inputs": db.scalar(select(func.count()).select_from(IndustryActivityInput)) or 0,
     }
@@ -43,3 +48,4 @@ def import_static_data(payload: dict[str, Any], _: User = Depends(require_admin)
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"SDE import failed: {exc}") from exc
+

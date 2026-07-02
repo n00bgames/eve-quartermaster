@@ -7,3 +7,18 @@ dist
 postgres_data
 sde/
 
+
+# Android wrapper build output
+EQM.apk
+android-eqm/.gradle/
+android-eqm/app/build/
+android-eqm/build/
+
+# Local Android/IDE state and signing material
+android-eqm/local.properties
+android-eqm/.idea/
+android-eqm/.kotlin/
+*.iml
+*.jks
+*.keystore
+.env.local

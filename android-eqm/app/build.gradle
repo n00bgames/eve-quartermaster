@@ -1,0 +1,25 @@
+plugins {
+    id "com.android.application"
+}
+
+def eqmUrl = project.findProperty("EQM_URL") ?: "http://192.168.0.20:5173/"
+def compileSdkVersion = (project.findProperty("COMPILE_SDK") ?: "35").toString().toInteger()
+def targetSdkVersion = (project.findProperty("TARGET_SDK") ?: compileSdkVersion.toString()).toString().toInteger()
+
+android {
+    namespace = "app.evequartermaster.mobile"
+    compileSdk = compileSdkVersion
+
+    buildFeatures {
+        buildConfig = true
+    }
+
+    defaultConfig {
+        applicationId = "app.evequartermaster.mobile"
+        minSdk = 26
+        targetSdk = targetSdkVersion
+        versionCode = 1
+        versionName = "0.0.6-alpha"
+        buildConfigField "String", "EQM_URL", "\"${eqmUrl}\""
+    }
+}

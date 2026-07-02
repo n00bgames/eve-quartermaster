@@ -115,6 +115,7 @@ def serialize_corporation(corp: EveCorporation, current_user: User, db: Session)
         "corporation_id": corp.corporation_id,
         "name": corp.name,
         "ticker": corp.ticker,
+        "alliance_id": alliance.alliance_id if alliance else None,
         "alliance_name": alliance.name if alliance else None,
         "ceo_character_eve_id": corp.ceo_character_eve_id,
         "ceo_character_name": ceo.name if ceo else None,
@@ -151,6 +152,8 @@ def list_corporations(current_user: User = Depends(get_current_user), db: Sessio
     require_corporation_view(current_user, db)
     corporations = db.scalars(select(EveCorporation).order_by(EveCorporation.name)).all()
     return [serialize_corporation(corp, current_user, db) for corp in corporations]
+
+
 
 
 

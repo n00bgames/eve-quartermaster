@@ -44,7 +44,9 @@ def serialize_character(character: EveCharacter, viewer: User, db: Session) -> d
         "owner_user_id": character.owner_user_id,
         "owner_display_name": character.owner_user.display_name if character.owner_user else None,
         "owner_role": character.owner_user.role if character.owner_user else None,
+        "corporation_id": character.corporation.corporation_id if character.corporation else None,
         "corporation_name": character.corporation.name if character.corporation else None,
+        "alliance_id": character.alliance.alliance_id if character.alliance else None,
         "alliance_name": character.alliance.name if character.alliance else None,
         "public_assets_visible": character.public_assets_visible,
         "sync_opt_out": character.sync_opt_out,
@@ -98,6 +100,7 @@ def list_roster(current_user: User = Depends(get_current_user), db: Session = De
                 "corporation_id": corp.corporation_id if corp else None,
                 "corporation_name": corp.name if corp else "Unknown corporation",
                 "ticker": corp.ticker if corp else None,
+                "alliance_id": alliance.alliance_id if alliance else None,
                 "alliance_name": alliance.name if alliance else None,
                 "member_count": corp.member_count if corp else None,
                 "characters": [],
@@ -148,6 +151,8 @@ def update_character(character_id: int, payload: dict[str, Any], current_user: U
     db.refresh(character)
     character = db.scalar(select(EveCharacter).where(EveCharacter.id == character.id).options(selectinload(EveCharacter.owner_user), selectinload(EveCharacter.corporation), selectinload(EveCharacter.alliance)))
     return serialize_character(character, current_user, db)
+
+
 
 
 

@@ -3,9 +3,10 @@ from app.models.assets import Asset, Location
 from app.models.audit import AppSetting, AuditEvent, PrivateMessage
 from app.models.base import Base
 from app.models.esi import EsiApplication, EsiSyncJob, EsiToken
-from app.models.eve_static import EveCategory, EveConstellation, EveGroup, EveRegion, EveSystem, EveType
+from app.models.eve_static import EveCategory, EveConstellation, EveGroup, EveRegion, EveStargate, EveStation, EveSystem, EveType
 from app.models.identity import CorporationWalletDivision, EveAlliance, EveCharacter, EveCorporation, OwnershipEntity, RoleDefinition, RoleSectionPermission, User, UserInvite, UserSectionPermission
 from app.models.industry import Blueprint, IndustryActivity, IndustryActivityInput, ProcurementSource, ProductionPlan, ProductionPlanInput
+from app.models.navigation import SystemIndustrialKillObservation, SystemKillFetchCache, SystemPvpKillObservation
 from app.models.skills import CharacterSkill, CharacterSkillQueueEntry
 
 __all__ = [
@@ -31,6 +32,8 @@ __all__ = [
     "EveCorporation",
     "EveGroup",
     "EveRegion",
+    "EveStargate",
+    "EveStation",
     "EveSystem",
     "EveType",
     "IndustryActivity",
@@ -45,7 +48,13 @@ __all__ = [
     "RoleSectionPermission",
     "SnapshotMetric",
     "SnapshotRun",
+    "SystemIndustrialKillObservation",
+    "SystemKillFetchCache",
+    "SystemPvpKillObservation",
     "User",
     "UserInvite",
     "UserSectionPermission",
 ]
+
+
+

@@ -1,6 +1,6 @@
 {
   "name": "eve-quartermaster-frontend",
-  "version": "0.0.6-alpha",
+  "version": "0.1.1-beta",
   "private": true,
   "type": "module",
   "scripts": {
@@ -21,6 +21,7 @@
     "@types/react-dom": "^19.2.3"
   }
 }
+
 
 
 

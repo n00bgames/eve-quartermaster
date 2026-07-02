@@ -20,6 +20,7 @@ SECTION_DEFINITIONS: dict[str, dict[str, object]] = {
     "ownership": {"label": "Ownership", "default_roles": ["admin", "director", "officer"]},
     "characters": {"label": "Characters", "default_roles": ["admin", "director", "officer", "member", "view_only"]},
     "roster": {"label": "Roster", "default_roles": ["admin", "director", "officer", "member", "view_only"]},
+    "navigation": {"label": "Navigation", "default_roles": ["admin", "director", "officer", "member", "view_only"]},
     "analytics": {"label": "Analytics", "default_roles": ["admin", "director", "officer"]},
     "skills": {"label": "Skills", "default_roles": ["admin", "director", "officer", "member"]},
     "settings": {"label": "Settings", "default_roles": ["admin", "director", "officer", "member", "view_only"]},

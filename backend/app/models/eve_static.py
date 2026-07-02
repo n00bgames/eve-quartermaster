@@ -47,6 +47,8 @@ class EveRegion(Base):
     region_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
 
+    constellations: Mapped[list["EveConstellation"]] = relationship(back_populates="region")
+
 
 class EveConstellation(Base):
     __tablename__ = "eve_constellations"
@@ -54,6 +56,9 @@ class EveConstellation(Base):
     constellation_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     region_id: Mapped[int | None] = mapped_column(ForeignKey("eve_regions.region_id"), index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+
+    region: Mapped[EveRegion | None] = relationship(back_populates="constellations")
+    systems: Mapped[list["EveSystem"]] = relationship(back_populates="constellation")
 
 
 class EveSystem(Base):
@@ -63,3 +68,52 @@ class EveSystem(Base):
     constellation_id: Mapped[int | None] = mapped_column(ForeignKey("eve_constellations.constellation_id"), index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     security_status: Mapped[float | None] = mapped_column(Float)
+    security_class: Mapped[str | None] = mapped_column(String(8), index=True)
+    x: Mapped[float | None] = mapped_column(Float)
+    y: Mapped[float | None] = mapped_column(Float)
+    z: Mapped[float | None] = mapped_column(Float)
+
+    constellation: Mapped[EveConstellation | None] = relationship(back_populates="systems")
+    outgoing_stargates: Mapped[list["EveStargate"]] = relationship(
+        back_populates="system",
+        foreign_keys="EveStargate.system_id",
+    )
+    stations: Mapped[list["EveStation"]] = relationship(back_populates="system")
+
+
+class EveStargate(Base):
+    __tablename__ = "eve_stargates"
+
+    stargate_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    system_id: Mapped[int] = mapped_column(ForeignKey("eve_systems.system_id"), nullable=False, index=True)
+    destination_system_id: Mapped[int | None] = mapped_column(ForeignKey("eve_systems.system_id"), index=True)
+    destination_stargate_id: Mapped[int | None] = mapped_column(Integer, index=True)
+    type_id: Mapped[int | None] = mapped_column(Integer, index=True)
+    x: Mapped[float | None] = mapped_column(Float)
+    y: Mapped[float | None] = mapped_column(Float)
+    z: Mapped[float | None] = mapped_column(Float)
+
+    system: Mapped[EveSystem] = relationship(foreign_keys=[system_id], back_populates="outgoing_stargates")
+    destination_system: Mapped[EveSystem | None] = relationship(foreign_keys=[destination_system_id])
+
+
+class EveStation(Base):
+    __tablename__ = "eve_stations"
+
+    station_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    system_id: Mapped[int] = mapped_column(ForeignKey("eve_systems.system_id"), nullable=False, index=True)
+    type_id: Mapped[int | None] = mapped_column(ForeignKey("eve_types.type_id"), index=True)
+    operation_id: Mapped[int | None] = mapped_column(Integer, index=True)
+    operation_name: Mapped[str | None] = mapped_column(String(255), index=True)
+    name: Mapped[str | None] = mapped_column(String(255), index=True)
+    owner_id: Mapped[int | None] = mapped_column(Integer, index=True)
+    orbit_id: Mapped[int | None] = mapped_column(Integer, index=True)
+    x: Mapped[float | None] = mapped_column(Float)
+    y: Mapped[float | None] = mapped_column(Float)
+    z: Mapped[float | None] = mapped_column(Float)
+
+    system: Mapped[EveSystem] = relationship(back_populates="stations")
+    station_type: Mapped[EveType | None] = relationship()
+
+
+

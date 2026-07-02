@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import hashlib
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import re
 import secrets
 from typing import Any
@@ -26,6 +27,7 @@ def serialize_user(user: User) -> dict[str, Any]:
         "email": user.email,
         "display_name": user.display_name,
         "role": user.role,
+        "timezone": getattr(user, "timezone", None) or "UTC",
         "created_at": user.created_at.isoformat() if user.created_at else None,
     }
 
@@ -85,6 +87,15 @@ def can_view_all_characters(user: User, db: Session | None = None) -> bool:
 
 
 
+def validate_timezone(value: str) -> str:
+    timezone_name = value.strip()
+    if not timezone_name or len(timezone_name) > 64:
+        raise HTTPException(status_code=400, detail="A valid timezone is required")
+    try:
+        ZoneInfo(timezone_name)
+    except ZoneInfoNotFoundError as exc:
+        raise HTTPException(status_code=400, detail="Unknown timezone") from exc
+    return timezone_name
 
 def normalize_role_name(value: str) -> str:
     name = re.sub(r"[^a-z0-9_]+", "_", value.strip().lower())
@@ -255,6 +266,9 @@ def update_me(payload: dict[str, Any], current_user: User = Depends(get_current_
         if existing:
             raise HTTPException(status_code=400, detail="Email is already in use")
         current_user.email = email
+
+    if "timezone" in payload:
+        current_user.timezone = validate_timezone(str(payload.get("timezone") or ""))
 
     if payload.get("password"):
         current_password = str(payload.get("current_password") or "")
