@@ -252,7 +252,7 @@ type AppData = {
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
 
-const APP_VERSION = "0.1.1-beta";
+const APP_VERSION = "0.1.2-beta";
 
 
 
