@@ -1,4 +1,6 @@
-from sqlalchemy import Boolean, Float, ForeignKey, Integer, String, Text
+from typing import Any
+
+from sqlalchemy import Boolean, Float, ForeignKey, Integer, JSON, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -39,6 +41,65 @@ class EveType(Base):
     published: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     group: Mapped[EveGroup | None] = relationship(back_populates="types")
+    dogma_attributes: Mapped[list["EveTypeDogmaAttribute"]] = relationship(back_populates="type")
+    dogma_effects: Mapped[list["EveTypeDogmaEffect"]] = relationship(back_populates="type")
+
+
+class EveDogmaAttribute(Base):
+    __tablename__ = "eve_dogma_attributes"
+
+    attribute_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    display_name: Mapped[str | None] = mapped_column(String(255), index=True)
+    description: Mapped[str | None] = mapped_column(Text)
+    unit_id: Mapped[int | None] = mapped_column(Integer, index=True)
+    default_value: Mapped[float | None] = mapped_column(Float)
+    published: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    type_values: Mapped[list["EveTypeDogmaAttribute"]] = relationship(back_populates="attribute")
+
+
+class EveTypeDogmaAttribute(Base):
+    __tablename__ = "eve_type_dogma_attributes"
+    __table_args__ = (UniqueConstraint("type_id", "attribute_id", name="uq_eve_type_dogma_attribute"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    type_id: Mapped[int] = mapped_column(ForeignKey("eve_types.type_id"), nullable=False, index=True)
+    attribute_id: Mapped[int] = mapped_column(ForeignKey("eve_dogma_attributes.attribute_id"), nullable=False, index=True)
+    value: Mapped[float] = mapped_column(Float, nullable=False)
+
+    type: Mapped[EveType] = relationship(back_populates="dogma_attributes")
+    attribute: Mapped[EveDogmaAttribute] = relationship(back_populates="type_values")
+
+
+class EveDogmaEffect(Base):
+    __tablename__ = "eve_dogma_effects"
+
+    effect_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    display_name: Mapped[str | None] = mapped_column(String(255), index=True)
+    description: Mapped[str | None] = mapped_column(Text)
+    category_id: Mapped[int | None] = mapped_column(Integer, index=True)
+    published: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    is_assistance: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_offensive: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_warp_safe: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    modifier_info: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
+
+    type_values: Mapped[list["EveTypeDogmaEffect"]] = relationship(back_populates="effect")
+
+
+class EveTypeDogmaEffect(Base):
+    __tablename__ = "eve_type_dogma_effects"
+    __table_args__ = (UniqueConstraint("type_id", "effect_id", name="uq_eve_type_dogma_effect"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    type_id: Mapped[int] = mapped_column(ForeignKey("eve_types.type_id"), nullable=False, index=True)
+    effect_id: Mapped[int] = mapped_column(ForeignKey("eve_dogma_effects.effect_id"), nullable=False, index=True)
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    type: Mapped[EveType] = relationship(back_populates="dogma_effects")
+    effect: Mapped[EveDogmaEffect] = relationship(back_populates="type_values")
 
 
 class EveRegion(Base):
@@ -114,6 +175,3 @@ class EveStation(Base):
 
     system: Mapped[EveSystem] = relationship(back_populates="stations")
     station_type: Mapped[EveType | None] = relationship()
-
-
-

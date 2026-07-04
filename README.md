@@ -117,6 +117,44 @@ A quick tour of the current beta surface, ordered roughly the way a new Quarterm
 - An EVE developer application if you want ESI/SSO sync locally.
 - Optional: Android Studio or Android SDK command-line tools if you want to build `EQM.apk`.
 
+
+### Scripted Setup
+
+For a quick evaluator install from a fresh clone, use the installer script for your platform:
+
+```powershell
+.\install-eqm.bat
+```
+
+```bash
+chmod +x install-eqm.sh rebuild-eqm.sh update-eqm.sh
+./install-eqm.sh
+```
+
+The installer checks for Docker Compose, creates `.env` from `.env.example` when needed, generates local auth/encryption secrets, creates the `sde/` folder, builds the containers, and starts EQM at http://localhost:5173.
+
+For day-to-day local rebuilds without pulling new code:
+
+```powershell
+.\rebuild-eqm.bat
+```
+
+```bash
+./rebuild-eqm.sh
+```
+
+To update from the current GitHub branch and rebuild containers:
+
+```powershell
+.\update-eqm.bat
+```
+
+```bash
+./update-eqm.sh
+```
+
+The update scripts use a fast-forward-only pull so they stop instead of trampling local edits.
+
 ### First Run
 
 From PowerShell in the repository root:

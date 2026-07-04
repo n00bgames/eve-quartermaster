@@ -7,18 +7,22 @@ from typing import Any
 import zipfile
 
 import yaml
-from sqlalchemy import delete, select
+from sqlalchemy import delete, insert, select
 from sqlalchemy.orm import Session
 
 from app.models import (
     EveCategory,
     EveConstellation,
+    EveDogmaAttribute,
+    EveDogmaEffect,
     EveGroup,
     EveRegion,
     EveStargate,
     EveStation,
     EveSystem,
     EveType,
+    EveTypeDogmaAttribute,
+    EveTypeDogmaEffect,
     IndustryActivity,
     IndustryActivityInput,
 )
@@ -38,6 +42,9 @@ SDE_FILES = {
     "station_operations": ("stationOperations.yaml",),
     "station_names": ("invNames.yaml", "itemNames.yaml", "bsd/invNames.yaml", "bsd/itemNames.yaml"),
     "station_table": ("staStations.yaml", "bsd/staStations.yaml"),
+    "dogma_attributes": ("dogmaAttributes.yaml", "dgmAttributeTypes.yaml", "bsd/dgmAttributeTypes.yaml"),
+    "dogma_effects": ("dogmaEffects.yaml", "dgmEffects.yaml", "bsd/dgmEffects.yaml"),
+    "type_dogma": ("typeDogma.yaml",),
 }
 
 ACTIVITY_MAP = {
@@ -66,6 +73,10 @@ class SdeImportStats:
     blueprint_activities: int = 0
     activity_inputs: int = 0
     skipped_activities: int = 0
+    dogma_attributes: int = 0
+    dogma_effects: int = 0
+    type_dogma_attributes: int = 0
+    type_dogma_effects: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -223,6 +234,172 @@ def upsert_type(db: Session, type_id: int, payload: dict[str, Any]) -> EveType:
     item_type.market_group_id = int(payload["marketGroupID"]) if payload.get("marketGroupID") is not None else None
     item_type.published = bool(payload.get("published", True))
     return item_type
+
+
+def upsert_dogma_attribute(db: Session, attribute_id: int, payload: dict[str, Any]) -> EveDogmaAttribute:
+    attribute = db.get(EveDogmaAttribute, attribute_id)
+    if attribute is None:
+        attribute = EveDogmaAttribute(attribute_id=attribute_id, name=f"attribute{attribute_id}")
+        db.add(attribute)
+    attribute.name = str(payload.get("name") or payload.get("attributeName") or f"attribute{attribute_id}")
+    attribute.display_name = localized_text(payload.get("displayName") or payload.get("display_name"), "") or None
+    attribute.description = localized_text(payload.get("description"), "") or None
+    attribute.unit_id = optional_int(payload.get("unitID") or payload.get("unitId"))
+    attribute.default_value = optional_float(payload.get("defaultValue") or payload.get("default_value"))
+    attribute.published = bool(payload.get("published", True))
+    return attribute
+
+
+def normalize_modifier_info(value: Any) -> list[dict[str, Any]] | None:
+    if not isinstance(value, list):
+        return None
+    normalized: list[dict[str, Any]] = []
+    for row in value:
+        if isinstance(row, dict):
+            normalized.append(dict(row))
+    return normalized or None
+
+
+def upsert_dogma_effect(db: Session, effect_id: int, payload: dict[str, Any]) -> EveDogmaEffect:
+    effect = db.get(EveDogmaEffect, effect_id)
+    if effect is None:
+        effect = EveDogmaEffect(effect_id=effect_id, name=f"effect{effect_id}")
+        db.add(effect)
+    effect.name = str(payload.get("name") or payload.get("effectName") or f"effect{effect_id}")
+    effect.display_name = localized_text(payload.get("displayName") or payload.get("display_name"), "") or None
+    effect.description = localized_text(payload.get("description"), "") or None
+    effect.category_id = optional_int(payload.get("effectCategoryID") or payload.get("effectCategoryId") or payload.get("effectCategory"))
+    effect.published = bool(payload.get("published", True))
+    effect.is_assistance = bool(payload.get("isAssistance", False))
+    effect.is_offensive = bool(payload.get("isOffensive", False))
+    effect.is_warp_safe = bool(payload.get("isWarpSafe", False))
+    effect.modifier_info = normalize_modifier_info(payload.get("modifierInfo") or payload.get("modifier_info"))
+    return effect
+
+
+def type_dogma_attribute_rows(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    rows = payload.get("dogmaAttributes") or payload.get("attributes") or []
+    return rows if isinstance(rows, list) else []
+
+
+def type_dogma_effect_rows(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    rows = payload.get("dogmaEffects") or payload.get("effects") or []
+    return rows if isinstance(rows, list) else []
+
+
+def upsert_type_dogma_attributes(db: Session, type_id: int, payload: dict[str, Any]) -> int:
+    ensure_placeholder_type(db, type_id)
+    rows = type_dogma_attribute_rows(payload)
+    seen_attribute_ids: set[int] = set()
+    count = 0
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        attribute_id = optional_int(row.get("attributeID") or row.get("attributeId") or row.get("attribute_id"))
+        value = optional_float(row.get("value"))
+        if attribute_id is None or value is None:
+            continue
+        if db.get(EveDogmaAttribute, attribute_id) is None:
+            db.add(EveDogmaAttribute(attribute_id=attribute_id, name=f"attribute{attribute_id}", published=True))
+        dogma_value = db.scalar(select(EveTypeDogmaAttribute).where(EveTypeDogmaAttribute.type_id == type_id, EveTypeDogmaAttribute.attribute_id == attribute_id))
+        if dogma_value is None:
+            dogma_value = EveTypeDogmaAttribute(type_id=type_id, attribute_id=attribute_id, value=value)
+            db.add(dogma_value)
+        dogma_value.value = value
+        seen_attribute_ids.add(attribute_id)
+        count += 1
+    if seen_attribute_ids:
+        db.execute(delete(EveTypeDogmaAttribute).where(EveTypeDogmaAttribute.type_id == type_id, EveTypeDogmaAttribute.attribute_id.notin_(list(seen_attribute_ids))))
+    return count
+
+
+def upsert_type_dogma_effects(db: Session, type_id: int, payload: dict[str, Any]) -> int:
+    ensure_placeholder_type(db, type_id)
+    rows = type_dogma_effect_rows(payload)
+    seen_effect_ids: set[int] = set()
+    count = 0
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        effect_id = optional_int(row.get("effectID") or row.get("effectId") or row.get("effect_id"))
+        if effect_id is None:
+            continue
+        if db.get(EveDogmaEffect, effect_id) is None:
+            db.add(EveDogmaEffect(effect_id=effect_id, name=f"effect{effect_id}", published=True))
+        dogma_value = db.scalar(select(EveTypeDogmaEffect).where(EveTypeDogmaEffect.type_id == type_id, EveTypeDogmaEffect.effect_id == effect_id))
+        if dogma_value is None:
+            dogma_value = EveTypeDogmaEffect(type_id=type_id, effect_id=effect_id)
+            db.add(dogma_value)
+        dogma_value.is_default = bool(row.get("isDefault", False))
+        seen_effect_ids.add(effect_id)
+        count += 1
+    if seen_effect_ids:
+        db.execute(delete(EveTypeDogmaEffect).where(EveTypeDogmaEffect.type_id == type_id, EveTypeDogmaEffect.effect_id.notin_(list(seen_effect_ids))))
+    return count
+
+
+def bulk_import_type_dogma(source: SdeSource, db: Session, stats: SdeImportStats, mark: Callable[[str], None]) -> None:
+    type_dogma = load_optional_yaml(source, "type_dogma")
+    db.execute(delete(EveTypeDogmaAttribute))
+    db.execute(delete(EveTypeDogmaEffect))
+    db.commit()
+    mark("type dogma mappings cleared")
+
+    existing_type_ids = set(db.scalars(select(EveType.type_id)).all())
+    existing_attribute_ids = set(db.scalars(select(EveDogmaAttribute.attribute_id)).all())
+    existing_effect_ids = set(db.scalars(select(EveDogmaEffect.effect_id)).all())
+    attribute_rows: list[dict[str, Any]] = []
+    effect_rows: list[dict[str, Any]] = []
+
+    def flush_rows() -> None:
+        if attribute_rows:
+            db.execute(insert(EveTypeDogmaAttribute), attribute_rows)
+            attribute_rows.clear()
+        if effect_rows:
+            db.execute(insert(EveTypeDogmaEffect), effect_rows)
+            effect_rows.clear()
+        db.commit()
+        mark(f"type dogma imported: {stats.type_dogma_attributes} attributes, {stats.type_dogma_effects} effects")
+
+    for raw_id, payload in type_dogma.items():
+        type_id = int(raw_id)
+        if type_id not in existing_type_ids:
+            db.add(EveType(type_id=type_id, name=f"Type {type_id}", published=True))
+            existing_type_ids.add(type_id)
+
+        seen_attribute_ids: set[int] = set()
+        for row in type_dogma_attribute_rows(payload or {}):
+            if not isinstance(row, dict):
+                continue
+            attribute_id = optional_int(row.get("attributeID") or row.get("attributeId") or row.get("attribute_id"))
+            value = optional_float(row.get("value"))
+            if attribute_id is None or value is None or attribute_id in seen_attribute_ids:
+                continue
+            if attribute_id not in existing_attribute_ids:
+                db.add(EveDogmaAttribute(attribute_id=attribute_id, name=f"attribute{attribute_id}", published=True))
+                existing_attribute_ids.add(attribute_id)
+            attribute_rows.append({"type_id": type_id, "attribute_id": attribute_id, "value": value})
+            seen_attribute_ids.add(attribute_id)
+            stats.type_dogma_attributes += 1
+
+        seen_effect_ids: set[int] = set()
+        for row in type_dogma_effect_rows(payload or {}):
+            if not isinstance(row, dict):
+                continue
+            effect_id = optional_int(row.get("effectID") or row.get("effectId") or row.get("effect_id"))
+            if effect_id is None or effect_id in seen_effect_ids:
+                continue
+            if effect_id not in existing_effect_ids:
+                db.add(EveDogmaEffect(effect_id=effect_id, name=f"effect{effect_id}", published=True))
+                existing_effect_ids.add(effect_id)
+            effect_rows.append({"type_id": type_id, "effect_id": effect_id, "is_default": bool(row.get("isDefault", False))})
+            seen_effect_ids.add(effect_id)
+            stats.type_dogma_effects += 1
+
+        if len(attribute_rows) + len(effect_rows) >= 25000:
+            flush_rows()
+
+    flush_rows()
 
 
 def upsert_region(db: Session, region_id: int, payload: dict[str, Any]) -> EveRegion:
@@ -390,7 +567,7 @@ def import_sde(
 ) -> dict[str, Any]:
     source = SdeSource(source_path)
     stats = SdeImportStats(source_path=source_path)
-    wanted = sections or {"categories", "groups", "types", "blueprints", "regions", "constellations", "systems", "stargates", "stations"}
+    wanted = sections or {"categories", "groups", "types", "dogma", "blueprints", "regions", "constellations", "systems", "stargates", "stations"}
 
     def mark(stage: str) -> None:
         if progress is not None:
@@ -426,6 +603,32 @@ def import_sde(
                     mark(f"types imported: {stats.types}")
             db.commit()
             mark("types complete")
+        if "dogma" in wanted:
+            mark("loading dogma attributes")
+            dogma_attributes = load_optional_yaml(source, "dogma_attributes")
+            for raw_id, payload in dogma_attributes.items():
+                upsert_dogma_attribute(db, int(raw_id), payload or {})
+                stats.dogma_attributes += 1
+                if stats.dogma_attributes % 1000 == 0:
+                    db.commit()
+                    mark(f"dogma attributes imported: {stats.dogma_attributes}")
+            db.commit()
+            mark("dogma attributes complete")
+
+            mark("loading dogma effects")
+            dogma_effects = load_optional_yaml(source, "dogma_effects")
+            for raw_id, payload in dogma_effects.items():
+                upsert_dogma_effect(db, int(raw_id), payload or {})
+                stats.dogma_effects += 1
+                if stats.dogma_effects % 1000 == 0:
+                    db.commit()
+                    mark(f"dogma effects imported: {stats.dogma_effects}")
+            db.commit()
+            mark("dogma effects complete")
+
+            mark("loading type dogma attributes and effects")
+            bulk_import_type_dogma(source, db, stats, mark)
+            mark("type dogma attributes and effects complete")
 
         if "regions" in wanted:
             mark("loading regions")
@@ -544,5 +747,6 @@ def import_sde(
         raise
     finally:
         source.close()
+
 
 

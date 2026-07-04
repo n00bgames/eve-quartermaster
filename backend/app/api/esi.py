@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.core.config import get_settings
 from app.core.security import create_sso_state, decode_sso_state, decrypt_secret, encrypt_secret
 from app.db.session import get_db
-from app.models import Asset, Blueprint, CharacterSkill, CharacterSkillQueueEntry, CorporationWalletDivision, EsiSyncJob, EsiToken, EveAlliance, EveCategory, EveCharacter, EveCorporation, EveGroup, EveSystem, EveType, Location, OwnershipEntity, User
+from app.models import Asset, Blueprint, CharacterFitting, CharacterFittingItem, CharacterSkill, CharacterSkillQueueEntry, CorporationWalletDivision, EsiSyncJob, EsiToken, EveAlliance, EveCategory, EveCharacter, EveCorporation, EveGroup, EveSystem, EveType, Location, OwnershipEntity, User
 from app.models.enums import AssetSource, LocationKind, OwnerKind, SyncStatus
 from app.services.esi_client import EsiClient, esi_status, resolve_names
 from app.services.audit import notify_if_other_user_synced_character
@@ -812,6 +812,78 @@ async def sync_character_skills(token_id: int, current_user: User = Depends(get_
         db.commit()
         raise
 
+
+@router.post("/sync/character-fittings/{token_id}")
+async def sync_character_fittings(token_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+    token, character = get_linked_token(db, token_id)
+    if token.user_id != current_user.id and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can force-sync another account character fittings")
+    if character.sync_opt_out and token.user_id != current_user.id and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail=f"{character.name} has opted out of Quartermaster sync")
+    require_scope(token, "esi-fittings.read_fittings.v1", f"Reading fittings for {character.name}")
+
+    job = EsiSyncJob(token_id=token.id, sync_type="character_fittings", status=SyncStatus.RUNNING, started_at=datetime.now(timezone.utc))
+    db.add(job)
+    db.flush()
+
+    try:
+        access_token = await refresh_access_token(token)
+        client = EsiClient(access_token=access_token)
+        fittings_payload = await client.get(f"/characters/{character.character_id}/fittings/")
+        fitting_rows = fittings_payload or []
+        type_ids = {int(row["ship_type_id"]) for row in fitting_rows if row.get("ship_type_id") is not None}
+        for row in fitting_rows:
+            type_ids.update({int(item["type_id"]) for item in row.get("items", []) if item.get("type_id") is not None})
+        type_names = await apply_type_names(client, db, type_ids)
+        now = datetime.now(timezone.utc)
+        seen_ids: set[int] = set()
+
+        for row in fitting_rows:
+            eve_fitting_id = int(row["fitting_id"])
+            seen_ids.add(eve_fitting_id)
+            fitting = db.scalar(select(CharacterFitting).where(CharacterFitting.character_id == character.id, CharacterFitting.eve_fitting_id == eve_fitting_id))
+            if fitting is None:
+                fitting = CharacterFitting(character_id=character.id, eve_fitting_id=eve_fitting_id, ship_type_id=int(row["ship_type_id"]), name=row.get("name") or f"Fitting {eve_fitting_id}")
+                db.add(fitting)
+                db.flush()
+            fitting.name = row.get("name") or fitting.name
+            fitting.description = row.get("description")
+            fitting.ship_type_id = int(row["ship_type_id"])
+            fitting.last_synced_at = now
+            db.execute(delete(CharacterFittingItem).where(CharacterFittingItem.fitting_id == fitting.id))
+            for item in row.get("items", []) or []:
+                db.add(
+                    CharacterFittingItem(
+                        fitting_id=fitting.id,
+                        type_id=int(item["type_id"]),
+                        flag=str(item.get("flag") or "Other"),
+                        quantity=int(item.get("quantity", 1)),
+                    )
+                )
+
+        if seen_ids:
+            stale = db.scalars(select(CharacterFitting).where(CharacterFitting.character_id == character.id, CharacterFitting.eve_fitting_id.is_not(None), CharacterFitting.eve_fitting_id.notin_(list(seen_ids)))).all()
+        else:
+            stale = db.scalars(select(CharacterFitting).where(CharacterFitting.character_id == character.id, CharacterFitting.eve_fitting_id.is_not(None))).all()
+        for fitting in stale:
+            db.delete(fitting)
+
+        character.last_synced_at = now
+        job.status = SyncStatus.SUCCESS
+        opt_out_note = " Admin override used for opted-out character." if character.sync_opt_out and current_user.role == "admin" and token.user_id != current_user.id else ""
+        job.message = f"Synced {len(fitting_rows)} saved fittings. Resolved {type_names} fitting item names.{opt_out_note}"
+        notify_if_other_user_synced_character(db, sync_label="fittings", actor_user=current_user, character=character, detail=f"{len(fitting_rows)} saved fittings were refreshed.")
+        job.finished_at = now
+        db.commit()
+        return {"status": "synced", "character_name": character.name, "fitting_count": len(fitting_rows), "job_id": job.id}
+    except Exception as exc:
+        job.status = SyncStatus.FAILED
+        job.message = str(exc)
+        job.finished_at = datetime.now(timezone.utc)
+        db.commit()
+        raise
+
+
 @router.delete("/linked-characters/{token_id}")
 def unlink_character(token_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
     token, character = get_linked_token(db, token_id)
@@ -1489,6 +1561,7 @@ async def auth_callback(code: str | None = None, state: str | None = None, db: S
         }
     )
     return RedirectResponse(url=f"{settings.frontend_url}/?{query}#esi", status_code=303)
+
 
 
 

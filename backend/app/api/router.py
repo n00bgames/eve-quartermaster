@@ -5,6 +5,7 @@ from app.api.auth import router as auth_router
 from app.api.characters import router as characters_router
 from app.api.corporations import router as corporations_router
 from app.api.esi import router as esi_router
+from app.api.fittings import router as fittings_router
 from app.api.health import router as health_router
 from app.api.metadata import router as metadata_router
 from app.api.navigation import router as navigation_router
@@ -17,6 +18,7 @@ api_router.include_router(analytics_router)
 api_router.include_router(auth_router)
 api_router.include_router(characters_router)
 api_router.include_router(corporations_router)
+api_router.include_router(fittings_router)
 api_router.include_router(health_router)
 api_router.include_router(metadata_router)
 api_router.include_router(navigation_router)

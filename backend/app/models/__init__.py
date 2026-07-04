@@ -3,7 +3,8 @@ from app.models.assets import Asset, Location
 from app.models.audit import AppSetting, AuditEvent, PrivateMessage
 from app.models.base import Base
 from app.models.esi import EsiApplication, EsiSyncJob, EsiToken
-from app.models.eve_static import EveCategory, EveConstellation, EveGroup, EveRegion, EveStargate, EveStation, EveSystem, EveType
+from app.models.eve_static import EveCategory, EveConstellation, EveDogmaAttribute, EveDogmaEffect, EveGroup, EveRegion, EveStargate, EveStation, EveSystem, EveType, EveTypeDogmaAttribute, EveTypeDogmaEffect
+from app.models.fittings import CharacterFitting, CharacterFittingItem
 from app.models.identity import CorporationWalletDivision, EveAlliance, EveCharacter, EveCorporation, OwnershipEntity, RoleDefinition, RoleSectionPermission, User, UserInvite, UserSectionPermission
 from app.models.industry import Blueprint, IndustryActivity, IndustryActivityInput, ProcurementSource, ProductionPlan, ProductionPlanInput
 from app.models.navigation import SystemIndustrialKillObservation, SystemKillFetchCache, SystemPvpKillObservation
@@ -16,6 +17,8 @@ __all__ = [
     "Base",
     "Blueprint",
     "BlueprintSnapshot",
+    "CharacterFitting",
+    "CharacterFittingItem",
     "CharacterSkill",
     "CharacterSkillQueueEntry",
     "CharacterSkillSnapshot",
@@ -29,6 +32,8 @@ __all__ = [
     "EveCategory",
     "EveCharacter",
     "EveConstellation",
+    "EveDogmaAttribute",
+    "EveDogmaEffect",
     "EveCorporation",
     "EveGroup",
     "EveRegion",
@@ -36,6 +41,8 @@ __all__ = [
     "EveStation",
     "EveSystem",
     "EveType",
+    "EveTypeDogmaAttribute",
+    "EveTypeDogmaEffect",
     "IndustryActivity",
     "IndustryActivityInput",
     "Location",
@@ -55,6 +62,7 @@ __all__ = [
     "UserInvite",
     "UserSectionPermission",
 ]
+
 
 
 
