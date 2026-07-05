@@ -98,6 +98,10 @@ A quick tour of the current beta surface, ordered roughly the way a new Quarterm
 | --- |
 | ![Additional settings](static/ss/settings3.png) |
 
+| EVE Developer Application |
+| --- |
+| ![EVE developer application setup](static/ss/developer.png) |
+
 ## Stack
 
 - **Frontend:** React, TypeScript, Vite, lucide-react.
@@ -190,23 +194,74 @@ That deletes the local PostgreSQL and Redis volumes, so only use it when you int
 
 ## EVE SSO Configuration
 
-Local EVE SSO settings live in `.env`, which is intentionally ignored by source control:
+EQM can run for a first look without EVE SSO, but character login and live ESI sync need an EVE Developer application. The developer application is where CCP gives you a **Client ID** and **Client Secret**. EQM uses those two values to send users to the real EVE login page and then receive permission to call ESI.
 
-- `EVE_SSO_CLIENT_ID`
-- `EVE_SSO_CLIENT_SECRET`
-- `EVE_SSO_CALLBACK_URL`
-- `TOKEN_ENCRYPTION_KEY`
-- `FRONTEND_URL`
+![EVE developer application setup](static/ss/developer.png)
 
-The configured callback must exactly match the callback in the EVE developer portal. For local-only development, the callback is usually:
+### Create The EVE Developer App
+
+1. Go to [developers.eveonline.com](https://developers.eveonline.com/) and sign in with an EVE account.
+2. Create a new application.
+3. Give it a recognizable name, such as `EVE Quartermaster Local` or `EVE Quartermaster Test`.
+4. Use a short private description, such as `Private EVE Online asset, blueprint, industry, and quartermaster tracking tool.`
+5. Set the callback URL to the exact backend address EQM will use.
+
+For local testing on the same machine, use:
 
 ```text
 http://localhost:8000/api/esi/auth/callback
 ```
 
-For a hosted test instance, set both the EVE developer callback and `EVE_SSO_CALLBACK_URL` to the hosted backend callback, and set `FRONTEND_URL` to the hosted frontend URL so SSO returns users to the application instead of raw API JSON.
+For a hosted test instance, use your public HTTPS domain:
 
-When scopes are added or changed, linked characters need to run EVE SSO again before new permissions are available to sync workers.
+```text
+https://your-domain.example/api/esi/auth/callback
+```
+
+The callback in the EVE developer portal and the callback in `.env` must match exactly. If they do not, EVE login may appear to work but return users to the wrong place or fail during token exchange.
+
+### Configure EQM
+
+Local EVE SSO settings live in `.env`, which is intentionally ignored by source control. If you used the installer script, `.env` is created from `.env.example` for you.
+
+Paste the developer values into `.env`:
+
+```env
+EVE_SSO_CLIENT_ID=paste_client_id_here
+EVE_SSO_CLIENT_SECRET=paste_client_secret_here
+```
+
+Then set the callback and frontend URL for the place EQM is running.
+
+Local development:
+
+```env
+EVE_SSO_CALLBACK_URL=http://localhost:8000/api/esi/auth/callback
+FRONTEND_URL=http://localhost:5173
+```
+
+Hosted testing:
+
+```env
+EVE_SSO_CALLBACK_URL=https://your-domain.example/api/esi/auth/callback
+FRONTEND_URL=https://your-domain.example
+```
+
+After changing `.env`, rebuild or restart EQM:
+
+```powershell
+.\rebuild-eqm.bat
+```
+
+```bash
+./rebuild-eqm.sh
+```
+
+### Scope Guidance
+
+For a full EQM evaluation, enable every ESI scope that EQM requests from the EVE developer page. Login may work with fewer scopes, but individual features can later show missing-scope warnings or fail when syncing assets, blueprints, skills, fittings, wallets, corporation data, structures, markets, contacts, or navigation support data.
+
+Only grant scopes you are comfortable granting. When scopes are added or changed later, each linked character needs to run EVE SSO again before the new permissions are available to sync workers.
 
 ## SDE Import
 
