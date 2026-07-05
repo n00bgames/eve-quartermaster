@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.security import create_access_token, decode_token, hash_password, verify_password
 from app.db.session import get_db
-from app.services.permissions import BUILT_IN_ROLES, ROLE_RANK, SECTION_DEFINITIONS, effective_permissions, role_exists, role_payload, role_rank, role_names, section_payload
+from app.services.permissions import BUILT_IN_ROLES, ROLE_RANK, SECTION_DEFINITIONS, disabled_sections, effective_permissions, role_exists, role_payload, role_rank, role_names, section_payload, set_disabled_sections
 from app.models import EsiSyncJob, EsiToken, EveCharacter, RoleDefinition, RoleSectionPermission, User, UserInvite, UserSectionPermission
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -133,6 +133,22 @@ def create_role(payload: dict[str, Any], current_user: User = Depends(get_curren
         "sort_order": role.sort_order,
         "rank": ROLE_RANK.get(role.base_role, ROLE_RANK["member"]),
     }
+
+@router.get("/sections/enabled")
+def section_enabled_settings(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+    require_role(current_user, "admin", db)
+    return {"sections": section_payload(), "disabled_sections": sorted(disabled_sections(db))}
+
+
+@router.patch("/sections/enabled")
+def update_section_enabled_settings(payload: dict[str, Any], current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+    require_role(current_user, "admin", db)
+    requested = payload.get("disabled_sections") or []
+    if not isinstance(requested, list):
+        raise HTTPException(status_code=400, detail="disabled_sections must be a list")
+    set_disabled_sections(db, {str(section) for section in requested})
+    db.commit()
+    return {"sections": section_payload(), "disabled_sections": sorted(disabled_sections(db))}
 
 @router.get("/permissions/effective")
 def my_effective_permissions(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
@@ -439,6 +455,7 @@ def accept_invite(token: str, payload: dict[str, Any], db: Session = Depends(get
     db.refresh(user)
     token = create_access_token(str(user.id), {"role": user.role})
     return {"access_token": token, "token_type": "bearer", "user": serialize_user(user)}
+
 
 
 

@@ -1,4 +1,4 @@
-import { Activity, Boxes, Building2, ClipboardList, Database, Factory, GraduationCap, KeyRound, MapIcon, MessageCircle, PackagePlus, Plus, RefreshCw, ScrollText, Settings, Sparkles, UserRoundCheck } from "lucide-react";
+import { Activity, Boxes, Building2, ClipboardList, Database, Factory, GraduationCap, KeyRound, MapIcon, MessageCircle, PackagePlus, Plus, RefreshCw, ScrollText, Settings, ShoppingCart, Sparkles, UserRoundCheck } from "lucide-react";
 
 import React, { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
@@ -15,6 +15,8 @@ type UserAccount = { id: number; email: string; display_name: string; role: stri
 type SectionPermission = { key: string; label: string; default_roles: string[] };
 
 type EffectivePermissions = { sections: SectionPermission[]; permissions: Record<string, boolean> };
+
+type SectionSettings = { sections: SectionPermission[]; disabled_sections: string[] };
 
 type RoleDefinition = { name: string; display_name: string; base_role: string; is_system: boolean; sort_order?: number; rank?: number };
 
@@ -76,7 +78,7 @@ type JumpFreighterStation = { station_id: number; name: string; type_id?: number
 
 type JumpFreighterKillSummary = { hours: number; count: number; latest_killmail_time?: string | null; sample_killmails: { killmail_id: number; killmail_time?: string | null; zkb_url?: string | null; victim_hull?: string | null; smartbomb_used?: boolean; victim_character_id?: number | null; victim_character_name?: string | null; victim_corporation_id?: number | null; victim_corporation_name?: string | null; victim_alliance_id?: number | null; victim_alliance_name?: string | null; attacker_count?: number | null; location_kind?: string | null; location_name?: string | null; final_blow_character_id?: number | null; final_blow_character_name?: string | null; final_blow_corporation_id?: number | null; final_blow_corporation_name?: string | null; final_blow_alliance_id?: number | null; final_blow_alliance_name?: string | null; final_blow_ship_type_name?: string | null }[] };
 
-type JumpFreighterJump = { jump_index: number; from_system: NavigationSystem; to_system: NavigationSystem; distance_ly: number; fuel_units: number; cyno_eligible: boolean; stations: JumpFreighterStation[]; industrial_kills_24h: JumpFreighterKillSummary };
+type JumpFreighterJump = { jump_index: number; from_system: NavigationSystem; to_system: NavigationSystem; distance_ly: number; fuel_units: number; cyno_eligible: boolean; stations: JumpFreighterStation[]; industrial_kills_24h: JumpFreighterKillSummary; kills_24h?: JumpFreighterKillSummary };
 
 type OperationalMapSystem = NavigationSystem & { on_route?: boolean };
 
@@ -86,7 +88,7 @@ type OperationalMapContext = { gate_hops: number; truncated?: boolean; systems: 
 
 type OperationalMapRouteNode = NavigationSystem & { map_index: number; label: string; meta?: string; selected_key?: string | null; segment_label?: string | null };
 
-type JumpFreighterRoute = { origin: NavigationSystem; destination: NavigationSystem; ship: { name: string; fuel_type_name: string; base_fuel_per_light_year: number }; skills: { jump_drive_calibration: number; jump_fuel_conservation: number }; max_range_ly: number; jump_count: number; total_distance_ly: number; total_fuel_units: number; jumps: JumpFreighterJump[]; map_context?: OperationalMapContext; station_cyno_guide: { station_type: string; range_km?: number | null; risk: string; note: string }[]; notes: string[] };
+type JumpFreighterRoute = { origin: NavigationSystem; destination: NavigationSystem; ship: { name: string; fuel_type_name: string; base_fuel_per_light_year: number; base_range_ly?: number; ship_class?: string }; skills: { jump_drive_calibration: number; jump_fuel_conservation: number }; max_range_ly: number; jump_count: number; total_distance_ly: number; total_fuel_units: number; station_safety?: { mode: string; label: string }; kill_filter?: { mode: string; label: string }; jumps: JumpFreighterJump[]; map_context?: OperationalMapContext; station_cyno_guide: { station_type: string; range_km?: number | null; risk: string; note: string }[]; notes: string[] };
 
 type IndustrialThreatRank = { name: string; count: number; total_value?: number };
 
@@ -99,6 +101,17 @@ type LocalThreatPilot = { input_name: string; name: string; resolved: boolean; c
 type LocalThreatAnalysis = { generated_at: string; days: number; input_count: number; resolved_count: number; zkill_analyzed_count: number; max_pilots: number; zkill_detail_limit: number; errors: string[]; pilots: LocalThreatPilot[] };
 
 type LocalThreatJob = { job_id: string; status: "queued" | "running" | "cancelling" | "cancelled" | "complete" | "failed"; created_at: string; updated_at?: string | null; completed_at?: string | null; total_count: number; processed_count: number; batch: number; total_batches: number; visible_limit: number; analysis: LocalThreatAnalysis };
+type MarketHub = { key: string; label: string; region_id?: number | null; location_id?: number | null; system_id?: number | null; system_name?: string | null; npc_group?: boolean; available: boolean };
+
+type MarketHubQuote = { buy?: number | null; sell?: number | null; split?: number | null; buy_total?: number | null; sell_total?: number | null; split_total?: number | null; buy_orders: number; sell_orders: number; buy_source?: string | null; sell_source?: string | null };
+
+type MarketItemQuote = { input: string; name: string; quantity: number; type_id?: number | null; type_name?: string | null; matched: boolean; ambiguous_matches: { type_id: number; name: string }[]; hubs: Record<string, MarketHubQuote> };
+
+type MarketAppraisal = { hubs: MarketHub[]; items: MarketItemQuote[]; totals: Record<string, { buy_total: number; sell_total: number; split_total: number }>; unmatched_count: number };
+
+type ContractToken = { token_id: number; character_id: number; character_name: string; user_id: number; user_display_name: string; corporation_id?: number | null; corporation_name?: string | null; has_character_contract_scope: boolean; has_corporation_contract_scope: boolean };
+
+type EqmContract = { id: number; contract_id: number; scope_type: string; owner_user_id?: number | null; character_id?: number | null; character_name?: string | null; corporation_id?: number | null; corporation_name?: string | null; issuer_id?: number | null; issuer_corporation_id?: number | null; assignee_id?: number | null; acceptor_id?: number | null; for_corporation: boolean; contract_type?: string | null; status?: string | null; title?: string | null; availability?: string | null; date_issued?: string | null; date_expired?: string | null; date_accepted?: string | null; date_completed?: string | null; start_location_id?: number | null; end_location_id?: number | null; start_location_name?: string | null; end_location_name?: string | null; price?: number | null; reward?: number | null; collateral?: number | null; buyout?: number | null; volume?: number | null; days_to_complete?: number | null; last_synced_at?: string | null };
 
 type CorporationToken = { token_id: number; character_name: string; user_display_name: string; has_corporation_asset_scope: boolean; can_sync: boolean; has_corporation_blueprint_scope: boolean; can_sync_blueprints: boolean; has_corporation_wallet_scope?: boolean; can_sync_wallets?: boolean };
 
@@ -252,7 +265,7 @@ type AppData = {
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
 
-const APP_VERSION = "0.1.2-beta";
+const APP_VERSION = "0.1.3-beta";
 
 
 
@@ -273,6 +286,54 @@ const emptyData: AppData = { health: null, summary: null, owners: [], types: [],
 const numberFormatter = new Intl.NumberFormat();
 
 const iskFormatter = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 });
+
+function formatMarketIsk(value?: number | null): string {
+
+  return value == null ? "-" : `${iskFormatter.format(value)} ISK`;
+
+}
+
+type MarketItemBest = {
+  lowestSellKey?: string;
+  highestBuyKey?: string;
+  highestSplitKey?: string;
+  margin?: number | null;
+  buyHubLabel?: string;
+  sellHubLabel?: string;
+};
+
+function marketDepthClass(count?: number | null): string {
+
+  if (!count || count <= 1) return "one";
+
+  if (count < 5) return "thin";
+
+  return "healthy";
+
+}
+
+function bestMarketForItem(item: MarketItemQuote, hubs: MarketHub[]): MarketItemBest {
+
+  const quotes = hubs.map((hub) => ({ hub, quote: item.hubs[hub.key] })).filter(({ quote }) => Boolean(quote));
+
+  const lowestSell = quotes.filter(({ quote }) => quote?.sell != null).sort((left, right) => (left.quote?.sell ?? Infinity) - (right.quote?.sell ?? Infinity))[0];
+
+  const highestBuy = quotes.filter(({ quote }) => quote?.buy != null).sort((left, right) => (right.quote?.buy ?? -Infinity) - (left.quote?.buy ?? -Infinity))[0];
+
+  const highestSplit = quotes.filter(({ quote }) => quote?.split != null).sort((left, right) => (right.quote?.split ?? -Infinity) - (left.quote?.split ?? -Infinity))[0];
+
+  const unitMargin = lowestSell?.quote?.sell != null && highestBuy?.quote?.buy != null ? highestBuy.quote.buy - lowestSell.quote.sell : null;
+
+  return {
+    lowestSellKey: lowestSell?.hub.key,
+    highestBuyKey: highestBuy?.hub.key,
+    highestSplitKey: highestSplit?.hub.key,
+    margin: unitMargin == null ? null : unitMargin * item.quantity,
+    buyHubLabel: lowestSell?.hub.label,
+    sellHubLabel: highestBuy?.hub.label,
+  };
+
+}
 
 const FALLBACK_TIMEZONE = "UTC";
 
@@ -411,6 +472,10 @@ function requestTimeoutMs(path: string): number {
   if (path.startsWith("/navigation/local-threat")) return 600000;
 
   if (path.startsWith("/navigation/jump-freighter")) return 180000;
+
+  if (path.startsWith("/market/appraise")) return 180000;
+
+  if (path.startsWith("/contracts/sync/")) return 180000;
 
   return 20000;
 
@@ -838,7 +903,7 @@ function App() {
 
 
 
-  function canView(section: string) { return user?.role === "admin" || permissions[section] !== false; }
+  function canView(section: string) { return permissions[section] !== false || ["overview", "settings", "profile"].includes(section); }
 
 
 
@@ -879,6 +944,10 @@ function App() {
           {canView("roster") && <button className={activeTab === "roster" ? "active" : ""} onClick={() => setActiveTab("roster")}><Building2 size={18} /> Roster</button>}
 
           {canView("navigation") && <button className={activeTab === "navigation" ? "active" : ""} onClick={() => setActiveTab("navigation")}><MapIcon size={18} /> Navigation</button>}
+
+          {canView("market") && <button className={activeTab === "market" ? "active" : ""} onClick={() => setActiveTab("market")}><ShoppingCart size={18} /> Market</button>}
+
+          {canView("contracts") && <button className={activeTab === "contracts" ? "active" : ""} onClick={() => setActiveTab("contracts")}><ScrollText size={18} /> Contracts</button>}
 
           {canView("analytics") && <button className={activeTab === "analytics" ? "active" : ""} onClick={() => setActiveTab("analytics")}><Activity size={18} /> Analytics</button>}
 
@@ -957,6 +1026,10 @@ function App() {
         {activeTab === "roster" && canView("roster") && <Roster />}
 
         {activeTab === "navigation" && canView("navigation") && <NavigationPlanner currentUser={user} />}
+
+        {activeTab === "market" && canView("market") && <MarketAppraisalPage />}
+
+        {activeTab === "contracts" && canView("contracts") && <ContractsPage currentUser={user} />}
 
         {activeTab === "analytics" && canView("analytics") && <AnalyticsPlatform currentUser={user} />}
 
@@ -1052,6 +1125,9 @@ function NotificationBubble({ currentUser, onOpenMessages }: { currentUser: User
 
 
 
+
+
+
   return <div className="bubble-wrap"><button type="button" className="bubble-button" aria-label="Messages and notifications" onClick={() => { setOpen((value) => !value); if (!open) void loadInbox().catch((err) => setError(err instanceof Error ? err.message : "Unable to load inbox")); }}><MessageCircle size={18} />{unread > 0 && <span>{unread > 99 ? "99+" : unread}</span>}</button>{open && <div className="bubble-panel"><div className="section-heading compact"><h3>Inbox</h3><button type="button" onClick={() => void markAllRead()}>Mark read</button></div>{error && <div className="mini-alert">{error}</div>}{sent && <div className="notice inline">{sent}</div>}<h4>System notices</h4><div className="mini-list inbox-list">{inbox?.events.map((event) => <div key={event.id} className={event.is_read ? "" : "unread"}><strong>{event.title}</strong><span>{event.body ?? "Audit event"}</span><span>{event.created_at ? formatDateTime(event.created_at, timeZone) : "recently"}</span></div>)}{inbox && inbox.events.length === 0 && <p className="empty">No system notices.</p>}</div><h4>Private messages</h4><div className="mini-list inbox-list">{inbox?.messages.map((message) => <button type="button" key={message.id} className={message.is_read ? "message-link" : "message-link unread"} onClick={() => { setOpen(false); onOpenMessages(message); }}><strong>{message.subject}</strong><span>From {message.sender_display_name ?? "Unknown"}</span><span>{message.body}</span><span>{message.created_at ? formatDateTime(message.created_at, timeZone) : "recently"}</span></button>)}{inbox && inbox.messages.length === 0 && <p className="empty">No private messages.</p>}</div><div className="section-heading compact"><h4>Send message</h4><button type="button" onClick={() => { setOpen(false); onOpenMessages(); }}>Open mailbox</button></div><ManagedForm submitLabel="Send" onSubmit={sendMessage}><label>To<select name="recipient_user_id" required>{recipients.map((user) => <option key={user.id} value={user.id}>{accountLabel(user)} ({user.role})</option>)}</select></label><label>Subject<input name="subject" required /></label><label>Message<textarea name="body" required /></label></ManagedForm></div>}</div>;
 
 }
@@ -1121,6 +1197,9 @@ function NavigationPlanner({ currentUser }: { currentUser: UserAccount }) {
   const destinationSelectionRef = useRef(destination);
 
   const timeZone = preferredTimeZone(currentUser);
+
+
+
 
 
 
@@ -1557,12 +1636,15 @@ function JumpFreighterPlanner({ currentUser }: { currentUser: UserAccount }) {
   const [destinationOptions, setDestinationOptions] = useState<NavigationSystem[]>([]);
 
   const [ship, setShip] = useState("Rhea");
+  const [killFilter, setKillFilter] = useState("industrial");
 
   const [jdc, setJdc] = useState(5);
 
   const [jfc, setJfc] = useState(5);
 
   const [contextHops, setContextHops] = useState(1);
+
+  const [stationSafety, setStationSafety] = useState("any");
 
   const [route, setRoute] = useState<JumpFreighterRoute | null>(null);
 
@@ -1577,6 +1659,9 @@ function JumpFreighterPlanner({ currentUser }: { currentUser: UserAccount }) {
   const destinationSelectionRef = useRef(destination);
 
   const timeZone = preferredTimeZone(currentUser);
+
+
+
 
 
 
@@ -1642,7 +1727,7 @@ function JumpFreighterPlanner({ currentUser }: { currentUser: UserAccount }) {
 
     try {
 
-      const params = new URLSearchParams({ origin, destination, ship, jump_drive_calibration: String(jdc), jump_fuel_conservation: String(jfc), context_gate_hops: String(contextHops) });
+      const params = new URLSearchParams({ origin, destination, ship, jump_drive_calibration: String(jdc), jump_fuel_conservation: String(jfc), context_gate_hops: String(contextHops), station_safety: stationSafety, kill_filter: killFilter });
 
       setRoute(await api<JumpFreighterRoute>(`/navigation/jump-freighter/route?${params.toString()}`));
 
@@ -1666,7 +1751,7 @@ function JumpFreighterPlanner({ currentUser }: { currentUser: UserAccount }) {
 
 
 
-  return <section className="panel stacked jf-planner"><div className="section-heading"><div><h3>Jump Freighter Plotter</h3><p>NPC-station-only jump routes with fuel math, cyno guidance, and 24h industrial-kill checks.</p></div>{route && <span className="version-badge">{route.ship.name} · {route.max_range_ly} LY</span>}</div><form className="route-form jf-form" onSubmit={(event) => void plotRoute(event)}><SystemSearchField label="Origin" value={origin} options={originOptions} placeholder="Jita" onChange={(value) => { originSelectionRef.current = ""; setOrigin(value); }} onPick={pickOrigin} /><SystemSearchField label="Cyno destination" value={destination} options={destinationOptions} placeholder="Tama" onChange={(value) => { destinationSelectionRef.current = ""; setDestination(value); }} onPick={pickDestination} /><label>Ship<select value={ship} onChange={(event) => setShip(event.target.value)}><option>Rhea</option><option>Ark</option><option>Anshar</option><option>Nomad</option></select></label><label>JDC<input type="number" min="0" max="5" value={jdc} onChange={(event) => setJdc(Number(event.target.value))} /></label><label>JFC<input type="number" min="0" max="5" value={jfc} onChange={(event) => setJfc(Number(event.target.value))} /></label><label>Context<select value={contextHops} onChange={(event) => setContextHops(Number(event.target.value))}><option value={0}>Route only</option><option value={1}>1 gate hop</option><option value={2}>2 gate hops</option></select></label><button type="submit" disabled={busy || !origin.trim() || !destination.trim()}><MapIcon size={18} /> {busy ? "Plotting" : "Plot JF route"}</button></form>{error && <div className="mini-alert">{error}</div>}{route && <><div className="gatecheck-summary"><Metric icon={<MapIcon size={18} />} label="Jumps" value={route.jump_count} delta={`${route.total_distance_ly} LY`} /><Metric icon={<Database size={18} />} label="Fuel" value={numberFormatter.format(route.total_fuel_units)} delta={route.ship.fuel_type_name} /><Metric icon={<Activity size={18} />} label="Range" value={`${route.max_range_ly} LY`} delta={`JDC ${route.skills.jump_drive_calibration}`} /><Metric icon={<Factory size={18} />} label="Fuel skill" value={`JFC ${route.skills.jump_fuel_conservation}`} delta={`${numberFormatter.format(route.ship.base_fuel_per_light_year)}/LY base`} /></div><div className="jf-notes">{route.notes.map((note) => <span key={note}>{note}</span>)}</div><OperationalMap title="Operational Map" subtitle={`${route.origin.name} to ${route.destination.name} · ${route.jump_count.toLocaleString()} jumps`} badge={`${route.total_distance_ly} LY`} routeSystems={[route.origin, ...route.jumps.map((jump) => jump.to_system)].map((system, index) => ({ ...system, map_index: index, label: `${index}. ${system.name}`, meta: `${system.region_name ?? "Unknown region"} · ${eveSecurityLabel(system.security_status)}`, selected_key: index > 0 ? String(route.jumps[index - 1].jump_index) : null, segment_label: index > 0 ? `${route.jumps[index - 1].distance_ly} LY` : null }))} mapContext={route.map_context} selectedKey={expandedJump ? String(expandedJump) : null} onSelectRouteSystem={(key) => setExpandedJump(key ? Number(key) : null)} /><div className="jf-jump-list">{route.jumps.map((jump) => { const expanded = expandedJump === jump.jump_index; return <article key={jump.jump_index} className="jf-jump"><button type="button" onClick={() => setExpandedJump(expanded ? null : jump.jump_index)}><span className="route-index">{jump.jump_index}</span><strong>{jump.from_system.name} to {jump.to_system.name}</strong><span>{jump.distance_ly} LY · {numberFormatter.format(jump.fuel_units)} {route.ship.fuel_type_name}</span><span className={`security-badge ${eveSecurityClass(jump.to_system.security_status)}`}>{eveSecurityLabel(jump.to_system.security_status)}</span><span className={`risk-badge risk-${jump.industrial_kills_24h.count > 0 ? "active" : "quiet"}`}>{jump.industrial_kills_24h.count} industrial kills / 24h</span></button>{expanded && <div className="jf-jump-detail"><section><h4>Stations in {jump.to_system.name}</h4>{jump.stations.length > 0 ? <div className="jf-stations">{jump.stations.map((station) => <div key={station.station_id} className={`station-risk station-${station.cyno_guidance.risk}`}><strong>{station.name}</strong><span>{station.type_name ?? "Unknown station type"}</span><span>{station.operation_name ?? "Unknown operation"}</span><span>{station.cyno_guidance.range_km ? `${station.cyno_guidance.range_km} km docking guide` : "No docking range guide"}</span><small>{station.cyno_guidance.note}</small>{station.cyno_guidance.reference_links?.length ? <div className="cyno-reference-links">{station.cyno_guidance.reference_links.map((link) => <a key={link.url} href={link.url} target="_blank" rel="noreferrer">{link.label}</a>)}</div> : null}</div>)}</div> : <p className="empty">No NPC stations imported for this target system yet.</p>}</section><section><h4>Industrial kills, last 24h</h4>{jump.industrial_kills_24h.sample_killmails.length > 0 ? <div className="killmail-detail-list jf-kills">{jump.industrial_kills_24h.sample_killmails.map((kill) => <article key={kill.killmail_id}><div><strong>{kill.victim_hull ?? "Unknown hull"}</strong>{kill.smartbomb_used && <span className="smartbomb-badge">Smartbombs</span>}<span className="killmail-entity-line"><EveEntityIcon kind="character" id={kill.victim_character_id} name={kill.victim_character_name} size="tiny" />{kill.victim_character_name ?? "Unknown pilot"}{kill.victim_corporation_id && <EveEntityIcon kind="corporation" id={kill.victim_corporation_id} name={kill.victim_corporation_name} size="tiny" />}{kill.victim_corporation_name ? ` · ${kill.victim_corporation_name}` : ""}{kill.victim_alliance_id && <EveEntityIcon kind="alliance" id={kill.victim_alliance_id} name={kill.victim_alliance_name} size="tiny" />}{kill.victim_alliance_name ? ` · ${kill.victim_alliance_name}` : ""}</span><span>{kill.location_kind ?? "space"} · {kill.location_name ?? "Unknown location"}</span>{kill.killmail_time && <span>{formatDateTime(kill.killmail_time, timeZone)}</span>}</div><div><span>{kill.attacker_count ?? "?"} attackers</span><span className="killmail-entity-line"><EveEntityIcon kind="character" id={kill.final_blow_character_id} name={kill.final_blow_character_name} size="tiny" />Final blow: {kill.final_blow_ship_type_name ?? "Unknown ship"} · {kill.final_blow_character_name ?? "Unknown pilot"}{kill.final_blow_corporation_id && <EveEntityIcon kind="corporation" id={kill.final_blow_corporation_id} name={kill.final_blow_corporation_name} size="tiny" />}{kill.final_blow_corporation_name ? ` · ${kill.final_blow_corporation_name}` : ""}{kill.final_blow_alliance_id && <EveEntityIcon kind="alliance" id={kill.final_blow_alliance_id} name={kill.final_blow_alliance_name} size="tiny" />}{kill.final_blow_alliance_name ? ` · ${kill.final_blow_alliance_name}` : ""}</span>{kill.zkb_url && <a href={kill.zkb_url} target="_blank" rel="noreferrer">Open killmail #{kill.killmail_id}</a>}</div></article>)}</div> : <p className="empty">No cached industrial kills in the last 24 hours.</p>}</section></div>}</article>; })}</div><section className="station-guide"><h4>Station Cyno Risk Reference</h4><p>EQM-rendered reference from pilot-provided station docking/cyno guidance. Use it as planning support, not a replacement for practiced bookmarks.</p><div>{route.station_cyno_guide.map((row) => <span key={row.station_type} className={`station-risk station-${row.risk}`}><strong>{row.station_type}</strong><small>{row.range_km ?? "?"} km · {row.risk}</small></span>)}</div></section></>}</section>;
+  return <section className="panel stacked jf-planner"><div className="section-heading"><div><h3>Capital Jump Plotter</h3><p>NPC-station-only capital jump routes with fuel math, cyno guidance, and 24h kill checks.</p></div>{route && <span className="version-badge">{route.ship.name} · {route.max_range_ly} LY</span>}</div><form className="route-form jf-form" onSubmit={(event) => void plotRoute(event)}><SystemSearchField label="Origin" value={origin} options={originOptions} placeholder="Jita" onChange={(value) => { originSelectionRef.current = ""; setOrigin(value); }} onPick={pickOrigin} /><SystemSearchField label="Cyno destination" value={destination} options={destinationOptions} placeholder="Tama" onChange={(value) => { destinationSelectionRef.current = ""; setDestination(value); }} onPick={pickDestination} /><label>Ship<select value={ship} onChange={(event) => setShip(event.target.value)}><optgroup label="Jump Freighters"><option>Rhea</option><option>Ark</option><option>Anshar</option><option>Nomad</option></optgroup><optgroup label="Industrial Capital"><option>Rorqual</option></optgroup><optgroup label="Carriers"><option>Archon</option><option>Chimera</option><option>Nidhoggur</option><option>Thanatos</option></optgroup><optgroup label="Command Carriers"><option>Salvation</option><option>Simurgh</option><option>Gaia</option><option>Ymir</option></optgroup><optgroup label="Dreadnoughts"><option>Revelation</option><option>Moros</option><option>Phoenix</option><option>Naglfar</option><option>Chemosh</option><option>Vehement</option><option>Caiman</option><option>Zirnitra</option><option>Sarathiel</option><option>Revelation Navy Issue</option><option>Moros Navy Issue</option><option>Phoenix Navy Issue</option><option>Naglfar Fleet Issue</option></optgroup><optgroup label="Lancer Dreadnoughts"><option>Bane</option><option>Hubris</option><option>Karura</option><option>Valravn</option></optgroup><optgroup label="Force Auxiliaries"><option>Apostle</option><option>Minokawa</option><option>Lif</option><option>Ninazu</option><option>Dagon</option><option>Loggerhead</option></optgroup><optgroup label="Supercarriers"><option>Aeon</option><option>Wyvern</option><option>Hel</option><option>Nyx</option><option>Revenant</option><option>Vendetta</option></optgroup><optgroup label="Titans"><option>Avatar</option><option>Leviathan</option><option>Ragnarok</option><option>Erebus</option><option>Vanquisher</option><option>Molok</option><option>Komodo</option><option>Azariel</option></optgroup></select></label><label>JDC<input type="number" min="0" max="5" value={jdc} onChange={(event) => setJdc(Number(event.target.value))} /></label><label>JFC<input type="number" min="0" max="5" value={jfc} onChange={(event) => setJfc(Number(event.target.value))} /></label><label>Context<select value={contextHops} onChange={(event) => setContextHops(Number(event.target.value))}><option value={0}>Route only</option><option value={1}>1 gate hop</option><option value={2}>2 gate hops</option></select></label><label>Station safety<select value={stationSafety} onChange={(event) => setStationSafety(event.target.value)}><option value="any">Any NPC station</option><option value="avoid_red_only">Avoid red-only</option><option value="green">Only green stations</option></select></label><label className="checkbox-row"><input type="checkbox" checked={killFilter === "industrial"} onChange={(event) => setKillFilter(event.target.checked ? "industrial" : "all")} /> Industrial kills only</label><button type="submit" disabled={busy || !origin.trim() || !destination.trim()}><MapIcon size={18} /> {busy ? "Plotting" : "Plot capital route"}</button></form>{error && <div className="mini-alert">{error}</div>}{route && <><div className="gatecheck-summary"><Metric icon={<MapIcon size={18} />} label="Jumps" value={route.jump_count} delta={`${route.total_distance_ly} LY`} /><Metric icon={<Database size={18} />} label="Fuel" value={numberFormatter.format(route.total_fuel_units)} delta={route.ship.fuel_type_name} /><Metric icon={<Activity size={18} />} label="Range" value={`${route.max_range_ly} LY`} delta={`${route.ship.ship_class ?? "Capital"} · JDC ${route.skills.jump_drive_calibration}`} /><Metric icon={<Factory size={18} />} label="Fuel skill" value={`JFC ${route.skills.jump_fuel_conservation}`} delta={`${numberFormatter.format(route.ship.base_fuel_per_light_year)}/LY base`} /><Metric icon={<Factory size={18} />} label="Station safety" value={route.station_safety?.label ?? "Any NPC station"} delta="cyno target filter" /><Metric icon={<Activity size={18} />} label="Kill display" value={route.kill_filter?.label ?? "Industrial kills only"} delta="24h cached samples" /></div><div className="jf-notes">{route.notes.map((note) => <span key={note}>{note}</span>)}</div><OperationalMap title="Operational Map" subtitle={`${route.origin.name} to ${route.destination.name} · ${route.jump_count.toLocaleString()} jumps`} badge={`${route.total_distance_ly} LY`} routeSystems={[route.origin, ...route.jumps.map((jump) => jump.to_system)].map((system, index) => ({ ...system, map_index: index, label: `${index}. ${system.name}`, meta: `${system.region_name ?? "Unknown region"} · ${eveSecurityLabel(system.security_status)}`, selected_key: index > 0 ? String(route.jumps[index - 1].jump_index) : null, segment_label: index > 0 ? `${route.jumps[index - 1].distance_ly} LY` : null }))} mapContext={route.map_context} selectedKey={expandedJump ? String(expandedJump) : null} onSelectRouteSystem={(key) => setExpandedJump(key ? Number(key) : null)} /><div className="jf-jump-list">{route.jumps.map((jump) => { const expanded = expandedJump === jump.jump_index; return <article key={jump.jump_index} className="jf-jump"><button type="button" onClick={() => setExpandedJump(expanded ? null : jump.jump_index)}><span className="route-index">{jump.jump_index}</span><strong>{jump.from_system.name} to {jump.to_system.name}</strong><span>{jump.distance_ly} LY · {numberFormatter.format(jump.fuel_units)} {route.ship.fuel_type_name}</span><span className={`security-badge ${eveSecurityClass(jump.to_system.security_status)}`}>{eveSecurityLabel(jump.to_system.security_status)}</span><span className={`risk-badge risk-${(jump.kills_24h ?? jump.industrial_kills_24h).count > 0 ? "active" : "quiet"}`}>{(jump.kills_24h ?? jump.industrial_kills_24h).count} {route.kill_filter?.mode === "all" ? "kills" : "industrial kills"} / 24h</span></button>{expanded && <div className="jf-jump-detail"><section><h4>Stations in {jump.to_system.name}</h4>{jump.stations.length > 0 ? <div className="jf-stations">{jump.stations.map((station) => <div key={station.station_id} className={`station-risk station-${station.cyno_guidance.risk}`}><strong>{station.name}</strong><span>{station.type_name ?? "Unknown station type"}</span><span>{station.operation_name ?? "Unknown operation"}</span><span>{station.cyno_guidance.range_km ? `${station.cyno_guidance.range_km} km docking guide` : "No docking range guide"}</span><small>{station.cyno_guidance.note}</small>{station.cyno_guidance.reference_links?.length ? <div className="cyno-reference-links">{station.cyno_guidance.reference_links.map((link) => <a key={link.url} href={link.url} target="_blank" rel="noreferrer">{link.label}</a>)}</div> : null}</div>)}</div> : <p className="empty">No NPC stations imported for this target system yet.</p>}</section><section><h4>{route.kill_filter?.mode === "all" ? "All kills" : "Industrial kills"}, last 24h</h4>{(jump.kills_24h ?? jump.industrial_kills_24h).sample_killmails.length > 0 ? <div className="killmail-detail-list jf-kills">{(jump.kills_24h ?? jump.industrial_kills_24h).sample_killmails.map((kill) => <article key={kill.killmail_id}><div><strong>{kill.victim_hull ?? "Unknown hull"}</strong>{kill.smartbomb_used && <span className="smartbomb-badge">Smartbombs</span>}<span className="killmail-entity-line"><EveEntityIcon kind="character" id={kill.victim_character_id} name={kill.victim_character_name} size="tiny" />{kill.victim_character_name ?? "Unknown pilot"}{kill.victim_corporation_id && <EveEntityIcon kind="corporation" id={kill.victim_corporation_id} name={kill.victim_corporation_name} size="tiny" />}{kill.victim_corporation_name ? ` · ${kill.victim_corporation_name}` : ""}{kill.victim_alliance_id && <EveEntityIcon kind="alliance" id={kill.victim_alliance_id} name={kill.victim_alliance_name} size="tiny" />}{kill.victim_alliance_name ? ` · ${kill.victim_alliance_name}` : ""}</span><span>{kill.location_kind ?? "space"} · {kill.location_name ?? "Unknown location"}</span>{kill.killmail_time && <span>{formatDateTime(kill.killmail_time, timeZone)}</span>}</div><div><span>{kill.attacker_count ?? "?"} attackers</span><span className="killmail-entity-line"><EveEntityIcon kind="character" id={kill.final_blow_character_id} name={kill.final_blow_character_name} size="tiny" />Final blow: {kill.final_blow_ship_type_name ?? "Unknown ship"} · {kill.final_blow_character_name ?? "Unknown pilot"}{kill.final_blow_corporation_id && <EveEntityIcon kind="corporation" id={kill.final_blow_corporation_id} name={kill.final_blow_corporation_name} size="tiny" />}{kill.final_blow_corporation_name ? ` · ${kill.final_blow_corporation_name}` : ""}{kill.final_blow_alliance_id && <EveEntityIcon kind="alliance" id={kill.final_blow_alliance_id} name={kill.final_blow_alliance_name} size="tiny" />}{kill.final_blow_alliance_name ? ` · ${kill.final_blow_alliance_name}` : ""}</span>{kill.zkb_url && <a href={kill.zkb_url} target="_blank" rel="noreferrer">Open killmail #{kill.killmail_id}</a>}</div></article>)}</div> : <p className="empty">No cached {route.kill_filter?.mode === "all" ? "kills" : "industrial kills"} in the last 24 hours.</p>}</section></div>}</article>; })}</div><section className="station-guide"><h4>Station Cyno Risk Reference</h4><p>EQM-rendered reference from pilot-provided station docking/cyno guidance. Use it as planning support, not a replacement for practiced bookmarks.</p><div>{route.station_cyno_guide.map((row) => <span key={row.station_type} className={`station-risk station-${row.risk}`}><strong>{row.station_type}</strong><small>{row.range_km ?? "?"} km · {row.risk}</small></span>)}</div></section></>}</section>;
 
 }
 
@@ -1695,6 +1780,9 @@ function IndustrialSystemThreatWidget({ currentUser }: { currentUser: UserAccoun
   const selectionRef = useRef(system);
 
   const timeZone = preferredTimeZone(currentUser);
+
+
+
 
 
 
@@ -1790,6 +1878,9 @@ function PvpIntelWidget({ currentUser }: { currentUser: UserAccount }) {
 
 
 
+
+
+
   async function searchIntelSystems(query: string) {
 
     if (query.trim().length < 2) {
@@ -1881,6 +1972,9 @@ function LocalThreatWidget({ currentUser }: { currentUser: UserAccount }) {
   const [timerNow, setTimerNow] = useState(Date.now());
 
   const timeZone = preferredTimeZone(currentUser);
+
+
+
 
 
 
@@ -2350,6 +2444,9 @@ function AuditLog({ currentUser }: { currentUser: UserAccount }) {
 
 
 
+
+
+
   async function loadAudit() {
 
     setEvents(await api<AuditEvent[]>("/notifications/audit"));
@@ -2479,6 +2576,9 @@ function ProfilePage({ currentUser, onUserUpdated, focus }: { currentUser: UserA
   const recipients = (inbox?.users ?? []).filter((user) => user.id !== currentUser.id);
 
   const timeZone = preferredTimeZone(currentUser);
+
+
+
 
   const profileTimezones = timezoneChoices(timeZone);
 
@@ -2836,6 +2936,490 @@ function UsersAdmin({ currentUser }: { currentUser: UserAccount }) {
 
 }
 
+function MarketAppraisalPage() {
+
+  const defaultText = "Interdiction Nullifier I 1\ninterdiction nullfier x1\n1 Interdiction Nullifier II\n1x Interdiction Nullifier I";
+
+  const [hubs, setHubs] = useState<MarketHub[]>([]);
+
+  const [selectedHubs, setSelectedHubs] = useState<string[]>(["jita", "amarr", "hek", "dodixie", "rens", "dudreda"]);
+
+  const [text, setText] = useState(defaultText);
+
+  const [result, setResult] = useState<MarketAppraisal | null>(null);
+
+  const [busy, setBusy] = useState(false);
+
+  const [error, setError] = useState<string | null>(null);
+
+  const selectedResultHubs = useMemo(() => result?.hubs ?? hubs.filter((hub) => selectedHubs.includes(hub.key)), [hubs, result?.hubs, selectedHubs]);
+
+  const marketInsights = useMemo(() => {
+
+    if (!result) return [];
+
+    return result.items.map((item, index) => ({ key: `${item.input}-${index}`, item, best: bestMarketForItem(item, selectedResultHubs) }))
+      .filter(({ best }) => best.margin != null && best.buyHubLabel && best.sellHubLabel)
+      .sort((left, right) => (right.best.margin ?? 0) - (left.best.margin ?? 0))
+      .slice(0, 5);
+
+  }, [result, selectedResultHubs]);
+
+  useEffect(() => {
+
+    let cancelled = false;
+
+    api<MarketHub[]>("/market/hubs").then((rows) => {
+
+      if (cancelled) return;
+
+      setHubs(rows);
+
+      setSelectedHubs((current) => current.filter((key) => rows.some((hub) => hub.key === key && hub.available)));
+
+    }).catch((err) => {
+
+      if (!cancelled) setError(err instanceof Error ? err.message : "Unable to load market hubs.");
+
+    });
+
+    return () => { cancelled = true; };
+
+  }, []);
+
+  function toggleHub(key: string) {
+
+    setSelectedHubs((current) => current.includes(key) ? current.filter((item) => item !== key) : [...current, key]);
+
+  }
+
+  async function appraise(event: FormEvent) {
+
+    event.preventDefault();
+
+    setBusy(true);
+
+    setError(null);
+
+    try {
+
+      setResult(await api<MarketAppraisal>("/market/appraise", { method: "POST", body: JSON.stringify({ text, hubs: selectedHubs }) }));
+
+    } catch (err) {
+
+      setError(err instanceof Error ? err.message : "Market appraisal failed.");
+
+    } finally {
+
+      setBusy(false);
+
+    }
+
+  }
+
+  async function copySummary() {
+
+    if (!result) return;
+
+    const lines = result.items.map((item) => `${item.quantity} x ${item.type_name ?? item.name}`);
+
+    await navigator.clipboard.writeText(lines.join("\n"));
+
+  }
+
+  return <section className="market-page panel stacked">
+    <div className="section-heading">
+      <div>
+        <h3>Market Appraisal</h3>
+        <p>Paste item stacks and compare buy, sell, and split estimates across trade hubs.</p>
+      </div>
+      {result && <button type="button" onClick={() => void copySummary()}>Copy item list</button>}
+    </div>
+
+    <form className="market-layout" onSubmit={(event) => void appraise(event)}>
+      <div className="stacked-form">
+        <label>Item list<textarea className="market-paste" value={text} onChange={(event) => setText(event.target.value)} placeholder="Interdiction Nullifier I 1&#10;1x Interdiction Nullifier II" /></label>
+        <div><span className="muted">Accepted quantity styles: item 1, item x1, 1 item, 1x item.</span></div>
+        <button type="submit" disabled={busy || !text.trim() || selectedHubs.length === 0}><ShoppingCart size={18} /> {busy ? "Appraising" : "Appraise"}</button>
+      </div>
+      <div className="stacked-form">
+        <h4>Trade hubs</h4>
+        <div className="market-hub-grid">
+          {hubs.map((hub) => <label key={hub.key} className={`market-hub-option ${selectedHubs.includes(hub.key) ? "active" : ""} ${!hub.available ? "disabled" : ""}`}>
+            <input type="checkbox" checked={selectedHubs.includes(hub.key)} disabled={!hub.available} onChange={() => toggleHub(hub.key)} />
+            <strong>{hub.label}</strong>
+            <span>{hub.npc_group ? "best NPC hub" : hub.system_name ?? `region ${hub.region_id}`}</span>
+          </label>)}
+        </div>
+        <p className="muted">C-N4OD and Dudreda use imported SDE system data to locate their market region.</p>
+      </div>
+    </form>
+
+    {error && <div className="mini-alert">{error}</div>}
+
+    {result && <>
+      <div className="market-total-grid">
+        {selectedResultHubs.map((hub) => {
+          const totals = result.totals[hub.key];
+          return <article key={hub.key}>
+            <span>{hub.label}</span>
+            <strong>{formatMarketIsk(totals?.split_total)}</strong>
+            <small>Split total</small>
+            <small>Buy {formatMarketIsk(totals?.buy_total)}</small>
+            <small>Sell {formatMarketIsk(totals?.sell_total)}</small>
+          </article>;
+        })}
+      </div>
+
+      {marketInsights.length > 0 && <div className="market-margin-hints">
+        {marketInsights.map(({ key, item, best }) => <article key={key} className={`market-margin-card ${(best.margin ?? 0) >= 0 ? "positive" : "negative"}`}>
+          <strong>{item.type_name ?? item.name}</strong>
+          <span>Buy at {best.buyHubLabel} / sell to {best.sellHubLabel}</span>
+          <b>{(best.margin ?? 0) >= 0 ? "+" : ""}{formatMarketIsk(best.margin)}</b>
+        </article>)}
+      </div>}
+
+      <div className="market-legend">
+        <span><i className="legend-dot healthy" /> Best instant sale or cheapest acquisition</span>
+        <span><i className="legend-dot split" /> Best split estimate</span>
+        <span><i className="legend-dot one" /> Thin order depth warns the price may be fragile</span>
+      </div>
+
+      {result.unmatched_count > 0 && <div className="mini-alert">{result.unmatched_count} item line{result.unmatched_count === 1 ? "" : "s"} could not be matched to imported SDE type names.</div>}
+
+      <div className="table-wrap market-table-wrap">
+        <table className="market-table">
+          <thead>
+            <tr><th>Item</th><th>Qty</th>{selectedResultHubs.map((hub) => <th key={hub.key}>{hub.label}</th>)}</tr>
+          </thead>
+          <tbody>
+            {result.items.map((item, index) => {
+              const best = bestMarketForItem(item, selectedResultHubs);
+              return <tr key={`${item.input}-${index}`}>
+                <td>
+                  <strong>{item.type_name ?? item.name}</strong>
+                  <span>{item.matched ? `Type ${item.type_id}` : "No SDE match"}</span>
+                  {item.ambiguous_matches.length > 0 && <small>Also saw: {item.ambiguous_matches.map((match) => match.name).join(", ")}</small>}
+                </td>
+                <td>{numberFormatter.format(item.quantity)}</td>
+                {selectedResultHubs.map((hub) => {
+                  const quote = item.hubs[hub.key];
+                  const buyDepth = marketDepthClass(quote?.buy_orders);
+                  const sellDepth = marketDepthClass(quote?.sell_orders);
+                  return <td key={hub.key}>
+                    <div className="market-price-cell">
+                      <b className={`market-line ${best.highestBuyKey === hub.key ? "market-best-buy" : ""}`}>Buy {formatMarketIsk(quote?.buy)}</b>
+                      <b className={`market-line ${best.lowestSellKey === hub.key ? "market-best-sell" : ""}`}>Sell {formatMarketIsk(quote?.sell)}</b>
+                      <b className={`market-line ${best.highestSplitKey === hub.key ? "market-best-split" : ""}`}>Split {formatMarketIsk(quote?.split)}</b>
+                      <small>{quote?.buy_source && quote.buy_source !== hub.label ? `Buy from ${quote.buy_source}` : <><span className={`market-depth ${buyDepth}`}>{quote?.buy_orders ?? 0}</span> buy orders</>}</small>
+                      <small>{quote?.sell_source && quote.sell_source !== hub.label ? `Sell from ${quote.sell_source}` : <><span className={`market-depth ${sellDepth}`}>{quote?.sell_orders ?? 0}</span> sell orders</>}</small>
+                    </div>
+                  </td>;
+                })}
+              </tr>;
+            })}
+          </tbody>
+        </table>
+      </div>
+    </>}
+  </section>;
+
+}
+function contractMoney(value?: number | null): string {
+
+  return value == null || value === 0 ? "-" : `${iskFormatter.format(value)} ISK`;
+
+}
+
+function contractOwner(contract: EqmContract): string {
+
+  if (contract.scope_type === "corporation") return contract.corporation_name ?? "Corporation";
+
+  return contract.character_name ?? "Character";
+
+}
+
+
+type ContractSortKey = "contract" | "scope" | "status" | "route" | "money" | "dates";
+
+type ContractStatusFilter = "all" | "active" | "outstanding" | "in_progress" | "finished" | "terminal";
+
+const CONTRACT_STATUS_OPTIONS: { value: ContractStatusFilter; label: string }[] = [
+
+  { value: "all", label: "All contracts" },
+
+  { value: "active", label: "Active" },
+
+  { value: "outstanding", label: "Outstanding" },
+
+  { value: "in_progress", label: "In progress" },
+
+  { value: "finished", label: "Finished" },
+
+  { value: "terminal", label: "Failed / rejected / expired" },
+
+];
+
+function contractStatusMatches(contract: EqmContract, filter: ContractStatusFilter): boolean {
+
+  const status = (contract.status ?? "").toLowerCase();
+
+  if (filter === "all") return true;
+
+  if (filter === "active") return status === "outstanding" || status === "in_progress";
+
+  if (filter === "outstanding") return status === "outstanding";
+
+  if (filter === "in_progress") return status === "in_progress";
+
+  if (filter === "finished") return status.startsWith("finished") || status === "completed";
+
+  return ["cancelled", "canceled", "deleted", "expired", "failed", "rejected", "reversed"].includes(status);
+
+}
+
+function contractSortValue(contract: EqmContract, key: ContractSortKey): string | number {
+
+  switch (key) {
+
+    case "contract": return contract.title || contract.contract_type || contract.contract_id;
+
+    case "scope": return `${contract.scope_type} ${contractOwner(contract)}`;
+
+    case "status": return `${contract.status ?? ""} ${contract.contract_type ?? ""}`;
+
+    case "route": return `${contract.start_location_name ?? ""} ${contract.end_location_name ?? ""}`;
+
+    case "money": return Math.max(contract.reward ?? 0, contract.price ?? 0, contract.collateral ?? 0, contract.buyout ?? 0);
+
+    case "dates": return Date.parse(contract.date_issued ?? contract.date_expired ?? "") || 0;
+
+  }
+
+}
+function ContractsPage({ currentUser }: { currentUser: UserAccount }) {
+
+  const [tokens, setTokens] = useState<ContractToken[]>([]);
+
+  const [contracts, setContracts] = useState<EqmContract[]>([]);
+
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const [message, setMessage] = useState<string | null>(null);
+
+  const [error, setError] = useState<string | null>(null);
+
+  const timeZone = preferredTimeZone(currentUser);
+
+  const [sortKey, setSortKey] = useState<ContractSortKey>("dates");
+
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+
+  const [statusFilter, setStatusFilter] = useState<ContractStatusFilter>("active");
+
+
+
+
+
+  async function loadContracts() {
+
+    const [tokenRows, contractRows] = await Promise.all([
+
+      api<ContractToken[]>("/contracts/tokens"),
+
+      api<EqmContract[]>("/contracts"),
+
+    ]);
+
+    setTokens(tokenRows);
+
+    setContracts(contractRows);
+
+  }
+
+  async function syncCharacterContracts(token: ContractToken) {
+
+    setBusy(`character-${token.token_id}`);
+
+    setError(null);
+
+    try {
+
+      const result = await api<{ character_name: string; contracts: number; active_contracts: number }>(`/contracts/sync/character/${token.token_id}`, { method: "POST" });
+
+      setMessage(`Synced ${result.contracts.toLocaleString()} contracts for ${result.character_name}; ${result.active_contracts.toLocaleString()} active.`);
+
+      await loadContracts();
+
+    } catch (err) {
+
+      setError(err instanceof Error ? err.message : "Character contract sync failed.");
+
+    } finally {
+
+      setBusy(null);
+
+    }
+
+  }
+
+  async function syncCorporationContracts(token: ContractToken) {
+
+    setBusy(`corporation-${token.token_id}`);
+
+    setError(null);
+
+    try {
+
+      const result = await api<{ corporation_name: string; contracts: number; active_contracts: number }>(`/contracts/sync/corporation/${token.token_id}`, { method: "POST" });
+
+      setMessage(`Synced ${result.contracts.toLocaleString()} corporation contracts for ${result.corporation_name}; ${result.active_contracts.toLocaleString()} active.`);
+
+      await loadContracts();
+
+    } catch (err) {
+
+      setError(err instanceof Error ? err.message : "Corporation contract sync failed.");
+
+    } finally {
+
+      setBusy(null);
+
+    }
+
+  }
+
+  useEffect(() => {
+
+    void loadContracts().catch((err) => setError(err instanceof Error ? err.message : "Unable to load contracts."));
+
+  }, []);
+
+
+  function toggleContractSort(nextKey: ContractSortKey) {
+
+    if (nextKey === sortKey) {
+
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+
+      return;
+
+    }
+
+    setSortKey(nextKey);
+
+    setSortDirection(nextKey === "dates" || nextKey === "money" ? "desc" : "asc");
+
+  }
+
+  const contractSortMark = (key: ContractSortKey) => sortKey === key ? (sortDirection === "asc" ? "^" : "v") : "";
+
+  const visibleContracts = useMemo(() => {
+
+    return contracts.filter((contract) => contractStatusMatches(contract, statusFilter)).sort((left, right) => {
+
+      const leftValue = contractSortValue(left, sortKey);
+
+      const rightValue = contractSortValue(right, sortKey);
+
+      const result = typeof leftValue === "number" && typeof rightValue === "number"
+
+        ? leftValue - rightValue
+
+        : String(leftValue).localeCompare(String(rightValue), undefined, { numeric: true, sensitivity: "base" });
+
+      return sortDirection === "asc" ? result : -result;
+
+    });
+
+  }, [contracts, sortKey, sortDirection, statusFilter]);
+  return (
+
+    <section className="panel stacked contracts-page">
+
+      <div className="section-heading">
+
+        <div><h3>Contracts</h3><p>Pull current character contracts, plus corporation contracts for officer-level tokens and above.</p></div>
+
+        <button type="button" onClick={() => void loadContracts()}>Refresh</button>
+
+      </div>
+
+      {message && <div className="notice inline">{message}</div>}
+
+      {error && <div className="mini-alert">{error}</div>}
+
+      <h4>Linked contract tokens</h4>
+
+      <div className="contract-token-grid">
+
+        {tokens.map((token) => <article className="contract-token-card" key={token.token_id}>
+
+          <strong>{token.character_name}</strong>
+
+          <span>{token.user_display_name}{token.corporation_name ? ` · ${token.corporation_name}` : ""}</span>
+
+          <div className="button-row compact">
+
+            {token.has_character_contract_scope ? <button type="button" disabled={busy === `character-${token.token_id}`} onClick={() => void syncCharacterContracts(token)}>{busy === `character-${token.token_id}` ? "Syncing" : "Character contracts"}</button> : <span className="scope-warn">Missing character contract scope</span>}
+
+            {token.has_corporation_contract_scope && token.corporation_id ? <button type="button" disabled={busy === `corporation-${token.token_id}`} onClick={() => void syncCorporationContracts(token)}>{busy === `corporation-${token.token_id}` ? "Syncing" : "Corp contracts"}</button> : <span className="scope-warn">Missing corporation contract scope</span>}
+
+          </div>
+
+        </article>)}
+
+        {tokens.length === 0 && <p className="empty">No ESI-linked characters with contract access are visible to this account.</p>}
+
+      </div>
+
+      <div className="section-heading compact"><h4>Current contracts</h4><label className="compact-field">Status<select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as ContractStatusFilter)}>{CONTRACT_STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label></div>
+
+      <div className="table-wrap contracts-table-wrap">
+
+        <table className="contracts-table">
+
+          <thead><tr><th><button className="sort-header" type="button" onClick={() => toggleContractSort("contract")}>Contract <span>{contractSortMark("contract")}</span></button></th><th><button className="sort-header" type="button" onClick={() => toggleContractSort("scope")}>Scope <span>{contractSortMark("scope")}</span></button></th><th><button className="sort-header" type="button" onClick={() => toggleContractSort("status")}>Status <span>{contractSortMark("status")}</span></button></th><th><button className="sort-header" type="button" onClick={() => toggleContractSort("route")}>Route <span>{contractSortMark("route")}</span></button></th><th><button className="sort-header" type="button" onClick={() => toggleContractSort("money")}>Money <span>{contractSortMark("money")}</span></button></th><th><button className="sort-header" type="button" onClick={() => toggleContractSort("dates")}>Dates <span>{contractSortMark("dates")}</span></button></th></tr></thead>
+
+          <tbody>
+
+            {visibleContracts.map((contract) => {
+
+              const title = contract.title || `${contract.contract_type ?? "contract"} #${contract.contract_id}`;
+
+              return <tr key={`${contract.scope_type}-${contract.contract_id}`}>
+
+                <td><strong>{title}</strong><span>#{contract.contract_id}</span></td>
+
+                <td><span className="contract-scope-badge">{contract.scope_type}</span><br /><span>{contractOwner(contract)}</span></td>
+
+                <td><strong>{contract.status ?? "unknown"}</strong><br /><span>{contract.contract_type ?? "unknown"}{contract.availability ? ` · ${contract.availability}` : ""}</span>{contract.for_corporation ? <span><br />For corporation</span> : null}</td>
+
+                <td><strong>{contract.start_location_name ?? "Unknown start"}</strong><br /><span>{contract.end_location_name ?? "No destination"}</span>{contract.volume != null ? <span><br />{numberFormatter.format(contract.volume)} m3</span> : null}</td>
+
+                <td><div className="contract-money-cell"><b>Reward {contractMoney(contract.reward)}</b><b>Price {contractMoney(contract.price)}</b><b>Collateral {contractMoney(contract.collateral)}</b><b>Buyout {contractMoney(contract.buyout)}</b></div></td>
+
+                <td><strong>Issued {formatDateTime(contract.date_issued, timeZone)}</strong><br /><span>Expires {formatDateTime(contract.date_expired, timeZone)}</span>{contract.date_completed ? <span><br />Done {formatDateTime(contract.date_completed, timeZone)}</span> : null}</td>
+
+              </tr>;
+
+            })}
+
+            {contracts.length === 0 && <tr><td colSpan={6}>No contracts synced yet.</td></tr>}
+
+            {contracts.length > 0 && visibleContracts.length === 0 && <tr><td colSpan={6}>No contracts match this status filter.</td></tr>}
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+    </section>
+
+  );
+
+}
 function Overview({ data }: { data: AppData }) {
 
   const summary = data.summary;
@@ -3488,10 +4072,63 @@ function SettingsPage({ currentUser }: { currentUser: UserAccount }) {
 
   const sdeProgressStats = sdeImportState?.stats;
 
-  const sdeProgressLabel = sdeImportState?.running ? `${sdeImportState.stage ?? "working"}${sdeProgressStats?.type_dogma_attributes ? ` · ${sdeProgressStats.type_dogma_attributes.toLocaleString()} type dogma attrs` : ""}${sdeProgressStats?.type_dogma_effects ? ` · ${sdeProgressStats.type_dogma_effects.toLocaleString()} type effects` : ""}${sdeProgressStats?.blueprint_activities ? ` · ${sdeProgressStats.blueprint_activities.toLocaleString()} recipes` : ""}` : sdeImportState?.status === "success" ? `Last import complete${sdeImportState.completed_at ? ` at ${new Date(sdeImportState.completed_at).toLocaleString()}` : ""}` : sdeImportState?.status === "failed" ? sdeImportState.error ?? "Last import failed" : "No SDE import running";  return <div className="stacked"><section className="panel stacked"><h3>Character Privacy</h3>{message && <div className="notice inline">{message}</div>}{settingsError && <div className="mini-alert">{settingsError}</div>}{currentUser.role === "admin" && <div className="privacy-placard"><label className="check"><input type="checkbox" checked={suppressPeekNotifications} onChange={(event) => void patchNotificationSuppression(event.target.checked)} /> Suppress sync peek notifications for development or mandatory-public ESI corporations</label></div>}<div className="card-list">{manageable.map((character) => <article key={character.id}><strong>{character.name}</strong><span>{character.corporation_name ?? "Unknown corporation"}{character.owner_display_name ? ` · ${character.owner_display_name}` : ""}</span><label className="check"><input type="checkbox" checked={Boolean(character.public_assets_visible)} onChange={(event) => void patchCharacter(character, { public_assets_visible: event.target.checked }, `${character.name} public asset visibility updated.`)} /> Public assets visible to members</label><label className="check"><input type="checkbox" checked={Boolean(character.sync_opt_out)} onChange={(event) => void patchCharacter(character, { sync_opt_out: event.target.checked }, `${character.name} sync preference updated.`)} /> Keep this character private from shared Quartermaster sync</label>{character.sync_opt_out && <div className="privacy-placard">This character does not wish to be synced. Admins can override temporarily for administrative review, but this preference remains visible.</div>}</article>)}{manageable.length === 0 && <p className="empty">No manageable characters found.</p>}</div></section>{currentUser.role === "admin" && <section className="panel stacked"><div className="section-heading"><div><h3>SDE Import</h3><p>Load EVE static data from a mounted SDE folder or zip inside the backend container.</p></div><button type="button" onClick={() => { void loadSdeStatus(); void loadSdeImportState(); }}>Refresh</button></div><div className="status-grid compact"><Metric icon={<Database size={18} />} label="Categories" value={sdeStatus?.categories ?? 0} /><Metric icon={<Boxes size={18} />} label="Groups" value={sdeStatus?.groups ?? 0} /><Metric icon={<PackagePlus size={18} />} label="Types" value={sdeStatus?.types ?? 0} /><Metric icon={<MapIcon size={18} />} label="Systems" value={sdeStatus?.systems ?? 0} /><Metric icon={<MapIcon size={18} />} label="Stargates" value={sdeStatus?.stargates ?? 0} /><Metric icon={<Factory size={18} />} label="Recipes" value={sdeStatus?.blueprint_activities ?? 0} /><Metric icon={<ScrollText size={18} />} label="Inputs" value={sdeStatus?.activity_inputs ?? 0} /><Metric icon={<KeyRound size={18} />} label="Dogma attrs" value={sdeStatus?.dogma_attributes ?? sdeProgressStats?.dogma_attributes ?? 0} /><Metric icon={<KeyRound size={18} />} label="Dogma effects" value={sdeStatus?.dogma_effects ?? sdeProgressStats?.dogma_effects ?? 0} /><Metric icon={<KeyRound size={18} />} label="Type dogma" value={sdeStatus?.type_dogma_attributes ?? sdeProgressStats?.type_dogma_attributes ?? 0} /><Metric icon={<KeyRound size={18} />} label="Type effects" value={sdeStatus?.type_dogma_effects ?? sdeProgressStats?.type_dogma_effects ?? 0} /></div>{sdeImportState && <div className={sdeImportState.status === "failed" ? "mini-alert" : "notice inline"}>{sdeProgressLabel}</div>}<label>SDE path<input value={sdePath} onChange={(event) => setSdePath(event.target.value)} placeholder="/sde or /sde/sde.zip" /></label><button type="button" disabled={sdeBusy} onClick={() => void importSde()}><RefreshCw size={18} /> {sdeBusy ? "Importing" : "Import SDE"}</button></section>}{currentUser.role === "admin" && <PermissionsAdmin />}</div>;
+  const sdeProgressLabel = sdeImportState?.running ? `${sdeImportState.stage ?? "working"}${sdeProgressStats?.type_dogma_attributes ? ` · ${sdeProgressStats.type_dogma_attributes.toLocaleString()} type dogma attrs` : ""}${sdeProgressStats?.type_dogma_effects ? ` · ${sdeProgressStats.type_dogma_effects.toLocaleString()} type effects` : ""}${sdeProgressStats?.blueprint_activities ? ` · ${sdeProgressStats.blueprint_activities.toLocaleString()} recipes` : ""}` : sdeImportState?.status === "success" ? `Last import complete${sdeImportState.completed_at ? ` at ${new Date(sdeImportState.completed_at).toLocaleString()}` : ""}` : sdeImportState?.status === "failed" ? sdeImportState.error ?? "Last import failed" : "No SDE import running";  return <div className="stacked"><section className="panel stacked"><h3>Character Privacy</h3>{message && <div className="notice inline">{message}</div>}{settingsError && <div className="mini-alert">{settingsError}</div>}{currentUser.role === "admin" && <div className="privacy-placard"><label className="check"><input type="checkbox" checked={suppressPeekNotifications} onChange={(event) => void patchNotificationSuppression(event.target.checked)} /> Suppress sync peek notifications for development or mandatory-public ESI corporations</label></div>}<div className="card-list">{manageable.map((character) => <article key={character.id}><strong>{character.name}</strong><span>{character.corporation_name ?? "Unknown corporation"}{character.owner_display_name ? ` · ${character.owner_display_name}` : ""}</span><label className="check"><input type="checkbox" checked={Boolean(character.public_assets_visible)} onChange={(event) => void patchCharacter(character, { public_assets_visible: event.target.checked }, `${character.name} public asset visibility updated.`)} /> Public assets visible to members</label><label className="check"><input type="checkbox" checked={Boolean(character.sync_opt_out)} onChange={(event) => void patchCharacter(character, { sync_opt_out: event.target.checked }, `${character.name} sync preference updated.`)} /> Keep this character private from shared Quartermaster sync</label>{character.sync_opt_out && <div className="privacy-placard">This character does not wish to be synced. Admins can override temporarily for administrative review, but this preference remains visible.</div>}</article>)}{manageable.length === 0 && <p className="empty">No manageable characters found.</p>}</div></section>{currentUser.role === "admin" && <section className="panel stacked"><div className="section-heading"><div><h3>SDE Import</h3><p>Load EVE static data from a mounted SDE folder or zip inside the backend container.</p></div><button type="button" onClick={() => { void loadSdeStatus(); void loadSdeImportState(); }}>Refresh</button></div><div className="status-grid compact"><Metric icon={<Database size={18} />} label="Categories" value={sdeStatus?.categories ?? 0} /><Metric icon={<Boxes size={18} />} label="Groups" value={sdeStatus?.groups ?? 0} /><Metric icon={<PackagePlus size={18} />} label="Types" value={sdeStatus?.types ?? 0} /><Metric icon={<MapIcon size={18} />} label="Systems" value={sdeStatus?.systems ?? 0} /><Metric icon={<MapIcon size={18} />} label="Stargates" value={sdeStatus?.stargates ?? 0} /><Metric icon={<Factory size={18} />} label="Recipes" value={sdeStatus?.blueprint_activities ?? 0} /><Metric icon={<ScrollText size={18} />} label="Inputs" value={sdeStatus?.activity_inputs ?? 0} /><Metric icon={<KeyRound size={18} />} label="Dogma attrs" value={sdeStatus?.dogma_attributes ?? sdeProgressStats?.dogma_attributes ?? 0} /><Metric icon={<KeyRound size={18} />} label="Dogma effects" value={sdeStatus?.dogma_effects ?? sdeProgressStats?.dogma_effects ?? 0} /><Metric icon={<KeyRound size={18} />} label="Type dogma" value={sdeStatus?.type_dogma_attributes ?? sdeProgressStats?.type_dogma_attributes ?? 0} /><Metric icon={<KeyRound size={18} />} label="Type effects" value={sdeStatus?.type_dogma_effects ?? sdeProgressStats?.type_dogma_effects ?? 0} /></div>{sdeImportState && <div className={sdeImportState.status === "failed" ? "mini-alert" : "notice inline"}>{sdeProgressLabel}</div>}<label>SDE path<input value={sdePath} onChange={(event) => setSdePath(event.target.value)} placeholder="/sde or /sde/sde.zip" /></label><button type="button" disabled={sdeBusy} onClick={() => void importSde()}><RefreshCw size={18} /> {sdeBusy ? "Importing" : "Import SDE"}</button></section>}{currentUser.role === "admin" && <SectionModuleSettings />}{currentUser.role === "admin" && <PermissionsAdmin />}</div>;
 
 }
 
+function SectionModuleSettings() {
+
+  const [settings, setSettings] = useState<SectionSettings | null>(null);
+
+  const [message, setMessage] = useState<string | null>(null);
+
+  const [error, setError] = useState<string | null>(null);
+
+  async function loadSettings() {
+
+    setSettings(await api<SectionSettings>("/auth/sections/enabled"));
+
+  }
+
+  async function toggleSection(sectionKey: string) {
+
+    if (!settings) return;
+
+    const disabled = new Set(settings.disabled_sections);
+
+    if (disabled.has(sectionKey)) disabled.delete(sectionKey); else disabled.add(sectionKey);
+
+    setError(null);
+
+    try {
+
+      const updated = await api<SectionSettings>("/auth/sections/enabled", { method: "PATCH", body: JSON.stringify({ disabled_sections: Array.from(disabled) }) });
+
+      setSettings(updated);
+
+      const label = settings.sections.find((section) => section.key === sectionKey)?.label ?? sectionKey;
+
+      setMessage(`${label} ${disabled.has(sectionKey) ? "disabled" : "enabled"}. Refresh signed-in sessions to apply navigation changes.`);
+
+    } catch (err) {
+
+      setError(err instanceof Error ? err.message : "Unable to update section switches.");
+
+    }
+
+  }
+
+  useEffect(() => {
+
+    void loadSettings().catch((err) => setError(err instanceof Error ? err.message : "Unable to load section switches."));
+
+  }, []);
+
+  const protectedSections = new Set(["overview", "settings", "profile"]);
+
+  return <section className="panel stacked"><div className="section-heading"><div><h3>Section Switches</h3><p>Globally enable or disable major EQM modules without changing role permission rules.</p></div><button type="button" onClick={() => void loadSettings()}>Refresh</button></div>{message && <div className="notice inline">{message}</div>}{error && <div className="mini-alert">{error}</div>}<div className="section-toggle-grid">{settings?.sections.map((section) => { const disabled = settings.disabled_sections.includes(section.key); const locked = protectedSections.has(section.key); return <label key={section.key} className={`section-toggle-card ${disabled ? "disabled" : "enabled"}`}><input type="checkbox" checked={!disabled} disabled={locked} onChange={() => void toggleSection(section.key)} /><strong>{section.label}</strong><span>{locked ? "Always available" : disabled ? "Hidden globally" : "Enabled"}</span></label>; })}{!settings && <p className="empty">Loading section switches...</p>}</div></section>;
+
+}
 function PermissionsAdmin() {
 
   const [matrix, setMatrix] = useState<PermissionMatrix | null>(null);
@@ -5985,7 +6622,7 @@ function ManagedForm({ children, onSubmit, submitLabel = "Save" }: { children: R
 
 function titleFor(tab: string) {
 
-  return ({ overview: "Quartermaster Overview", ownership: "Ownership and Locations", characters: "Characters", roster: "Alliance Roster", navigation: "Navigation", analytics: "Analytics Platform", skills: "Character Skills", fittings: "Fittings", settings: "Settings", corporations: "Corporations", assets: "Asset Ledger", industry: "Blueprints and Recipes", esi: "ESI Sync", profile: "Profile", users: "User Administration", audit: "Audit Log" } as Record<string, string>)[tab];
+  return ({ overview: "Quartermaster Overview", ownership: "Ownership and Locations", characters: "Characters", roster: "Alliance Roster", navigation: "Navigation", market: "Market Appraisal", contracts: "Contracts", analytics: "Analytics Platform", skills: "Character Skills", fittings: "Fittings", settings: "Settings", corporations: "Corporations", assets: "Asset Ledger", industry: "Blueprints and Recipes", esi: "ESI Sync", profile: "Profile", users: "User Administration", audit: "Audit Log" } as Record<string, string>)[tab];
 
 }
 
@@ -5993,11 +6630,13 @@ function titleFor(tab: string) {
 
 function subtitleFor(tab: string) {
 
-  return ({ overview: "Live status and the first useful totals from the database.", ownership: "Define the characters, corporations, manual buckets, and places assets can belong to.", characters: "Assign EVE characters to Quartermaster accounts and control public asset visibility.", roster: "A corporation-grouped character roster suitable for diplomats and prospective members.", navigation: "Plan gate routes from imported SDE map data before layering on kill checks and local threat analysis.", analytics: "Snapshot history, metric widgets, exports, and the foundation for custom dashboards.", skills: "Import trained skills, total skill points, and active skill queues from ESI.", fittings: "Sync saved EVE fittings, review modules, experiment in a scratchpad, and copy EFT-style text.", settings: "Control character visibility and sync privacy.", corporations: "Review enrolled corporations and sync corporation asset ledgers through authorized CEO or director tokens.", assets: "Track item stacks by owner, type, location, and EVE-style location flag.", industry: "Store blueprints, recipe activities, and material inputs before wiring in SDE imports.", esi: "A holding area for the upcoming SSO and sync work.", profile: "Manage your account and private messages.", users: "Manage Quartermaster accounts and role levels.", audit: "Review sync peeks, system events, and administrative activity." } as Record<string, string>)[tab];
+  return ({ overview: "Live status and the first useful totals from the database.", ownership: "Define the characters, corporations, manual buckets, and places assets can belong to.", characters: "Assign EVE characters to Quartermaster accounts and control public asset visibility.", roster: "A corporation-grouped character roster suitable for diplomats and prospective members.", navigation: "Plan gate routes from imported SDE map data before layering on kill checks and local threat analysis.", market: "Paste item lists and compare buy, sell, and split prices across trade hubs.", contracts: "Sync and review current character and corporation contracts.", analytics: "Snapshot history, metric widgets, exports, and the foundation for custom dashboards.", skills: "Import trained skills, total skill points, and active skill queues from ESI.", fittings: "Sync saved EVE fittings, review modules, experiment in a scratchpad, and copy EFT-style text.", settings: "Control character visibility and sync privacy.", corporations: "Review enrolled corporations and sync corporation asset ledgers through authorized CEO or director tokens.", assets: "Track item stacks by owner, type, location, and EVE-style location flag.", industry: "Store blueprints, recipe activities, and material inputs before wiring in SDE imports.", esi: "A holding area for the upcoming SSO and sync work.", profile: "Manage your account and private messages.", users: "Manage Quartermaster accounts and role levels.", audit: "Review sync peeks, system events, and administrative activity." } as Record<string, string>)[tab];
 
 }
 
 
 
 createRoot(document.getElementById("root")!).render(<App />);
+
+
 

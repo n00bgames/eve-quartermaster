@@ -10,13 +10,18 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models import EveConstellation, EveStargate, EveStation, EveSystem
-from app.models.navigation import SystemIndustrialKillObservation
+from app.models.navigation import SystemIndustrialKillObservation, SystemPvpKillObservation
 from app.services.navigation import resolve_system, security_band, serialize_system
 
 LIGHT_YEAR_METERS = 9_460_730_472_580_800
-BASE_JF_RANGE_LY = 5.0
 JDC_RANGE_BONUS_PER_LEVEL = 0.2
 JFC_FUEL_REDUCTION_PER_LEVEL = 0.1
+FUEL_TYPE_NAMES = {
+    16274: "Helium Isotopes",
+    17887: "Oxygen Isotopes",
+    17888: "Nitrogen Isotopes",
+    17889: "Hydrogen Isotopes",
+}
 
 
 @dataclass(frozen=True)
@@ -25,16 +30,67 @@ class JumpFreighterShip:
     type_id: int
     fuel_type_id: int
     fuel_type_name: str
-    fuel_per_light_year: int = 10000
+    fuel_per_light_year: int
+    base_range_ly: float
+    ship_class: str
+
+
+def capital_ship(name: str, type_id: int, fuel_type_id: int, fuel_per_light_year: int, base_range_ly: float, ship_class: str) -> JumpFreighterShip:
+    return JumpFreighterShip(name, type_id, fuel_type_id, FUEL_TYPE_NAMES[fuel_type_id], fuel_per_light_year, base_range_ly, ship_class)
 
 
 JUMP_FREIGHTERS: dict[str, JumpFreighterShip] = {
-    "anshar": JumpFreighterShip("Anshar", 28848, 17887, "Oxygen Isotopes"),
-    "ark": JumpFreighterShip("Ark", 28850, 16274, "Helium Isotopes"),
-    "nomad": JumpFreighterShip("Nomad", 28846, 17889, "Hydrogen Isotopes"),
-    "rhea": JumpFreighterShip("Rhea", 28844, 17888, "Nitrogen Isotopes"),
+    "anshar": capital_ship("Anshar", 28848, 17887, 9400, 5.0, "Jump Freighter"),
+    "ark": capital_ship("Ark", 28850, 16274, 8800, 5.0, "Jump Freighter"),
+    "nomad": capital_ship("Nomad", 28846, 17889, 8200, 5.0, "Jump Freighter"),
+    "rhea": capital_ship("Rhea", 28844, 17888, 10000, 5.0, "Jump Freighter"),
+    "rorqual": capital_ship("Rorqual", 28352, 17887, 4000, 5.0, "Capital Industrial Ship"),
+    "archon": capital_ship("Archon", 23757, 16274, 3000, 3.5, "Carrier"),
+    "chimera": capital_ship("Chimera", 23915, 17888, 3000, 3.5, "Carrier"),
+    "nidhoggur": capital_ship("Nidhoggur", 24483, 17889, 3000, 3.5, "Carrier"),
+    "thanatos": capital_ship("Thanatos", 23911, 17887, 3000, 3.5, "Carrier"),
+    "salvation": capital_ship("Salvation", 92822, 16274, 3000, 3.75, "Command Carrier"),
+    "simurgh": capital_ship("Simurgh", 92823, 17888, 3000, 3.75, "Command Carrier"),
+    "gaia": capital_ship("Gaia", 92824, 17887, 3000, 3.75, "Command Carrier"),
+    "ymir": capital_ship("Ymir", 92825, 17889, 3000, 3.75, "Command Carrier"),
+    "revelation": capital_ship("Revelation", 19720, 16274, 3000, 3.5, "Dreadnought"),
+    "moros": capital_ship("Moros", 19724, 17887, 3000, 3.5, "Dreadnought"),
+    "phoenix": capital_ship("Phoenix", 19726, 17888, 3000, 3.5, "Dreadnought"),
+    "naglfar": capital_ship("Naglfar", 19722, 17889, 3000, 3.5, "Dreadnought"),
+    "chemosh": capital_ship("Chemosh", 42243, 16274, 3000, 3.5, "Dreadnought"),
+    "vehement": capital_ship("Vehement", 42124, 17887, 3000, 3.5, "Dreadnought"),
+    "caiman": capital_ship("Caiman", 45647, 17888, 3000, 3.5, "Dreadnought"),
+    "zirnitra": capital_ship("Zirnitra", 52907, 16274, 3000, 3.5, "Dreadnought"),
+    "sarathiel": capital_ship("Sarathiel", 87381, 17889, 3000, 3.5, "Dreadnought"),
+    "revelation navy issue": capital_ship("Revelation Navy Issue", 73790, 16274, 3000, 3.5, "Dreadnought"),
+    "moros navy issue": capital_ship("Moros Navy Issue", 73792, 17887, 3000, 3.5, "Dreadnought"),
+    "phoenix navy issue": capital_ship("Phoenix Navy Issue", 73793, 17888, 3000, 3.5, "Dreadnought"),
+    "naglfar fleet issue": capital_ship("Naglfar Fleet Issue", 73787, 17889, 3000, 3.5, "Dreadnought"),
+    "bane": capital_ship("Bane", 77283, 16274, 3000, 4.0, "Lancer Dreadnought"),
+    "hubris": capital_ship("Hubris", 77281, 17887, 3000, 4.0, "Lancer Dreadnought"),
+    "karura": capital_ship("Karura", 77284, 17888, 3000, 4.0, "Lancer Dreadnought"),
+    "valravn": capital_ship("Valravn", 77288, 17889, 3000, 4.0, "Lancer Dreadnought"),
+    "apostle": capital_ship("Apostle", 37604, 16274, 3000, 3.5, "Force Auxiliary"),
+    "minokawa": capital_ship("Minokawa", 37605, 17888, 3000, 3.5, "Force Auxiliary"),
+    "lif": capital_ship("Lif", 37606, 17889, 3000, 3.5, "Force Auxiliary"),
+    "ninazu": capital_ship("Ninazu", 37607, 17887, 3000, 3.5, "Force Auxiliary"),
+    "dagon": capital_ship("Dagon", 42242, 16274, 3000, 3.5, "Force Auxiliary"),
+    "loggerhead": capital_ship("Loggerhead", 45645, 17888, 3000, 3.5, "Force Auxiliary"),
+    "aeon": capital_ship("Aeon", 23919, 16274, 3000, 3.0, "Supercarrier"),
+    "wyvern": capital_ship("Wyvern", 23917, 17888, 3000, 3.0, "Supercarrier"),
+    "hel": capital_ship("Hel", 22852, 17889, 3000, 3.0, "Supercarrier"),
+    "nyx": capital_ship("Nyx", 23913, 17887, 3000, 3.0, "Supercarrier"),
+    "revenant": capital_ship("Revenant", 3514, 16274, 3000, 3.0, "Supercarrier"),
+    "vendetta": capital_ship("Vendetta", 42125, 17887, 3000, 3.0, "Supercarrier"),
+    "avatar": capital_ship("Avatar", 11567, 16274, 3000, 3.0, "Titan"),
+    "leviathan": capital_ship("Leviathan", 3764, 17888, 3000, 3.0, "Titan"),
+    "ragnarok": capital_ship("Ragnarok", 23773, 17889, 3000, 3.0, "Titan"),
+    "erebus": capital_ship("Erebus", 671, 17887, 3000, 3.0, "Titan"),
+    "vanquisher": capital_ship("Vanquisher", 42126, 17887, 3000, 3.0, "Titan"),
+    "molok": capital_ship("Molok", 42241, 16274, 3000, 3.0, "Titan"),
+    "komodo": capital_ship("Komodo", 45649, 17888, 3000, 3.0, "Titan"),
+    "azariel": capital_ship("Azariel", 78576, 17889, 3000, 3.0, "Titan"),
 }
-
 # User-provided/public JF station-operation guidance, rendered as EQM data rather than copied artwork.
 # The placement note is intentionally conservative; actual cyno placement depends on station geometry.
 STATION_CYNO_GUIDE: dict[str, dict[str, Any]] = {
@@ -111,12 +167,12 @@ def clamp_skill(value: int) -> int:
 def ship_config(ship_name: str) -> JumpFreighterShip:
     key = ship_name.strip().lower()
     if key not in JUMP_FREIGHTERS:
-        raise ValueError(f"Unknown jump freighter '{ship_name}'")
+        raise ValueError(f"Unknown capital jump ship '{ship_name}'")
     return JUMP_FREIGHTERS[key]
 
 
-def jump_range_ly(jdc_level: int) -> float:
-    return BASE_JF_RANGE_LY * (1 + clamp_skill(jdc_level) * JDC_RANGE_BONUS_PER_LEVEL)
+def jump_range_ly(ship: JumpFreighterShip, jdc_level: int) -> float:
+    return ship.base_range_ly * (1 + clamp_skill(jdc_level) * JDC_RANGE_BONUS_PER_LEVEL)
 
 
 def fuel_for_jump(distance_ly: float, ship: JumpFreighterShip, jfc_level: int) -> int:
@@ -147,6 +203,37 @@ def _npc_station_system_ids(db: Session) -> set[int]:
     return set(db.scalars(select(EveStation.system_id).where(EveStation.system_id.is_not(None)).distinct()).all())
 
 
+def _station_safety_system_ids(db: Session, station_safety: str) -> set[int]:
+    mode = station_safety.strip().lower()
+    if mode == "any":
+        return _npc_station_system_ids(db)
+    if mode not in {"avoid_red_only", "green"}:
+        raise ValueError("Unknown station safety filter. Use any, avoid_red_only, or green.")
+
+    stations = db.scalars(
+        select(EveStation)
+        .options(selectinload(EveStation.station_type))
+        .where(EveStation.system_id.is_not(None))
+    ).all()
+    risks_by_system: dict[int, set[str]] = {}
+    for station in stations:
+        type_name = station.station_type.name if station.station_type else (f"Type {station.type_id}" if station.type_id else None)
+        risk = station_cyno_guidance(type_name).get("risk", "unknown")
+        risks_by_system.setdefault(station.system_id, set()).add(str(risk))
+
+    if mode == "green":
+        return {system_id for system_id, risks in risks_by_system.items() if "safer" in risks}
+    return {system_id for system_id, risks in risks_by_system.items() if risks - {"dangerous"}}
+
+
+def _station_safety_label(station_safety: str) -> str:
+    return {
+        "any": "Any NPC station",
+        "avoid_red_only": "Avoid red-only systems",
+        "green": "Only green stations",
+    }.get(station_safety.strip().lower(), station_safety)
+
+
 def _grid_key(system: EveSystem, cell_meters: float) -> tuple[int, int, int]:
     return (floor((system.x or 0) / cell_meters), floor((system.y or 0) / cell_meters), floor((system.z or 0) / cell_meters))
 
@@ -161,7 +248,7 @@ def _neighbor_systems(system: EveSystem, grid: dict[tuple[int, int, int], list[E
     return candidates
 
 
-def _jump_path(db: Session, origin: EveSystem, destination: EveSystem, max_range_ly: float) -> list[int]:
+def _jump_path(db: Session, origin: EveSystem, destination: EveSystem, max_range_ly: float, station_safety: str = "any") -> list[int]:
     if origin.system_id == destination.system_id:
         return [origin.system_id]
     if not cyno_eligible(destination):
@@ -169,6 +256,9 @@ def _jump_path(db: Session, origin: EveSystem, destination: EveSystem, max_range
     station_system_ids = _npc_station_system_ids(db)
     if destination.system_id not in station_system_ids:
         raise ValueError(f"{destination.name} has no imported NPC stations. Jump freighter cyno targets must have an NPC station; choose a nearby station system and gate the final leg.")
+    allowed_station_system_ids = _station_safety_system_ids(db, station_safety)
+    if destination.system_id not in allowed_station_system_ids:
+        raise ValueError(f"{destination.name} has NPC stations, but none match the station safety filter: {_station_safety_label(station_safety)}.")
 
     systems = _known_space_systems(db)
     by_id = {system.system_id: system for system in systems}
@@ -197,7 +287,7 @@ def _jump_path(db: Session, origin: EveSystem, destination: EveSystem, max_range
                 continue
             if candidate.system_id != destination.system_id and not cyno_eligible(candidate):
                 continue
-            if candidate.system_id != origin.system_id and candidate.system_id not in station_system_ids:
+            if candidate.system_id != origin.system_id and candidate.system_id not in allowed_station_system_ids:
                 continue
             jump_distance = distance_ly(current, candidate)
             if jump_distance > max_range_ly:
@@ -334,17 +424,26 @@ def route_map_context(db: Session, route_systems: list[EveSystem], gate_hops: in
         "stargates": sorted(stargates, key=lambda edge: (edge["from_system_id"], edge["to_system_id"])),
     }
 
-def industrial_kill_summary(db: Session, system_id: int, hours: int = 24) -> dict[str, Any]:
+def _kill_filter_label(kill_filter: str) -> str:
+    return "Industrial kills only" if kill_filter == "industrial" else "All kills"
+
+
+def kill_summary(db: Session, system_id: int, hours: int = 24, kill_filter: str = "industrial") -> dict[str, Any]:
+    mode = kill_filter.strip().lower()
+    if mode not in {"industrial", "all"}:
+        raise ValueError("Unknown kill filter. Use industrial or all.")
+    model = SystemIndustrialKillObservation if mode == "industrial" else SystemPvpKillObservation
     since = datetime.now(UTC) - timedelta(hours=max(1, min(hours, 168)))
     rows = db.scalars(
-        select(SystemIndustrialKillObservation)
-        .where(SystemIndustrialKillObservation.system_id == system_id)
-        .where(SystemIndustrialKillObservation.killmail_time >= since)
-        .order_by(SystemIndustrialKillObservation.killmail_time.desc())
+        select(model)
+        .where(model.system_id == system_id)
+        .where(model.killmail_time >= since)
+        .order_by(model.killmail_time.desc())
         .limit(5)
     ).all()
     return {
         "hours": hours,
+        "filter": {"mode": mode, "label": _kill_filter_label(mode)},
         "count": len(rows),
         "latest_killmail_time": rows[0].killmail_time.isoformat() if rows else None,
         "sample_killmails": [
@@ -376,6 +475,10 @@ def industrial_kill_summary(db: Session, system_id: int, hours: int = 24) -> dic
     }
 
 
+def industrial_kill_summary(db: Session, system_id: int, hours: int = 24) -> dict[str, Any]:
+    return kill_summary(db, system_id, hours, "industrial")
+
+
 def plan_jump_freighter_route(
     db: Session,
     origin_query: str,
@@ -385,12 +488,18 @@ def plan_jump_freighter_route(
     jump_drive_calibration: int = 5,
     jump_fuel_conservation: int = 5,
     context_gate_hops: int = 1,
+    station_safety: str = "any",
+    kill_filter: str = "industrial",
 ) -> dict[str, Any]:
     ship = ship_config(ship_name)
     origin = resolve_system(db, origin_query)
     destination = resolve_system(db, destination_query)
-    max_range = jump_range_ly(jump_drive_calibration)
-    path_ids = _jump_path(db, origin, destination, max_range)
+    max_range = jump_range_ly(ship, jump_drive_calibration)
+    station_safety = station_safety.strip().lower()
+    kill_filter = kill_filter.strip().lower()
+    if kill_filter not in {"industrial", "all"}:
+        raise ValueError("Unknown kill filter. Use industrial or all.")
+    path_ids = _jump_path(db, origin, destination, max_range, station_safety)
     systems = db.scalars(
         select(EveSystem)
         .options(selectinload(EveSystem.constellation).selectinload(EveConstellation.region))
@@ -421,6 +530,7 @@ def plan_jump_freighter_route(
                 "cyno_eligible": cyno_eligible(end),
                 "stations": station_map.get(end.system_id, []),
                 "industrial_kills_24h": industrial_kill_summary(db, end.system_id, 24),
+                "kills_24h": kill_summary(db, end.system_id, 24, kill_filter),
             }
         )
 
@@ -433,6 +543,8 @@ def plan_jump_freighter_route(
             "fuel_type_id": ship.fuel_type_id,
             "fuel_type_name": ship.fuel_type_name,
             "base_fuel_per_light_year": ship.fuel_per_light_year,
+            "base_range_ly": ship.base_range_ly,
+            "ship_class": ship.ship_class,
         },
         "skills": {
             "jump_drive_calibration": clamp_skill(jump_drive_calibration),
@@ -442,6 +554,8 @@ def plan_jump_freighter_route(
         "jump_count": len(jumps),
         "total_distance_ly": round(total_distance, 3),
         "total_fuel_units": total_fuel,
+        "station_safety": {"mode": station_safety, "label": _station_safety_label(station_safety)},
+        "kill_filter": {"mode": kill_filter, "label": _kill_filter_label(kill_filter)},
         "jumps": jumps,
         "map_context": route_map_context(db, ordered, gate_hops=context_gate_hops),
         "station_cyno_guide": [
@@ -449,7 +563,9 @@ def plan_jump_freighter_route(
         ],
         "notes": [
             "Highsec origins are allowed; every jump target must be low/null and have an imported NPC station.",
-            "Station guidance is operational reference data. Verify bookmarks and station geometry before risking a live jump freighter.",
+            f"Station safety filter: {_station_safety_label(station_safety)}.",
+            f"Kill display: {_kill_filter_label(kill_filter)}.",
+            "Station guidance is operational reference data. Verify bookmarks and station geometry before risking a live capital jump.",
         ],
     }
 

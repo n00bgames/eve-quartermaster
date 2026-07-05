@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/n00bgames/eve-quartermaster"><img alt="Project" src="https://img.shields.io/badge/project-eve--quartermaster-e8b84d?style=for-the-badge"></a>
-  <img alt="Version" src="https://img.shields.io/badge/version-0.1.2--beta-4fb3c7?style=for-the-badge">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.1.3--beta-4fb3c7?style=for-the-badge">
   <img alt="License" src="https://img.shields.io/badge/license-AGPL--3.0--or--later-70c894?style=for-the-badge">
 </p>
 
@@ -24,6 +24,8 @@
 EVE Quartermaster is a containerized, database-first EVE Online quartermaster and alliance operations tool. It tracks characters, corporations, assets, blueprints, recipes, skills, standings/contact sync, wallet snapshots, permissions, audit events, and long-term analytics from EVE ESI plus imported SDE data.
 
 This is an early beta candidate for private/public testing. It is already useful, but the data model and API surface are still moving quickly.
+
+See [CHANGELOG.md](CHANGELOG.md) for version-by-version release notes.
 
 ## Current Capabilities
 

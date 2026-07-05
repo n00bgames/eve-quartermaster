@@ -273,6 +273,8 @@ def jump_freighter_ships(_: User = Depends(require_navigation)) -> list[dict[str
             "fuel_type_id": ship.fuel_type_id,
             "fuel_type_name": ship.fuel_type_name,
             "base_fuel_per_light_year": ship.fuel_per_light_year,
+            "base_range_ly": ship.base_range_ly,
+            "ship_class": ship.ship_class,
         }
         for key, ship in JUMP_FREIGHTERS.items()
     ]
@@ -286,6 +288,8 @@ async def jump_freighter_route(
     jump_drive_calibration: int = Query(5, ge=0, le=5),
     jump_fuel_conservation: int = Query(5, ge=0, le=5),
     context_gate_hops: int = Query(1, ge=0, le=2),
+    station_safety: str = Query("any", pattern="^(any|avoid_red_only|green)$"),
+    kill_filter: str = Query("industrial", pattern="^(industrial|all)$"),
     _: User = Depends(require_navigation),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
@@ -298,6 +302,7 @@ async def jump_freighter_route(
             jump_drive_calibration=jump_drive_calibration,
             jump_fuel_conservation=jump_fuel_conservation,
             context_gate_hops=context_gate_hops,
+            station_safety=station_safety,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

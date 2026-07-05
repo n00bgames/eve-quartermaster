@@ -1,6 +1,7 @@
 from app.models.analytics import BlueprintSnapshot, CharacterSkillSnapshot, CorporationSnapshot, CorporationWalletSnapshot, SnapshotMetric, SnapshotRun
 from app.models.assets import Asset, Location
 from app.models.audit import AppSetting, AuditEvent, PrivateMessage
+from app.models.contracts import EveContract
 from app.models.base import Base
 from app.models.esi import EsiApplication, EsiSyncJob, EsiToken
 from app.models.eve_static import EveCategory, EveConstellation, EveDogmaAttribute, EveDogmaEffect, EveGroup, EveRegion, EveStargate, EveStation, EveSystem, EveType, EveTypeDogmaAttribute, EveTypeDogmaEffect
@@ -28,6 +29,7 @@ __all__ = [
     "EsiApplication",
     "EsiSyncJob",
     "EsiToken",
+    "EveContract",
     "EveAlliance",
     "EveCategory",
     "EveCharacter",
@@ -62,6 +64,7 @@ __all__ = [
     "UserInvite",
     "UserSectionPermission",
 ]
+
 
 
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import RoleDefinition, RoleSectionPermission, User, UserSectionPermission
+from app.models import AppSetting, RoleDefinition, RoleSectionPermission, User, UserSectionPermission
 
 BUILT_IN_ROLES: list[str] = ["admin", "director", "officer", "member", "view_only"]
 ROLE_RANK: dict[str, int] = {"view_only": 0, "rookie": 0, "member": 1, "officer": 2, "director": 3, "admin": 4}
@@ -21,6 +21,8 @@ SECTION_DEFINITIONS: dict[str, dict[str, object]] = {
     "characters": {"label": "Characters", "default_roles": ["admin", "director", "officer", "member", "view_only"]},
     "roster": {"label": "Roster", "default_roles": ["admin", "director", "officer", "member", "view_only"]},
     "navigation": {"label": "Navigation", "default_roles": ["admin", "director", "officer", "member", "view_only"]},
+    "market": {"label": "Market", "default_roles": ["admin", "director", "officer", "member", "view_only"]},
+    "contracts": {"label": "Contracts", "default_roles": ["admin", "director", "officer", "member"]},
     "analytics": {"label": "Analytics", "default_roles": ["admin", "director", "officer"]},
     "skills": {"label": "Skills", "default_roles": ["admin", "director", "officer", "member"]},
     "fittings": {"label": "Fittings", "default_roles": ["admin", "director", "officer", "member"]},
@@ -33,6 +35,24 @@ SECTION_DEFINITIONS: dict[str, dict[str, object]] = {
     "audit": {"label": "Audit Log", "default_roles": ["admin"]},
 }
 ALWAYS_VISIBLE_SECTIONS = {"overview", "profile"}
+DISABLED_SECTIONS_KEY = "disabled_sections"
+
+
+def disabled_sections(db: Session) -> set[str]:
+    row = db.get(AppSetting, DISABLED_SECTIONS_KEY)
+    if row is None or not isinstance(row.value, list):
+        return set()
+    return {str(section) for section in row.value if str(section) in SECTION_DEFINITIONS}
+
+
+def set_disabled_sections(db: Session, sections: set[str]) -> None:
+    clean = sorted(section for section in sections if section in SECTION_DEFINITIONS and section not in ALWAYS_VISIBLE_SECTIONS and section != "settings")
+    row = db.get(AppSetting, DISABLED_SECTIONS_KEY)
+    if row is None:
+        row = AppSetting(key=DISABLED_SECTIONS_KEY, value=clean)
+        db.add(row)
+    else:
+        row.value = clean
 
 
 def section_payload() -> list[dict[str, object]]:
@@ -108,16 +128,23 @@ def default_section_allowed(role: str, section: str, db: Session | None = None) 
 
 def effective_permissions(user: User, db: Session) -> dict[str, bool]:
     if base_role_for(db, user.role) == "admin":
-        return {section: True for section in SECTION_DEFINITIONS}
-    values = {section: default_section_allowed(user.role, section, db) for section in SECTION_DEFINITIONS}
+        values = {section: True for section in SECTION_DEFINITIONS}
+    else:
+        values = {section: default_section_allowed(user.role, section, db) for section in SECTION_DEFINITIONS}
+
     role_overrides = db.scalars(select(RoleSectionPermission).where(RoleSectionPermission.role == user.role)).all()
     for override in role_overrides:
         if override.section in values and override.section not in ALWAYS_VISIBLE_SECTIONS:
             values[override.section] = override.can_view
+
     user_overrides = db.scalars(select(UserSectionPermission).where(UserSectionPermission.user_id == user.id)).all()
     for override in user_overrides:
         if override.section in values and override.section not in ALWAYS_VISIBLE_SECTIONS:
             values[override.section] = override.can_view
+
+    for section in disabled_sections(db):
+        if section not in ALWAYS_VISIBLE_SECTIONS and section != "settings":
+            values[section] = False
     return values
 
 
@@ -127,6 +154,9 @@ def can_view_section(user: User, section: str, db: Session) -> bool:
 
 def can_view_at_least(user: User, minimum_role: str, db: Session | None = None) -> bool:
     return role_rank(user, db) >= ROLE_RANK[minimum_role]
+
+
+
 
 
 

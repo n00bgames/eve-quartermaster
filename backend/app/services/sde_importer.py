@@ -40,6 +40,7 @@ SDE_FILES = {
     "stargates": ("mapStargates.yaml",),
     "stations": ("npcStations.yaml",),
     "station_operations": ("stationOperations.yaml",),
+    "npc_corporations": ("npcCorporations.yaml",),
     "station_names": ("invNames.yaml", "itemNames.yaml", "bsd/invNames.yaml", "bsd/itemNames.yaml"),
     "station_table": ("staStations.yaml", "bsd/staStations.yaml"),
     "dogma_attributes": ("dogmaAttributes.yaml", "dgmAttributeTypes.yaml", "bsd/dgmAttributeTypes.yaml"),
@@ -461,6 +462,65 @@ def station_operation_names(operations: dict[Any, Any]) -> dict[int, str]:
     return names
 
 
+
+def npc_corporation_names(corporations: dict[Any, Any]) -> dict[int, str]:
+    names: dict[int, str] = {}
+    for raw_id, payload in corporations.items():
+        if not isinstance(payload, dict):
+            continue
+        names[int(raw_id)] = localized_text(payload.get("name"), f"Corporation {raw_id}")
+    return names
+
+
+_ROMAN_NUMERALS: tuple[tuple[int, str], ...] = (
+    (1000, "M"),
+    (900, "CM"),
+    (500, "D"),
+    (400, "CD"),
+    (100, "C"),
+    (90, "XC"),
+    (50, "L"),
+    (40, "XL"),
+    (10, "X"),
+    (9, "IX"),
+    (5, "V"),
+    (4, "IV"),
+    (1, "I"),
+)
+
+
+def roman_numeral(value: int | None) -> str | None:
+    if value is None or value <= 0:
+        return None
+    remaining = value
+    output: list[str] = []
+    for number, symbol in _ROMAN_NUMERALS:
+        while remaining >= number:
+            output.append(symbol)
+            remaining -= number
+    return "".join(output)
+
+
+def generated_station_name(
+    system_name: str,
+    payload: dict[str, Any],
+    owner_name: str | None,
+    operation_name: str | None,
+    type_name: str | None,
+) -> str | None:
+    celestial = roman_numeral(optional_int(payload.get("celestialIndex")))
+    if not celestial:
+        return None
+    location = f"{system_name} {celestial}"
+    orbit_index = optional_int(payload.get("orbitIndex"))
+    if orbit_index is not None:
+        location = f"{location} - Moon {orbit_index}"
+
+    suffix_parts = [part for part in (owner_name, operation_name) if part]
+    suffix = " ".join(suffix_parts) or type_name
+    return f"{location} - {suffix}" if suffix else location
+
+
 def load_optional_yaml(source: SdeSource, logical_name: str) -> dict[Any, Any]:
     try:
         return source.load_yaml(logical_name)
@@ -512,7 +572,12 @@ def load_station_names(source: SdeSource) -> dict[int, str]:
     return names
 
 
-def station_name_for(station_id: int, payload: dict[str, Any], station_names: dict[int, str]) -> str | None:
+def station_name_for(
+    station_id: int,
+    payload: dict[str, Any],
+    station_names: dict[int, str],
+    generated_name: str | None = None,
+) -> str | None:
     direct_name = station_name_from_payload(payload)
     if direct_name:
         return direct_name
@@ -521,7 +586,7 @@ def station_name_for(station_id: int, payload: dict[str, Any], station_names: di
         lookup_id = optional_int(payload.get(key))
         if lookup_id is not None and station_names.get(lookup_id):
             return station_names[lookup_id]
-    return station_names.get(station_id)
+    return station_names.get(station_id) or generated_name
 
 
 def upsert_station(
@@ -530,13 +595,16 @@ def upsert_station(
     payload: dict[str, Any],
     operation_names: dict[int, str],
     station_names: dict[int, str],
+    corporation_names: dict[int, str] | None = None,
 ) -> EveStation:
     system_id = int(payload["solarSystemID"])
     type_id = int(payload["typeID"]) if payload.get("typeID") is not None else None
     operation_id = int(payload["operationID"]) if payload.get("operationID") is not None else None
-    ensure_system(db, system_id)
+    system = ensure_system(db, system_id)
     if type_id is not None:
         ensure_placeholder_type(db, type_id)
+    item_type = db.get(EveType, type_id) if type_id is not None else None
+    type_name = item_type.name if item_type is not None else None
     station = db.get(EveStation, station_id)
     if station is None:
         station = EveStation(station_id=station_id, system_id=system_id)
@@ -545,8 +613,10 @@ def upsert_station(
     station.type_id = type_id
     station.operation_id = operation_id
     station.operation_name = operation_names.get(operation_id, f"Operation {operation_id}" if operation_id is not None else None)
-    station.name = station_name_for(station_id, payload, station_names)
     station.owner_id = int(payload["ownerID"]) if payload.get("ownerID") is not None else None
+    owner_name = (corporation_names or {}).get(station.owner_id) if station.owner_id is not None else None
+    generated_name = generated_station_name(system.name, payload, owner_name, station.operation_name, type_name)
+    station.name = station_name_for(station_id, payload, station_names, generated_name)
     station.orbit_id = int(payload["orbitID"]) if payload.get("orbitID") is not None else None
     station.x = position_value(payload, "x")
     station.y = position_value(payload, "y")
@@ -678,10 +748,11 @@ def import_sde(
         if "stations" in wanted:
             mark("loading npc stations")
             operation_names = station_operation_names(source.load_yaml("station_operations"))
+            corporation_names = npc_corporation_names(source.load_yaml("npc_corporations"))
             station_names = load_station_names(source)
             stations = source.load_yaml("stations")
             for raw_id, payload in stations.items():
-                upsert_station(db, int(raw_id), payload or {}, operation_names, station_names)
+                upsert_station(db, int(raw_id), payload or {}, operation_names, station_names, corporation_names)
                 stats.stations += 1
                 if stats.stations % 2500 == 0:
                     db.commit()
