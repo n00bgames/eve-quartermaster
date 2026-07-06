@@ -78,7 +78,9 @@ type JumpFreighterStation = { station_id: number; name: string; type_id?: number
 
 type JumpFreighterKillSummary = { hours: number; count: number; latest_killmail_time?: string | null; sample_killmails: { killmail_id: number; killmail_time?: string | null; zkb_url?: string | null; victim_hull?: string | null; smartbomb_used?: boolean; victim_character_id?: number | null; victim_character_name?: string | null; victim_corporation_id?: number | null; victim_corporation_name?: string | null; victim_alliance_id?: number | null; victim_alliance_name?: string | null; attacker_count?: number | null; location_kind?: string | null; location_name?: string | null; final_blow_character_id?: number | null; final_blow_character_name?: string | null; final_blow_corporation_id?: number | null; final_blow_corporation_name?: string | null; final_blow_alliance_id?: number | null; final_blow_alliance_name?: string | null; final_blow_ship_type_name?: string | null }[] };
 
-type JumpFreighterJump = { jump_index: number; from_system: NavigationSystem; to_system: NavigationSystem; distance_ly: number; fuel_units: number; cyno_eligible: boolean; stations: JumpFreighterStation[]; industrial_kills_24h: JumpFreighterKillSummary; kills_24h?: JumpFreighterKillSummary };
+type JumpActivity = { hours: number; total_jumps: number; jumps_per_hour: number; observations: number; confidence: "none" | "low" | "medium" | "high" | string; activity_label: "quiet" | "moderate" | "active" | "very active" | string; latest_observed_at?: string | null };
+
+type JumpFreighterJump = { jump_index: number; from_system: NavigationSystem; to_system: NavigationSystem; distance_ly: number; fuel_units: number; cyno_eligible: boolean; stations: JumpFreighterStation[]; industrial_kills_24h: JumpFreighterKillSummary; kills_24h?: JumpFreighterKillSummary; jump_activity?: JumpActivity };
 
 type OperationalMapSystem = NavigationSystem & { on_route?: boolean };
 
@@ -88,7 +90,7 @@ type OperationalMapContext = { gate_hops: number; truncated?: boolean; systems: 
 
 type OperationalMapRouteNode = NavigationSystem & { map_index: number; label: string; meta?: string; selected_key?: string | null; segment_label?: string | null };
 
-type JumpFreighterRoute = { origin: NavigationSystem; destination: NavigationSystem; ship: { name: string; fuel_type_name: string; base_fuel_per_light_year: number; base_range_ly?: number; ship_class?: string }; skills: { jump_drive_calibration: number; jump_fuel_conservation: number }; max_range_ly: number; jump_count: number; total_distance_ly: number; total_fuel_units: number; station_safety?: { mode: string; label: string }; kill_filter?: { mode: string; label: string }; jumps: JumpFreighterJump[]; map_context?: OperationalMapContext; station_cyno_guide: { station_type: string; range_km?: number | null; risk: string; note: string }[]; notes: string[] };
+type JumpFreighterRoute = { origin: NavigationSystem; destination: NavigationSystem; ship: { name: string; fuel_type_name: string; base_fuel_per_light_year: number; base_range_ly?: number; ship_class?: string }; skills: { jump_drive_calibration: number; jump_fuel_conservation: number }; max_range_ly: number; jump_count: number; total_distance_ly: number; total_fuel_units: number; station_safety?: { mode: string; label: string }; kill_filter?: { mode: string; label: string }; jump_activity?: { hours: number; cache?: { refreshed?: boolean; observed_at?: string | null; system_count?: number } }; avoided_systems?: NavigationSystem[]; jumps: JumpFreighterJump[]; map_context?: OperationalMapContext; station_cyno_guide: { station_type: string; range_km?: number | null; risk: string; note: string }[]; notes: string[] };
 
 type IndustrialThreatRank = { name: string; count: number; total_value?: number };
 
@@ -101,13 +103,19 @@ type LocalThreatPilot = { input_name: string; name: string; resolved: boolean; c
 type LocalThreatAnalysis = { generated_at: string; days: number; input_count: number; resolved_count: number; zkill_analyzed_count: number; max_pilots: number; zkill_detail_limit: number; errors: string[]; pilots: LocalThreatPilot[] };
 
 type LocalThreatJob = { job_id: string; status: "queued" | "running" | "cancelling" | "cancelled" | "complete" | "failed"; created_at: string; updated_at?: string | null; completed_at?: string | null; total_count: number; processed_count: number; batch: number; total_batches: number; visible_limit: number; analysis: LocalThreatAnalysis };
-type MarketHub = { key: string; label: string; region_id?: number | null; location_id?: number | null; system_id?: number | null; system_name?: string | null; npc_group?: boolean; available: boolean };
+type MarketHub = { key: string; label: string; region_id?: number | null; region_name?: string | null; location_id?: number | null; system_id?: number | null; system_name?: string | null; npc_group?: boolean; available: boolean };
 
 type MarketHubQuote = { buy?: number | null; sell?: number | null; split?: number | null; buy_total?: number | null; sell_total?: number | null; split_total?: number | null; buy_orders: number; sell_orders: number; buy_source?: string | null; sell_source?: string | null };
 
 type MarketItemQuote = { input: string; name: string; quantity: number; type_id?: number | null; type_name?: string | null; matched: boolean; ambiguous_matches: { type_id: number; name: string }[]; hubs: Record<string, MarketHubQuote> };
 
 type MarketAppraisal = { hubs: MarketHub[]; items: MarketItemQuote[]; totals: Record<string, { buy_total: number; sell_total: number; split_total: number }>; unmatched_count: number };
+
+type MarketSeed = { text: string; nonce: number };
+
+type FittingSeed = { text: string; nonce: number };
+
+type AssetTableSeed = { key: AssetFilterKey; value: string; mode: AssetFilter["mode"]; nonce: number };
 
 type ContractToken = { token_id: number; character_id: number; character_name: string; user_id: number; user_display_name: string; corporation_id?: number | null; corporation_name?: string | null; has_character_contract_scope: boolean; has_corporation_contract_scope: boolean };
 
@@ -322,15 +330,23 @@ function bestMarketForItem(item: MarketItemQuote, hubs: MarketHub[]): MarketItem
 
   const highestSplit = quotes.filter(({ quote }) => quote?.split != null).sort((left, right) => (right.quote?.split ?? -Infinity) - (left.quote?.split ?? -Infinity))[0];
 
-  const unitMargin = lowestSell?.quote?.sell != null && highestBuy?.quote?.buy != null ? highestBuy.quote.buy - lowestSell.quote.sell : null;
+  const tradePairs = quotes.flatMap((buyQuote) => quotes
+    .filter((sellQuote) => buyQuote.hub.key !== sellQuote.hub.key && buyQuote.quote?.sell != null && sellQuote.quote?.buy != null)
+    .map((sellQuote) => ({
+      buyHubLabel: buyQuote.hub.label,
+      sellHubLabel: sellQuote.hub.label,
+      margin: ((sellQuote.quote?.buy ?? 0) - (buyQuote.quote?.sell ?? 0)) * item.quantity,
+    })));
+
+  const bestTrade = tradePairs.sort((left, right) => right.margin - left.margin)[0];
 
   return {
     lowestSellKey: lowestSell?.hub.key,
     highestBuyKey: highestBuy?.hub.key,
     highestSplitKey: highestSplit?.hub.key,
-    margin: unitMargin == null ? null : unitMargin * item.quantity,
-    buyHubLabel: lowestSell?.hub.label,
-    sellHubLabel: highestBuy?.hub.label,
+    margin: bestTrade?.margin ?? null,
+    buyHubLabel: bestTrade?.buyHubLabel,
+    sellHubLabel: bestTrade?.sellHubLabel,
   };
 
 }
@@ -687,6 +703,12 @@ function App() {
 
   const [profileFocus, setProfileFocus] = useState<ProfileFocus | null>(null);
 
+  const [marketSeed, setMarketSeed] = useState<MarketSeed | null>(null);
+
+  const [fittingSeed, setFittingSeed] = useState<FittingSeed | null>(null);
+
+  const [assetSeed, setAssetSeed] = useState<AssetTableSeed | null>(null);
+
   const [data, setData] = useState<AppData>(emptyData);
 
   const [error, setError] = useState<string | null>(null);
@@ -1027,7 +1049,7 @@ function App() {
 
         {activeTab === "navigation" && canView("navigation") && <NavigationPlanner currentUser={user} />}
 
-        {activeTab === "market" && canView("market") && <MarketAppraisalPage />}
+        {activeTab === "market" && canView("market") && <MarketAppraisalPage seed={marketSeed} assets={data.assets} onOpenAssets={(itemName) => { setAssetSeed({ key: "item", value: itemName, mode: "exact", nonce: Date.now() }); setActiveTab("assets"); }} onOpenFittings={(itemName) => { setFittingSeed({ text: itemName, nonce: Date.now() }); setActiveTab("fittings"); }} />}
 
         {activeTab === "contracts" && canView("contracts") && <ContractsPage currentUser={user} />}
 
@@ -1035,15 +1057,15 @@ function App() {
 
         {activeTab === "skills" && canView("skills") && <CharacterSkills currentUser={user} />}
 
-        {activeTab === "fittings" && canView("fittings") && <Fittings currentUser={user} />}
+        {activeTab === "fittings" && canView("fittings") && <Fittings currentUser={user} assets={data.assets} seed={fittingSeed} onOpenAssets={(itemName) => { setAssetSeed(itemName ? { key: "item", value: itemName, mode: "exact", nonce: Date.now() } : { key: "item", value: "", mode: "contains", nonce: Date.now() }); setActiveTab("assets"); }} onOpenMarket={(text) => { setMarketSeed({ text, nonce: Date.now() }); setActiveTab("market"); }} />}
 
         {activeTab === "settings" && canView("settings") && <SettingsPage currentUser={user} />}
 
         {activeTab === "corporations" && canView("corporations") && <Corporations loadAssets={load} />}
 
-        {activeTab === "assets" && canView("assets") && <Assets data={data} submit={submit} ownerOptions={ownerOptions} typeOptions={typeOptions} locationOptions={locationOptions} />}
+        {activeTab === "assets" && canView("assets") && <Assets data={data} seed={assetSeed} submit={submit} ownerOptions={ownerOptions} typeOptions={typeOptions} locationOptions={locationOptions} onOpenFittings={(itemName) => { setFittingSeed({ text: itemName, nonce: Date.now() }); setActiveTab("fittings"); }} onOpenMarket={(text) => { setMarketSeed({ text, nonce: Date.now() }); setActiveTab("market"); }} />}
 
-        {activeTab === "industry" && canView("industry") && <Industry data={data} submit={submit} ownerOptions={ownerOptions} typeOptions={typeOptions} locationOptions={locationOptions} activityOptions={activityOptions} />}
+        {activeTab === "industry" && canView("industry") && <Industry data={data} submit={submit} ownerOptions={ownerOptions} typeOptions={typeOptions} locationOptions={locationOptions} activityOptions={activityOptions} onOpenMarket={(text) => { setMarketSeed({ text, nonce: Date.now() }); setActiveTab("market"); }} onOpenAssets={(itemName) => { setAssetSeed({ key: "item", value: itemName, mode: "exact", nonce: Date.now() }); setActiveTab("assets"); }} />}
 
         {activeTab === "esi" && canView("esi") && <Esi load={load} currentUser={user} />}
 
@@ -1637,6 +1659,7 @@ function JumpFreighterPlanner({ currentUser }: { currentUser: UserAccount }) {
 
   const [ship, setShip] = useState("Rhea");
   const [killFilter, setKillFilter] = useState("industrial");
+  const [jumpActivityHours, setJumpActivityHours] = useState(6);
 
   const [jdc, setJdc] = useState(5);
 
@@ -1645,6 +1668,8 @@ function JumpFreighterPlanner({ currentUser }: { currentUser: UserAccount }) {
   const [contextHops, setContextHops] = useState(1);
 
   const [stationSafety, setStationSafety] = useState("any");
+
+  const [avoidSystems, setAvoidSystems] = useState<NavigationSystem[]>([]);
 
   const [route, setRoute] = useState<JumpFreighterRoute | null>(null);
 
@@ -1713,7 +1738,60 @@ function JumpFreighterPlanner({ currentUser }: { currentUser: UserAccount }) {
 
 
 
-  async function plotRoute(event?: FormEvent) {
+
+  function replotWithAvoid(nextAvoidSystems: NavigationSystem[]) {
+
+    if (route) void plotRoute(undefined, nextAvoidSystems);
+
+  }
+
+  function addAvoidSystem(system: NavigationSystem) {
+
+    if (system.system_id === route?.origin.system_id || system.system_id === route?.destination.system_id) {
+
+      setError("Origin and destination cannot be avoided for this route.");
+
+      return;
+
+    }
+
+    setAvoidSystems((current) => {
+
+      if (current.some((entry) => entry.system_id === system.system_id)) return current;
+
+      const next = [...current, system];
+
+      replotWithAvoid(next);
+
+      return next;
+
+    });
+
+  }
+
+  function removeAvoidSystem(systemId: number) {
+
+    setAvoidSystems((current) => {
+
+      const next = current.filter((system) => system.system_id !== systemId);
+
+      replotWithAvoid(next);
+
+      return next;
+
+    });
+
+  }
+
+  function clearAvoidSystems() {
+
+    setAvoidSystems([]);
+
+    replotWithAvoid([]);
+
+  }
+
+  async function plotRoute(event?: FormEvent, overrideAvoidSystems = avoidSystems) {
 
     event?.preventDefault();
 
@@ -1727,7 +1805,9 @@ function JumpFreighterPlanner({ currentUser }: { currentUser: UserAccount }) {
 
     try {
 
-      const params = new URLSearchParams({ origin, destination, ship, jump_drive_calibration: String(jdc), jump_fuel_conservation: String(jfc), context_gate_hops: String(contextHops), station_safety: stationSafety, kill_filter: killFilter });
+      const params = new URLSearchParams({ origin, destination, ship, jump_drive_calibration: String(jdc), jump_fuel_conservation: String(jfc), context_gate_hops: String(contextHops), station_safety: stationSafety, kill_filter: killFilter, jump_activity_hours: String(jumpActivityHours) });
+
+      if (overrideAvoidSystems.length > 0) params.set("avoid_systems", overrideAvoidSystems.map((system) => system.name).join(","));
 
       setRoute(await api<JumpFreighterRoute>(`/navigation/jump-freighter/route?${params.toString()}`));
 
@@ -1751,7 +1831,7 @@ function JumpFreighterPlanner({ currentUser }: { currentUser: UserAccount }) {
 
 
 
-  return <section className="panel stacked jf-planner"><div className="section-heading"><div><h3>Capital Jump Plotter</h3><p>NPC-station-only capital jump routes with fuel math, cyno guidance, and 24h kill checks.</p></div>{route && <span className="version-badge">{route.ship.name} · {route.max_range_ly} LY</span>}</div><form className="route-form jf-form" onSubmit={(event) => void plotRoute(event)}><SystemSearchField label="Origin" value={origin} options={originOptions} placeholder="Jita" onChange={(value) => { originSelectionRef.current = ""; setOrigin(value); }} onPick={pickOrigin} /><SystemSearchField label="Cyno destination" value={destination} options={destinationOptions} placeholder="Tama" onChange={(value) => { destinationSelectionRef.current = ""; setDestination(value); }} onPick={pickDestination} /><label>Ship<select value={ship} onChange={(event) => setShip(event.target.value)}><optgroup label="Jump Freighters"><option>Rhea</option><option>Ark</option><option>Anshar</option><option>Nomad</option></optgroup><optgroup label="Industrial Capital"><option>Rorqual</option></optgroup><optgroup label="Carriers"><option>Archon</option><option>Chimera</option><option>Nidhoggur</option><option>Thanatos</option></optgroup><optgroup label="Command Carriers"><option>Salvation</option><option>Simurgh</option><option>Gaia</option><option>Ymir</option></optgroup><optgroup label="Dreadnoughts"><option>Revelation</option><option>Moros</option><option>Phoenix</option><option>Naglfar</option><option>Chemosh</option><option>Vehement</option><option>Caiman</option><option>Zirnitra</option><option>Sarathiel</option><option>Revelation Navy Issue</option><option>Moros Navy Issue</option><option>Phoenix Navy Issue</option><option>Naglfar Fleet Issue</option></optgroup><optgroup label="Lancer Dreadnoughts"><option>Bane</option><option>Hubris</option><option>Karura</option><option>Valravn</option></optgroup><optgroup label="Force Auxiliaries"><option>Apostle</option><option>Minokawa</option><option>Lif</option><option>Ninazu</option><option>Dagon</option><option>Loggerhead</option></optgroup><optgroup label="Supercarriers"><option>Aeon</option><option>Wyvern</option><option>Hel</option><option>Nyx</option><option>Revenant</option><option>Vendetta</option></optgroup><optgroup label="Titans"><option>Avatar</option><option>Leviathan</option><option>Ragnarok</option><option>Erebus</option><option>Vanquisher</option><option>Molok</option><option>Komodo</option><option>Azariel</option></optgroup></select></label><label>JDC<input type="number" min="0" max="5" value={jdc} onChange={(event) => setJdc(Number(event.target.value))} /></label><label>JFC<input type="number" min="0" max="5" value={jfc} onChange={(event) => setJfc(Number(event.target.value))} /></label><label>Context<select value={contextHops} onChange={(event) => setContextHops(Number(event.target.value))}><option value={0}>Route only</option><option value={1}>1 gate hop</option><option value={2}>2 gate hops</option></select></label><label>Station safety<select value={stationSafety} onChange={(event) => setStationSafety(event.target.value)}><option value="any">Any NPC station</option><option value="avoid_red_only">Avoid red-only</option><option value="green">Only green stations</option></select></label><label className="checkbox-row"><input type="checkbox" checked={killFilter === "industrial"} onChange={(event) => setKillFilter(event.target.checked ? "industrial" : "all")} /> Industrial kills only</label><button type="submit" disabled={busy || !origin.trim() || !destination.trim()}><MapIcon size={18} /> {busy ? "Plotting" : "Plot capital route"}</button></form>{error && <div className="mini-alert">{error}</div>}{route && <><div className="gatecheck-summary"><Metric icon={<MapIcon size={18} />} label="Jumps" value={route.jump_count} delta={`${route.total_distance_ly} LY`} /><Metric icon={<Database size={18} />} label="Fuel" value={numberFormatter.format(route.total_fuel_units)} delta={route.ship.fuel_type_name} /><Metric icon={<Activity size={18} />} label="Range" value={`${route.max_range_ly} LY`} delta={`${route.ship.ship_class ?? "Capital"} · JDC ${route.skills.jump_drive_calibration}`} /><Metric icon={<Factory size={18} />} label="Fuel skill" value={`JFC ${route.skills.jump_fuel_conservation}`} delta={`${numberFormatter.format(route.ship.base_fuel_per_light_year)}/LY base`} /><Metric icon={<Factory size={18} />} label="Station safety" value={route.station_safety?.label ?? "Any NPC station"} delta="cyno target filter" /><Metric icon={<Activity size={18} />} label="Kill display" value={route.kill_filter?.label ?? "Industrial kills only"} delta="24h cached samples" /></div><div className="jf-notes">{route.notes.map((note) => <span key={note}>{note}</span>)}</div><OperationalMap title="Operational Map" subtitle={`${route.origin.name} to ${route.destination.name} · ${route.jump_count.toLocaleString()} jumps`} badge={`${route.total_distance_ly} LY`} routeSystems={[route.origin, ...route.jumps.map((jump) => jump.to_system)].map((system, index) => ({ ...system, map_index: index, label: `${index}. ${system.name}`, meta: `${system.region_name ?? "Unknown region"} · ${eveSecurityLabel(system.security_status)}`, selected_key: index > 0 ? String(route.jumps[index - 1].jump_index) : null, segment_label: index > 0 ? `${route.jumps[index - 1].distance_ly} LY` : null }))} mapContext={route.map_context} selectedKey={expandedJump ? String(expandedJump) : null} onSelectRouteSystem={(key) => setExpandedJump(key ? Number(key) : null)} /><div className="jf-jump-list">{route.jumps.map((jump) => { const expanded = expandedJump === jump.jump_index; return <article key={jump.jump_index} className="jf-jump"><button type="button" onClick={() => setExpandedJump(expanded ? null : jump.jump_index)}><span className="route-index">{jump.jump_index}</span><strong>{jump.from_system.name} to {jump.to_system.name}</strong><span>{jump.distance_ly} LY · {numberFormatter.format(jump.fuel_units)} {route.ship.fuel_type_name}</span><span className={`security-badge ${eveSecurityClass(jump.to_system.security_status)}`}>{eveSecurityLabel(jump.to_system.security_status)}</span><span className={`risk-badge risk-${(jump.kills_24h ?? jump.industrial_kills_24h).count > 0 ? "active" : "quiet"}`}>{(jump.kills_24h ?? jump.industrial_kills_24h).count} {route.kill_filter?.mode === "all" ? "kills" : "industrial kills"} / 24h</span></button>{expanded && <div className="jf-jump-detail"><section><h4>Stations in {jump.to_system.name}</h4>{jump.stations.length > 0 ? <div className="jf-stations">{jump.stations.map((station) => <div key={station.station_id} className={`station-risk station-${station.cyno_guidance.risk}`}><strong>{station.name}</strong><span>{station.type_name ?? "Unknown station type"}</span><span>{station.operation_name ?? "Unknown operation"}</span><span>{station.cyno_guidance.range_km ? `${station.cyno_guidance.range_km} km docking guide` : "No docking range guide"}</span><small>{station.cyno_guidance.note}</small>{station.cyno_guidance.reference_links?.length ? <div className="cyno-reference-links">{station.cyno_guidance.reference_links.map((link) => <a key={link.url} href={link.url} target="_blank" rel="noreferrer">{link.label}</a>)}</div> : null}</div>)}</div> : <p className="empty">No NPC stations imported for this target system yet.</p>}</section><section><h4>{route.kill_filter?.mode === "all" ? "All kills" : "Industrial kills"}, last 24h</h4>{(jump.kills_24h ?? jump.industrial_kills_24h).sample_killmails.length > 0 ? <div className="killmail-detail-list jf-kills">{(jump.kills_24h ?? jump.industrial_kills_24h).sample_killmails.map((kill) => <article key={kill.killmail_id}><div><strong>{kill.victim_hull ?? "Unknown hull"}</strong>{kill.smartbomb_used && <span className="smartbomb-badge">Smartbombs</span>}<span className="killmail-entity-line"><EveEntityIcon kind="character" id={kill.victim_character_id} name={kill.victim_character_name} size="tiny" />{kill.victim_character_name ?? "Unknown pilot"}{kill.victim_corporation_id && <EveEntityIcon kind="corporation" id={kill.victim_corporation_id} name={kill.victim_corporation_name} size="tiny" />}{kill.victim_corporation_name ? ` · ${kill.victim_corporation_name}` : ""}{kill.victim_alliance_id && <EveEntityIcon kind="alliance" id={kill.victim_alliance_id} name={kill.victim_alliance_name} size="tiny" />}{kill.victim_alliance_name ? ` · ${kill.victim_alliance_name}` : ""}</span><span>{kill.location_kind ?? "space"} · {kill.location_name ?? "Unknown location"}</span>{kill.killmail_time && <span>{formatDateTime(kill.killmail_time, timeZone)}</span>}</div><div><span>{kill.attacker_count ?? "?"} attackers</span><span className="killmail-entity-line"><EveEntityIcon kind="character" id={kill.final_blow_character_id} name={kill.final_blow_character_name} size="tiny" />Final blow: {kill.final_blow_ship_type_name ?? "Unknown ship"} · {kill.final_blow_character_name ?? "Unknown pilot"}{kill.final_blow_corporation_id && <EveEntityIcon kind="corporation" id={kill.final_blow_corporation_id} name={kill.final_blow_corporation_name} size="tiny" />}{kill.final_blow_corporation_name ? ` · ${kill.final_blow_corporation_name}` : ""}{kill.final_blow_alliance_id && <EveEntityIcon kind="alliance" id={kill.final_blow_alliance_id} name={kill.final_blow_alliance_name} size="tiny" />}{kill.final_blow_alliance_name ? ` · ${kill.final_blow_alliance_name}` : ""}</span>{kill.zkb_url && <a href={kill.zkb_url} target="_blank" rel="noreferrer">Open killmail #{kill.killmail_id}</a>}</div></article>)}</div> : <p className="empty">No cached {route.kill_filter?.mode === "all" ? "kills" : "industrial kills"} in the last 24 hours.</p>}</section></div>}</article>; })}</div><section className="station-guide"><h4>Station Cyno Risk Reference</h4><p>EQM-rendered reference from pilot-provided station docking/cyno guidance. Use it as planning support, not a replacement for practiced bookmarks.</p><div>{route.station_cyno_guide.map((row) => <span key={row.station_type} className={`station-risk station-${row.risk}`}><strong>{row.station_type}</strong><small>{row.range_km ?? "?"} km · {row.risk}</small></span>)}</div></section></>}</section>;
+  return <section className="panel stacked jf-planner"><div className="section-heading"><div><h3>Capital Jump Plotter</h3><p>NPC-station-only capital jump routes with fuel math, cyno guidance, and 24h kill checks.</p></div>{route && <span className="version-badge">{route.ship.name} · {route.max_range_ly} LY</span>}</div><form className="route-form jf-form" onSubmit={(event) => void plotRoute(event)}><SystemSearchField label="Origin" value={origin} options={originOptions} placeholder="Jita" onChange={(value) => { originSelectionRef.current = ""; setOrigin(value); }} onPick={pickOrigin} /><SystemSearchField label="Cyno destination" value={destination} options={destinationOptions} placeholder="Tama" onChange={(value) => { destinationSelectionRef.current = ""; setDestination(value); }} onPick={pickDestination} /><label>Ship<select value={ship} onChange={(event) => setShip(event.target.value)}><optgroup label="Jump Freighters"><option>Rhea</option><option>Ark</option><option>Anshar</option><option>Nomad</option></optgroup><optgroup label="Industrial Capital"><option>Rorqual</option></optgroup><optgroup label="Carriers"><option>Archon</option><option>Chimera</option><option>Nidhoggur</option><option>Thanatos</option></optgroup><optgroup label="Command Carriers"><option>Salvation</option><option>Simurgh</option><option>Gaia</option><option>Ymir</option></optgroup><optgroup label="Dreadnoughts"><option>Revelation</option><option>Moros</option><option>Phoenix</option><option>Naglfar</option><option>Chemosh</option><option>Vehement</option><option>Caiman</option><option>Zirnitra</option><option>Sarathiel</option><option>Revelation Navy Issue</option><option>Moros Navy Issue</option><option>Phoenix Navy Issue</option><option>Naglfar Fleet Issue</option></optgroup><optgroup label="Lancer Dreadnoughts"><option>Bane</option><option>Hubris</option><option>Karura</option><option>Valravn</option></optgroup><optgroup label="Force Auxiliaries"><option>Apostle</option><option>Minokawa</option><option>Lif</option><option>Ninazu</option><option>Dagon</option><option>Loggerhead</option></optgroup><optgroup label="Supercarriers"><option>Aeon</option><option>Wyvern</option><option>Hel</option><option>Nyx</option><option>Revenant</option><option>Vendetta</option></optgroup><optgroup label="Titans"><option>Avatar</option><option>Leviathan</option><option>Ragnarok</option><option>Erebus</option><option>Vanquisher</option><option>Molok</option><option>Komodo</option><option>Azariel</option></optgroup></select></label><label>JDC<input type="number" min="0" max="5" value={jdc} onChange={(event) => setJdc(Number(event.target.value))} /></label><label>JFC<input type="number" min="0" max="5" value={jfc} onChange={(event) => setJfc(Number(event.target.value))} /></label><label>Context<select value={contextHops} onChange={(event) => setContextHops(Number(event.target.value))}><option value={0}>Route only</option><option value={1}>1 gate hop</option><option value={2}>2 gate hops</option></select></label><label>Station safety<select value={stationSafety} onChange={(event) => setStationSafety(event.target.value)}><option value="any">Any NPC station</option><option value="avoid_red_only">Avoid red-only</option><option value="green">Only green stations</option></select></label><label className="checkbox-row"><input type="checkbox" checked={killFilter === "industrial"} onChange={(event) => setKillFilter(event.target.checked ? "industrial" : "all")} /> Industrial kills only</label><label>Observed activity<select value={jumpActivityHours} onChange={(event) => setJumpActivityHours(Number(event.target.value))}>{[1, 3, 6, 9, 12, 15, 18, 21, 24].map((hours) => <option key={hours} value={hours}>{hours}h</option>)}</select></label><button type="submit" disabled={busy || !origin.trim() || !destination.trim()}><MapIcon size={18} /> {busy ? "Plotting" : "Plot capital route"}</button></form>{avoidSystems.length > 0 && <div className="avoid-list-panel"><div><strong>Avoiding</strong><span>{avoidSystems.length} system{avoidSystems.length === 1 ? "" : "s"}</span></div><div className="avoid-chip-row">{avoidSystems.map((system) => <button type="button" key={system.system_id} className={`avoid-chip ${eveSecurityClass(system.security_status)}`} onClick={() => removeAvoidSystem(system.system_id)}>{system.name} x</button>)}<button type="button" className="avoid-clear" onClick={clearAvoidSystems}>Clear avoid list</button></div></div>}{error && <div className="mini-alert">{error}</div>}{route && <><div className="gatecheck-summary"><Metric icon={<MapIcon size={18} />} label="Jumps" value={route.jump_count} delta={`${route.total_distance_ly} LY`} /><Metric icon={<Database size={18} />} label="Fuel" value={numberFormatter.format(route.total_fuel_units)} delta={route.ship.fuel_type_name} /><Metric icon={<Activity size={18} />} label="Range" value={`${route.max_range_ly} LY`} delta={`${route.ship.ship_class ?? "Capital"} · JDC ${route.skills.jump_drive_calibration}`} /><Metric icon={<Factory size={18} />} label="Fuel skill" value={`JFC ${route.skills.jump_fuel_conservation}`} delta={`${numberFormatter.format(route.ship.base_fuel_per_light_year)}/LY base`} /><Metric icon={<Factory size={18} />} label="Station safety" value={route.station_safety?.label ?? "Any NPC station"} delta="cyno target filter" /><Metric icon={<Activity size={18} />} label="Kill display" value={route.kill_filter?.label ?? "Industrial kills only"} delta="24h cached samples" /><Metric icon={<Activity size={18} />} label={`Observed Activity (${route.jump_activity?.hours ?? jumpActivityHours}h)`} value={route.jump_activity?.cache?.refreshed ? "refreshed" : "cached"} delta="hourly ESI samples" /></div><div className="jf-notes">{route.notes.map((note) => <span key={note}>{note}</span>)}</div><OperationalMap title="Operational Map" subtitle={`${route.origin.name} to ${route.destination.name} · ${route.jump_count.toLocaleString()} jumps`} badge={`${route.total_distance_ly} LY`} routeSystems={[route.origin, ...route.jumps.map((jump) => jump.to_system)].map((system, index) => ({ ...system, map_index: index, label: `${index}. ${system.name}`, meta: `${system.region_name ?? "Unknown region"} · ${eveSecurityLabel(system.security_status)}`, selected_key: index > 0 ? String(route.jumps[index - 1].jump_index) : null, segment_label: index > 0 ? `${route.jumps[index - 1].distance_ly} LY` : null }))} mapContext={route.map_context} selectedKey={expandedJump ? String(expandedJump) : null} onSelectRouteSystem={(key) => setExpandedJump(key ? Number(key) : null)} /><div className="jf-jump-list">{route.jumps.map((jump) => { const expanded = expandedJump === jump.jump_index; return <article key={jump.jump_index} className="jf-jump"><button type="button" onClick={() => setExpandedJump(expanded ? null : jump.jump_index)}><span className="route-index">{jump.jump_index}</span><strong>{jump.from_system.name} to {jump.to_system.name}</strong><span>{jump.distance_ly} LY · {numberFormatter.format(jump.fuel_units)} {route.ship.fuel_type_name}</span><span className={`security-badge ${eveSecurityClass(jump.to_system.security_status)}`}>{eveSecurityLabel(jump.to_system.security_status)}</span><span className={`risk-badge risk-${(jump.kills_24h ?? jump.industrial_kills_24h).count > 0 ? "active" : "quiet"}`}>{(jump.kills_24h ?? jump.industrial_kills_24h).count} {route.kill_filter?.mode === "all" ? "kills" : "industrial kills"} / 24h</span>{jump.jump_activity && <span className={`intel-badge intel-${(jump.jump_activity.activity_label ?? "unknown").replace(/\s+/g, "-").toLowerCase()}`} title={`Observed Activity (${jump.jump_activity.hours}h): ${jump.jump_activity.total_jumps.toLocaleString()} jumps, ${jump.jump_activity.jumps_per_hour.toLocaleString()} jumps/hr, confidence ${jump.jump_activity.confidence} from ${jump.jump_activity.observations} observations`}>{jump.jump_activity.activity_label} · {jump.jump_activity.total_jumps.toLocaleString()} jumps / {jump.jump_activity.hours}h · {jump.jump_activity.confidence}</span>}</button><div className="jf-jump-actions"><button type="button" disabled={jump.to_system.system_id === route.destination.system_id || avoidSystems.some((system) => system.system_id === jump.to_system.system_id)} onClick={() => addAvoidSystem(jump.to_system)}>{jump.to_system.system_id === route.destination.system_id ? "Destination" : avoidSystems.some((system) => system.system_id === jump.to_system.system_id) ? "Avoiding" : `Avoid ${jump.to_system.name}`}</button></div>{expanded && <div className="jf-jump-detail"><section><h4>Stations in {jump.to_system.name}</h4>{jump.stations.length > 0 ? <div className="jf-stations">{jump.stations.map((station) => <div key={station.station_id} className={`station-risk station-${station.cyno_guidance.risk}`}><strong>{station.name}</strong><span>{station.type_name ?? "Unknown station type"}</span><span>{station.operation_name ?? "Unknown operation"}</span><span>{station.cyno_guidance.range_km ? `${station.cyno_guidance.range_km} km docking guide` : "No docking range guide"}</span><small>{station.cyno_guidance.note}</small>{station.cyno_guidance.reference_links?.length ? <div className="cyno-reference-links">{station.cyno_guidance.reference_links.map((link) => <a key={link.url} href={link.url} target="_blank" rel="noreferrer">{link.label}</a>)}</div> : null}</div>)}</div> : <p className="empty">No NPC stations imported for this target system yet.</p>}</section><section><h4>{route.kill_filter?.mode === "all" ? "All kills" : "Industrial kills"}, last 24h</h4>{(jump.kills_24h ?? jump.industrial_kills_24h).sample_killmails.length > 0 ? <div className="killmail-detail-list jf-kills">{(jump.kills_24h ?? jump.industrial_kills_24h).sample_killmails.map((kill) => <article key={kill.killmail_id}><div><strong>{kill.victim_hull ?? "Unknown hull"}</strong>{kill.smartbomb_used && <span className="smartbomb-badge">Smartbombs</span>}<span className="killmail-entity-line"><EveEntityIcon kind="character" id={kill.victim_character_id} name={kill.victim_character_name} size="tiny" />{kill.victim_character_name ?? "Unknown pilot"}{kill.victim_corporation_id && <EveEntityIcon kind="corporation" id={kill.victim_corporation_id} name={kill.victim_corporation_name} size="tiny" />}{kill.victim_corporation_name ? ` · ${kill.victim_corporation_name}` : ""}{kill.victim_alliance_id && <EveEntityIcon kind="alliance" id={kill.victim_alliance_id} name={kill.victim_alliance_name} size="tiny" />}{kill.victim_alliance_name ? ` · ${kill.victim_alliance_name}` : ""}</span><span>{kill.location_kind ?? "space"} · {kill.location_name ?? "Unknown location"}</span>{kill.killmail_time && <span>{formatDateTime(kill.killmail_time, timeZone)}</span>}</div><div><span>{kill.attacker_count ?? "?"} attackers</span><span className="killmail-entity-line"><EveEntityIcon kind="character" id={kill.final_blow_character_id} name={kill.final_blow_character_name} size="tiny" />Final blow: {kill.final_blow_ship_type_name ?? "Unknown ship"} · {kill.final_blow_character_name ?? "Unknown pilot"}{kill.final_blow_corporation_id && <EveEntityIcon kind="corporation" id={kill.final_blow_corporation_id} name={kill.final_blow_corporation_name} size="tiny" />}{kill.final_blow_corporation_name ? ` · ${kill.final_blow_corporation_name}` : ""}{kill.final_blow_alliance_id && <EveEntityIcon kind="alliance" id={kill.final_blow_alliance_id} name={kill.final_blow_alliance_name} size="tiny" />}{kill.final_blow_alliance_name ? ` · ${kill.final_blow_alliance_name}` : ""}</span>{kill.zkb_url && <a href={kill.zkb_url} target="_blank" rel="noreferrer">Open killmail #{kill.killmail_id}</a>}</div></article>)}</div> : <p className="empty">No cached {route.kill_filter?.mode === "all" ? "kills" : "industrial kills"} in the last 24 hours.</p>}</section></div>}</article>; })}</div><section className="station-guide"><h4>Station Cyno Risk Reference</h4><p>EQM-rendered reference from pilot-provided station docking/cyno guidance. Use it as planning support, not a replacement for practiced bookmarks.</p><div>{route.station_cyno_guide.map((row) => <span key={row.station_type} className={`station-risk station-${row.risk}`}><strong>{row.station_type}</strong><small>{row.range_km ?? "?"} km · {row.risk}</small></span>)}</div></section></>}</section>;
 
 }
 
@@ -2936,7 +3016,7 @@ function UsersAdmin({ currentUser }: { currentUser: UserAccount }) {
 
 }
 
-function MarketAppraisalPage() {
+function MarketAppraisalPage({ seed, assets, onOpenAssets, onOpenFittings }: { seed?: MarketSeed | null; assets: Asset[]; onOpenAssets: (itemName: string) => void; onOpenFittings: (itemName: string) => void }) {
 
   const defaultText = "Interdiction Nullifier I 1\ninterdiction nullfier x1\n1 Interdiction Nullifier II\n1x Interdiction Nullifier I";
 
@@ -2954,12 +3034,35 @@ function MarketAppraisalPage() {
 
   const selectedResultHubs = useMemo(() => result?.hubs ?? hubs.filter((hub) => selectedHubs.includes(hub.key)), [hubs, result?.hubs, selectedHubs]);
 
+  useEffect(() => {
+
+    if (!seed?.text) return;
+
+    setText(seed.text);
+
+    setResult(null);
+
+    setError(null);
+
+  }, [seed?.nonce]);
+
+  function ownedSummaryForQuote(item: MarketItemQuote) {
+
+    const matches = assets.filter((asset) => item.type_id ? asset.type_id === item.type_id : asset.type_name.toLowerCase() === (item.type_name ?? item.name).toLowerCase());
+
+    const quantity = matches.reduce((total, asset) => total + asset.quantity, 0);
+
+    const locations = matches.slice(0, 3).map((asset) => `${asset.owner_name} @ ${asset.location_name ?? "Unknown"}${asset.location_flag ? ` (${asset.location_flag})` : ""}`);
+
+    return { quantity, locations };
+
+  }
   const marketInsights = useMemo(() => {
 
     if (!result) return [];
 
     return result.items.map((item, index) => ({ key: `${item.input}-${index}`, item, best: bestMarketForItem(item, selectedResultHubs) }))
-      .filter(({ best }) => best.margin != null && best.buyHubLabel && best.sellHubLabel)
+      .filter(({ best }) => best.margin != null && best.margin > 0 && best.buyHubLabel && best.sellHubLabel)
       .sort((left, right) => (right.best.margin ?? 0) - (left.best.margin ?? 0))
       .slice(0, 5);
 
@@ -3048,7 +3151,7 @@ function MarketAppraisalPage() {
           {hubs.map((hub) => <label key={hub.key} className={`market-hub-option ${selectedHubs.includes(hub.key) ? "active" : ""} ${!hub.available ? "disabled" : ""}`}>
             <input type="checkbox" checked={selectedHubs.includes(hub.key)} disabled={!hub.available} onChange={() => toggleHub(hub.key)} />
             <strong>{hub.label}</strong>
-            <span>{hub.npc_group ? "best NPC hub" : hub.system_name ?? `region ${hub.region_id}`}</span>
+            <span>{hub.npc_group ? "best NPC hub" : hub.region_name ? `${hub.region_name} · region ${hub.region_id}` : hub.system_name ? `${hub.system_name} · region not resolved` : hub.region_id ? `region ${hub.region_id}` : "region not resolved"}</span>
           </label>)}
         </div>
         <p className="muted">C-N4OD and Dudreda use imported SDE system data to locate their market region.</p>
@@ -3071,13 +3174,13 @@ function MarketAppraisalPage() {
         })}
       </div>
 
-      {marketInsights.length > 0 && <div className="market-margin-hints">
-        {marketInsights.map(({ key, item, best }) => <article key={key} className={`market-margin-card ${(best.margin ?? 0) >= 0 ? "positive" : "negative"}`}>
+      {marketInsights.length > 0 ? <div className="market-margin-hints">
+        {marketInsights.map(({ key, item, best }) => <article key={key} className="market-margin-card positive">
           <strong>{item.type_name ?? item.name}</strong>
           <span>Buy at {best.buyHubLabel} / sell to {best.sellHubLabel}</span>
-          <b>{(best.margin ?? 0) >= 0 ? "+" : ""}{formatMarketIsk(best.margin)}</b>
+          <b>+{formatMarketIsk(best.margin)}</b>
         </article>)}
-      </div>}
+      </div> : <div className="market-no-profit">No profitable station-to-station orders right now.</div>}
 
       <div className="market-legend">
         <span><i className="legend-dot healthy" /> Best instant sale or cheapest acquisition</span>
@@ -3095,10 +3198,15 @@ function MarketAppraisalPage() {
           <tbody>
             {result.items.map((item, index) => {
               const best = bestMarketForItem(item, selectedResultHubs);
+              const owned = ownedSummaryForQuote(item);
+              const itemName = item.type_name ?? item.name;
               return <tr key={`${item.input}-${index}`}>
                 <td>
-                  <strong>{item.type_name ?? item.name}</strong>
+                  <strong>{itemName}</strong>
                   <span>{item.matched ? `Type ${item.type_id}` : "No SDE match"}</span>
+                  <span className={owned.quantity > 0 ? "context-owned" : "context-missing"}>Owned {numberFormatter.format(owned.quantity)}</span>
+                  {owned.locations.length > 0 && <small>{owned.locations.join(" | ")}</small>}
+                  <div className="context-actions"><button type="button" onClick={() => onOpenAssets(itemName)}>Assets</button><button type="button" onClick={() => onOpenFittings(itemName)}>Fits</button></div>
                   {item.ambiguous_matches.length > 0 && <small>Also saw: {item.ambiguous_matches.map((match) => match.name).join(", ")}</small>}
                 </td>
                 <td>{numberFormatter.format(item.quantity)}</td>
@@ -3822,15 +3930,15 @@ function Corporations({ loadAssets }: { loadAssets: () => Promise<void> }) {
 
 
 
-function Assets({ data, submit, ownerOptions, typeOptions, locationOptions }: { data: AppData; submit: (path: string, body: Record<string, unknown>, success: string) => Promise<void>; ownerOptions: React.ReactNode; typeOptions: React.ReactNode; locationOptions: React.ReactNode }) {
+function Assets({ data, seed, submit, ownerOptions, typeOptions, locationOptions, onOpenFittings, onOpenMarket }: { data: AppData; seed?: AssetTableSeed | null; submit: (path: string, body: Record<string, unknown>, success: string) => Promise<void>; ownerOptions: React.ReactNode; typeOptions: React.ReactNode; locationOptions: React.ReactNode; onOpenFittings: (itemName: string) => void; onOpenMarket: (text: string) => void }) {
 
-  return <div className="two-column main-heavy"><section className="panel"><h3>Tracked Assets</h3><AssetTable assets={data.assets} /></section><section className="panel"><h3>Add Asset</h3><AssetForm submit={submit} ownerOptions={ownerOptions} typeOptions={typeOptions} locationOptions={locationOptions} /></section></div>;
+  return <div className="two-column main-heavy"><section className="panel"><h3>Tracked Assets</h3><AssetTable assets={data.assets} seed={seed} onOpenFittings={onOpenFittings} onOpenMarket={onOpenMarket} /></section><section className="panel"><h3>Add Asset</h3><AssetForm submit={submit} ownerOptions={ownerOptions} typeOptions={typeOptions} locationOptions={locationOptions} /></section></div>;
 
 }
 
 
 
-function Industry({ data, submit, ownerOptions, typeOptions, locationOptions, activityOptions }: { data: AppData; submit: (path: string, body: Record<string, unknown>, success: string) => Promise<void>; ownerOptions: React.ReactNode; typeOptions: React.ReactNode; locationOptions: React.ReactNode; activityOptions: React.ReactNode }) {
+function Industry({ data, submit, ownerOptions, typeOptions, locationOptions, activityOptions, onOpenMarket, onOpenAssets }: { data: AppData; submit: (path: string, body: Record<string, unknown>, success: string) => Promise<void>; ownerOptions: React.ReactNode; typeOptions: React.ReactNode; locationOptions: React.ReactNode; activityOptions: React.ReactNode; onOpenMarket: (text: string) => void; onOpenAssets: (itemName: string) => void }) {
 
   const recipePageSize = 250;
 
@@ -3890,7 +3998,7 @@ function Industry({ data, submit, ownerOptions, typeOptions, locationOptions, ac
 
     <div className="two-column">
 
-      <section className="panel"><h3>Blueprints</h3><BlueprintList blueprints={data.blueprints} /></section>
+      <section className="panel"><h3>Blueprints</h3><BlueprintList blueprints={data.blueprints} assets={data.assets} onOpenMarket={onOpenMarket} onOpenAssets={onOpenAssets} /></section>
 
       <section className="panel"><h3>Add Blueprint</h3><BlueprintForm submit={submit} ownerOptions={ownerOptions} typeOptions={typeOptions} locationOptions={locationOptions} /></section>
 
@@ -3898,7 +4006,7 @@ function Industry({ data, submit, ownerOptions, typeOptions, locationOptions, ac
 
       <section className="panel stacked"><h3>Add Recipe</h3><RecipeForm submit={submit} typeOptions={typeOptions} /><h3>Add Recipe Input</h3><RecipeInputForm submit={submit} typeOptions={typeOptions} activityOptions={activityOptions} /></section>
 
-      {selectedRecipe && <RecipeDetailModal activity={selectedRecipe} onClose={() => setSelectedRecipe(null)} />}
+      {selectedRecipe && <RecipeDetailModal activity={selectedRecipe} assets={data.assets} onOpenMarket={onOpenMarket} onOpenAssets={onOpenAssets} onClose={() => setSelectedRecipe(null)} />}
 
     </div>
 
@@ -4787,7 +4895,96 @@ function FittingStatsPanel({ stats }: { stats?: FittingSimulationStats | null })
 
 
 
-function Fittings({ currentUser }: { currentUser: UserAccount }) {
+type FittingContextNeed = { type_id: number; name: string; required: number; owned: number; missing: number; locations: { owner: string; location: string; flag?: string; quantity: number }[] };
+
+function fittingMarketList(needs: FittingContextNeed[], onlyMissing: boolean): string {
+
+  return needs
+
+    .filter((need) => onlyMissing ? need.missing > 0 : true)
+
+    .map((need) => `${onlyMissing ? need.missing : need.required} ${need.name}`)
+
+    .join("\n");
+
+}
+
+function fittingContextNeeds(fitting: CharacterFittingRecord, assets: Asset[]): FittingContextNeed[] {
+
+  const required = new Map<number, { name: string; quantity: number }>();
+
+  function add(typeId: number, name: string, quantity: number) {
+
+    const nextQuantity = Math.max(1, quantity || 1);
+
+    const current = required.get(typeId);
+
+    required.set(typeId, { name, quantity: (current?.quantity ?? 0) + nextQuantity });
+
+  }
+
+  add(fitting.ship_type_id, fitting.ship_type_name, 1);
+
+  for (const item of fitting.items) add(item.type_id, item.type_name, item.quantity);
+
+  const assetsByType = new Map<number, Asset[]>();
+
+  for (const asset of assets) assetsByType.set(asset.type_id, [...(assetsByType.get(asset.type_id) ?? []), asset]);
+
+  return [...required.entries()].map(([typeId, row]) => {
+
+    const matchingAssets = assetsByType.get(typeId) ?? [];
+
+    const owned = matchingAssets.reduce((total, asset) => total + asset.quantity, 0);
+
+    return {
+
+      type_id: typeId,
+
+      name: row.name,
+
+      required: row.quantity,
+
+      owned,
+
+      missing: Math.max(0, row.quantity - owned),
+
+      locations: matchingAssets.slice(0, 4).map((asset) => ({ owner: asset.owner_name, location: asset.location_name ?? "Unknown location", flag: asset.location_flag, quantity: asset.quantity })),
+
+    };
+
+  }).sort((left, right) => Number(right.missing > 0) - Number(left.missing > 0) || left.name.localeCompare(right.name, undefined, { numeric: true, sensitivity: "base" }));
+
+}
+
+function FittingContextPanel({ fitting, assets, onOpenAssets, onOpenMarket }: { fitting: CharacterFittingRecord; assets: Asset[]; onOpenAssets: (itemName?: string) => void; onOpenMarket: (text: string) => void }) {
+
+  const needs = useMemo(() => fittingContextNeeds(fitting, assets), [fitting, assets]);
+
+  const missing = needs.filter((need) => need.missing > 0);
+
+  const hullNeed = needs.find((need) => need.type_id === fitting.ship_type_id);
+
+  const coveredCount = needs.filter((need) => need.missing === 0).length;
+
+  const missingUnits = missing.reduce((total, need) => total + need.missing, 0);
+
+  const missingText = fittingMarketList(needs, true);
+
+  const fullText = fittingMarketList(needs, false);
+
+  return <section className="fitting-context-panel">
+
+    <div className="section-heading compact"><div><h4>Fit Context</h4><p>Inventory and market handoffs for this hull, modules, drones, and cargo.</p></div><div className="context-actions"><button type="button" onClick={() => onOpenAssets()}>Asset Ledger</button><button type="button" disabled={!missingText} onClick={() => onOpenMarket(missingText)}>Price missing</button><button type="button" disabled={!fullText} onClick={() => onOpenMarket(fullText)}>Price full fit</button></div></div>
+
+    <div className="fitting-context-grid"><article><span>Hull</span><strong className={(hullNeed?.owned ?? 0) > 0 ? "context-owned" : "context-missing"}>{(hullNeed?.owned ?? 0) > 0 ? "Owned" : "Missing"}</strong><small>{fitting.ship_type_name} x{numberFormatter.format(hullNeed?.owned ?? 0)}</small></article><article><span>Fit coverage</span><strong>{coveredCount}/{needs.length}</strong><small>{needs.length ? Math.round((coveredCount / needs.length) * 100) : 0}% covered by visible assets</small></article><article><span>Missing units</span><strong className={missingUnits > 0 ? "context-missing" : "context-owned"}>{numberFormatter.format(missingUnits)}</strong><small>{missing.length} item type{missing.length === 1 ? "" : "s"} short</small></article></div>
+
+    <div className="fitting-context-list">{needs.map((need) => <div key={need.type_id} className={`fitting-context-row ${need.missing > 0 ? "missing" : "covered"}`}><b>{need.name}</b><span>Need {numberFormatter.format(need.required)}</span><span>Own {numberFormatter.format(need.owned)}</span><span className={need.missing > 0 ? "missing-count" : "covered-count"}>{need.missing > 0 ? `Short ${numberFormatter.format(need.missing)}` : "Covered"}</span><small>{need.locations.length > 0 ? need.locations.map((location) => `${location.owner} @ ${location.location}${location.flag ? ` (${location.flag})` : ""} x${numberFormatter.format(location.quantity)}`).join(" | ") : "Not in visible assets"}</small><div className="context-actions"><button type="button" onClick={() => onOpenAssets(need.name)}>Assets</button><button type="button" onClick={() => onOpenMarket(`${Math.max(1, need.missing || need.required)} ${need.name}`)}>Price</button></div></div>)}</div>
+
+  </section>;
+
+}
+function Fittings({ currentUser, assets, seed, onOpenAssets, onOpenMarket }: { currentUser: UserAccount; assets: Asset[]; seed?: FittingSeed | null; onOpenAssets: (itemName?: string) => void; onOpenMarket: (text: string) => void }) {
 
   const [payload, setPayload] = useState<FittingsPayload>({ fittings: [], sync_tokens: [], editable_flags: [] });
 
@@ -5294,6 +5491,20 @@ function Fittings({ currentUser }: { currentUser: UserAccount }) {
 
   useEffect(() => { void loadFittings().catch((err) => setError(err instanceof Error ? err.message : "Unable to load fittings")); }, []);
 
+  useEffect(() => {
+
+    if (!seed?.text) return;
+
+    setFilter(seed.text);
+
+    const term = seed.text.toLowerCase();
+
+    const match = payload.fittings.find((fitting) => [fitting.ship_type_name, fitting.name].some((value) => value.toLowerCase().includes(term)));
+
+    if (match) setSelectedId(match.id);
+
+  }, [seed?.nonce, payload.fittings]);
+
 
 
 
@@ -5659,6 +5870,8 @@ function Fittings({ currentUser }: { currentUser: UserAccount }) {
           {simulation?.notes.map((note) => <div key={note} className="scope-warn">{note}</div>)}
 
           {selected.description && <p className="muted">{selected.description}</p>}
+
+          <FittingContextPanel fitting={selected} assets={assets} onOpenAssets={onOpenAssets} onOpenMarket={onOpenMarket} />
 
           {selected.can_manage && <div className="fitting-editor-panel fitting-editor-with-picker">
 
@@ -6122,7 +6335,7 @@ function Metric({ icon, label, value, delta }: { icon: React.ReactNode; label: s
 
 
 
-function AssetTable({ assets }: { assets: Asset[] }) {
+function AssetTable({ assets, seed, onOpenFittings, onOpenMarket }: { assets: Asset[]; seed?: AssetTableSeed | null; onOpenFittings?: (itemName: string) => void; onOpenMarket?: (text: string) => void }) {
 
   const [sortKey, setSortKey] = useState<AssetSortKey>("item");
 
@@ -6222,6 +6435,29 @@ function AssetTable({ assets }: { assets: Asset[] }) {
 
 
 
+  useEffect(() => {
+
+    if (!seed) return;
+
+    if (!seed.value) {
+
+      setFilter(null);
+
+      setSearchTerms({ item: "", owner: "", location: "", flag: "" });
+
+      setCopyNotice(null);
+
+      return;
+
+    }
+
+    setFilter({ key: seed.key, value: seed.value, label: filterLabels[seed.key], mode: seed.mode });
+
+    setSearchTerms({ item: "", owner: "", location: "", flag: "", [seed.key]: seed.mode === "contains" ? seed.value : "" });
+
+    setCopyNotice(null);
+
+  }, [seed?.nonce]);
   function clearFilter() {
 
     setFilter(null);
@@ -6418,7 +6654,7 @@ function AssetTable({ assets }: { assets: Asset[] }) {
 
       </tr></thead><tbody>{visibleAssets.map((asset) => <tr key={asset.id}>
 
-        <td>{filterButton("item", asset.type_name)}</td>
+        <td><div className="asset-item-context">{filterButton("item", asset.type_name)}<div className="context-actions">{onOpenMarket && <button type="button" onClick={() => onOpenMarket(`${asset.quantity} ${asset.type_name}`)}>Price</button>}{onOpenFittings && <button type="button" onClick={() => onOpenFittings(asset.type_name)}>Fits</button>}</div></div></td>
 
         <td>{filterButton("owner", asset.owner_name)}</td>
 
@@ -6436,7 +6672,26 @@ function AssetTable({ assets }: { assets: Asset[] }) {
 
 }
 
-function BlueprintList({ blueprints }: { blueprints: Blueprint[] }) {
+function visibleAssetQuantity(assets: Asset[], itemName?: string | null): number {
+
+  if (!itemName) return 0;
+
+  const normalized = itemName.toLowerCase();
+
+  return assets.filter((asset) => asset.type_name.toLowerCase() === normalized).reduce((total, asset) => total + asset.quantity, 0);
+
+}
+
+function visibleAssetLocations(assets: Asset[], itemName?: string | null): string[] {
+
+  if (!itemName) return [];
+
+  const normalized = itemName.toLowerCase();
+
+  return assets.filter((asset) => asset.type_name.toLowerCase() === normalized).slice(0, 3).map((asset) => `${asset.owner_name} @ ${asset.location_name ?? "Unknown"}${asset.location_flag ? ` (${asset.location_flag})` : ""} x${numberFormatter.format(asset.quantity)}`);
+
+}
+function BlueprintList({ blueprints, assets = [], onOpenMarket, onOpenAssets }: { blueprints: Blueprint[]; assets?: Asset[]; onOpenMarket?: (text: string) => void; onOpenAssets?: (itemName: string) => void }) {
 
   const [kindFilter, setKindFilter] = useState<"all" | "bpo" | "bpc">("all");
 
@@ -6502,7 +6757,7 @@ function BlueprintList({ blueprints }: { blueprints: Blueprint[] }) {
 
 
 
-  return <div className="blueprint-browser"><div className="blueprint-controls"><div className="blueprint-filter"><button type="button" className={kindFilter === "all" ? "active" : ""} onClick={() => setKindFilter("all")}>All <span>{blueprints.length.toLocaleString()}</span></button><button type="button" className={kindFilter === "bpo" ? "active" : ""} onClick={() => setKindFilter("bpo")}>BPO <span>{bpoCount.toLocaleString()}</span></button><button type="button" className={kindFilter === "bpc" ? "active" : ""} onClick={() => setKindFilter("bpc")}>BPC <span>{bpcCount.toLocaleString()}</span></button></div><div className="blueprint-filter sort"><button type="button" className={sortKey === "name" ? "active" : ""} onClick={() => chooseSort("name")}>A-Z <span>{sortLabel("name")}</span></button><button type="button" className={sortKey === "me" ? "active" : ""} onClick={() => chooseSort("me")}>ME <span>{sortLabel("me")}</span></button><button type="button" className={sortKey === "te" ? "active" : ""} onClick={() => chooseSort("te")}>TE <span>{sortLabel("te")}</span></button></div></div><div className="blueprint-filter owners"><button type="button" className={ownerFilter === null ? "active" : ""} onClick={() => setOwnerFilter(null)}>All owners <span>{blueprints.length.toLocaleString()}</span></button>{ownerOptions.map((owner) => <button type="button" key={owner} className={ownerFilter === owner ? "active" : ""} onClick={() => setOwnerFilter(owner)}>{owner} <span>{(ownerCounts.get(owner) ?? 0).toLocaleString()}</span></button>)}</div><div className="card-list">{visibleBlueprints.map((bp) => <article key={bp.id}><strong>{bp.blueprint_type_name}</strong><span><button type="button" className="inline-filter" onClick={() => setOwnerFilter(bp.owner_name)}>{bp.owner_name}</button> · {bp.product_type_name ?? "No product"}</span><div className="badge-row"><button type="button" className="bp-badge" onClick={() => chooseSort("me")}>ME {bp.material_efficiency}</button><button type="button" className="bp-badge" onClick={() => chooseSort("te")}>TE {bp.time_efficiency}</button><button type="button" className={bp.is_copy ? "bp-badge copy" : "bp-badge original"} onClick={() => setKindFilter(bp.is_copy ? "bpc" : "bpo")}>{bp.is_copy ? "BPC" : "BPO"}</button></div></article>)}{blueprints.length === 0 && <p className="empty">No blueprints yet.</p>}{blueprints.length > 0 && visibleBlueprints.length === 0 && <p className="empty">No blueprints match this filter.</p>}</div></div>;
+  return <div className="blueprint-browser"><div className="blueprint-controls"><div className="blueprint-filter"><button type="button" className={kindFilter === "all" ? "active" : ""} onClick={() => setKindFilter("all")}>All <span>{blueprints.length.toLocaleString()}</span></button><button type="button" className={kindFilter === "bpo" ? "active" : ""} onClick={() => setKindFilter("bpo")}>BPO <span>{bpoCount.toLocaleString()}</span></button><button type="button" className={kindFilter === "bpc" ? "active" : ""} onClick={() => setKindFilter("bpc")}>BPC <span>{bpcCount.toLocaleString()}</span></button></div><div className="blueprint-filter sort"><button type="button" className={sortKey === "name" ? "active" : ""} onClick={() => chooseSort("name")}>A-Z <span>{sortLabel("name")}</span></button><button type="button" className={sortKey === "me" ? "active" : ""} onClick={() => chooseSort("me")}>ME <span>{sortLabel("me")}</span></button><button type="button" className={sortKey === "te" ? "active" : ""} onClick={() => chooseSort("te")}>TE <span>{sortLabel("te")}</span></button></div></div><div className="blueprint-filter owners"><button type="button" className={ownerFilter === null ? "active" : ""} onClick={() => setOwnerFilter(null)}>All owners <span>{blueprints.length.toLocaleString()}</span></button>{ownerOptions.map((owner) => <button type="button" key={owner} className={ownerFilter === owner ? "active" : ""} onClick={() => setOwnerFilter(owner)}>{owner} <span>{(ownerCounts.get(owner) ?? 0).toLocaleString()}</span></button>)}</div><div className="card-list">{visibleBlueprints.map((bp) => { const ownedOutput = visibleAssetQuantity(assets, bp.product_type_name); const outputLocations = visibleAssetLocations(assets, bp.product_type_name); return <article key={bp.id}><strong>{bp.blueprint_type_name}</strong><span><button type="button" className="inline-filter" onClick={() => setOwnerFilter(bp.owner_name)}>{bp.owner_name}</button> · {bp.product_type_name ?? "No product"}</span>{bp.product_type_name && <div className="blueprint-context"><span className={ownedOutput > 0 ? "context-owned" : "context-missing"}>Owned output: {numberFormatter.format(ownedOutput)}</span>{outputLocations.length > 0 && <small>{outputLocations.join(" | ")}</small>}<div className="context-actions">{onOpenAssets && <button type="button" onClick={() => onOpenAssets(bp.product_type_name!)}>Assets</button>}{onOpenMarket && <button type="button" onClick={() => onOpenMarket(`1 ${bp.product_type_name}`)}>Price output</button>}</div></div>}<div className="badge-row"><button type="button" className="bp-badge" onClick={() => chooseSort("me")}>ME {bp.material_efficiency}</button><button type="button" className="bp-badge" onClick={() => chooseSort("te")}>TE {bp.time_efficiency}</button><button type="button" className={bp.is_copy ? "bp-badge copy" : "bp-badge original"} onClick={() => setKindFilter(bp.is_copy ? "bpc" : "bpo")}>{bp.is_copy ? "BPC" : "BPO"}</button></div></article>; })}{blueprints.length === 0 && <p className="empty">No blueprints yet.</p>}{blueprints.length > 0 && visibleBlueprints.length === 0 && <p className="empty">No blueprints match this filter.</p>}</div></div>;
 
 }
 
@@ -6526,12 +6781,21 @@ function RecipeList({ activities, onSelect, onLoadMore, loadingMore, hasMore }: 
 
 
 
-function RecipeDetailModal({ activity, onClose }: { activity: IndustryActivity; onClose: () => void }) {
+function RecipeDetailModal({ activity, assets, onOpenMarket, onOpenAssets, onClose }: { activity: IndustryActivity; assets: Asset[]; onOpenMarket: (text: string) => void; onOpenAssets: (itemName: string) => void; onClose: () => void }) {
 
-  return <div className="modal-backdrop" role="presentation" onClick={onClose}><section className="modal-window recipe-detail" role="dialog" aria-modal="true" aria-label={`${activity.blueprint_type_name} recipe`} onClick={(event) => event.stopPropagation()}><div className="section-heading"><div><h3>{activity.blueprint_type_name}</h3><p>{activity.activity_kind} · {activity.product_type_name ?? "No product"} x{activity.product_quantity}</p></div><button type="button" onClick={onClose}>Close</button></div><div className="status-grid compact"><Metric icon={<Factory size={18} />} label="Activity" value={activity.activity_kind.replace("_", " ")} /><Metric icon={<PackagePlus size={18} />} label="Output" value={activity.product_quantity} /><Metric icon={<ScrollText size={18} />} label="Inputs" value={activity.inputs.length} /><Metric icon={<Activity size={18} />} label="Time" value={activity.time_seconds ? `${numberFormatter.format(activity.time_seconds)} sec` : "n/a"} /></div><h4>Material Inputs</h4><div className="mini-list recipe-inputs">{activity.inputs.map((input) => <div key={input.id}><strong>{input.input_type_name}</strong><span>{numberFormatter.format(input.quantity)} {input.consume_type}</span></div>)}{activity.inputs.length === 0 && <p className="empty">No material inputs listed for this activity.</p>}</div></section></div>;
+  const outputOwned = visibleAssetQuantity(assets, activity.product_type_name);
+
+  const missingInputs = activity.inputs
+
+    .map((input) => ({ input, owned: visibleAssetQuantity(assets, input.input_type_name), missing: Math.max(0, input.quantity - visibleAssetQuantity(assets, input.input_type_name)) }))
+
+    .filter((row) => row.missing > 0);
+
+  const missingMarketText = missingInputs.map((row) => `${row.missing} ${row.input.input_type_name}`).join("\n");
+
+  return <div className="modal-backdrop" role="presentation" onClick={onClose}><section className="modal-window recipe-detail" role="dialog" aria-modal="true" aria-label={`${activity.blueprint_type_name} recipe`} onClick={(event) => event.stopPropagation()}><div className="section-heading"><div><h3>{activity.blueprint_type_name}</h3><p>{activity.activity_kind} · {activity.product_type_name ?? "No product"} x{activity.product_quantity}</p></div><div className="button-row compact">{missingMarketText && <button type="button" onClick={() => onOpenMarket(missingMarketText)}>Price missing inputs</button>}<button type="button" onClick={onClose}>Close</button></div></div><div className="status-grid compact"><Metric icon={<Factory size={18} />} label="Activity" value={activity.activity_kind.replace("_", " ")} /><Metric icon={<PackagePlus size={18} />} label="Output" value={activity.product_quantity} /><Metric icon={<Boxes size={18} />} label="Owned output" value={outputOwned} /><Metric icon={<ScrollText size={18} />} label="Inputs" value={activity.inputs.length} /><Metric icon={<Activity size={18} />} label="Time" value={activity.time_seconds ? `${numberFormatter.format(activity.time_seconds)} sec` : "n/a"} /></div>{activity.product_type_name && <div className="recipe-output-context"><strong>{activity.product_type_name}</strong><span className={outputOwned > 0 ? "context-owned" : "context-missing"}>Already owned: {numberFormatter.format(outputOwned)}</span><div className="context-actions"><button type="button" onClick={() => onOpenAssets(activity.product_type_name!)}>View assets</button><button type="button" onClick={() => onOpenMarket(`${activity.product_quantity} ${activity.product_type_name}`)}>Price output</button></div></div>}<h4>Material Inputs</h4><div className="mini-list recipe-inputs">{activity.inputs.map((input) => { const owned = visibleAssetQuantity(assets, input.input_type_name); const missing = Math.max(0, input.quantity - owned); return <div key={input.id} className={missing > 0 ? "missing" : "covered"}><strong>{input.input_type_name}</strong><span>{numberFormatter.format(input.quantity)} {input.consume_type} · owned {numberFormatter.format(owned)} · {missing > 0 ? `short ${numberFormatter.format(missing)}` : "covered"}</span><div className="context-actions"><button type="button" onClick={() => onOpenAssets(input.input_type_name)}>Assets</button><button type="button" onClick={() => onOpenMarket(`${Math.max(1, missing || input.quantity)} ${input.input_type_name}`)}>Price</button></div></div>; })}{activity.inputs.length === 0 && <p className="empty">No material inputs listed for this activity.</p>}</div></section></div>;
 
 }
-
 function OwnerForm({ submit }: { submit: (path: string, body: Record<string, unknown>, success: string) => Promise<void> }) {
 
   return <ManagedForm onSubmit={(form) => submit("/quartermaster/owners", { display_name: form.get("display_name"), owner_kind: form.get("owner_kind"), notes: form.get("notes") }, "Owner added.")}><label>Name<input name="display_name" required /></label><label>Kind<select name="owner_kind"><option value="character">Character</option><option value="corporation">Corporation</option><option value="alliance">Alliance</option><option value="manual_group">Manual group</option></select></label><label>Notes<textarea name="notes" /></label></ManagedForm>;

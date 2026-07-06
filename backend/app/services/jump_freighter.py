@@ -6,16 +6,21 @@ from heapq import heappop, heappush
 from math import ceil, floor, sqrt
 from typing import Any
 
+import httpx
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models import EveConstellation, EveStargate, EveStation, EveSystem
-from app.models.navigation import SystemIndustrialKillObservation, SystemPvpKillObservation
+from app.models.navigation import SystemIndustrialKillObservation, SystemJumpObservation, SystemPvpKillObservation
 from app.services.navigation import resolve_system, security_band, serialize_system
 
 LIGHT_YEAR_METERS = 9_460_730_472_580_800
 JDC_RANGE_BONUS_PER_LEVEL = 0.2
 JFC_FUEL_REDUCTION_PER_LEVEL = 0.1
+ESI_SYSTEM_JUMPS_URL = "https://esi.evetech.net/latest/universe/system_jumps/?datasource=tranquility"
+USER_AGENT = "EVE-Quartermaster/0.1.3-beta capital-route-intel"
+
 FUEL_TYPE_NAMES = {
     16274: "Helium Isotopes",
     17887: "Oxygen Isotopes",
@@ -212,7 +217,7 @@ def _station_safety_system_ids(db: Session, station_safety: str) -> set[int]:
 
     stations = db.scalars(
         select(EveStation)
-        .options(selectinload(EveStation.station_type))
+        .options(selectinload(EveStation.station_type), selectinload(EveStation.system))
         .where(EveStation.system_id.is_not(None))
     ).all()
     risks_by_system: dict[int, set[str]] = {}
@@ -248,7 +253,7 @@ def _neighbor_systems(system: EveSystem, grid: dict[tuple[int, int, int], list[E
     return candidates
 
 
-def _jump_path(db: Session, origin: EveSystem, destination: EveSystem, max_range_ly: float, station_safety: str = "any") -> list[int]:
+def _jump_path(db: Session, origin: EveSystem, destination: EveSystem, max_range_ly: float, station_safety: str = "any", avoid_system_ids: set[int] | None = None) -> list[int]:
     if origin.system_id == destination.system_id:
         return [origin.system_id]
     if not cyno_eligible(destination):
@@ -259,6 +264,9 @@ def _jump_path(db: Session, origin: EveSystem, destination: EveSystem, max_range
     allowed_station_system_ids = _station_safety_system_ids(db, station_safety)
     if destination.system_id not in allowed_station_system_ids:
         raise ValueError(f"{destination.name} has NPC stations, but none match the station safety filter: {_station_safety_label(station_safety)}.")
+    avoid_system_ids = set(avoid_system_ids or set())
+    avoid_system_ids.discard(origin.system_id)
+    avoid_system_ids.discard(destination.system_id)
 
     systems = _known_space_systems(db)
     by_id = {system.system_id: system for system in systems}
@@ -284,6 +292,8 @@ def _jump_path(db: Session, origin: EveSystem, destination: EveSystem, max_range
         current = by_id[current_id]
         for candidate in _neighbor_systems(current, grid, max_meters):
             if candidate.system_id == current_id or candidate.system_id in visited:
+                continue
+            if candidate.system_id in avoid_system_ids:
                 continue
             if candidate.system_id != destination.system_id and not cyno_eligible(candidate):
                 continue
@@ -329,9 +339,53 @@ def station_cyno_guidance(station_type_name: str | None) -> dict[str, Any]:
     return result
 
 
+def _station_roman_numeral(value: int | None) -> str | None:
+    if value is None or value <= 0:
+        return None
+    numerals: tuple[tuple[int, str], ...] = (
+        (1000, "M"),
+        (900, "CM"),
+        (500, "D"),
+        (400, "CD"),
+        (100, "C"),
+        (90, "XC"),
+        (50, "L"),
+        (40, "XL"),
+        (10, "X"),
+        (9, "IX"),
+        (5, "V"),
+        (4, "IV"),
+        (1, "I"),
+    )
+    remaining = value
+    output: list[str] = []
+    for number, symbol in numerals:
+        while remaining >= number:
+            output.append(symbol)
+            remaining -= number
+    return "".join(output)
+
+
+def station_display_name(station: EveStation, type_name: str | None) -> str:
+    generic_names = {name for name in (type_name, station.operation_name, f"Station {station.station_id}") if name}
+    if station.name and station.name not in generic_names and not station.name.startswith("Type "):
+        return station.name
+
+    celestial = _station_roman_numeral(station.celestial_index)
+    system_name = station.system.name if station.system else None
+    if celestial and system_name:
+        location = f"{system_name} {celestial}"
+        if station.orbit_index is not None:
+            location = f"{location} - Moon {station.orbit_index}"
+        suffix_parts = [part for part in (station.owner_name, station.operation_name) if part]
+        suffix = " ".join(suffix_parts) or type_name
+        return f"{location} - {suffix}" if suffix else location
+
+    return station.name or type_name or f"Station {station.station_id}"
+
 def serialize_station(station: EveStation) -> dict[str, Any]:
     type_name = station.station_type.name if station.station_type else (f"Type {station.type_id}" if station.type_id else None)
-    label = station.name or type_name or f"Station {station.station_id}"
+    label = station_display_name(station, type_name)
     return {
         "station_id": station.station_id,
         "name": label,
@@ -349,7 +403,7 @@ def stations_by_system(db: Session, system_ids: list[int]) -> dict[int, list[dic
         return {}
     stations = db.scalars(
         select(EveStation)
-        .options(selectinload(EveStation.station_type))
+        .options(selectinload(EveStation.station_type), selectinload(EveStation.system))
         .where(EveStation.system_id.in_(system_ids))
         .order_by(EveStation.system_id, EveStation.operation_name, EveStation.station_id)
     ).all()
@@ -424,6 +478,103 @@ def route_map_context(db: Session, route_systems: list[EveSystem], gate_hops: in
         "stargates": sorted(stargates, key=lambda edge: (edge["from_system_id"], edge["to_system_id"])),
     }
 
+def _jump_activity_hours(hours: int) -> int:
+    return max(1, min(24, int(hours)))
+
+
+def _jump_observation_bucket(now: datetime | None = None) -> datetime:
+    observed = now or datetime.now(UTC)
+    return observed.replace(minute=0, second=0, microsecond=0)
+
+
+def _fetch_system_jump_counts() -> dict[int, int]:
+    try:
+        with httpx.Client(headers={"User-Agent": USER_AGENT}, timeout=12.0, follow_redirects=True) as client:
+            response = client.get(ESI_SYSTEM_JUMPS_URL)
+            response.raise_for_status()
+            payload = response.json()
+    except (httpx.HTTPError, ValueError):
+        return {}
+    counts: dict[int, int] = {}
+    for row in payload if isinstance(payload, list) else []:
+        try:
+            counts[int(row["system_id"])] = int(row.get("ship_jumps") or 0)
+        except (KeyError, TypeError, ValueError):
+            continue
+    return counts
+
+
+def refresh_system_jump_observations(db: Session, system_ids: list[int]) -> dict[str, Any]:
+    unique_ids = sorted({int(system_id) for system_id in system_ids if system_id})
+    if not unique_ids:
+        return {"refreshed": False, "observed_at": None, "system_count": 0}
+
+    counts = _fetch_system_jump_counts()
+    if not counts:
+        return {"refreshed": False, "observed_at": None, "system_count": 0}
+
+    observed_at = _jump_observation_bucket()
+    existing = {
+        row.system_id: row
+        for row in db.scalars(
+            select(SystemJumpObservation)
+            .where(SystemJumpObservation.system_id.in_(unique_ids))
+            .where(SystemJumpObservation.observed_at == observed_at)
+        ).all()
+    }
+    written = 0
+    for system_id in unique_ids:
+        ship_jumps = int(counts.get(system_id, 0))
+        row = existing.get(system_id)
+        if row:
+            row.ship_jumps = ship_jumps
+            row.cached_at = datetime.now(UTC)
+        else:
+            db.add(SystemJumpObservation(system_id=system_id, observed_at=observed_at, ship_jumps=ship_jumps))
+        written += 1
+    db.commit()
+    return {"refreshed": True, "observed_at": observed_at.isoformat(), "system_count": written}
+
+
+def jump_activity_summary(db: Session, system_id: int, hours: int = 6) -> dict[str, Any]:
+    window_hours = _jump_activity_hours(hours)
+    since = datetime.now(UTC) - timedelta(hours=window_hours)
+    rows = db.scalars(
+        select(SystemJumpObservation)
+        .where(SystemJumpObservation.system_id == system_id)
+        .where(SystemJumpObservation.observed_at >= since)
+        .order_by(SystemJumpObservation.observed_at.desc())
+    ).all()
+    total_jumps = sum(row.ship_jumps for row in rows)
+    observations = len(rows)
+    coverage = observations / max(1, window_hours)
+    if observations == 0:
+        confidence = "none"
+    elif coverage >= 0.66:
+        confidence = "high"
+    elif coverage >= 0.33:
+        confidence = "medium"
+    else:
+        confidence = "low"
+    if total_jumps >= 1000 or (window_hours and total_jumps / window_hours >= 150):
+        activity_label = "very active"
+    elif total_jumps >= 250 or (window_hours and total_jumps / window_hours >= 40):
+        activity_label = "active"
+    elif total_jumps >= 50 or (window_hours and total_jumps / window_hours >= 10):
+        activity_label = "moderate"
+    else:
+        activity_label = "quiet"
+    latest = rows[0].observed_at.isoformat() if rows else None
+    return {
+        "hours": window_hours,
+        "total_jumps": total_jumps,
+        "jumps_per_hour": round(total_jumps / max(1, window_hours), 1),
+        "observations": observations,
+        "confidence": confidence,
+        "activity_label": activity_label,
+        "latest_observed_at": latest,
+    }
+
 def _kill_filter_label(kill_filter: str) -> str:
     return "Industrial kills only" if kill_filter == "industrial" else "All kills"
 
@@ -490,6 +641,8 @@ def plan_jump_freighter_route(
     context_gate_hops: int = 1,
     station_safety: str = "any",
     kill_filter: str = "industrial",
+    jump_activity_hours: int = 6,
+    avoid_system_queries: list[str] | None = None,
 ) -> dict[str, Any]:
     ship = ship_config(ship_name)
     origin = resolve_system(db, origin_query)
@@ -499,7 +652,17 @@ def plan_jump_freighter_route(
     kill_filter = kill_filter.strip().lower()
     if kill_filter not in {"industrial", "all"}:
         raise ValueError("Unknown kill filter. Use industrial or all.")
-    path_ids = _jump_path(db, origin, destination, max_range, station_safety)
+    jump_activity_hours = _jump_activity_hours(jump_activity_hours)
+    avoid_systems: list[EveSystem] = []
+    for query in avoid_system_queries or []:
+        cleaned = query.strip()
+        if not cleaned:
+            continue
+        system = resolve_system(db, cleaned)
+        if system.system_id not in {origin.system_id, destination.system_id} and all(existing.system_id != system.system_id for existing in avoid_systems):
+            avoid_systems.append(system)
+
+    path_ids = _jump_path(db, origin, destination, max_range, station_safety, {system.system_id for system in avoid_systems})
     systems = db.scalars(
         select(EveSystem)
         .options(selectinload(EveSystem.constellation).selectinload(EveConstellation.region))
@@ -509,6 +672,7 @@ def plan_jump_freighter_route(
     ordered = [systems_by_id.get(system_id) or db.get(EveSystem, system_id) for system_id in path_ids]
     ordered = [system for system in ordered if system is not None]
     station_map = stations_by_system(db, [system.system_id for system in ordered])
+    jump_activity_cache = refresh_system_jump_observations(db, [system.system_id for system in ordered])
 
     jumps: list[dict[str, Any]] = []
     total_distance = 0.0
@@ -531,6 +695,7 @@ def plan_jump_freighter_route(
                 "stations": station_map.get(end.system_id, []),
                 "industrial_kills_24h": industrial_kill_summary(db, end.system_id, 24),
                 "kills_24h": kill_summary(db, end.system_id, 24, kill_filter),
+                "jump_activity": jump_activity_summary(db, end.system_id, jump_activity_hours),
             }
         )
 
@@ -556,6 +721,8 @@ def plan_jump_freighter_route(
         "total_fuel_units": total_fuel,
         "station_safety": {"mode": station_safety, "label": _station_safety_label(station_safety)},
         "kill_filter": {"mode": kill_filter, "label": _kill_filter_label(kill_filter)},
+        "jump_activity": {"hours": jump_activity_hours, "cache": jump_activity_cache},
+        "avoided_systems": [serialize_system(system) for system in avoid_systems],
         "jumps": jumps,
         "map_context": route_map_context(db, ordered, gate_hops=context_gate_hops),
         "station_cyno_guide": [
@@ -565,6 +732,8 @@ def plan_jump_freighter_route(
             "Highsec origins are allowed; every jump target must be low/null and have an imported NPC station.",
             f"Station safety filter: {_station_safety_label(station_safety)}.",
             f"Kill display: {_kill_filter_label(kill_filter)}.",
+            f"Observed activity window: {jump_activity_hours}h; confidence depends on hourly samples collected by EQM.",
+            f"Avoiding {len(avoid_systems)} system{'' if len(avoid_systems) == 1 else 's'}.",
             "Station guidance is operational reference data. Verify bookmarks and station geometry before risking a live capital jump.",
         ],
     }

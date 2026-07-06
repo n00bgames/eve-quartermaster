@@ -615,6 +615,9 @@ def upsert_station(
     station.operation_name = operation_names.get(operation_id, f"Operation {operation_id}" if operation_id is not None else None)
     station.owner_id = int(payload["ownerID"]) if payload.get("ownerID") is not None else None
     owner_name = (corporation_names or {}).get(station.owner_id) if station.owner_id is not None else None
+    station.owner_name = owner_name
+    station.celestial_index = optional_int(payload.get("celestialIndex"))
+    station.orbit_index = optional_int(payload.get("orbitIndex"))
     generated_name = generated_station_name(system.name, payload, owner_name, station.operation_name, type_name)
     station.name = station_name_for(station_id, payload, station_names, generated_name)
     station.orbit_id = int(payload["orbitID"]) if payload.get("orbitID") is not None else None

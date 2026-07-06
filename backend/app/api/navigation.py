@@ -290,6 +290,8 @@ async def jump_freighter_route(
     context_gate_hops: int = Query(1, ge=0, le=2),
     station_safety: str = Query("any", pattern="^(any|avoid_red_only|green)$"),
     kill_filter: str = Query("industrial", pattern="^(industrial|all)$"),
+    jump_activity_hours: int = Query(6, ge=1, le=24),
+    avoid_systems: str = Query(""),
     _: User = Depends(require_navigation),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
@@ -303,6 +305,9 @@ async def jump_freighter_route(
             jump_fuel_conservation=jump_fuel_conservation,
             context_gate_hops=context_gate_hops,
             station_safety=station_safety,
+            kill_filter=kill_filter,
+            jump_activity_hours=jump_activity_hours,
+            avoid_system_queries=[system.strip() for system in avoid_systems.split(",") if system.strip()],
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

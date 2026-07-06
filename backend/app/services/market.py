@@ -6,9 +6,9 @@ from typing import Any
 
 from fastapi import HTTPException
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
-from app.models import EveConstellation, EveSystem, EveType
+from app.models import EveConstellation, EveRegion, EveSystem, EveType
 from app.services.esi_client import EsiClient
 
 
@@ -38,6 +38,14 @@ TRADE_HUBS: dict[str, MarketHub] = {
 }
 
 NPC_GROUP_KEYS = ("jita", "amarr", "hek", "dodixie", "rens")
+
+STATIC_REGION_NAMES = {
+    10000002: "The Forge",
+    10000043: "Domain",
+    10000042: "Metropolis",
+    10000032: "Sinq Laison",
+    10000030: "Heimatar",
+}
 
 
 def normalize_type_name(value: str) -> str:
@@ -83,19 +91,34 @@ def type_candidates(db: Session, name: str) -> list[EveType]:
     return db.scalars(query.order_by(EveType.published.desc(), EveType.name).limit(8)).all()
 
 
-def region_for_system(db: Session, system_name: str) -> tuple[int | None, int | None]:
-    system = db.scalar(select(EveSystem).where(EveSystem.name.ilike(system_name)).limit(1))
+def region_name_for_id(db: Session, region_id: int | None) -> str | None:
+    if region_id is None:
+        return None
+    region = db.get(EveRegion, region_id)
+    return region.name if region else STATIC_REGION_NAMES.get(region_id)
+
+
+def region_for_system(db: Session, system_name: str) -> tuple[int | None, int | None, str | None]:
+    system = db.scalar(
+        select(EveSystem)
+        .options(selectinload(EveSystem.constellation).selectinload(EveConstellation.region))
+        .where(EveSystem.name.ilike(system_name))
+        .limit(1)
+    )
     if system is None:
-        return None, None
-    constellation = db.get(EveConstellation, system.constellation_id) if system.constellation_id is not None else None
-    return system.system_id, constellation.region_id if constellation else None
+        return None, None, None
+    constellation = system.constellation
+    region = constellation.region if constellation else None
+    region_id = region.region_id if region else (constellation.region_id if constellation else None)
+    return system.system_id, region_id, region.name if region else region_name_for_id(db, region_id)
 
 
 def hub_payload(db: Session, hub: MarketHub) -> dict[str, Any]:
     system_id = None
     region_id = hub.region_id
+    region_name = region_name_for_id(db, region_id)
     if hub.system_name:
-        system_id, region_id = region_for_system(db, hub.system_name)
+        system_id, region_id, region_name = region_for_system(db, hub.system_name)
     return {
         "key": hub.key,
         "label": hub.label,
