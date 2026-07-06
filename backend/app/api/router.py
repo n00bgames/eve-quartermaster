@@ -4,6 +4,7 @@ from app.api.analytics import router as analytics_router
 from app.api.auth import router as auth_router
 from app.api.characters import router as characters_router
 from app.api.contracts import router as contracts_router
+from app.api.context import router as context_router
 from app.api.corporations import router as corporations_router
 from app.api.esi import router as esi_router
 from app.api.fittings import router as fittings_router
@@ -21,6 +22,7 @@ api_router.include_router(auth_router)
 api_router.include_router(characters_router)
 api_router.include_router(corporations_router)
 api_router.include_router(contracts_router)
+api_router.include_router(context_router)
 api_router.include_router(fittings_router)
 api_router.include_router(health_router)
 api_router.include_router(market_router)
@@ -30,3 +32,4 @@ api_router.include_router(notifications_router)
 api_router.include_router(quartermaster_router)
 api_router.include_router(sde_router)
 api_router.include_router(esi_router)
+

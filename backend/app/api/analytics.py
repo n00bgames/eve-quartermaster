@@ -20,9 +20,11 @@ from app.services.permissions import can_view_section
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 METRIC_CATALOG: list[dict[str, Any]] = [
     {"metric": "skill_points.total", "version": 1, "label": "Total Skill Points", "unit": "SP", "aggregation": "latest", "category": "Skills", "supportsCharacter": True, "supportsCorporation": False, "chartTypes": ["line", "bar", "histogram"], "deprecated": False},
+    {"metric": "skill_points.lost", "version": 1, "label": "Skill Point History", "unit": "SP", "aggregation": "sum", "category": "Skills", "supportsCharacter": True, "supportsCorporation": False, "chartTypes": ["bar", "histogram"], "deprecated": False},
     {"metric": "skills.count", "version": 1, "label": "Trained Skill Count", "unit": "skills", "aggregation": "latest", "category": "Skills", "supportsCharacter": True, "supportsCorporation": False, "chartTypes": ["line", "bar"], "deprecated": False},
     {"metric": "skill_queue.count", "version": 1, "label": "Skill Queue Count", "unit": "skills", "aggregation": "latest", "category": "Skills", "supportsCharacter": True, "supportsCorporation": False, "chartTypes": ["line", "bar"], "deprecated": False},
     {"metric": "skill_points.category", "version": 1, "label": "Skill Points by Category", "unit": "SP", "aggregation": "sum", "category": "Skills", "supportsCharacter": True, "supportsCorporation": False, "chartTypes": ["bar", "pie", "stacked_bar"], "deprecated": False},
+    {"metric": "skill_points.category_lost", "version": 1, "label": "Skill Point History by Category", "unit": "SP", "aggregation": "sum", "category": "Skills", "supportsCharacter": True, "supportsCorporation": False, "chartTypes": ["bar", "pie"], "deprecated": False},
     {"metric": "members.count", "version": 1, "label": "Corporation Members", "unit": "members", "aggregation": "latest", "category": "Corporations", "supportsCharacter": False, "supportsCorporation": True, "chartTypes": ["line", "bar"], "deprecated": False},
     {"metric": "wallet.balance", "version": 1, "label": "Corporation Wallet Balance", "unit": "ISK", "aggregation": "sum", "category": "Finance", "supportsCharacter": False, "supportsCorporation": True, "chartTypes": ["line", "bar"], "deprecated": False},
     {"metric": "wallet.division_balance", "version": 1, "label": "Wallet Division Balance", "unit": "ISK", "aggregation": "sum", "category": "Finance", "supportsCharacter": False, "supportsCorporation": True, "chartTypes": ["line", "bar", "stacked_bar", "pie"], "deprecated": False},
@@ -143,6 +145,51 @@ def category_deltas(db: Session, days: int) -> list[dict[str, Any]]:
     return [{"name": category, "delta": delta} for category, delta in sorted(by_category.items(), key=lambda item: item[1], reverse=True)[:12]]
 
 
+def skill_point_losses(db: Session, days: int) -> list[dict[str, Any]]:
+    rows = db.scalars(
+        select(CharacterSkillSnapshot)
+        .where(CharacterSkillSnapshot.recorded_at >= start_cutoff(days), CharacterSkillSnapshot.category_name.is_(None))
+        .order_by(CharacterSkillSnapshot.character_id, CharacterSkillSnapshot.recorded_at)
+    ).all()
+    previous: dict[int, int] = {}
+    names: dict[int, str] = {}
+    losses: dict[int, int] = {}
+    for row in rows:
+        current = int(row.total_skill_points or 0)
+        character_id = int(row.character_id)
+        names[character_id] = row.character_name
+        if character_id in previous and current < previous[character_id]:
+            losses[character_id] = losses.get(character_id, 0) + previous[character_id] - current
+        previous[character_id] = current
+    return [
+        {"id": character_id, "name": names.get(character_id, f"Character {character_id}"), "delta": loss}
+        for character_id, loss in sorted(losses.items(), key=lambda item: item[1], reverse=True)[:12]
+        if loss > 0
+    ]
+
+
+def skill_category_losses(db: Session, days: int) -> list[dict[str, Any]]:
+    rows = db.scalars(
+        select(CharacterSkillSnapshot)
+        .where(CharacterSkillSnapshot.recorded_at >= start_cutoff(days), CharacterSkillSnapshot.category_name.is_not(None))
+        .order_by(CharacterSkillSnapshot.character_id, CharacterSkillSnapshot.category_name, CharacterSkillSnapshot.recorded_at)
+    ).all()
+    previous: dict[tuple[int, str], int] = {}
+    losses: dict[str, int] = {}
+    for row in rows:
+        raw_category = row.category_name or "Uncategorized"
+        category = "All skill groups (legacy)" if raw_category == "Skill" else raw_category
+        key = (int(row.character_id), raw_category)
+        current = int(row.category_skill_points or 0)
+        if key in previous and current < previous[key]:
+            losses[category] = losses.get(category, 0) + previous[key] - current
+        previous[key] = current
+    return [
+        {"name": category, "delta": loss}
+        for category, loss in sorted(losses.items(), key=lambda item: item[1], reverse=True)[:12]
+        if loss > 0
+    ]
+
 def duplicate_blueprints(db: Session) -> list[dict[str, Any]]:
     latest_time = db.scalar(select(func.max(BlueprintSnapshot.recorded_at)))
     if not latest_time:
@@ -195,7 +242,9 @@ def analytics_summary(days: int = Query(30, ge=1, le=3660), current_user: User =
             "character_count": len(latest_characters),
         },
         "top_sp_gainers": sp_gainers,
+        "top_sp_losses": skill_point_losses(db, days),
         "top_skill_category_gainers": category_deltas(db, days),
+        "top_skill_category_losses": skill_category_losses(db, days),
         "wallet_growth": wallet_growth,
         "member_growth": member_growth,
         "blueprint_growth": blueprint_growth,

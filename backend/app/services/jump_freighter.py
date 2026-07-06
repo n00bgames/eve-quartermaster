@@ -19,7 +19,7 @@ LIGHT_YEAR_METERS = 9_460_730_472_580_800
 JDC_RANGE_BONUS_PER_LEVEL = 0.2
 JFC_FUEL_REDUCTION_PER_LEVEL = 0.1
 ESI_SYSTEM_JUMPS_URL = "https://esi.evetech.net/latest/universe/system_jumps/?datasource=tranquility"
-USER_AGENT = "EVE-Quartermaster/0.1.3-beta capital-route-intel"
+USER_AGENT = "EVE-Quartermaster/0.1.4-beta capital-route-intel"
 
 FUEL_TYPE_NAMES = {
     16274: "Helium Isotopes",

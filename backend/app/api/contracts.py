@@ -26,6 +26,16 @@ def require_contracts(current_user: User, db: Session) -> None:
         raise HTTPException(status_code=403, detail="contracts permission is required")
 
 
+
+def can_sync_character_contract_token(token: EsiToken, character: EveCharacter, current_user: User, db: Session) -> bool:
+    if token.user_id == current_user.id:
+        return True
+    if role_rank(current_user, db) >= ROLE_RANK["director"]:
+        return True
+    if role_rank(current_user, db) < ROLE_RANK["officer"] or character.owner_user_id is None:
+        return False
+    owner = db.get(User, character.owner_user_id)
+    return owner is not None and role_rank(owner, db) < ROLE_RANK["officer"]
 def contract_token_payload(token: EsiToken, character: EveCharacter, owner: User, db: Session) -> dict[str, Any]:
     scopes = {scope.strip() for scope in (token.scopes or "").split() if scope.strip()}
     corporation = db.get(EveCorporation, character.corporation_id) if character.corporation_id else None
@@ -75,11 +85,11 @@ async def sync_character_contracts(token_id: int, current_user: User = Depends(g
     token = db.get(EsiToken, token_id)
     if token is None or token.revoked_at is not None:
         raise HTTPException(status_code=404, detail="Linked character token was not found")
-    if token.user_id != current_user.id and role_rank(current_user, db) < ROLE_RANK["director"]:
-        raise HTTPException(status_code=403, detail="You can only sync your own character contracts")
     character = db.get(EveCharacter, token.character_id)
     if character is None:
         raise HTTPException(status_code=404, detail="Linked character was not found")
+    if not can_sync_character_contract_token(token, character, current_user, db):
+        raise HTTPException(status_code=403, detail="You can only sync character contracts you own or are permitted to administer")
     require_scope(token, CHARACTER_CONTRACT_SCOPE, f"Syncing contracts for {character.name}")
     owner = db.get(User, token.user_id)
     job = EsiSyncJob(token_id=token.id, sync_type="character_contracts", status=SyncStatus.RUNNING, started_at=datetime.now(timezone.utc))
@@ -137,3 +147,4 @@ async def sync_corporation_contracts(token_id: int, current_user: User = Depends
         job.finished_at = datetime.now(timezone.utc)
         db.commit()
         raise
+

@@ -46,17 +46,54 @@ type Location = { id: number; location_kind: string; name: string; notes?: strin
 
 type Asset = { id: number; ownership_entity_id: number; owner_name: string; owner_kind?: string; type_id: number; type_name: string; quantity: number; location_name?: string; location_flag?: string; source: string; last_synced_at?: string | null; parent_asset_item_id?: number; parent_asset_type_name?: string };
 
-type Blueprint = { id: number; owner_name: string; blueprint_type_id: number; blueprint_type_name: string; product_type_name?: string; material_efficiency: number; time_efficiency: number; runs_remaining?: number; is_copy: boolean; location_name?: string; last_synced_at?: string | null };
+type Blueprint = { id: number; owner_name: string; blueprint_type_id: number; blueprint_type_name: string; product_type_id?: number | null; product_type_name?: string; material_efficiency: number; time_efficiency: number; runs_remaining?: number; is_copy: boolean; location_name?: string; last_synced_at?: string | null };
 
-type ActivityInput = { id: number; input_type_name: string; quantity: number; consume_type: string };
+type ActivityInput = { id: number; input_type_id?: number | null; input_type_name: string; quantity: number; consume_type: string };
 
-type IndustryActivity = { id: number; activity_kind: string; blueprint_type_name: string; product_type_name?: string; product_quantity: number; time_seconds?: number; inputs: ActivityInput[] };
+type IndustryActivity = { id: number; activity_kind: string; blueprint_type_id?: number | null; blueprint_type_name: string; product_type_id?: number | null; product_type_name?: string; product_quantity: number; time_seconds?: number; inputs: ActivityInput[] };
 
 type EsiAuthInfo = { ready: boolean; message?: string; url?: string; required_scopes: string[] };
 
 type LinkedCharacter = { token_id: number; character_id: number; character_name: string; linked_user_id: number; linked_user_display_name: string; can_sync_assets: boolean; can_unlink: boolean; scopes: string; access_token_expires_at?: string; linked_at?: string; last_sync_at?: string; last_sync_type?: string; last_sync_status?: string; missing_public_scopes: string[]; missing_standing_scopes: string[] };
 
 type EqmCharacter = { id: number; character_id?: number; name: string; can_view_detail: boolean; owner_user_id?: number | null; owner_display_name?: string | null; owner_role?: string | null; corporation_id?: number | null; corporation_name?: string | null; alliance_id?: number | null; alliance_name?: string | null; public_assets_visible?: boolean; sync_opt_out?: boolean; last_synced_at?: string | null; can_manage?: boolean; can_assign?: boolean };
+type CharacterSkillCategorySummary = { name: string; skill_points: number; skill_count: number };
+
+type CharacterSummary = {
+  character: { id: number; character_id: number; name: string; portrait_url?: string | null; corporation_name?: string | null; alliance_name?: string | null; owner_display_name?: string | null; owner_role?: string | null };
+  total_skill_points: number;
+  unallocated_skill_points: number;
+  skills_synced_at?: string | null;
+  queue_count: number;
+  skill_categories: CharacterSkillCategorySummary[];
+  asset_rows: number;
+  asset_units: number;
+  ship_units: number;
+  blueprints: number;
+  bpos: number;
+  bpcs: number;
+  fittings: number;
+  contracts: number;
+};
+
+type CharacterDossierToken = { token_id: number; linked_user_id: number; linked_user_display_name: string; can_sync: boolean; has_asset_scope: boolean; has_skill_scope: boolean; has_fitting_scope: boolean; has_contract_scope: boolean; missing_scopes: string[]; linked_at?: string | null };
+
+type CharacterDossierFitting = { id: number; name: string; ship_type_id: number; ship_type_name: string; is_shared: boolean; is_draft: boolean; last_synced_at?: string | null; updated_at?: string | null };
+
+type CharacterKillSample = { killmail_id: number; killmail_time?: string | null; zkb_url?: string | null; total_value?: number | null; victim_hull?: string | null; victim_character_name?: string | null; victim_corporation_name?: string | null; victim_alliance_name?: string | null; final_blow_character_name?: string | null; final_blow_corporation_name?: string | null; final_blow_alliance_name?: string | null; final_blow_ship_type_name?: string | null; attacker_count?: number | null; location_name?: string | null; smartbomb_used?: boolean };
+
+type CharacterDossier = {
+  character: EqmCharacter;
+  summary: CharacterSummary;
+  sync_tokens: CharacterDossierToken[];
+  skills: { categories: CharacterSkillCategorySummary[]; queue: { id: number; queue_position: number; skill_type_id: number; skill_name: string; finished_level: number; finish_date?: string | null }[] };
+  assets: Asset[];
+  blueprints: Blueprint[];
+  fittings: CharacterDossierFitting[];
+  contracts: EqmContract[];
+  kill_history: { kills_count: number; losses_count: number; isk_destroyed: number; isk_lost: number; kills: CharacterKillSample[]; losses: CharacterKillSample[] };
+  permissions: { public_assets_visible: boolean; sync_opt_out: boolean; can_manage: boolean; can_assign: boolean };
+};
 
 type RosterCharacter = { character_id: number; name: string; portrait_url?: string | null };
 
@@ -211,6 +248,8 @@ type NotificationInbox = { unread_count: number; events: AuditEvent[]; messages:
 
 type ProfileFocus = { section: "messages"; replyTo?: PrivateMessage; nonce: number };
 
+type CharacterFocus = { characterId?: number | null; name?: string; nonce: number };
+
 type AnalyticsPoint = { date?: string | null; corporation_name?: string; value: number };
 
 type AnalyticsGrowth = { id?: number; name: string; value?: number; delta: number };
@@ -233,7 +272,11 @@ type AnalyticsSummary = {
 
   top_sp_gainers: AnalyticsGrowth[];
 
+  top_sp_losses: AnalyticsGrowth[];
+
   top_skill_category_gainers: { name: string; delta: number }[];
+
+  top_skill_category_losses: { name: string; delta: number }[];
 
   wallet_growth: AnalyticsGrowth[];
 
@@ -273,7 +316,7 @@ type AppData = {
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
 
-const APP_VERSION = "0.1.3-beta";
+const APP_VERSION = "0.1.4-beta";
 
 
 
@@ -709,6 +752,8 @@ function App() {
 
   const [assetSeed, setAssetSeed] = useState<AssetTableSeed | null>(null);
 
+  const [characterFocus, setCharacterFocus] = useState<CharacterFocus | null>(null);
+
   const [data, setData] = useState<AppData>(emptyData);
 
   const [error, setError] = useState<string | null>(null);
@@ -915,6 +960,26 @@ function App() {
 
 
 
+  useEffect(() => {
+
+    function openCharacter(event: Event) {
+
+      const detail = (event as CustomEvent<CharacterFocus>).detail;
+
+      if (!detail?.characterId) return;
+
+      setCharacterFocus({ characterId: detail.characterId, name: detail.name, nonce: Date.now() });
+
+      setActiveTab("characters");
+
+    }
+
+    window.addEventListener("eqm:open-character", openCharacter as EventListener);
+
+    return () => window.removeEventListener("eqm:open-character", openCharacter as EventListener);
+
+  }, []);
+
   const typeOptions = useMemo(() => data.types.map((type) => <option key={type.type_id} value={type.type_id}>{type.name}</option>), [data.types]);
 
   const ownerOptions = useMemo(() => data.owners.map((owner) => <option key={owner.id} value={owner.id}>{owner.display_name}</option>), [data.owners]);
@@ -1043,7 +1108,7 @@ function App() {
 
         {activeTab === "ownership" && canView("ownership") && <Ownership data={data} submit={submit} />}
 
-        {activeTab === "characters" && canView("characters") && <Characters currentUser={user} />}
+        {activeTab === "characters" && canView("characters") && <Characters currentUser={user} focus={characterFocus} />}
 
         {activeTab === "roster" && canView("roster") && <Roster />}
 
@@ -1387,7 +1452,7 @@ function NavigationPlanner({ currentUser }: { currentUser: UserAccount }) {
 
 
 
-  return <><section className="panel stacked navigation-planner"><div className="section-heading"><div><h3>Route Checker</h3><p>{status ? `${numberFormatter.format(status.systems)} systems, ${numberFormatter.format(status.stargates)} stargates, and ${numberFormatter.format(status.stations ?? 0)} stations loaded from SDE` : "Checking imported map data"}</p></div><button type="button" onClick={() => void loadStatus()}>Refresh map status</button></div>{!mapLoaded && <div className="mini-alert">No stargate map is loaded yet. Import the SDE again from Settings to load regions, systems, and stargates.</div>}<form className="route-form" onSubmit={(event) => void planRoute(event)}><SystemSearchField label="Origin" value={origin} options={originOptions} placeholder="Jita" onChange={(value) => { originSelectionRef.current = ""; setOrigin(value); }} onPick={pickOrigin} /><SystemSearchField label="Destination" value={destination} options={destinationOptions} placeholder="Amarr" onChange={(value) => { destinationSelectionRef.current = ""; setDestination(value); }} onPick={pickDestination} /><label className="checkbox-row"><input type="checkbox" checked={highsecOnly} onChange={(event) => setHighsecOnly(event.target.checked)} /> Highsec only</label><button type="submit" disabled={busy || !origin.trim() || !destination.trim()}><MapIcon size={18} /> {busy ? "Planning" : "Plan route"}</button></form>{error && <div className="mini-alert">{error}</div>}{displayedRoute && <div className="route-results"><div className="section-heading compact"><div><h3>{displayedRoute.origin.name} to {displayedRoute.destination.name}</h3><p>{displayedRoute.jump_count.toLocaleString()} jumps · {displayedRoute.highsec_count} high · {displayedRoute.lowsec_count} low · {displayedRoute.nullsec_count} null</p></div><div className="button-row compact"><label className="compact-field">Hours<input type="number" min="1" max="168" value={gatecheckHours} onChange={(event) => setGatecheckHours(Number(event.target.value))} /></label><label className="checkbox-row compact-check"><input type="checkbox" checked={industrialOnly} onChange={(event) => setIndustrialOnly(event.target.checked)} /> Industrial kills only</label><button type="button" disabled={gatecheckBusy} onClick={() => void runGatecheck()}><Activity size={18} /> {gatecheckBusy ? "Checking" : "Gatecheck"}</button></div></div>{gatecheck && <div className="gatecheck-summary"><Metric icon={<Activity size={18} />} label={gatecheck.gatecheck.industrial_only ? "Industrial kills" : "Recent kills"} value={gatecheck.gatecheck.total_recent_kills} /><Metric icon={<Database size={18} />} label="Destroyed value" value={`${iskFormatter.format(gatecheck.gatecheck.total_destroyed_value)} ISK`} /><Metric icon={<MapIcon size={18} />} label="Systems checked" value={gatecheck.gatecheck.checked_systems} /><Metric icon={<ScrollText size={18} />} label="Lookback" value={`${gatecheck.gatecheck.hours}h`} /></div>}{gatecheck?.gatecheck.error_count ? <div className="mini-alert">Gatecheck reached the route, but {gatecheck.gatecheck.error_count} system lookup{gatecheck.gatecheck.error_count === 1 ? "" : "s"} failed.</div> : null}<details className="route-map-disclosure"><summary>Show on Operational Map</summary><OperationalMap title="Operational Map" subtitle={`${displayedRoute.origin.name} to ${displayedRoute.destination.name} · ${displayedRoute.jump_count.toLocaleString()} gates`} badge={`${displayedRoute.jump_count} gates`} routeSystems={displayedRoute.systems.map((system) => ({ ...system, map_index: system.jump_index, label: `${system.jump_index}. ${system.name}`, meta: `${system.region_name ?? "Unknown region"} · ${eveSecurityLabel(system.security_status)}`, selected_key: String(system.system_id), segment_label: system.jump_index > 0 ? "Gate" : null }))} mapContext={displayedRoute.map_context} selectedKey={Array.from(expandedSystems)[0] ? String(Array.from(expandedSystems)[0]) : null} onSelectRouteSystem={(key) => { if (key) toggleSystem(Number(key)); }} /></details><div className="route-list" role="list">{displayedRoute.systems.map((system) => { const expanded = expandedSystems.has(system.system_id); const samples = system.sample_killmails ?? []; return <div key={`${system.jump_index}-${system.system_id}`} className={`route-row risk-${system.risk_label ?? "none"} ${expanded ? "expanded" : ""}`} role="button" tabIndex={0} onClick={() => toggleSystem(system.system_id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); toggleSystem(system.system_id); } }}><span className="route-index">{system.jump_index}</span><div><strong>{system.name}</strong><span>{system.region_name ?? "Unknown region"}{system.constellation_name ? ` · ${system.constellation_name}` : ""}</span>{system.recent_kill_count !== undefined && <span className="gatecheck-line">{system.recent_kill_count ?? "?"} {gatecheck?.gatecheck.industrial_only ? "industrial kills" : "recent kills"}{typeof system.recent_destroyed_value === "number" ? ` · ${iskFormatter.format(system.recent_destroyed_value)} ISK destroyed` : ""}{system.latest_killmail_time ? ` · latest ${formatDateTime(system.latest_killmail_time, timeZone)}` : ""}</span>}</div><div className="route-badges"><span className={`security-badge ${eveSecurityClass(system.security_status)}`}>{eveSecurityLabel(system.security_status)}</span>{system.risk_label && <span className={`risk-badge risk-${system.risk_label}`}>{system.risk_label}</span>}</div>{expanded && <div className="killmail-detail-list">{samples.length > 0 ? samples.map((kill) => <article key={kill.killmail_id ?? `${system.system_id}-${kill.killmail_time}`}><div><strong>{kill.victim_hull ?? "Unknown hull"}</strong>{kill.smartbomb_used && <span className="smartbomb-badge">Smartbombs</span>}<span className="killmail-entity-line"><EveEntityIcon kind="character" id={kill.victim?.character_id} name={kill.victim?.character_name} size="tiny" />Victim: {kill.victim?.character_name ?? "Unknown pilot"}{kill.victim?.corporation_id && <EveEntityIcon kind="corporation" id={kill.victim.corporation_id} name={kill.victim.corporation_name} size="tiny" />}{kill.victim?.corporation_name ? ` · ${kill.victim.corporation_name}` : ""}{kill.victim?.alliance_id && <EveEntityIcon kind="alliance" id={kill.victim.alliance_id} name={kill.victim.alliance_name} size="tiny" />}{kill.victim?.alliance_name ? ` · ${kill.victim.alliance_name}` : ""}</span><span>{kill.location_kind ?? "space"} · {kill.location_name ?? "Unknown location"}</span></div><div><span>{kill.attacker_count ?? "?"} attackers · {kill.combatant_count ?? "?"} combatants</span><span className="killmail-entity-line"><EveEntityIcon kind="character" id={kill.final_blow?.character_id} name={kill.final_blow?.character_name} size="tiny" />Final blow: {kill.final_blow?.ship_type_name ?? "Unknown ship"} · {kill.final_blow?.character_name ?? "Unknown pilot"}{kill.final_blow?.corporation_id && <EveEntityIcon kind="corporation" id={kill.final_blow.corporation_id} name={kill.final_blow.corporation_name} size="tiny" />}{kill.final_blow?.corporation_name ? ` · ${kill.final_blow.corporation_name}` : ""}{kill.final_blow?.alliance_id && <EveEntityIcon kind="alliance" id={kill.final_blow.alliance_id} name={kill.final_blow.alliance_name} size="tiny" />}{kill.final_blow?.alliance_name ? ` · ${kill.final_blow.alliance_name}` : ""}</span>{kill.killmail_time && <span>{formatDateTime(kill.killmail_time, timeZone)} · {typeof kill.total_value === "number" ? `${iskFormatter.format(kill.total_value)} ISK` : "value unknown"}</span>}{(kill.zkb_url || (kill.killmail_id ? `https://zkillboard.com/kill/${kill.killmail_id}/` : null)) && <a href={kill.zkb_url || `https://zkillboard.com/kill/${kill.killmail_id}/`} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>Open killmail{kill.killmail_id ? ` #${kill.killmail_id}` : ""}</a>}</div></article>) : <p className="empty">No recent killmail details for this system in the selected window.</p>}</div>}</div>; })}</div></div>}</section><JumpFreighterPlanner currentUser={currentUser} /><IndustrialSystemThreatWidget currentUser={currentUser} /><PvpIntelWidget currentUser={currentUser} /><LocalThreatWidget currentUser={currentUser} /></>;
+  return <><section className="panel stacked navigation-planner"><div className="section-heading"><div><h3>Route Checker</h3><p>{status ? `${numberFormatter.format(status.systems)} systems, ${numberFormatter.format(status.stargates)} stargates, and ${numberFormatter.format(status.stations ?? 0)} stations loaded from SDE` : "Checking imported map data"}</p></div><button type="button" onClick={() => void loadStatus()}>Refresh map status</button></div>{!mapLoaded && <div className="mini-alert">No stargate map is loaded yet. Import the SDE again from Settings to load regions, systems, and stargates.</div>}<form className="route-form" onSubmit={(event) => void planRoute(event)}><SystemSearchField label="Origin" value={origin} options={originOptions} placeholder="Jita" onChange={(value) => { originSelectionRef.current = ""; setOrigin(value); }} onPick={pickOrigin} /><SystemSearchField label="Destination" value={destination} options={destinationOptions} placeholder="Amarr" onChange={(value) => { destinationSelectionRef.current = ""; setDestination(value); }} onPick={pickDestination} /><label className="checkbox-row"><input type="checkbox" checked={highsecOnly} onChange={(event) => setHighsecOnly(event.target.checked)} /> Highsec only</label><button type="submit" disabled={busy || !origin.trim() || !destination.trim()}><MapIcon size={18} /> {busy ? "Planning" : "Plan route"}</button></form>{error && <div className="mini-alert">{error}</div>}{displayedRoute && <div className="route-results"><div className="section-heading compact"><div><h3>{displayedRoute.origin.name} to {displayedRoute.destination.name}</h3><p>{displayedRoute.jump_count.toLocaleString()} jumps · {displayedRoute.highsec_count} high · {displayedRoute.lowsec_count} low · {displayedRoute.nullsec_count} null</p></div><div className="button-row compact"><label className="compact-field">Hours<input type="number" min="1" max="168" value={gatecheckHours} onChange={(event) => setGatecheckHours(Number(event.target.value))} /></label><label className="checkbox-row compact-check"><input type="checkbox" checked={industrialOnly} onChange={(event) => setIndustrialOnly(event.target.checked)} /> Industrial kills only</label><button type="button" disabled={gatecheckBusy} onClick={() => void runGatecheck()}><Activity size={18} /> {gatecheckBusy ? "Checking" : "Gatecheck"}</button></div></div>{gatecheck && <div className="gatecheck-summary"><Metric icon={<Activity size={18} />} label={gatecheck.gatecheck.industrial_only ? "Industrial kills" : "Recent kills"} value={gatecheck.gatecheck.total_recent_kills} /><Metric icon={<Database size={18} />} label="Destroyed value" value={`${iskFormatter.format(gatecheck.gatecheck.total_destroyed_value)} ISK`} /><Metric icon={<MapIcon size={18} />} label="Systems checked" value={gatecheck.gatecheck.checked_systems} /><Metric icon={<ScrollText size={18} />} label="Lookback" value={`${gatecheck.gatecheck.hours}h`} /></div>}{gatecheck?.gatecheck.error_count ? <div className="mini-alert">Gatecheck reached the route, but {gatecheck.gatecheck.error_count} system lookup{gatecheck.gatecheck.error_count === 1 ? "" : "s"} failed.</div> : null}<details className="route-map-disclosure"><summary>Show on Operational Map</summary><OperationalMap title="Operational Map" subtitle={`${displayedRoute.origin.name} to ${displayedRoute.destination.name} · ${displayedRoute.jump_count.toLocaleString()} gates`} badge={`${displayedRoute.jump_count} gates`} routeSystems={displayedRoute.systems.map((system) => ({ ...system, map_index: system.jump_index, label: `${system.jump_index}. ${system.name}`, meta: `${system.region_name ?? "Unknown region"} · ${eveSecurityLabel(system.security_status)}`, selected_key: String(system.system_id), segment_label: system.jump_index > 0 ? "Gate" : null }))} mapContext={displayedRoute.map_context} selectedKey={Array.from(expandedSystems)[0] ? String(Array.from(expandedSystems)[0]) : null} onSelectRouteSystem={(key) => { if (key) toggleSystem(Number(key)); }} /></details><div className="route-list" role="list">{displayedRoute.systems.map((system) => { const expanded = expandedSystems.has(system.system_id); const samples = system.sample_killmails ?? []; return <div key={`${system.jump_index}-${system.system_id}`} className={`route-row risk-${system.risk_label ?? "none"} ${expanded ? "expanded" : ""}`} role="button" tabIndex={0} onClick={() => toggleSystem(system.system_id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); toggleSystem(system.system_id); } }}><span className="route-index">{system.jump_index}</span><div><strong>{system.name}</strong><span>{system.region_name ?? "Unknown region"}{system.constellation_name ? ` · ${system.constellation_name}` : ""}</span>{system.recent_kill_count !== undefined && <span className="gatecheck-line">{system.recent_kill_count ?? "?"} {gatecheck?.gatecheck.industrial_only ? "industrial kills" : "recent kills"}{typeof system.recent_destroyed_value === "number" ? ` · ${iskFormatter.format(system.recent_destroyed_value)} ISK destroyed` : ""}{system.latest_killmail_time ? ` · latest ${formatDateTime(system.latest_killmail_time, timeZone)}` : ""}</span>}</div><div className="route-badges"><span className={`security-badge ${eveSecurityClass(system.security_status)}`}>{eveSecurityLabel(system.security_status)}</span>{system.risk_label && <span className={`risk-badge risk-${system.risk_label}`}>{system.risk_label}</span>}</div>{expanded && <div className="killmail-detail-list">{samples.length > 0 ? samples.map((kill) => <article key={kill.killmail_id ?? `${system.system_id}-${kill.killmail_time}`}><div><strong>{kill.victim_hull ?? "Unknown hull"}</strong>{kill.smartbomb_used && <span className="smartbomb-badge">Smartbombs</span>}<span className="killmail-entity-line"><EveEntityIcon kind="character" id={kill.victim?.character_id} name={kill.victim?.character_name} size="tiny" />Victim: <CharacterHoverName characterId={kill.victim?.character_id} name={kill.victim?.character_name ?? "Unknown pilot"} href={kill.victim?.character_id ? `https://zkillboard.com/character/${kill.victim.character_id}/` : undefined} />{kill.victim?.corporation_id && <EveEntityIcon kind="corporation" id={kill.victim.corporation_id} name={kill.victim.corporation_name} size="tiny" />}{kill.victim?.corporation_name ? ` · ${kill.victim.corporation_name}` : ""}{kill.victim?.alliance_id && <EveEntityIcon kind="alliance" id={kill.victim.alliance_id} name={kill.victim.alliance_name} size="tiny" />}{kill.victim?.alliance_name ? ` · ${kill.victim.alliance_name}` : ""}</span><span>{kill.location_kind ?? "space"} · {kill.location_name ?? "Unknown location"}</span></div><div><span>{kill.attacker_count ?? "?"} attackers · {kill.combatant_count ?? "?"} combatants</span><span className="killmail-entity-line"><EveEntityIcon kind="character" id={kill.final_blow?.character_id} name={kill.final_blow?.character_name} size="tiny" />Final blow: {kill.final_blow?.ship_type_name ?? "Unknown ship"} · <CharacterHoverName characterId={kill.final_blow?.character_id} name={kill.final_blow?.character_name ?? "Unknown pilot"} href={kill.final_blow?.character_id ? `https://zkillboard.com/character/${kill.final_blow.character_id}/` : undefined} />{kill.final_blow?.corporation_id && <EveEntityIcon kind="corporation" id={kill.final_blow.corporation_id} name={kill.final_blow.corporation_name} size="tiny" />}{kill.final_blow?.corporation_name ? ` · ${kill.final_blow.corporation_name}` : ""}{kill.final_blow?.alliance_id && <EveEntityIcon kind="alliance" id={kill.final_blow.alliance_id} name={kill.final_blow.alliance_name} size="tiny" />}{kill.final_blow?.alliance_name ? ` · ${kill.final_blow.alliance_name}` : ""}</span>{kill.killmail_time && <span>{formatDateTime(kill.killmail_time, timeZone)} · {typeof kill.total_value === "number" ? `${iskFormatter.format(kill.total_value)} ISK` : "value unknown"}</span>}{(kill.zkb_url || (kill.killmail_id ? `https://zkillboard.com/kill/${kill.killmail_id}/` : null)) && <a href={kill.zkb_url || `https://zkillboard.com/kill/${kill.killmail_id}/`} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>Open killmail{kill.killmail_id ? ` #${kill.killmail_id}` : ""}</a>}</div></article>) : <p className="empty">No recent killmail details for this system in the selected window.</p>}</div>}</div>; })}</div></div>}</section><JumpFreighterPlanner currentUser={currentUser} /><IndustrialSystemThreatWidget currentUser={currentUser} /><PvpIntelWidget currentUser={currentUser} /><LocalThreatWidget currentUser={currentUser} /></>;
 
 }
 
@@ -1831,7 +1896,7 @@ function JumpFreighterPlanner({ currentUser }: { currentUser: UserAccount }) {
 
 
 
-  return <section className="panel stacked jf-planner"><div className="section-heading"><div><h3>Capital Jump Plotter</h3><p>NPC-station-only capital jump routes with fuel math, cyno guidance, and 24h kill checks.</p></div>{route && <span className="version-badge">{route.ship.name} · {route.max_range_ly} LY</span>}</div><form className="route-form jf-form" onSubmit={(event) => void plotRoute(event)}><SystemSearchField label="Origin" value={origin} options={originOptions} placeholder="Jita" onChange={(value) => { originSelectionRef.current = ""; setOrigin(value); }} onPick={pickOrigin} /><SystemSearchField label="Cyno destination" value={destination} options={destinationOptions} placeholder="Tama" onChange={(value) => { destinationSelectionRef.current = ""; setDestination(value); }} onPick={pickDestination} /><label>Ship<select value={ship} onChange={(event) => setShip(event.target.value)}><optgroup label="Jump Freighters"><option>Rhea</option><option>Ark</option><option>Anshar</option><option>Nomad</option></optgroup><optgroup label="Industrial Capital"><option>Rorqual</option></optgroup><optgroup label="Carriers"><option>Archon</option><option>Chimera</option><option>Nidhoggur</option><option>Thanatos</option></optgroup><optgroup label="Command Carriers"><option>Salvation</option><option>Simurgh</option><option>Gaia</option><option>Ymir</option></optgroup><optgroup label="Dreadnoughts"><option>Revelation</option><option>Moros</option><option>Phoenix</option><option>Naglfar</option><option>Chemosh</option><option>Vehement</option><option>Caiman</option><option>Zirnitra</option><option>Sarathiel</option><option>Revelation Navy Issue</option><option>Moros Navy Issue</option><option>Phoenix Navy Issue</option><option>Naglfar Fleet Issue</option></optgroup><optgroup label="Lancer Dreadnoughts"><option>Bane</option><option>Hubris</option><option>Karura</option><option>Valravn</option></optgroup><optgroup label="Force Auxiliaries"><option>Apostle</option><option>Minokawa</option><option>Lif</option><option>Ninazu</option><option>Dagon</option><option>Loggerhead</option></optgroup><optgroup label="Supercarriers"><option>Aeon</option><option>Wyvern</option><option>Hel</option><option>Nyx</option><option>Revenant</option><option>Vendetta</option></optgroup><optgroup label="Titans"><option>Avatar</option><option>Leviathan</option><option>Ragnarok</option><option>Erebus</option><option>Vanquisher</option><option>Molok</option><option>Komodo</option><option>Azariel</option></optgroup></select></label><label>JDC<input type="number" min="0" max="5" value={jdc} onChange={(event) => setJdc(Number(event.target.value))} /></label><label>JFC<input type="number" min="0" max="5" value={jfc} onChange={(event) => setJfc(Number(event.target.value))} /></label><label>Context<select value={contextHops} onChange={(event) => setContextHops(Number(event.target.value))}><option value={0}>Route only</option><option value={1}>1 gate hop</option><option value={2}>2 gate hops</option></select></label><label>Station safety<select value={stationSafety} onChange={(event) => setStationSafety(event.target.value)}><option value="any">Any NPC station</option><option value="avoid_red_only">Avoid red-only</option><option value="green">Only green stations</option></select></label><label className="checkbox-row"><input type="checkbox" checked={killFilter === "industrial"} onChange={(event) => setKillFilter(event.target.checked ? "industrial" : "all")} /> Industrial kills only</label><label>Observed activity<select value={jumpActivityHours} onChange={(event) => setJumpActivityHours(Number(event.target.value))}>{[1, 3, 6, 9, 12, 15, 18, 21, 24].map((hours) => <option key={hours} value={hours}>{hours}h</option>)}</select></label><button type="submit" disabled={busy || !origin.trim() || !destination.trim()}><MapIcon size={18} /> {busy ? "Plotting" : "Plot capital route"}</button></form>{avoidSystems.length > 0 && <div className="avoid-list-panel"><div><strong>Avoiding</strong><span>{avoidSystems.length} system{avoidSystems.length === 1 ? "" : "s"}</span></div><div className="avoid-chip-row">{avoidSystems.map((system) => <button type="button" key={system.system_id} className={`avoid-chip ${eveSecurityClass(system.security_status)}`} onClick={() => removeAvoidSystem(system.system_id)}>{system.name} x</button>)}<button type="button" className="avoid-clear" onClick={clearAvoidSystems}>Clear avoid list</button></div></div>}{error && <div className="mini-alert">{error}</div>}{route && <><div className="gatecheck-summary"><Metric icon={<MapIcon size={18} />} label="Jumps" value={route.jump_count} delta={`${route.total_distance_ly} LY`} /><Metric icon={<Database size={18} />} label="Fuel" value={numberFormatter.format(route.total_fuel_units)} delta={route.ship.fuel_type_name} /><Metric icon={<Activity size={18} />} label="Range" value={`${route.max_range_ly} LY`} delta={`${route.ship.ship_class ?? "Capital"} · JDC ${route.skills.jump_drive_calibration}`} /><Metric icon={<Factory size={18} />} label="Fuel skill" value={`JFC ${route.skills.jump_fuel_conservation}`} delta={`${numberFormatter.format(route.ship.base_fuel_per_light_year)}/LY base`} /><Metric icon={<Factory size={18} />} label="Station safety" value={route.station_safety?.label ?? "Any NPC station"} delta="cyno target filter" /><Metric icon={<Activity size={18} />} label="Kill display" value={route.kill_filter?.label ?? "Industrial kills only"} delta="24h cached samples" /><Metric icon={<Activity size={18} />} label={`Observed Activity (${route.jump_activity?.hours ?? jumpActivityHours}h)`} value={route.jump_activity?.cache?.refreshed ? "refreshed" : "cached"} delta="hourly ESI samples" /></div><div className="jf-notes">{route.notes.map((note) => <span key={note}>{note}</span>)}</div><OperationalMap title="Operational Map" subtitle={`${route.origin.name} to ${route.destination.name} · ${route.jump_count.toLocaleString()} jumps`} badge={`${route.total_distance_ly} LY`} routeSystems={[route.origin, ...route.jumps.map((jump) => jump.to_system)].map((system, index) => ({ ...system, map_index: index, label: `${index}. ${system.name}`, meta: `${system.region_name ?? "Unknown region"} · ${eveSecurityLabel(system.security_status)}`, selected_key: index > 0 ? String(route.jumps[index - 1].jump_index) : null, segment_label: index > 0 ? `${route.jumps[index - 1].distance_ly} LY` : null }))} mapContext={route.map_context} selectedKey={expandedJump ? String(expandedJump) : null} onSelectRouteSystem={(key) => setExpandedJump(key ? Number(key) : null)} /><div className="jf-jump-list">{route.jumps.map((jump) => { const expanded = expandedJump === jump.jump_index; return <article key={jump.jump_index} className="jf-jump"><button type="button" onClick={() => setExpandedJump(expanded ? null : jump.jump_index)}><span className="route-index">{jump.jump_index}</span><strong>{jump.from_system.name} to {jump.to_system.name}</strong><span>{jump.distance_ly} LY · {numberFormatter.format(jump.fuel_units)} {route.ship.fuel_type_name}</span><span className={`security-badge ${eveSecurityClass(jump.to_system.security_status)}`}>{eveSecurityLabel(jump.to_system.security_status)}</span><span className={`risk-badge risk-${(jump.kills_24h ?? jump.industrial_kills_24h).count > 0 ? "active" : "quiet"}`}>{(jump.kills_24h ?? jump.industrial_kills_24h).count} {route.kill_filter?.mode === "all" ? "kills" : "industrial kills"} / 24h</span>{jump.jump_activity && <span className={`intel-badge intel-${(jump.jump_activity.activity_label ?? "unknown").replace(/\s+/g, "-").toLowerCase()}`} title={`Observed Activity (${jump.jump_activity.hours}h): ${jump.jump_activity.total_jumps.toLocaleString()} jumps, ${jump.jump_activity.jumps_per_hour.toLocaleString()} jumps/hr, confidence ${jump.jump_activity.confidence} from ${jump.jump_activity.observations} observations`}>{jump.jump_activity.activity_label} · {jump.jump_activity.total_jumps.toLocaleString()} jumps / {jump.jump_activity.hours}h · {jump.jump_activity.confidence}</span>}</button><div className="jf-jump-actions"><button type="button" disabled={jump.to_system.system_id === route.destination.system_id || avoidSystems.some((system) => system.system_id === jump.to_system.system_id)} onClick={() => addAvoidSystem(jump.to_system)}>{jump.to_system.system_id === route.destination.system_id ? "Destination" : avoidSystems.some((system) => system.system_id === jump.to_system.system_id) ? "Avoiding" : `Avoid ${jump.to_system.name}`}</button></div>{expanded && <div className="jf-jump-detail"><section><h4>Stations in {jump.to_system.name}</h4>{jump.stations.length > 0 ? <div className="jf-stations">{jump.stations.map((station) => <div key={station.station_id} className={`station-risk station-${station.cyno_guidance.risk}`}><strong>{station.name}</strong><span>{station.type_name ?? "Unknown station type"}</span><span>{station.operation_name ?? "Unknown operation"}</span><span>{station.cyno_guidance.range_km ? `${station.cyno_guidance.range_km} km docking guide` : "No docking range guide"}</span><small>{station.cyno_guidance.note}</small>{station.cyno_guidance.reference_links?.length ? <div className="cyno-reference-links">{station.cyno_guidance.reference_links.map((link) => <a key={link.url} href={link.url} target="_blank" rel="noreferrer">{link.label}</a>)}</div> : null}</div>)}</div> : <p className="empty">No NPC stations imported for this target system yet.</p>}</section><section><h4>{route.kill_filter?.mode === "all" ? "All kills" : "Industrial kills"}, last 24h</h4>{(jump.kills_24h ?? jump.industrial_kills_24h).sample_killmails.length > 0 ? <div className="killmail-detail-list jf-kills">{(jump.kills_24h ?? jump.industrial_kills_24h).sample_killmails.map((kill) => <article key={kill.killmail_id}><div><strong>{kill.victim_hull ?? "Unknown hull"}</strong>{kill.smartbomb_used && <span className="smartbomb-badge">Smartbombs</span>}<span className="killmail-entity-line"><EveEntityIcon kind="character" id={kill.victim_character_id} name={kill.victim_character_name} size="tiny" />{kill.victim_character_name ?? "Unknown pilot"}{kill.victim_corporation_id && <EveEntityIcon kind="corporation" id={kill.victim_corporation_id} name={kill.victim_corporation_name} size="tiny" />}{kill.victim_corporation_name ? ` · ${kill.victim_corporation_name}` : ""}{kill.victim_alliance_id && <EveEntityIcon kind="alliance" id={kill.victim_alliance_id} name={kill.victim_alliance_name} size="tiny" />}{kill.victim_alliance_name ? ` · ${kill.victim_alliance_name}` : ""}</span><span>{kill.location_kind ?? "space"} · {kill.location_name ?? "Unknown location"}</span>{kill.killmail_time && <span>{formatDateTime(kill.killmail_time, timeZone)}</span>}</div><div><span>{kill.attacker_count ?? "?"} attackers</span><span className="killmail-entity-line"><EveEntityIcon kind="character" id={kill.final_blow_character_id} name={kill.final_blow_character_name} size="tiny" />Final blow: {kill.final_blow_ship_type_name ?? "Unknown ship"} · {kill.final_blow_character_name ?? "Unknown pilot"}{kill.final_blow_corporation_id && <EveEntityIcon kind="corporation" id={kill.final_blow_corporation_id} name={kill.final_blow_corporation_name} size="tiny" />}{kill.final_blow_corporation_name ? ` · ${kill.final_blow_corporation_name}` : ""}{kill.final_blow_alliance_id && <EveEntityIcon kind="alliance" id={kill.final_blow_alliance_id} name={kill.final_blow_alliance_name} size="tiny" />}{kill.final_blow_alliance_name ? ` · ${kill.final_blow_alliance_name}` : ""}</span>{kill.zkb_url && <a href={kill.zkb_url} target="_blank" rel="noreferrer">Open killmail #{kill.killmail_id}</a>}</div></article>)}</div> : <p className="empty">No cached {route.kill_filter?.mode === "all" ? "kills" : "industrial kills"} in the last 24 hours.</p>}</section></div>}</article>; })}</div><section className="station-guide"><h4>Station Cyno Risk Reference</h4><p>EQM-rendered reference from pilot-provided station docking/cyno guidance. Use it as planning support, not a replacement for practiced bookmarks.</p><div>{route.station_cyno_guide.map((row) => <span key={row.station_type} className={`station-risk station-${row.risk}`}><strong>{row.station_type}</strong><small>{row.range_km ?? "?"} km · {row.risk}</small></span>)}</div></section></>}</section>;
+  return <section className="panel stacked jf-planner"><div className="section-heading"><div><h3>Capital Jump Plotter</h3><p>NPC-station-only capital jump routes with fuel math, cyno guidance, and 24h kill checks.</p></div>{route && <span className="version-badge">{route.ship.name} · {route.max_range_ly} LY</span>}</div><form className="route-form jf-form" onSubmit={(event) => void plotRoute(event)}><SystemSearchField label="Origin" value={origin} options={originOptions} placeholder="Jita" onChange={(value) => { originSelectionRef.current = ""; setOrigin(value); }} onPick={pickOrigin} /><SystemSearchField label="Cyno destination" value={destination} options={destinationOptions} placeholder="Tama" onChange={(value) => { destinationSelectionRef.current = ""; setDestination(value); }} onPick={pickDestination} /><label>Ship<select value={ship} onChange={(event) => setShip(event.target.value)}><optgroup label="Jump Freighters"><option>Rhea</option><option>Ark</option><option>Anshar</option><option>Nomad</option></optgroup><optgroup label="Industrial Capital"><option>Rorqual</option></optgroup><optgroup label="Carriers"><option>Archon</option><option>Chimera</option><option>Nidhoggur</option><option>Thanatos</option></optgroup><optgroup label="Command Carriers"><option>Salvation</option><option>Simurgh</option><option>Gaia</option><option>Ymir</option></optgroup><optgroup label="Dreadnoughts"><option>Revelation</option><option>Moros</option><option>Phoenix</option><option>Naglfar</option><option>Chemosh</option><option>Vehement</option><option>Caiman</option><option>Zirnitra</option><option>Sarathiel</option><option>Revelation Navy Issue</option><option>Moros Navy Issue</option><option>Phoenix Navy Issue</option><option>Naglfar Fleet Issue</option></optgroup><optgroup label="Lancer Dreadnoughts"><option>Bane</option><option>Hubris</option><option>Karura</option><option>Valravn</option></optgroup><optgroup label="Force Auxiliaries"><option>Apostle</option><option>Minokawa</option><option>Lif</option><option>Ninazu</option><option>Dagon</option><option>Loggerhead</option></optgroup><optgroup label="Supercarriers"><option>Aeon</option><option>Wyvern</option><option>Hel</option><option>Nyx</option><option>Revenant</option><option>Vendetta</option></optgroup><optgroup label="Titans"><option>Avatar</option><option>Leviathan</option><option>Ragnarok</option><option>Erebus</option><option>Vanquisher</option><option>Molok</option><option>Komodo</option><option>Azariel</option></optgroup></select></label><label>JDC<input type="number" min="0" max="5" value={jdc} onChange={(event) => setJdc(Number(event.target.value))} /></label><label>JFC<input type="number" min="0" max="5" value={jfc} onChange={(event) => setJfc(Number(event.target.value))} /></label><label>Context<select value={contextHops} onChange={(event) => setContextHops(Number(event.target.value))}><option value={0}>Route only</option><option value={1}>1 gate hop</option><option value={2}>2 gate hops</option></select></label><label>Station safety<select value={stationSafety} onChange={(event) => setStationSafety(event.target.value)}><option value="any">Any NPC station</option><option value="avoid_red_only">Avoid red-only</option><option value="green">Only green stations</option></select></label><label className="checkbox-row"><input type="checkbox" checked={killFilter === "industrial"} onChange={(event) => setKillFilter(event.target.checked ? "industrial" : "all")} /> Industrial kills only</label><label>Observed activity<select value={jumpActivityHours} onChange={(event) => setJumpActivityHours(Number(event.target.value))}>{[1, 3, 6, 9, 12, 15, 18, 21, 24].map((hours) => <option key={hours} value={hours}>{hours}h</option>)}</select></label><button type="submit" disabled={busy || !origin.trim() || !destination.trim()}><MapIcon size={18} /> {busy ? "Plotting" : "Plot capital route"}</button></form>{avoidSystems.length > 0 && <div className="avoid-list-panel"><div><strong>Avoiding</strong><span>{avoidSystems.length} system{avoidSystems.length === 1 ? "" : "s"}</span></div><div className="avoid-chip-row">{avoidSystems.map((system) => <button type="button" key={system.system_id} className={`avoid-chip ${eveSecurityClass(system.security_status)}`} onClick={() => removeAvoidSystem(system.system_id)}>{system.name} x</button>)}<button type="button" className="avoid-clear" onClick={clearAvoidSystems}>Clear avoid list</button></div></div>}{error && <div className="mini-alert">{error}</div>}{route && <><div className="gatecheck-summary"><Metric icon={<MapIcon size={18} />} label="Jumps" value={route.jump_count} delta={`${route.total_distance_ly} LY`} /><Metric icon={<Database size={18} />} label="Fuel" value={numberFormatter.format(route.total_fuel_units)} delta={route.ship.fuel_type_name} /><Metric icon={<Activity size={18} />} label="Range" value={`${route.max_range_ly} LY`} delta={`${route.ship.ship_class ?? "Capital"} · JDC ${route.skills.jump_drive_calibration}`} /><Metric icon={<Factory size={18} />} label="Fuel skill" value={`JFC ${route.skills.jump_fuel_conservation}`} delta={`${numberFormatter.format(route.ship.base_fuel_per_light_year)}/LY base`} /><Metric icon={<Factory size={18} />} label="Station safety" value={route.station_safety?.label ?? "Any NPC station"} delta="cyno target filter" /><Metric icon={<Activity size={18} />} label="Kill display" value={route.kill_filter?.label ?? "Industrial kills only"} delta="24h cached samples" /><Metric icon={<Activity size={18} />} label={`Observed Activity (${route.jump_activity?.hours ?? jumpActivityHours}h)`} value={route.jump_activity?.cache?.refreshed ? "refreshed" : "cached"} delta="hourly ESI samples" /></div><div className="jf-notes">{route.notes.map((note) => <span key={note}>{note}</span>)}</div><OperationalMap title="Operational Map" subtitle={`${route.origin.name} to ${route.destination.name} · ${route.jump_count.toLocaleString()} jumps`} badge={`${route.total_distance_ly} LY`} routeSystems={[route.origin, ...route.jumps.map((jump) => jump.to_system)].map((system, index) => ({ ...system, map_index: index, label: `${index}. ${system.name}`, meta: `${system.region_name ?? "Unknown region"} · ${eveSecurityLabel(system.security_status)}`, selected_key: index > 0 ? String(route.jumps[index - 1].jump_index) : null, segment_label: index > 0 ? `${route.jumps[index - 1].distance_ly} LY` : null }))} mapContext={route.map_context} selectedKey={expandedJump ? String(expandedJump) : null} onSelectRouteSystem={(key) => setExpandedJump(key ? Number(key) : null)} /><div className="jf-jump-list">{route.jumps.map((jump) => { const expanded = expandedJump === jump.jump_index; return <article key={jump.jump_index} className="jf-jump"><button type="button" onClick={() => setExpandedJump(expanded ? null : jump.jump_index)}><span className="route-index">{jump.jump_index}</span><strong>{jump.from_system.name} to {jump.to_system.name}</strong><span>{jump.distance_ly} LY · {numberFormatter.format(jump.fuel_units)} {route.ship.fuel_type_name}</span><span className={`security-badge ${eveSecurityClass(jump.to_system.security_status)}`}>{eveSecurityLabel(jump.to_system.security_status)}</span><span className={`risk-badge risk-${(jump.kills_24h ?? jump.industrial_kills_24h).count > 0 ? "active" : "quiet"}`}>{(jump.kills_24h ?? jump.industrial_kills_24h).count} {route.kill_filter?.mode === "all" ? "kills" : "industrial kills"} / 24h</span>{jump.jump_activity && <span className={`intel-badge intel-${(jump.jump_activity.activity_label ?? "unknown").replace(/\s+/g, "-").toLowerCase()}`} title={`Observed Activity (${jump.jump_activity.hours}h): ${jump.jump_activity.total_jumps.toLocaleString()} jumps, ${jump.jump_activity.jumps_per_hour.toLocaleString()} jumps/hr, confidence ${jump.jump_activity.confidence} from ${jump.jump_activity.observations} observations`}>{jump.jump_activity.activity_label} · {jump.jump_activity.total_jumps.toLocaleString()} jumps / {jump.jump_activity.hours}h · {jump.jump_activity.confidence}</span>}</button><div className="jf-jump-actions"><button type="button" disabled={jump.to_system.system_id === route.destination.system_id || avoidSystems.some((system) => system.system_id === jump.to_system.system_id)} onClick={() => addAvoidSystem(jump.to_system)}>{jump.to_system.system_id === route.destination.system_id ? "Destination" : avoidSystems.some((system) => system.system_id === jump.to_system.system_id) ? "Avoiding" : `Avoid ${jump.to_system.name}`}</button></div>{expanded && <div className="jf-jump-detail"><section><h4>Stations in {jump.to_system.name}</h4>{jump.stations.length > 0 ? <div className="jf-stations">{jump.stations.map((station) => <div key={station.station_id} className={`station-risk station-${station.cyno_guidance.risk}`}><strong>{station.name}</strong><span>{station.type_name ?? "Unknown station type"}</span><span>{station.operation_name ?? "Unknown operation"}</span><span>{station.cyno_guidance.range_km ? `${station.cyno_guidance.range_km} km docking guide` : "No docking range guide"}</span><small>{station.cyno_guidance.note}</small>{station.cyno_guidance.reference_links?.length ? <div className="cyno-reference-links">{station.cyno_guidance.reference_links.map((link) => <a key={link.url} href={link.url} target="_blank" rel="noreferrer">{link.label}</a>)}</div> : null}</div>)}</div> : <p className="empty">No NPC stations imported for this target system yet.</p>}</section><section><h4>{route.kill_filter?.mode === "all" ? "All kills" : "Industrial kills"}, last 24h</h4>{(jump.kills_24h ?? jump.industrial_kills_24h).sample_killmails.length > 0 ? <div className="killmail-detail-list jf-kills">{(jump.kills_24h ?? jump.industrial_kills_24h).sample_killmails.map((kill) => <article key={kill.killmail_id}><div><strong>{kill.victim_hull ?? "Unknown hull"}</strong>{kill.smartbomb_used && <span className="smartbomb-badge">Smartbombs</span>}<span className="killmail-entity-line"><EveEntityIcon kind="character" id={kill.victim_character_id} name={kill.victim_character_name} size="tiny" /><CharacterHoverName characterId={kill.victim_character_id} name={kill.victim_character_name ?? "Unknown pilot"} href={kill.victim_character_id ? `https://zkillboard.com/character/${kill.victim_character_id}/` : undefined} />{kill.victim_corporation_id && <EveEntityIcon kind="corporation" id={kill.victim_corporation_id} name={kill.victim_corporation_name} size="tiny" />}{kill.victim_corporation_name ? ` · ${kill.victim_corporation_name}` : ""}{kill.victim_alliance_id && <EveEntityIcon kind="alliance" id={kill.victim_alliance_id} name={kill.victim_alliance_name} size="tiny" />}{kill.victim_alliance_name ? ` · ${kill.victim_alliance_name}` : ""}</span><span>{kill.location_kind ?? "space"} · {kill.location_name ?? "Unknown location"}</span>{kill.killmail_time && <span>{formatDateTime(kill.killmail_time, timeZone)}</span>}</div><div><span>{kill.attacker_count ?? "?"} attackers</span><span className="killmail-entity-line"><EveEntityIcon kind="character" id={kill.final_blow_character_id} name={kill.final_blow_character_name} size="tiny" />Final blow: {kill.final_blow_ship_type_name ?? "Unknown ship"} · <CharacterHoverName characterId={kill.final_blow_character_id} name={kill.final_blow_character_name ?? "Unknown pilot"} href={kill.final_blow_character_id ? `https://zkillboard.com/character/${kill.final_blow_character_id}/` : undefined} />{kill.final_blow_corporation_id && <EveEntityIcon kind="corporation" id={kill.final_blow_corporation_id} name={kill.final_blow_corporation_name} size="tiny" />}{kill.final_blow_corporation_name ? ` · ${kill.final_blow_corporation_name}` : ""}{kill.final_blow_alliance_id && <EveEntityIcon kind="alliance" id={kill.final_blow_alliance_id} name={kill.final_blow_alliance_name} size="tiny" />}{kill.final_blow_alliance_name ? ` · ${kill.final_blow_alliance_name}` : ""}</span>{kill.zkb_url && <a href={kill.zkb_url} target="_blank" rel="noreferrer">Open killmail #{kill.killmail_id}</a>}</div></article>)}</div> : <p className="empty">No cached {route.kill_filter?.mode === "all" ? "kills" : "industrial kills"} in the last 24 hours.</p>}</section></div>}</article>; })}</div><section className="station-guide"><h4>Station Cyno Risk Reference</h4><p>EQM-rendered reference from pilot-provided station docking/cyno guidance. Use it as planning support, not a replacement for practiced bookmarks.</p><div>{route.station_cyno_guide.map((row) => <span key={row.station_type} className={`station-risk station-${row.risk}`}><strong>{row.station_type}</strong><small>{row.range_km ?? "?"} km · {row.risk}</small></span>)}</div></section></>}</section>;
 
 }
 
@@ -2306,7 +2371,7 @@ function LocalThreatWidget({ currentUser }: { currentUser: UserAccount }) {
 
         {sortedPilots.map((pilot) => <article key={`${pilot.name}-${pilot.character_id ?? pilot.input_name}`} className={`local-threat-pilot risk-${pilot.danger_label}`}>
 
-          <div className="local-threat-identity"><span className="entity-inline"><EveEntityIcon kind="character" id={pilot.character_id} name={pilot.name} /><a className="local-threat-name local-threat-character" href={pilot.character_id ? `https://zkillboard.com/character/${pilot.character_id}/` : undefined} target="_blank" rel="noreferrer">{pilot.name}</a></span><span className="local-threat-orgs">{pilot.corporation_id && <EveEntityIcon kind="corporation" id={pilot.corporation_id} name={pilot.corporation_name} size="tiny" />}{pilot.corporation_id ? <a className="local-threat-corporation" href={`https://zkillboard.com/corporation/${pilot.corporation_id}/`} target="_blank" rel="noreferrer">{pilot.corporation_name ?? "Unknown corporation"}</a> : <span className="local-threat-corporation">{pilot.corporation_name ?? "Unknown corporation"}</span>}{pilot.alliance_id ? <> · <EveEntityIcon kind="alliance" id={pilot.alliance_id} name={pilot.alliance_name} size="tiny" /><a className="local-threat-alliance" href={`https://zkillboard.com/alliance/${pilot.alliance_id}/`} target="_blank" rel="noreferrer">{pilot.alliance_name ?? "Unknown alliance"}</a></> : (pilot.alliance_name ? <> · <span className="local-threat-alliance">{pilot.alliance_name}</span></> : "")}</span></div>
+          <div className="local-threat-identity"><span className="entity-inline"><EveEntityIcon kind="character" id={pilot.character_id} name={pilot.name} /><CharacterHoverName characterId={pilot.character_id} name={pilot.name} className="local-threat-name local-threat-character" href={pilot.character_id ? `https://zkillboard.com/character/${pilot.character_id}/` : undefined} /></span><span className="local-threat-orgs">{pilot.corporation_id && <EveEntityIcon kind="corporation" id={pilot.corporation_id} name={pilot.corporation_name} size="tiny" />}{pilot.corporation_id ? <a className="local-threat-corporation" href={`https://zkillboard.com/corporation/${pilot.corporation_id}/`} target="_blank" rel="noreferrer">{pilot.corporation_name ?? "Unknown corporation"}</a> : <span className="local-threat-corporation">{pilot.corporation_name ?? "Unknown corporation"}</span>}{pilot.alliance_id ? <> · <EveEntityIcon kind="alliance" id={pilot.alliance_id} name={pilot.alliance_name} size="tiny" /><a className="local-threat-alliance" href={`https://zkillboard.com/alliance/${pilot.alliance_id}/`} target="_blank" rel="noreferrer">{pilot.alliance_name ?? "Unknown alliance"}</a></> : (pilot.alliance_name ? <> · <span className="local-threat-alliance">{pilot.alliance_name}</span></> : "")}</span></div>
 
           <span className="local-threat-danger"><span className={`risk-badge risk-${pilot.danger_label}`}>{pilot.danger_score}%</span><i style={{ width: `${Math.max(2, Math.min(100, pilot.danger_score))}%` }} /></span>
 
@@ -2448,7 +2513,7 @@ function LocalThreatWidget({ currentUser }: { currentUser: UserAccount }) {
 
 
 
-  return <section className="panel stacked analytics-platform"><div className="section-heading"><div><h3>Analytics Platform</h3><p>Historical snapshot engine, metric providers, report exports, and composable widgets. First observations establish baselines; deltas start after a later snapshot.</p></div><div className="button-row compact"><select value={days} onChange={(event) => { const next = Number(event.target.value); setDays(next); void loadAnalytics(next); }}><option value={7}>7 days</option><option value={30}>30 days</option><option value={90}>90 days</option><option value={365}>1 year</option></select><button type="button" disabled={busy} onClick={() => void captureSnapshot()}>{busy ? "Capturing" : "Capture snapshot"}</button>{currentUser.role === "admin" && <button type="button" className="danger" disabled={busy} onClick={() => void clearSnapshots()}>Clear snapshots</button>}</div></div>{message && <div className="notice inline">{message}</div>}{analyticsError && <div className="mini-alert">{analyticsError}</div>}{summary ? <><div className="status-grid wide"><Metric icon={<Database size={18} />} label="Snapshots" value={summary.snapshot_count} delta={summary.latest_snapshot_at ? `latest ${new Date(summary.latest_snapshot_at).toLocaleString()}` : "none yet"} /><Metric icon={<GraduationCap size={18} />} label="Characters" value={summary.cards.character_count} /><Metric icon={<Building2 size={18} />} label="Members" value={summary.cards.member_total} /><Metric icon={<ScrollText size={18} />} label="Blueprints" value={summary.cards.blueprint_total} /><Metric icon={<Activity size={18} />} label="Corp wallets" value={`${iskFormatter.format(summary.cards.wallet_total)} ISK`} /></div><div className="analytics-export-row"><button type="button" onClick={() => void downloadExport("csv")}>Export metrics CSV</button><button type="button" onClick={() => void downloadExport("json")}>Export metrics JSON</button><button type="button" onClick={() => void navigator.clipboard.writeText(discordAnalyticsSummary(summary))}>Copy Discord summary</button></div><MetricCatalogWidget rows={catalog} /><div className="widget-grid"><AnalyticsWidget title="SP Gain" rows={summary.top_sp_gainers} unit="SP" /><AnalyticsWidget title="Skill Category Gain" rows={summary.top_skill_category_gainers} unit="SP" /><AnalyticsWidget title="Wallet Growth" rows={summary.wallet_growth} unit="ISK" isk /><AnalyticsWidget title="Corporation Growth" rows={summary.member_growth} unit="members" /><AnalyticsWidget title="Blueprint Growth" rows={summary.blueprint_growth} unit="BPs" /><DuplicateBlueprintWidget rows={summary.duplicate_blueprints} /><TrendWidget title="Wallet Trend" points={summary.series.wallet_totals} isk /><TrendWidget title="Blueprint Trend" points={summary.series.blueprint_counts} /></div></> : <p className="empty">No analytics snapshots yet. Capture one manually or run a sync to start building history.</p>}</section>;
+  return <section className="panel stacked analytics-platform"><div className="section-heading"><div><h3>Analytics Platform</h3><p>Historical snapshot engine, metric providers, report exports, and composable widgets. First observations establish baselines; deltas start after a later snapshot.</p></div><div className="button-row compact"><select value={days} onChange={(event) => { const next = Number(event.target.value); setDays(next); void loadAnalytics(next); }}><option value={7}>7 days</option><option value={30}>30 days</option><option value={90}>90 days</option><option value={365}>1 year</option></select><button type="button" disabled={busy} onClick={() => void captureSnapshot()}>{busy ? "Capturing" : "Capture snapshot"}</button>{currentUser.role === "admin" && <button type="button" className="danger" disabled={busy} onClick={() => void clearSnapshots()}>Clear snapshots</button>}</div></div>{message && <div className="notice inline">{message}</div>}{analyticsError && <div className="mini-alert">{analyticsError}</div>}{summary ? <><div className="status-grid wide"><Metric icon={<Database size={18} />} label="Snapshots" value={summary.snapshot_count} delta={summary.latest_snapshot_at ? `latest ${new Date(summary.latest_snapshot_at).toLocaleString()}` : "none yet"} /><Metric icon={<GraduationCap size={18} />} label="Characters" value={summary.cards.character_count} /><Metric icon={<Building2 size={18} />} label="Members" value={summary.cards.member_total} /><Metric icon={<ScrollText size={18} />} label="Blueprints" value={summary.cards.blueprint_total} /><Metric icon={<Activity size={18} />} label="Corp wallets" value={`${iskFormatter.format(summary.cards.wallet_total)} ISK`} /></div><div className="analytics-export-row"><button type="button" onClick={() => void downloadExport("csv")}>Export metrics CSV</button><button type="button" onClick={() => void downloadExport("json")}>Export metrics JSON</button><button type="button" onClick={() => void navigator.clipboard.writeText(discordAnalyticsSummary(summary))}>Copy Discord summary</button></div><MetricCatalogWidget rows={catalog} /><div className="widget-grid"><AnalyticsWidget title="SP Gain" rows={summary.top_sp_gainers} unit="SP" /><AnalyticsWidget title="Skill Point History" rows={summary.top_sp_losses} unit="SP extracted" loss /><AnalyticsWidget title="Skill Category Gain" rows={summary.top_skill_category_gainers} unit="SP" /><AnalyticsWidget title="Category Extraction" rows={summary.top_skill_category_losses} unit="SP extracted" loss /><AnalyticsWidget title="Wallet Growth" rows={summary.wallet_growth} unit="ISK" isk /><AnalyticsWidget title="Corporation Growth" rows={summary.member_growth} unit="members" /><AnalyticsWidget title="Blueprint Growth" rows={summary.blueprint_growth} unit="BPs" /><DuplicateBlueprintWidget rows={summary.duplicate_blueprints} /><TrendWidget title="Wallet Trend" points={summary.series.wallet_totals} isk /><TrendWidget title="Blueprint Trend" points={summary.series.blueprint_counts} /></div></> : <p className="empty">No analytics snapshots yet. Capture one manually or run a sync to start building history.</p>}</section>;
 
 }
 
@@ -2466,14 +2531,13 @@ function discordAnalyticsSummary(summary: AnalyticsSummary): string {
 
 
 
-function AnalyticsWidget({ title, rows, unit, isk = false }: { title: string; rows: { name: string; delta: number }[]; unit: string; isk?: boolean }) {
+function AnalyticsWidget({ title, rows, unit, isk = false, loss = false }: { title: string; rows: { name: string; delta: number }[]; unit: string; isk?: boolean; loss?: boolean }) {
 
   const max = Math.max(...rows.map((row) => Math.abs(row.delta)), 1);
 
-  return <article className="analytics-widget"><h4>{title}</h4><div className="widget-list">{rows.slice(0, 8).map((row) => <div key={`${title}-${row.name}`} className="widget-row"><span>{row.name}</span><strong>{formatDelta(row.delta, unit, isk)}</strong><i style={{ width: `${Math.max(4, Math.abs(row.delta) / max * 100)}%` }} /></div>)}{rows.length === 0 && <p className="empty">No movement yet.</p>}</div></article>;
+  return <article className="analytics-widget"><h4>{title}</h4><div className="widget-list">{rows.slice(0, 8).map((row) => <div key={`${title}-${row.name}`} className={loss ? "widget-row loss-row" : "widget-row"}><span>{row.name}</span><strong>{loss ? formatLoss(row.delta, unit, isk) : formatDelta(row.delta, unit, isk)}</strong><i style={{ width: `${Math.max(4, Math.abs(row.delta) / max * 100)}%` }} /></div>)}{rows.length === 0 && <p className="empty">No movement yet.</p>}</div></article>;
 
 }
-
 
 
 function MetricCatalogWidget({ rows }: { rows: MetricCatalogItem[] }) {
@@ -2512,6 +2576,13 @@ function formatDelta(value: number, unit: string, isk = false) {
 
 }
 
+function formatLoss(value: number, unit: string, isk = false) {
+
+  const formatted = isk ? iskFormatter.format(Math.abs(value)) : numberFormatter.format(Math.round(Math.abs(value)));
+
+  return `-${formatted} ${unit}`;
+
+}
 
 
 function AuditLog({ currentUser }: { currentUser: UserAccount }) {
@@ -3207,6 +3278,7 @@ function MarketAppraisalPage({ seed, assets, onOpenAssets, onOpenFittings }: { s
                   <span className={owned.quantity > 0 ? "context-owned" : "context-missing"}>Owned {numberFormatter.format(owned.quantity)}</span>
                   {owned.locations.length > 0 && <small>{owned.locations.join(" | ")}</small>}
                   <div className="context-actions"><button type="button" onClick={() => onOpenAssets(itemName)}>Assets</button><button type="button" onClick={() => onOpenFittings(itemName)}>Fits</button></div>
+                  {item.matched && <details className="inline-context-disclosure"><summary>Context</summary><ItemContextPanel compact typeId={item.type_id} itemName={itemName} assets={assets} onOpenAssets={onOpenAssets} onOpenFittings={onOpenFittings} onOpenMarket={(line) => { setText(line); setResult(null); }} /></details>}
                   {item.ambiguous_matches.length > 0 && <small>Also saw: {item.ambiguous_matches.map((match) => match.name).join(", ")}</small>}
                 </td>
                 <td>{numberFormatter.format(item.quantity)}</td>
@@ -3463,7 +3535,7 @@ function ContractsPage({ currentUser }: { currentUser: UserAccount }) {
 
         {tokens.map((token) => <article className="contract-token-card" key={token.token_id}>
 
-          <strong>{token.character_name}</strong>
+          <strong><CharacterHoverName characterId={token.character_id} name={token.character_name} /></strong>
 
           <span>{token.user_display_name}{token.corporation_name ? ` · ${token.corporation_name}` : ""}</span>
 
@@ -3499,7 +3571,7 @@ function ContractsPage({ currentUser }: { currentUser: UserAccount }) {
 
                 <td><strong>{title}</strong><span>#{contract.contract_id}</span></td>
 
-                <td><span className="contract-scope-badge">{contract.scope_type}</span><br /><span>{contractOwner(contract)}</span></td>
+                <td><span className="contract-scope-badge">{contract.scope_type}</span><br /><span>{contract.scope_type === "character" ? <CharacterHoverName characterId={contract.character_id} name={contract.character_name ?? "Character"} /> : contractOwner(contract)}</span></td>
 
                 <td><strong>{contract.status ?? "unknown"}</strong><br /><span>{contract.contract_type ?? "unknown"}{contract.availability ? ` · ${contract.availability}` : ""}</span>{contract.for_corporation ? <span><br />For corporation</span> : null}</td>
 
@@ -3572,27 +3644,147 @@ function Overview({ data }: { data: AppData }) {
 
 
 
-function Characters({ currentUser }: { currentUser: UserAccount }) {
+function CharacterHoverName({ characterId, name, className = "", href }: { characterId?: number | null; name: string; className?: string; href?: string }) {
+
+  const [open, setOpen] = useState(false);
+
+  const [summary, setSummary] = useState<CharacterSummary | null>(null);
+
+  const [error, setError] = useState<string | null>(null);
+
+  const [loading, setLoading] = useState(false);
+
+
+
+  async function loadSummary() {
+
+    if (!characterId || summary || loading) return;
+
+    setLoading(true);
+
+    setError(null);
+
+    try {
+
+      setSummary(await api<CharacterSummary>(`/characters/summary/${characterId}`));
+
+    } catch (err) {
+
+      setError(err instanceof Error ? err.message : "Summary unavailable");
+
+    } finally {
+
+      setLoading(false);
+
+    }
+
+  }
+
+
+
+  function showSummary() {
+
+    setOpen(true);
+
+    void loadSummary();
+
+  }
+
+
+
+  if (!characterId) return <span className={className}>{name}</span>;
+
+  function openCharacterPage(event: { preventDefault: () => void; stopPropagation: () => void }) {
+
+    event.preventDefault();
+
+    event.stopPropagation();
+
+    window.dispatchEvent(new CustomEvent<CharacterFocus>("eqm:open-character", { detail: { characterId, name, nonce: Date.now() } }));
+
+  }
+
+  const topCategories = summary?.skill_categories.slice(0, 5) ?? [];
+
+  const nameControl = <button type="button" className={`character-hover-name ${className}`} onClick={openCharacterPage} title="Open character dossier">{name}</button>;
+
+  return <span className="character-hover-wrap" onMouseEnter={showSummary} onMouseLeave={() => setOpen(false)} onFocus={showSummary} onBlur={() => setOpen(false)}>{nameControl}{open && <div className="character-hover-card"><div className="entity-card-heading"><EveEntityIcon kind="character" id={characterId} name={name} size="md" /><div><strong>{summary?.character.name ?? name}</strong><span>{summary?.character.corporation_name ?? "Unknown corporation"}{summary?.character.alliance_name ? ` · ${summary.character.alliance_name}` : ""}</span></div></div>{loading && <span className="muted">Loading character summary...</span>}{error && <span className="muted">Summary hidden by role policy.</span>}{summary && <><div className="character-hover-metrics"><span><b>{numberFormatter.format(summary.total_skill_points)}</b> SP</span><span><b>{summary.queue_count.toLocaleString()}</b> queued</span><span><b>{summary.ship_units.toLocaleString()}</b> ships</span><span><b>{summary.asset_units.toLocaleString()}</b> assets</span><span><b>{summary.bpos.toLocaleString()}</b> BPO</span><span><b>{summary.bpcs.toLocaleString()}</b> BPC</span></div>{topCategories.length > 0 && <div className="character-hover-categories">{topCategories.map((category) => <span key={category.name}>{category.name}<b>{numberFormatter.format(category.skill_points)} SP</b></span>)}</div>}</>}{<div className="character-hover-actions"><button type="button" onMouseDown={(event) => event.preventDefault()} onClick={openCharacterPage}>Open character</button>{href && <a className="character-hover-external" href={href} target="_blank" rel="noreferrer" onMouseDown={(event) => event.preventDefault()} onClick={(event) => event.stopPropagation()}>zKill</a>}</div>}</div>}</span>;
+
+}
+
+function Characters({ currentUser, focus }: { currentUser: UserAccount; focus?: CharacterFocus | null }) {
 
   const [characters, setCharacters] = useState<EqmCharacter[]>([]);
 
-  const [accounts, setAccounts] = useState<UserAccount[]>([]);
+  const [selectedCharacterId, setSelectedCharacterId] = useState<number | null>(null);
 
-  const [roleDefinitions, setRoleDefinitions] = useState<RoleDefinition[]>([]);
+  const [dossier, setDossier] = useState<CharacterDossier | null>(null);
+
+  const [accounts, setAccounts] = useState<UserAccount[]>([]);
 
   const [message, setMessage] = useState<string | null>(null);
 
   const [characterError, setCharacterError] = useState<string | null>(null);
 
-  const canAssign = ["admin", "director"].includes(currentUser.role);
+  const [loadingDossier, setLoadingDossier] = useState(false);
+
+  const [busySync, setBusySync] = useState<string | null>(null);
+
+  const canLoadAccounts = ["admin", "director"].includes(currentUser.role);
 
 
 
-  async function loadCharacters() {
+  async function loadCharacters(preferredId = selectedCharacterId, preferredEveId?: number | null) {
 
-    setCharacters(await api<EqmCharacter[]>("/characters"));
+    const loaded = await api<EqmCharacter[]>("/characters");
 
-    if (canAssign) setAccounts(await api<UserAccount[]>("/characters/accounts"));
+    setCharacters(loaded);
+
+    if (canLoadAccounts) setAccounts(await api<UserAccount[]>("/characters/accounts"));
+
+    const byEveId = preferredEveId ? loaded.find((character) => character.character_id === preferredEveId)?.id ?? null : null;
+
+    const byInternalId = preferredId && loaded.some((character) => character.id === preferredId) ? preferredId : null;
+
+    const nextId = byEveId ?? byInternalId ?? loaded[0]?.id ?? null;
+
+    setSelectedCharacterId(nextId);
+
+    return nextId;
+
+  }
+
+
+
+  async function loadDossier(characterId: number | null) {
+
+    if (!characterId) {
+
+      setDossier(null);
+
+      return;
+
+    }
+
+    setLoadingDossier(true);
+
+    setCharacterError(null);
+
+    try {
+
+      setDossier(await api<CharacterDossier>(`/characters/dossier/${characterId}`));
+
+    } catch (err) {
+
+      setDossier(null);
+
+      setCharacterError(err instanceof Error ? err.message : "Unable to load character dossier");
+
+    } finally {
+
+      setLoadingDossier(false);
+
+    }
 
   }
 
@@ -3610,6 +3802,8 @@ function Characters({ currentUser }: { currentUser: UserAccount }) {
 
       setMessage(success);
 
+      if (selectedCharacterId === characterId) await loadDossier(characterId);
+
     } catch (err) {
 
       setCharacterError(err instanceof Error ? err.message : "Character update failed");
@@ -3620,11 +3814,75 @@ function Characters({ currentUser }: { currentUser: UserAccount }) {
 
 
 
-  useEffect(() => { void loadCharacters().catch((err) => setCharacterError(err instanceof Error ? err.message : "Unable to load characters")); }, []);
+  async function runCharacterSync(kind: "assets" | "skills" | "fittings" | "contracts", token: CharacterDossierToken) {
+
+    const endpoints = {
+
+      assets: `/esi/sync/character-assets/${token.token_id}`,
+
+      skills: `/esi/sync/character-skills/${token.token_id}`,
+
+      fittings: `/esi/sync/character-fittings/${token.token_id}`,
+
+      contracts: `/contracts/sync/character/${token.token_id}`,
+
+    };
+
+    setBusySync(`${token.token_id}-${kind}`);
+
+    setCharacterError(null);
+
+    try {
+
+      await api(endpoints[kind], { method: "POST", body: "{}" });
+
+      setMessage(`${dossier?.character.name ?? "Character"} ${kind} synced.`);
+
+      const nextId = await loadCharacters(selectedCharacterId);
+
+      await loadDossier(nextId);
+
+    } catch (err) {
+
+      setCharacterError(err instanceof Error ? err.message : `Unable to sync ${kind}`);
+
+    } finally {
+
+      setBusySync(null);
+
+    }
+
+  }
 
 
 
-  return <section className="panel stacked"><h3>Characters</h3>{message && <div className="notice inline">{message}</div>}{characterError && <div className="mini-alert">{characterError}</div>}<div className="card-list character-list">{characters.map((character) => <article key={character.id} className="entity-card"><div className="entity-card-heading"><EveEntityIcon kind="character" id={character.character_id} name={character.name} size="md" /><div><strong>{character.name}</strong>{character.character_id && <span>Character ID {character.character_id}</span>}</div></div>{character.can_view_detail ? <><span>{character.owner_display_name ?? "Unassigned"}{character.owner_role ? ` · ${character.owner_role}` : ""}</span><span>{character.corporation_name ?? "Unknown corporation"}{character.alliance_name ? ` · ${character.alliance_name}` : ""}</span><span>Last sync {character.last_synced_at ? new Date(character.last_synced_at).toLocaleString() : "never"}</span>{character.can_assign && <label>EQM Account<select value={character.owner_user_id ?? ""} onChange={(event) => void patchCharacter(character.id, { owner_user_id: event.target.value || null }, `${character.name} reassigned.`)}><option value="">Unassigned</option>{accounts.map((account) => <option key={account.id} value={account.id}>{accountLabel(account)} ({account.role})</option>)}</select></label>}{character.can_manage && <label className="check"><input type="checkbox" checked={Boolean(character.public_assets_visible)} onChange={(event) => void patchCharacter(character.id, { public_assets_visible: event.target.checked }, `${character.name} visibility updated.`)} /> Public assets visible to members</label>}{currentUser.role === "admin" && !character.public_assets_visible && <div className="privacy-placard">This character has not made assets public to members. Admin asset sync is an override for administrative review.</div>}{currentUser.role === "admin" && character.sync_opt_out && <div className="privacy-placard">This character does not wish to be synced. Admins can override temporarily for administrative review, but this preference remains visible.</div>}</> : <span className="muted">Details hidden by role policy.</span>}</article>)}</div>{characters.length === 0 && <p className="empty">No characters visible to this account yet.</p>}</section>;
+  useEffect(() => { void loadCharacters().then((nextId) => loadDossier(nextId)).catch((err) => setCharacterError(err instanceof Error ? err.message : "Unable to load characters")); }, []);
+
+  useEffect(() => { void loadDossier(selectedCharacterId); }, [selectedCharacterId]);
+
+  useEffect(() => {
+
+    if (!focus?.characterId) return;
+
+    void loadCharacters(selectedCharacterId, focus.characterId).then((nextId) => loadDossier(nextId)).catch((err) => setCharacterError(err instanceof Error ? err.message : "Unable to open character"));
+
+  }, [focus?.nonce]);
+
+
+
+  const selectedCharacter = characters.find((character) => character.id === selectedCharacterId) ?? null;
+
+  const summary = dossier?.summary;
+
+  const canManage = Boolean(dossier?.permissions.can_manage);
+
+  const canAssign = Boolean(dossier?.permissions.can_assign);
+
+  const syncButton = (token: CharacterDossierToken, kind: "assets" | "skills" | "fittings" | "contracts", label: string, enabled: boolean) => <button type="button" disabled={!token.can_sync || !enabled || busySync !== null} onClick={() => void runCharacterSync(kind, token)}>{busySync === `${token.token_id}-${kind}` ? "Syncing..." : label}</button>;
+
+
+
+  return <section className="panel stacked"><div className="section-heading"><div><h3>Characters</h3><p>{characters.length.toLocaleString()} visible character{characters.length === 1 ? "" : "s"}</p></div><button type="button" onClick={() => void loadCharacters(selectedCharacterId).then((nextId) => loadDossier(nextId))}>Refresh</button></div>{message && <div className="notice inline">{message}</div>}{characterError && <div className="mini-alert">{characterError}</div>}<div className="character-dossier-layout"><aside className="character-picker-list">{characters.map((character) => <button type="button" key={character.id} className={`character-picker-card ${selectedCharacterId === character.id ? "active" : ""}`} onClick={() => setSelectedCharacterId(character.id)}><span className="entity-card-heading"><EveEntityIcon kind="character" id={character.character_id} name={character.name} size="sm" /><span><strong><CharacterHoverName characterId={character.character_id} name={character.name} /></strong><small>{character.owner_display_name ?? "Unassigned"}{character.owner_role ? ` · ${character.owner_role}` : ""}</small></span></span><small>{character.corporation_name ?? "Unknown corporation"}</small></button>)}{characters.length === 0 && <p className="empty">No characters visible to this account yet.</p>}</aside><div className="character-dossier-panel">{loadingDossier && <div className="notice inline">Loading character dossier...</div>}{!loadingDossier && !dossier && selectedCharacter && <div className="mini-alert">Details hidden by role policy.</div>}{dossier && summary && <><div className="character-dossier-header"><div className="entity-card-heading"><EveEntityIcon kind="character" id={dossier.character.character_id} name={dossier.character.name} size="lg" /><div><h3><CharacterHoverName characterId={dossier.character.character_id} name={dossier.character.name} /></h3><span>{dossier.character.owner_display_name ?? "Unassigned"}{dossier.character.owner_role ? ` · ${dossier.character.owner_role}` : ""}</span><span>{dossier.character.corporation_name ?? "Unknown corporation"}{dossier.character.alliance_name ? ` · ${dossier.character.alliance_name}` : ""}</span><span>Last sync {dossier.character.last_synced_at ? formatDateTime(dossier.character.last_synced_at) : "never"}</span></div></div></div><div className="character-summary-grid"><Metric icon={<GraduationCap size={18} />} label="Skill points" value={summary.total_skill_points} /><Metric icon={<Activity size={18} />} label="Queue" value={summary.queue_count} /><Metric icon={<Boxes size={18} />} label="Asset units" value={summary.asset_units} /><Metric icon={<PackagePlus size={18} />} label="Ships" value={summary.ship_units} /><Metric icon={<ScrollText size={18} />} label="Blueprints" value={`${summary.bpos.toLocaleString()} BPO / ${summary.bpcs.toLocaleString()} BPC`} /><Metric icon={<ClipboardList size={18} />} label="Contracts" value={summary.contracts} /></div>{canManage && <div className="character-admin-strip"><h4>Character Controls</h4>{canAssign && <label>EQM Account<select value={dossier.character.owner_user_id ?? ""} onChange={(event) => void patchCharacter(dossier.character.id, { owner_user_id: event.target.value || null }, `${dossier.character.name} reassigned.`)}><option value="">Unassigned</option>{accounts.map((account) => <option key={account.id} value={account.id}>{accountLabel(account)} ({account.role})</option>)}</select></label>}<label className="check"><input type="checkbox" checked={Boolean(dossier.permissions.public_assets_visible)} onChange={(event) => void patchCharacter(dossier.character.id, { public_assets_visible: event.target.checked }, `${dossier.character.name} visibility updated.`)} /> Public assets visible to members</label><label className="check"><input type="checkbox" checked={Boolean(dossier.permissions.sync_opt_out)} onChange={(event) => void patchCharacter(dossier.character.id, { sync_opt_out: event.target.checked }, `${dossier.character.name} sync preference updated.`)} /> Keep this character private from shared Quartermaster sync</label>{!dossier.permissions.public_assets_visible && <div className="privacy-placard">This character has not made assets public to members. Admin asset sync is an override for administrative review.</div>}{dossier.permissions.sync_opt_out && <div className="privacy-placard">This character does not wish to be synced. Admins can override temporarily for administrative review, but this preference remains visible.</div>}</div>}<div className="character-sync-grid">{dossier.sync_tokens.map((token) => <article key={token.token_id}><strong>SSO linked by {token.linked_user_display_name}</strong><span>Linked {token.linked_at ? formatDateTime(token.linked_at) : "unknown"}</span>{token.can_sync ? <span className="scope-ok">Sync permitted</span> : <span className="scope-warn">Sync hidden by role policy</span>}{token.missing_scopes.length > 0 && <small>Missing scopes: {token.missing_scopes.join(", ")}</small>}<div className="button-row compact">{syncButton(token, "assets", "Sync assets", token.has_asset_scope)}{syncButton(token, "skills", "Sync skills", token.has_skill_scope)}{syncButton(token, "fittings", "Sync fittings", token.has_fitting_scope)}{syncButton(token, "contracts", "Sync contracts", token.has_contract_scope)}</div></article>)}</div><div className="two-column character-dossier-sections"><section><h4>Skill Categories</h4><div className="mini-list">{dossier.skills.categories.map((category) => <div key={category.name}><strong>{category.name}</strong><span>{numberFormatter.format(category.skill_points)} SP · {category.skill_count.toLocaleString()} skills</span></div>)}{dossier.skills.categories.length === 0 && <p className="empty">No skill snapshot yet.</p>}</div></section><section><h4>Skill Queue</h4><div className="mini-list">{dossier.skills.queue.map((entry) => <div key={entry.id}><strong>{entry.queue_position}. {entry.skill_name} {entry.finished_level}</strong><span>{entry.finish_date ? `Finishes ${formatDateTime(entry.finish_date)}` : "No finish time"}</span></div>)}{dossier.skills.queue.length === 0 && <p className="empty">No queued skills stored.</p>}</div></section></div><div className="two-column character-dossier-sections"><section><h4>Assets Snapshot</h4><AssetTable assets={dossier.assets} /></section><section><h4>Blueprint Snapshot</h4><BlueprintList blueprints={dossier.blueprints} assets={dossier.assets} /></section></div><div className="two-column character-dossier-sections"><section><h4>Fittings</h4><div className="mini-list">{dossier.fittings.map((fitting) => <div key={fitting.id}><strong>{fitting.ship_type_name}</strong><span>{fitting.name}{fitting.is_draft ? " · Draft" : ""}{fitting.is_shared ? " · Shared" : " · Private"}</span></div>)}{dossier.fittings.length === 0 && <p className="empty">No saved fittings stored.</p>}</div></section><section><h4>Contracts</h4><div className="mini-list">{dossier.contracts.map((contract) => <div key={contract.id}><strong>{contract.title || contract.contract_type || `Contract ${contract.contract_id}`}</strong><span>{contract.status ?? "unknown"}{contract.reward ? ` · ${Math.round(contract.reward).toLocaleString()} ISK reward` : ""}</span></div>)}{dossier.contracts.length === 0 && <p className="empty">No contracts stored.</p>}</div></section></div><section><h4>Kill / Loss History</h4><div className="character-summary-grid"><Metric icon={<Activity size={18} />} label="Kills" value={dossier.kill_history.kills_count} /><Metric icon={<Activity size={18} />} label="Losses" value={dossier.kill_history.losses_count} /><Metric icon={<ShoppingCart size={18} />} label="ISK destroyed" value={Math.round(dossier.kill_history.isk_destroyed).toLocaleString()} /><Metric icon={<ShoppingCart size={18} />} label="ISK lost" value={Math.round(dossier.kill_history.isk_lost).toLocaleString()} /></div><div className="mini-list character-kill-list">{[...dossier.kill_history.kills, ...dossier.kill_history.losses].slice(0, 10).map((kill) => <div key={`${kill.killmail_id}-${kill.victim_character_name}`}><strong>{kill.victim_hull ?? "Unknown hull"}{kill.smartbomb_used ? " · Smartbombs" : ""}</strong><span>{kill.killmail_time ? formatDateTime(kill.killmail_time) : "Unknown time"} · {kill.location_name ?? "Unknown location"}{kill.zkb_url ? <a href={kill.zkb_url} target="_blank" rel="noreferrer"> zKill</a> : null}</span></div>)}{dossier.kill_history.kills.length + dossier.kill_history.losses.length === 0 && <p className="empty">No killmail observations stored for this character.</p>}</div></section></>}</div></div></section>;
 
 }
 
@@ -3660,10 +3918,9 @@ function Roster() {
 
   const totalCharacters = corporations.reduce((total, corporation) => total + corporation.characters.length, 0);
 
-  return <section className="panel stacked roster-page"><div className="section-heading"><div><h3>Roster</h3><p>{totalCharacters.toLocaleString()} character{totalCharacters === 1 ? "" : "s"} across {corporations.length.toLocaleString()} corporation{corporations.length === 1 ? "" : "s"}</p></div><button type="button" onClick={() => void loadRoster()}>Refresh</button></div>{rosterError && <div className="mini-alert">{rosterError}</div>}<div className="roster-corporations">{corporations.map((corporation) => <article key={corporation.corporation_id ?? corporation.corporation_name} className="roster-corp"><div className="roster-corp-heading"><div className="entity-card-heading"><EveEntityIcon kind="corporation" id={corporation.corporation_id} name={corporation.corporation_name} size="md" /><div><strong>{corporation.corporation_name}{corporation.ticker ? ` [${corporation.ticker}]` : ""}</strong><span>{corporation.alliance_id && <EveEntityIcon kind="alliance" id={corporation.alliance_id} name={corporation.alliance_name} size="tiny" />}{corporation.alliance_name ?? "No alliance"}{corporation.corporation_id ? ` · Corp ID ${corporation.corporation_id}` : ""}</span></div></div><span>{corporation.characters.length.toLocaleString()} listed · Members {corporation.member_count?.toLocaleString() ?? "unknown"}</span></div><div className="roster-character-grid">{corporation.characters.map((character) => <div key={character.character_id} className="roster-character"><EveEntityIcon kind="character" id={character.character_id} name={character.name} /><span>{character.name}</span></div>)}</div></article>)}{corporations.length === 0 && <p className="empty">No roster characters assigned to Quartermaster accounts yet.</p>}</div></section>;
+  return <section className="panel stacked roster-page"><div className="section-heading"><div><h3>Roster</h3><p>{totalCharacters.toLocaleString()} character{totalCharacters === 1 ? "" : "s"} across {corporations.length.toLocaleString()} corporation{corporations.length === 1 ? "" : "s"}</p></div><button type="button" onClick={() => void loadRoster()}>Refresh</button></div>{rosterError && <div className="mini-alert">{rosterError}</div>}<div className="roster-corporations">{corporations.map((corporation) => <article key={corporation.corporation_id ?? corporation.corporation_name} className="roster-corp"><div className="roster-corp-heading"><div className="entity-card-heading"><EveEntityIcon kind="corporation" id={corporation.corporation_id} name={corporation.corporation_name} size="md" /><div><strong>{corporation.corporation_name}{corporation.ticker ? ` [${corporation.ticker}]` : ""}</strong><span>{corporation.alliance_id && <EveEntityIcon kind="alliance" id={corporation.alliance_id} name={corporation.alliance_name} size="tiny" />}{corporation.alliance_name ?? "No alliance"}{corporation.corporation_id ? ` · Corp ID ${corporation.corporation_id}` : ""}</span></div></div><span>{corporation.characters.length.toLocaleString()} listed · Members {corporation.member_count?.toLocaleString() ?? "unknown"}</span></div><div className="roster-character-grid">{corporation.characters.map((character) => <div key={character.character_id} className="roster-character"><EveEntityIcon kind="character" id={character.character_id} name={character.name} /><CharacterHoverName characterId={character.character_id} name={character.name} /></div>)}</div></article>)}{corporations.length === 0 && <p className="empty">No roster characters assigned to Quartermaster accounts yet.</p>}</div></section>;
 
 }
-
 function Corporations({ loadAssets }: { loadAssets: () => Promise<void> }) {
 
   const [corporations, setCorporations] = useState<EqmCorporation[]>([]);
@@ -4471,7 +4728,7 @@ function CharacterSkills({ currentUser }: { currentUser: UserAccount }) {
 
 
 
-  return <section className="panel stacked"><div className="section-heading"><h3>Character Skills</h3><div className="button-row compact"><button type="button" onClick={() => setExpandedProfileIds(new Set(profiles.map((profile) => profile.token_id)))}>Expand all</button><button type="button" onClick={() => setExpandedProfileIds(new Set())}>Collapse all</button><button type="button" onClick={() => void loadSkills()}>Refresh</button></div></div>{message && <div className="notice inline">{message}</div>}{skillError && <div className="mini-alert">{skillError}</div>}<div className="card-list skill-profiles">{profiles.map((profile) => { const expanded = expandedProfileIds.has(profile.token_id); return <article key={profile.token_id} className="skill-profile-card"><div className="section-heading compact skill-profile-heading"><button type="button" className="skill-profile-toggle" onClick={() => toggleProfile(profile.token_id)} aria-expanded={expanded}>{expanded ? "Collapse" : "Expand"}</button><div><strong>{profile.character_name}</strong><span>Character ID {profile.character_id}</span></div><div className="button-row compact">{profile.can_sync && <button type="button" disabled={profile.missing_skill_scopes.length > 0 || busyTokenId === profile.token_id} onClick={() => void syncSkills(profile)}>{busyTokenId === profile.token_id ? "Syncing" : profile.sync_opt_out && profile.owner_user_id !== currentUser.id && currentUser.role === "admin" ? "Admin override sync" : "Sync skills"}</button>}</div></div>{profile.sync_opt_out && <div className="privacy-placard">This character does not wish to be synced.{profile.admin_override_visible ? " Admin view is active for administrative review." : " This data stays private to the character owner unless an admin opens an override view."}</div>}{profile.can_sync && profile.missing_skill_scopes.length > 0 && <span className="scope-warn">Missing skill scopes: {profile.missing_skill_scopes.join(", ")}. Re-link through ESI Sync.</span>}<div className="status-grid compact"><Metric icon={<GraduationCap size={18} />} label="Total SP" value={profile.total_skill_points ?? 0} /><Metric icon={<Plus size={18} />} label="Unallocated SP" value={profile.unallocated_skill_points ?? 0} /><Metric icon={<ScrollText size={18} />} label="Skills" value={profile.skill_count} /></div><span>Skills synced {profile.skills_synced_at ? new Date(profile.skills_synced_at).toLocaleString() : "never"} · Queue synced {profile.skill_queue_synced_at ? new Date(profile.skill_queue_synced_at).toLocaleString() : "never"}</span>{expanded && <div className="two-column skill-columns"><section><h4>Trained Skills</h4><div className="skill-group-list">{groupedSkills(profile).map(([groupName, skills]) => <details key={groupName} className="skill-group" open><summary>{groupName}<span>{skills.length.toLocaleString()} skills · {categorySkillPoints(skills).toLocaleString()} SP</span></summary><div className="mini-list">{skills.map((skill) => { const progress = skillProgress(skill); return <div key={skill.id} className="skill-row"><strong>{skill.skill_name}</strong><span>Level {skill.trained_skill_level} · Active {skill.active_skill_level}</span><div className="skill-progress-line"><span>{skill.skillpoints_in_skill.toLocaleString()} / {progress.targetSp.toLocaleString()} SP</span><span>{Math.round(progress.percent)}%</span></div><div className="skill-progress-bar" title="Progress target is estimated until SDE dogma skill ranks are imported."><i style={{ width: `${progress.percent}%` }} /></div></div>; })}</div></details>)}{profile.skills.length === 0 && <p className="empty">No trained skills imported yet.</p>}</div></section><section><h4>Current Queue</h4><div className="mini-list">{profile.queue.map((entry) => <div key={entry.id}><strong>{entry.queue_position + 1}. {entry.skill_name}</strong><span>To level {entry.finished_level}{entry.finish_date ? ` · finishes ${new Date(entry.finish_date).toLocaleString()}` : ""}</span></div>)}{profile.queue.length === 0 && <p className="empty">No active queue imported.</p>}</div></section></div>}</article>; })}{profiles.length === 0 && <p className="empty">No linked characters visible. Link a character through ESI Sync first.</p>}</div></section>;
+  return <section className="panel stacked"><div className="section-heading"><h3>Character Skills</h3><div className="button-row compact"><button type="button" onClick={() => setExpandedProfileIds(new Set(profiles.map((profile) => profile.token_id)))}>Expand all</button><button type="button" onClick={() => setExpandedProfileIds(new Set())}>Collapse all</button><button type="button" onClick={() => void loadSkills()}>Refresh</button></div></div>{message && <div className="notice inline">{message}</div>}{skillError && <div className="mini-alert">{skillError}</div>}<div className="card-list skill-profiles">{profiles.map((profile) => { const expanded = expandedProfileIds.has(profile.token_id); return <article key={profile.token_id} className="skill-profile-card"><div className="section-heading compact skill-profile-heading"><button type="button" className="skill-profile-toggle" onClick={() => toggleProfile(profile.token_id)} aria-expanded={expanded}>{expanded ? "Collapse" : "Expand"}</button><div><strong><CharacterHoverName characterId={profile.character_id} name={profile.character_name} /></strong><span>Character ID {profile.character_id}</span></div><div className="button-row compact">{profile.can_sync && <button type="button" disabled={profile.missing_skill_scopes.length > 0 || busyTokenId === profile.token_id} onClick={() => void syncSkills(profile)}>{busyTokenId === profile.token_id ? "Syncing" : profile.sync_opt_out && profile.owner_user_id !== currentUser.id && currentUser.role === "admin" ? "Admin override sync" : "Sync skills"}</button>}</div></div>{profile.sync_opt_out && <div className="privacy-placard">This character does not wish to be synced.{profile.admin_override_visible ? " Admin view is active for administrative review." : " This data stays private to the character owner unless an admin opens an override view."}</div>}{profile.can_sync && profile.missing_skill_scopes.length > 0 && <span className="scope-warn">Missing skill scopes: {profile.missing_skill_scopes.join(", ")}. Re-link through ESI Sync.</span>}<div className="status-grid compact"><Metric icon={<GraduationCap size={18} />} label="Total SP" value={profile.total_skill_points ?? 0} /><Metric icon={<Plus size={18} />} label="Unallocated SP" value={profile.unallocated_skill_points ?? 0} /><Metric icon={<ScrollText size={18} />} label="Skills" value={profile.skill_count} /></div><span>Skills synced {profile.skills_synced_at ? new Date(profile.skills_synced_at).toLocaleString() : "never"} · Queue synced {profile.skill_queue_synced_at ? new Date(profile.skill_queue_synced_at).toLocaleString() : "never"}</span>{expanded && <div className="two-column skill-columns"><section><h4>Trained Skills</h4><div className="skill-group-list">{groupedSkills(profile).map(([groupName, skills]) => <details key={groupName} className="skill-group" open><summary>{groupName}<span>{skills.length.toLocaleString()} skills · {categorySkillPoints(skills).toLocaleString()} SP</span></summary><div className="mini-list">{skills.map((skill) => { const progress = skillProgress(skill); return <div key={skill.id} className="skill-row"><strong>{skill.skill_name}</strong><span>Level {skill.trained_skill_level} · Active {skill.active_skill_level}</span><div className="skill-progress-line"><span>{skill.skillpoints_in_skill.toLocaleString()} / {progress.targetSp.toLocaleString()} SP</span><span>{Math.round(progress.percent)}%</span></div><div className="skill-progress-bar" title="Progress target is estimated until SDE dogma skill ranks are imported."><i style={{ width: `${progress.percent}%` }} /></div></div>; })}</div></details>)}{profile.skills.length === 0 && <p className="empty">No trained skills imported yet.</p>}</div></section><section><h4>Current Queue</h4><div className="mini-list">{profile.queue.map((entry) => <div key={entry.id}><strong>{entry.queue_position + 1}. {entry.skill_name}</strong><span>To level {entry.finished_level}{entry.finish_date ? ` · finishes ${new Date(entry.finish_date).toLocaleString()}` : ""}</span></div>)}{profile.queue.length === 0 && <p className="empty">No active queue imported.</p>}</div></section></div>}</article>; })}{profiles.length === 0 && <p className="empty">No linked characters visible. Link a character through ESI Sync first.</p>}</div></section>;
 
 }
 
@@ -6251,7 +6508,7 @@ function Esi({ load, currentUser }: { load: () => Promise<void>; currentUser: Us
 
         <h3>Linked Characters</h3>
 
-        {linked.length > 0 ? <div className="card-list">{linked.map((character) => <article key={character.token_id}><strong>{character.character_name}</strong><span>Character ID {character.character_id}</span>{currentUser.role === "admin" && <span>SSO linked by {character.linked_user_display_name}</span>}<span>Last sync {character.last_sync_at ? `${new Date(character.last_sync_at).toLocaleString()} (${character.last_sync_type ?? "sync"})` : "never"}</span><span>Linked {character.linked_at ? new Date(character.linked_at).toLocaleString() : "recently"}</span>{scopeStatus(character, "public")}{scopeStatus(character, "standing")}{(character.can_sync_assets || character.can_unlink || (character.linked_user_id === currentUser.id && character.missing_standing_scopes.length > 0 && standingAuthInfo?.ready)) && <div className="card-actions">{character.can_sync_assets && <button type="button" onClick={() => void syncAssets(character.token_id, character.character_name)}>Sync assets</button>}{character.linked_user_id === currentUser.id && character.missing_standing_scopes.length > 0 && standingAuthInfo?.ready ? <a className="mini-link" href={standingAuthInfo.url}>Authorize contact sync</a> : null}{character.can_unlink && <button className="danger" type="button" onClick={() => void unlinkCharacter(character.token_id, character.character_name)}>Unlink</button>}</div>}</article>)}</div> : <p className="muted">No EVE characters linked yet.</p>}
+        {linked.length > 0 ? <div className="card-list">{linked.map((character) => <article key={character.token_id}><strong><CharacterHoverName characterId={character.character_id} name={character.character_name} /></strong><span>Character ID {character.character_id}</span>{currentUser.role === "admin" && <span>SSO linked by {character.linked_user_display_name}</span>}<span>Last sync {character.last_sync_at ? `${new Date(character.last_sync_at).toLocaleString()} (${character.last_sync_type ?? "sync"})` : "never"}</span><span>Linked {character.linked_at ? new Date(character.linked_at).toLocaleString() : "recently"}</span>{scopeStatus(character, "public")}{scopeStatus(character, "standing")}{(character.can_sync_assets || character.can_unlink || (character.linked_user_id === currentUser.id && character.missing_standing_scopes.length > 0 && standingAuthInfo?.ready)) && <div className="card-actions">{character.can_sync_assets && <button type="button" onClick={() => void syncAssets(character.token_id, character.character_name)}>Sync assets</button>}{character.linked_user_id === currentUser.id && character.missing_standing_scopes.length > 0 && standingAuthInfo?.ready ? <a className="mini-link" href={standingAuthInfo.url}>Authorize contact sync</a> : null}{character.can_unlink && <button className="danger" type="button" onClick={() => void unlinkCharacter(character.token_id, character.character_name)}>Unlink</button>}</div>}</article>)}</div> : <p className="muted">No EVE characters linked yet.</p>}
 
         <h3>Authenticated Sync</h3>
 
@@ -6348,6 +6605,8 @@ function AssetTable({ assets, seed, onOpenFittings, onOpenMarket }: { assets: As
   const [copyNotice, setCopyNotice] = useState<string | null>(null);
 
   const [ownerKindFilter, setOwnerKindFilter] = useState<OwnerKindFilter | "">("");
+
+  const [contextTypeId, setContextTypeId] = useState<number | null>(null);
 
   const filterLabels: Record<AssetFilterKey, string> = { item: "Item", owner: "Owner", location: "Location", flag: "Flag" };
 
@@ -6652,9 +6911,11 @@ function AssetTable({ assets, seed, onOpenFittings, onOpenMarket }: { assets: As
 
         <th><button className="sort-header" type="button" onClick={() => toggleSort("flag")}>Flag <span>{sortMark("flag")}</span></button></th>
 
-      </tr></thead><tbody>{visibleAssets.map((asset) => <tr key={asset.id}>
+      </tr></thead><tbody>{visibleAssets.map((asset) => <React.Fragment key={asset.id}>
 
-        <td><div className="asset-item-context">{filterButton("item", asset.type_name)}<div className="context-actions">{onOpenMarket && <button type="button" onClick={() => onOpenMarket(`${asset.quantity} ${asset.type_name}`)}>Price</button>}{onOpenFittings && <button type="button" onClick={() => onOpenFittings(asset.type_name)}>Fits</button>}</div></div></td>
+        <tr>
+
+        <td><div className="asset-item-context">{filterButton("item", asset.type_name)}<div className="context-actions">{onOpenMarket && <button type="button" onClick={() => onOpenMarket(`${asset.quantity} ${asset.type_name}`)}>Price</button>}{onOpenFittings && <button type="button" onClick={() => onOpenFittings(asset.type_name)}>Fits</button>}<button type="button" onClick={() => setContextTypeId((current) => current === asset.type_id ? null : asset.type_id)}>{contextTypeId === asset.type_id ? "Hide" : "Context"}</button></div></div></td>
 
         <td>{filterButton("owner", asset.owner_name)}</td>
 
@@ -6664,7 +6925,11 @@ function AssetTable({ assets, seed, onOpenFittings, onOpenMarket }: { assets: As
 
         <td>{filterButton("flag", asset.location_flag ?? "-")}</td>
 
-      </tr>)}</tbody></table>{assets.length === 0 && <p className="empty">No assets yet. Use Seed or add one.</p>}{assets.length > 0 && visibleAssets.length === 0 && <p className="empty">No assets match this filter.</p>}</div>
+        </tr>
+
+        {contextTypeId === asset.type_id && <tr className="asset-context-row"><td colSpan={5}><ItemContextPanel typeId={asset.type_id} itemName={asset.type_name} assets={assets} onOpenMarket={onOpenMarket} onOpenFittings={onOpenFittings} /></td></tr>}
+
+      </React.Fragment>)}</tbody></table>{assets.length === 0 && <p className="empty">No assets yet. Use Seed or add one.</p>}{assets.length > 0 && visibleAssets.length === 0 && <p className="empty">No assets match this filter.</p>}</div>
 
     </div>
 
@@ -6689,6 +6954,122 @@ function visibleAssetLocations(assets: Asset[], itemName?: string | null): strin
   const normalized = itemName.toLowerCase();
 
   return assets.filter((asset) => asset.type_name.toLowerCase() === normalized).slice(0, 3).map((asset) => `${asset.owner_name} @ ${asset.location_name ?? "Unknown"}${asset.location_flag ? ` (${asset.location_flag})` : ""} x${numberFormatter.format(asset.quantity)}`);
+
+}
+
+type ItemContextOwner = { owner_name: string; owner_kind?: string | null; quantity: number; stacks: number };
+type ItemContextLocation = { owner_name: string; location_name?: string | null; location_flag?: string | null; quantity: number; stacks: number };
+type ItemContextFitting = { id: number; name: string; ship_type_name?: string | null; character_name?: string | null; quantity?: number; flags?: string[]; is_shared?: boolean; is_draft?: boolean };
+type ItemContextBlueprint = { id: number; owner_name?: string | null; blueprint_type_name: string; product_type_name?: string | null; material_efficiency: number; time_efficiency: number; runs_remaining?: number | null; is_copy: boolean };
+type ItemContextRecipe = { id: number; activity_kind: string; blueprint_type_name?: string | null; product_type_name?: string | null; product_quantity?: number; required_quantity?: number };
+type ItemContextSummary = {
+  item: { type_id: number; name: string; group_name?: string | null; category_name?: string | null; volume?: number | null; packaged_volume?: number | null; market_group_id?: number | null };
+  owned: { quantity: number; stacks: number; owners: ItemContextOwner[]; locations: ItemContextLocation[] };
+  fittings: { total_ship_fittings: number; total_used_by: number; ship_fittings: ItemContextFitting[]; used_by: ItemContextFitting[] };
+  blueprints: { owned_blueprints: number; bpos: number; bpcs: number; products_owned: number; owned_blueprints_sample: ItemContextBlueprint[]; product_blueprints: ItemContextBlueprint[] };
+  industry: { produced_by: ItemContextRecipe[]; used_by: ItemContextRecipe[] };
+};
+
+function ItemContextPanel({ typeId, itemName, assets = [], compact = false, onOpenAssets, onOpenMarket, onOpenFittings }: { typeId?: number | null; itemName?: string | null; assets?: Asset[]; compact?: boolean; onOpenAssets?: (itemName: string) => void; onOpenMarket?: (text: string) => void; onOpenFittings?: (itemName: string) => void }) {
+
+  const [context, setContext] = useState<ItemContextSummary | null>(null);
+
+  const [busy, setBusy] = useState(false);
+
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+
+    if (!typeId) {
+
+      setContext(null);
+
+      setError(null);
+
+      return;
+
+    }
+
+    let cancelled = false;
+
+    setBusy(true);
+
+    setError(null);
+
+    api<ItemContextSummary>(`/context/item/${typeId}`).then((row) => {
+
+      if (!cancelled) setContext(row);
+
+    }).catch((err) => {
+
+      if (!cancelled) setError(err instanceof Error ? err.message : "Unable to load item context.");
+
+    }).finally(() => {
+
+      if (!cancelled) setBusy(false);
+
+    });
+
+    return () => { cancelled = true; };
+
+  }, [typeId]);
+
+  const displayName = context?.item.name ?? itemName ?? "Item";
+
+  const ownedQuantity = context?.owned.quantity ?? visibleAssetQuantity(assets, itemName);
+
+  const localLocations = visibleAssetLocations(assets, itemName);
+
+  const hasFittingContext = Boolean(context && (context.fittings.total_ship_fittings > 0 || context.fittings.total_used_by > 0));
+
+  const hasIndustryContext = Boolean(context && (context.industry.produced_by.length > 0 || context.industry.used_by.length > 0 || context.blueprints.owned_blueprints > 0 || context.blueprints.product_blueprints.length > 0));
+
+  return <section className={`item-context-panel ${compact ? "compact" : ""}`}>
+    <div className="item-context-heading">
+      <div>
+        <strong>{displayName}</strong>
+        {context?.item.group_name && <span>{context.item.category_name ? `${context.item.category_name} / ` : ""}{context.item.group_name}</span>}
+        {!typeId && <span>Visible asset context only</span>}
+      </div>
+      <div className="context-actions">
+        {onOpenAssets && <button type="button" onClick={() => onOpenAssets(displayName)}>Assets</button>}
+        {onOpenMarket && <button type="button" onClick={() => onOpenMarket(`${Math.max(ownedQuantity || 1, 1)} ${displayName}`)}>Market</button>}
+        {onOpenFittings && <button type="button" onClick={() => onOpenFittings(displayName)}>Fittings</button>}
+      </div>
+    </div>
+    {busy && <span className="muted">Loading context...</span>}
+    {error && <div className="mini-alert">{error}</div>}
+    <div className="item-context-grid">
+      <article><span>Owned</span><strong>{numberFormatter.format(ownedQuantity)}</strong><small>{context ? `${numberFormatter.format(context.owned.stacks)} visible stack${context.owned.stacks === 1 ? "" : "s"}` : `${localLocations.length} visible location hint${localLocations.length === 1 ? "" : "s"}`}</small></article>
+      <article><span>Fittings</span><strong>{context ? numberFormatter.format(context.fittings.total_ship_fittings + context.fittings.total_used_by) : "-"}</strong><small>ship fits and module usage</small></article>
+      <article><span>Industry</span><strong>{context ? numberFormatter.format(context.industry.produced_by.length + context.industry.used_by.length + context.blueprints.product_blueprints.length) : "-"}</strong><small>recipes and blueprints</small></article>
+    </div>
+    <div className="item-context-columns">
+      <div>
+        <h4>Where it is</h4>
+        <div className="item-context-list">
+          {context ? context.owned.locations.map((location) => <div key={`${location.owner_name}-${location.location_name}-${location.location_flag ?? ""}`}><strong>{numberFormatter.format(location.quantity)}x</strong><span>{location.owner_name} @ {location.location_name ?? "Unknown"}{location.location_flag ? ` (${location.location_flag})` : ""}</span></div>) : localLocations.map((location) => <div key={location}><span>{location}</span></div>)}
+          {ownedQuantity === 0 && <span className="muted">None visible to you.</span>}
+        </div>
+      </div>
+      {hasFittingContext && context && <div>
+        <h4>Fitting context</h4>
+        <div className="item-context-list">
+          {context.fittings.ship_fittings.map((fitting) => <div key={`ship-${fitting.id}`}><strong>{fitting.name}</strong><span>{fitting.character_name ?? "Unknown character"} flies this hull{fitting.is_draft ? " as a draft" : ""}</span></div>)}
+          {context.fittings.used_by.map((fitting) => <div key={`use-${fitting.id}`}><strong>{fitting.name}</strong><span>{numberFormatter.format(fitting.quantity ?? 0)} used on {fitting.ship_type_name ?? "Unknown ship"}{fitting.flags?.length ? ` (${fitting.flags.join(", ")})` : ""}</span></div>)}
+        </div>
+      </div>}
+      {hasIndustryContext && context && <div>
+        <h4>Industry context</h4>
+        <div className="item-context-list">
+          {context.blueprints.product_blueprints.map((blueprint) => <div key={`product-bp-${blueprint.id}`}><strong>{blueprint.blueprint_type_name}</strong><span>{blueprint.owner_name ?? "Unknown owner"} · ME {blueprint.material_efficiency} · TE {blueprint.time_efficiency} · {blueprint.is_copy ? "BPC" : "BPO"}</span></div>)}
+          {context.industry.produced_by.map((recipe) => <div key={`produced-${recipe.id}`}><strong>{recipe.blueprint_type_name ?? "Blueprint"}</strong><span>Produces {numberFormatter.format(recipe.product_quantity ?? 1)} per run</span></div>)}
+          {context.industry.used_by.map((recipe) => <div key={`input-${recipe.id}`}><strong>{recipe.product_type_name ?? recipe.blueprint_type_name ?? "Recipe"}</strong><span>Needs {numberFormatter.format(recipe.required_quantity ?? 0)} per run</span></div>)}
+          {context.blueprints.owned_blueprints > 0 && <div><strong>{numberFormatter.format(context.blueprints.owned_blueprints)} owned blueprint{context.blueprints.owned_blueprints === 1 ? "" : "s"}</strong><span>{context.blueprints.bpos} BPO · {context.blueprints.bpcs} BPC</span></div>}
+        </div>
+      </div>}
+    </div>
+  </section>;
 
 }
 function BlueprintList({ blueprints, assets = [], onOpenMarket, onOpenAssets }: { blueprints: Blueprint[]; assets?: Asset[]; onOpenMarket?: (text: string) => void; onOpenAssets?: (itemName: string) => void }) {
@@ -6901,6 +7282,14 @@ function subtitleFor(tab: string) {
 
 
 createRoot(document.getElementById("root")!).render(<App />);
+
+
+
+
+
+
+
+
 
 
 

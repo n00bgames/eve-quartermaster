@@ -4,6 +4,11 @@ All notable changes to EVE Quartermaster are tracked here.
 
 This project is moving quickly during beta. Version sections are written as user-facing release notes first, with implementation detail included where it helps operators understand deployment or testing impact.
 
+## [0.1.4-beta] - 2026-07-06
+
+### Changed
+
+- Bumped the visible app, README, Android wrapper, backend API, and ESI client user-agent versions for the latest beta polish pass.
 ## [0.1.3-beta] - 2026-07-05
 
 ### Added

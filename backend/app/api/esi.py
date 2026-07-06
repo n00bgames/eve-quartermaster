@@ -25,7 +25,7 @@ from app.services.esi_client import EsiClient, esi_status, resolve_names
 from app.services.audit import notify_if_other_user_synced_character
 from app.services.analytics import create_snapshot
 from app.api.auth import can_view_all_characters, get_current_user
-from app.services.permissions import can_view_section
+from app.services.permissions import ROLE_RANK, can_view_section, role_rank
 
 router = APIRouter(prefix="/esi", tags=["esi"])
 
@@ -746,7 +746,7 @@ def list_character_skills(current_user: User = Depends(get_current_user), db: Se
                 "owner_user_id": token.user_id,
                 "sync_opt_out": character.sync_opt_out,
                 "admin_override_visible": character.sync_opt_out and current_user.role == "admin" and token.user_id != current_user.id,
-                "can_sync": token.user_id == current_user.id or current_user.role == "admin",
+                "can_sync": can_force_sync_character_token(token, character, current_user, db),
                 "total_skill_points": character.total_skill_points,
                 "unallocated_skill_points": character.unallocated_skill_points,
                 "skills_synced_at": character.skills_synced_at.isoformat() if character.skills_synced_at else None,
@@ -764,8 +764,8 @@ def list_character_skills(current_user: User = Depends(get_current_user), db: Se
 @router.post("/sync/character-skills/{token_id}")
 async def sync_character_skills(token_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
     token, character = get_linked_token(db, token_id)
-    if token.user_id != current_user.id and current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Only admins can force-sync another account character skills")
+    if not can_force_sync_character_token(token, character, current_user, db):
+        raise HTTPException(status_code=403, detail="You can only sync characters you own or are permitted to administer")
     if character.sync_opt_out and token.user_id != current_user.id and current_user.role != "admin":
         raise HTTPException(status_code=403, detail=f"{character.name} has opted out of Quartermaster sync")
     require_scope(token, "esi-skills.read_skills.v1", f"Reading skills for {character.name}")
@@ -841,8 +841,8 @@ async def sync_character_skills(token_id: int, current_user: User = Depends(get_
 @router.post("/sync/character-fittings/{token_id}")
 async def sync_character_fittings(token_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
     token, character = get_linked_token(db, token_id)
-    if token.user_id != current_user.id and current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Only admins can force-sync another account character fittings")
+    if not can_force_sync_character_token(token, character, current_user, db):
+        raise HTTPException(status_code=403, detail="You can only sync characters you own or are permitted to administer")
     if character.sync_opt_out and token.user_id != current_user.id and current_user.role != "admin":
         raise HTTPException(status_code=403, detail=f"{character.name} has opted out of Quartermaster sync")
     require_scope(token, "esi-fittings.read_fittings.v1", f"Reading fittings for {character.name}")
@@ -923,11 +923,11 @@ async def sync_character_assets(token_id: int, current_user: User = Depends(get_
     token = db.get(EsiToken, token_id)
     if token is None or token.revoked_at is not None:
         raise HTTPException(status_code=404, detail="Linked character token was not found")
-    if token.user_id != current_user.id and current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Only admins or the account that authorized SSO can sync this character")
     character = db.get(EveCharacter, token.character_id)
     if character is None:
         raise HTTPException(status_code=404, detail="Linked character was not found")
+    if not can_force_sync_character_token(token, character, current_user, db):
+        raise HTTPException(status_code=403, detail="You can only sync characters you own or are permitted to administer")
     if character.sync_opt_out and token.user_id != current_user.id and current_user.role != "admin":
         raise HTTPException(status_code=403, detail=f"{character.name} has opted out of Quartermaster sync")
 
@@ -1211,6 +1211,17 @@ def require_token_access(token: EsiToken, current_user: User, db: Session) -> No
     if token.user_id != current_user.id and not can_view_all_characters(current_user, db):
         raise HTTPException(status_code=403, detail="You can only use your own linked characters")
 
+def can_force_sync_character_token(token: EsiToken, character: EveCharacter, current_user: User, db: Session) -> bool:
+    if token.user_id == current_user.id:
+        return True
+    if can_view_all_characters(current_user, db):
+        return True
+    if role_rank(current_user, db) < ROLE_RANK["officer"]:
+        return False
+    if character.owner_user_id is None:
+        return False
+    owner = db.get(User, character.owner_user_id)
+    return owner is not None and role_rank(owner, db) < ROLE_RANK["officer"]
 async def fetch_character_contacts(db: Session, token: EsiToken, character: EveCharacter) -> list[dict[str, Any]]:
     require_scope(token, "esi-characters.read_contacts.v1", f"Reading contacts for {character.name}")
     access_token = await refresh_access_token(token)
@@ -1586,6 +1597,9 @@ async def auth_callback(code: str | None = None, state: str | None = None, db: S
         }
     )
     return RedirectResponse(url=f"{settings.frontend_url}/?{query}#esi", status_code=303)
+
+
+
 
 
 
