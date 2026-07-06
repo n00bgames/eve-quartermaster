@@ -415,15 +415,28 @@ def weapon_range(
     return {"range_m": range_m, "optimal_m": optimal_m, "falloff_m": falloff_m}
 
 
-def drone_control_range_m(skill_name_levels: dict[str, int]) -> float:
-    return (
-        20_000.0
+def drone_control_range_m(
+    skill_name_levels: dict[str, int],
+    additive_bonus_m: float = 0.0,
+    multipliers: list[float] | None = None,
+    base_range_m: float | None = None,
+) -> float:
+    base_range = 20_000.0 if base_range_m is None else float(base_range_m)
+    effective_range_m = (
+        base_range
         + 5_000.0 * named_skill_level(skill_name_levels, "Drone Avionics", "Scout Drone Operation")
         + 3_000.0 * named_skill_level(skill_name_levels, "Advanced Drone Avionics", "Electronic Warfare Drone Interfacing")
     )
+    return (effective_range_m + additive_bonus_m) * stacking_raw_multiplier(multipliers or [])
 
 
-def drone_detail_stats(attrs: dict[str, float], skill_name_levels: dict[str, int], quantity: int, cycle: float | None) -> dict[str, float | None]:
+def drone_detail_stats(
+    attrs: dict[str, float],
+    skill_name_levels: dict[str, int],
+    quantity: int,
+    cycle: float | None,
+    control_range_m: float,
+) -> dict[str, float | None]:
     velocity = attr_value(attrs, "maxVelocity", "entityCruiseSpeed", "orbitVelocity")
     if velocity is not None:
         velocity = float(velocity) * (1 + 0.05 * named_skill_level(skill_name_levels, "Drone Navigation"))
@@ -449,7 +462,7 @@ def drone_detail_stats(attrs: dict[str, float], skill_name_levels: dict[str, int
 
     return {
         "velocity_m_s": velocity,
-        "control_range_m": drone_control_range_m(skill_name_levels),
+        "control_range_m": control_range_m,
         "repair_hps": repair_hps,
         "mining_yield": mining_amount,
         "salvage_bonus": attr_value(attrs, "accessDifficultyBonus", "salvageAccessBonus", "salvageBonus"),
@@ -887,6 +900,8 @@ def compute_fitting_stats(
     turret_rof_mods: list[float] = []
     turret_range_mods: list[float] = []
     drone_damage_mods: list[float] = []
+    drone_control_bonus_m = 0.0
+    drone_control_multipliers: list[float] = []
     velocity_multipliers: list[float] = []
     signature_multipliers: list[float] = []
     capacitor_multipliers: list[float] = []
@@ -962,6 +977,12 @@ def compute_fitting_stats(
         drone_bonus = attr_value(attrs, "droneDamageBonus", "droneDamageMultiplierBonus")
         if drone_bonus:
             drone_damage_mods.extend([float(drone_bonus)] * qty)
+        drone_range_bonus = attr_value(attrs, "droneRangeBonus", "droneControlRangeBonus", "droneControlDistanceBonus")
+        if drone_range_bonus:
+            drone_control_bonus_m += float(drone_range_bonus) * qty
+        drone_range_multiplier = dogma_multiplier(attr_value(attrs, "droneRangeMultiplier", "droneControlRangeMultiplier"))
+        if drone_range_multiplier:
+            drone_control_multipliers.extend([drone_range_multiplier] * qty)
         speed_multiplier = attr_value(attrs, "speedMultiplier")
         if speed_multiplier and overheated:
             overload_rof = attr_value(attrs, "overloadRofBonus")
@@ -1059,6 +1080,12 @@ def compute_fitting_stats(
     turret_rof_multiplier = stacking_raw_multiplier(turret_rof_mods)
     turret_range_multiplier = stacking_raw_multiplier(turret_range_mods)
     drone_damage_multiplier = stacking_multiplier(drone_damage_mods) * (1 + 0.1 * named_skill_level(skill_name_levels, "Drone Interfacing"))
+    drone_control_range = drone_control_range_m(
+        skill_name_levels,
+        drone_control_bonus_m,
+        drone_control_multipliers,
+        base_range_m=attr_value(ship_attrs, "droneControlDistance"),
+    )
 
     turret_dps = 0.0
     launcher_dps = 0.0
@@ -1165,7 +1192,7 @@ def compute_fitting_stats(
             "range_m": attr_value(attrs, "maxRange"),
             "optimal_m": attr_value(attrs, "maxRange"),
             "falloff_m": None,
-            **drone_detail_stats(attrs, skill_name_levels, module_quantity(item), cycle),
+            **drone_detail_stats(attrs, skill_name_levels, module_quantity(item), cycle, drone_control_range),
         })
 
     max_velocity = attr_value(ship_attrs, "maxVelocity")
@@ -1266,7 +1293,7 @@ def compute_fitting_stats(
                 safe_number(attr_value(ship_attrs, "scanMagnetometricStrength")),
                 safe_number(attr_value(ship_attrs, "scanGravimetricStrength")),
             ),
-            "drone_control_range_m": drone_control_range_m(skill_name_levels),
+            "drone_control_range_m": drone_control_range,
         },
         "notes": [
             f"Combat stats are SDE-derived {'hot' if heat else 'cold'} estimates with common fitted module modifiers, missile character skills, selected hull role bonuses, capacitor draw, and stacking penalties. Implants, script effect modifiers, and full effect-graph coverage are still being refined.",
