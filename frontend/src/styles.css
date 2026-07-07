@@ -162,3 +162,4 @@
     justify-self:start;
   }
 }
+.blueprint-search{min-width:min(100%,460px);max-width:620px}.blueprint-search input{margin-top:6px}
