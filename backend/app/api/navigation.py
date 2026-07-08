@@ -15,6 +15,7 @@ from app.models import EveStargate, EveStation, EveSystem, User
 from app.services.gatecheck import LOCAL_THREAT_JOB_MAX_PILOTS, gatecheck_route, local_threat_analysis, local_threat_names, system_industrial_threat, system_pvp_intel
 from app.services.jump_freighter import JUMP_FREIGHTERS, plan_jump_freighter_route
 from app.services.navigation import plan_gate_route, search_systems
+from app.services.twitch import uedama_scout_status
 from app.services.permissions import can_view_section
 
 router = APIRouter(prefix="/navigation", tags=["navigation"])
@@ -263,6 +264,10 @@ def cancel_local_threat_job(
         job["status"] = "cancelling"
         job["updated_at"] = utc_iso()
     return serialize_local_threat_job(job)
+
+@router.get("/uedama-scout")
+async def uedama_scout(_: User = Depends(require_navigation)) -> dict[str, Any]:
+    return await uedama_scout_status()
 @router.get("/jump-freighter/ships")
 def jump_freighter_ships(_: User = Depends(require_navigation)) -> list[dict[str, Any]]:
     return [
@@ -311,6 +316,7 @@ async def jump_freighter_route(
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
 
 
 

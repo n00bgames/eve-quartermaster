@@ -163,3 +163,43 @@
   }
 }
 .blueprint-search{min-width:min(100%,460px);max-width:620px}.blueprint-search input{margin-top:6px}
+
+.twitch-live-link {
+  align-items: center;
+  background: linear-gradient(135deg, #6f3df4, #e3438d);
+  border: 1px solid #f7b8ff99;
+  border-radius: 999px;
+  box-shadow: 0 0 16px #9b5cff66;
+  color: #fff;
+  display: inline-flex;
+  font-size: 0.78rem;
+  font-weight: 900;
+  gap: 6px;
+  padding: 4px 9px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.twitch-live-link::before {
+  background: #ff4d6d;
+  border-radius: 999px;
+  box-shadow: 0 0 10px #ff4d6dcc;
+  content: "";
+  height: 7px;
+  width: 7px;
+}
+
+.twitch-live-link:hover {
+  color: #fff;
+  filter: brightness(1.08);
+}
+
+.jf-jump-actions .twitch-live-link {
+  justify-self: start;
+}
+
+.duplicate-filter-row{margin-bottom:10px}
+.duplicate-filter-row .metric-chip{cursor:pointer;text-align:left;background:#10151b}
+.duplicate-filter-row .metric-chip.active{border-color:#e8b84d;color:#ffe8aa;background:#332813}
+.duplicate-filter-row .metric-chip small{display:block;color:#9aa7b7;font-size:.78rem;margin-top:2px}
+.duplicate-owner-row{max-height:96px;overflow:auto;padding-right:4px}
