@@ -95,6 +95,7 @@ def serialize_character(character: EveCharacter, viewer: User, db: Session) -> d
         "id": character.id,
         "name": character.name,
         "portrait_url": character.portrait_url,
+        "security_status": character.security_status,
         "can_view_detail": detail,
     }
     if not detail:
@@ -138,6 +139,7 @@ def serialize_asset(asset: Asset) -> dict[str, Any]:
         "type_name": asset.item_type.name if asset.item_type else f"Type {asset.type_id}",
         "quantity": asset.quantity,
         "location_name": asset.location.name if asset.location else None,
+        "location_id": asset.location.eve_location_id if asset.location else None,
         "location_flag": asset.location_flag,
         "source": asset.source.value if hasattr(asset.source, "value") else str(asset.source),
         "last_synced_at": iso(asset.last_synced_at),
@@ -158,6 +160,7 @@ def serialize_blueprint(blueprint: Blueprint) -> dict[str, Any]:
         "runs_remaining": blueprint.runs_remaining,
         "is_copy": blueprint.is_copy,
         "location_name": blueprint.location.name if blueprint.location else None,
+        "location_id": blueprint.location.eve_location_id if blueprint.location else None,
         "last_synced_at": iso(blueprint.last_synced_at),
     }
 
@@ -192,6 +195,8 @@ def serialize_kill_observation(row: SystemPvpKillObservation | SystemIndustrialK
         "attacker_count": row.attacker_count,
         "location_name": row.location_name,
         "smartbomb_used": row.smartbomb_used,
+        "war_id": row.war_id,
+        "is_wardec": row.war_id is not None,
     }
 
 
@@ -247,6 +252,7 @@ def character_summary_payload(db: Session, character: EveCharacter) -> dict[str,
             "character_id": character.character_id,
             "name": character.name,
             "portrait_url": character.portrait_url,
+            "security_status": character.security_status,
             "corporation_name": character.corporation.name if character.corporation else None,
             "alliance_name": character.alliance.name if character.alliance else None,
             "owner_display_name": character.owner_user.display_name if character.owner_user else None,
@@ -446,6 +452,7 @@ def list_roster(current_user: User = Depends(get_current_user), db: Session = De
                 "character_id": character.character_id,
                 "name": character.name,
                 "portrait_url": character.portrait_url,
+                "security_status": character.security_status,
             }
         )
     return sorted(
@@ -491,3 +498,4 @@ def update_character(character_id: int, payload: dict[str, Any], current_user: U
         .options(selectinload(EveCharacter.owner_user), selectinload(EveCharacter.corporation), selectinload(EveCharacter.alliance))
     )
     return serialize_character(character, current_user, db)
+

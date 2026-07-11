@@ -11,6 +11,18 @@ This project is moving quickly during beta. Version sections are written as user
 - Added wardec indicators to route, capital jump, and character killmail displays so hostile intel can distinguish war-target losses from ordinary ganks.
 - Started frontend segmentation by moving the app version, killmail data shapes, and wardec badge into purpose-built modules.
 - Split market appraisal data shapes, pricing helpers, and reusable market widgets out of the large frontend entry module.
+- Split navigation route, jump plotter, and threat/intel widgets out of the large frontend entry module.
+- Split fitting shared types, simulation helpers, and fit-context widgets out of the large frontend entry module.
+- Split fitting sync, import, and saved-fitting list panels out of the large frontend entry module.
+- Moved the remaining Fittings page container out of the large frontend entry module.
+- Added fitting ammo/script groups so multiple launchers, turrets, or scripted modules can share charge assignment from one group control.
+- Added reusable pilot security-status badges for character cards, local threat pilots, route killmail rows, and jump-planner killmail rows.
+- Added a Skills-page sync-all action that queues backend skill refreshes for every eligible character, skips opted-out characters, and shows progress with the queue badge.
+
+### Fixed
+
+- Applied strategic cruiser subsystem slot/resource dogma before fitting simulation readiness checks so T3C CPU, powergrid, slot capacities, probe launcher CPU, covert cloak CPU, and medium weapon required-skill fitting reductions are not evaluated from bare hull/module values only.
+- Stored ESI character security status during public character imports and SSO sync so pilot identity surfaces can display current security information when available.
 
 ### Changed
 

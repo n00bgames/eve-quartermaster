@@ -11,7 +11,7 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app.models import EveConstellation, EveStargate, EveStation, EveSystem
+from app.models import EveCharacter, EveConstellation, EveStargate, EveStation, EveSystem
 from app.models.navigation import SystemIndustrialKillObservation, SystemJumpObservation, SystemPvpKillObservation
 from app.services.navigation import resolve_system, security_band, serialize_system
 
@@ -596,6 +596,18 @@ def kill_summary(db: Session, system_id: int, hours: int = 24, kill_filter: str 
         .order_by(model.killmail_time.desc())
         .limit(5)
     ).all()
+    character_ids = {
+        character_id
+        for row in rows
+        for character_id in (row.victim_character_id, row.final_blow_character_id)
+        if character_id is not None
+    }
+    security_statuses = dict(
+        db.execute(
+            select(EveCharacter.character_id, EveCharacter.security_status)
+            .where(EveCharacter.character_id.in_(character_ids))
+        ).all()
+    ) if character_ids else {}
     return {
         "hours": hours,
         "filter": {"mode": mode, "label": _kill_filter_label(mode)},
@@ -612,6 +624,7 @@ def kill_summary(db: Session, system_id: int, hours: int = 24, kill_filter: str 
                 "is_wardec": row.war_id is not None,
                 "victim_character_id": row.victim_character_id,
                 "victim_character_name": row.victim_character_name,
+                "victim_security_status": security_statuses.get(row.victim_character_id),
                 "victim_corporation_id": row.victim_corporation_id,
                 "victim_corporation_name": row.victim_corporation_name,
                 "victim_alliance_id": row.victim_alliance_id,
@@ -621,6 +634,7 @@ def kill_summary(db: Session, system_id: int, hours: int = 24, kill_filter: str 
                 "location_name": row.location_name,
                 "final_blow_character_id": row.final_blow_character_id,
                 "final_blow_character_name": row.final_blow_character_name,
+                "final_blow_security_status": security_statuses.get(row.final_blow_character_id),
                 "final_blow_corporation_id": row.final_blow_corporation_id,
                 "final_blow_corporation_name": row.final_blow_corporation_name,
                 "final_blow_alliance_id": row.final_blow_alliance_id,

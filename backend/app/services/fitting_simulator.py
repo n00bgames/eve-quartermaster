@@ -13,6 +13,7 @@ CPU_MANAGEMENT_TYPE_ID = 3426
 POWER_GRID_MANAGEMENT_TYPE_ID = 3413
 WEAPON_UPGRADES_TYPE_ID = 3318
 ADVANCED_WEAPON_UPGRADES_TYPE_ID = 11207
+MEDIUM_HYBRID_TURRET_TYPE_ID = 3304
 MINING_UPGRADES_TYPE_ID = 22578
 SHIELD_UPGRADES_TYPE_ID = 3425
 SHIELD_MANAGEMENT_TYPE_ID = 3416
@@ -64,6 +65,26 @@ SLOT_CAPACITY_ATTRS = {
     "ServiceSlot": ("serviceSlots", "Services"),
 }
 
+SUBSYSTEM_ADDITIVE_ATTRS = (
+    ("hiSlots", "hiSlotModifier"),
+    ("medSlots", "medSlotModifier"),
+    ("lowSlots", "lowSlotModifier"),
+    ("cpuOutput", "cpuOutput"),
+    ("powerOutput", "powerOutput"),
+    ("capacitorCapacity", "capacitorCapacity"),
+    ("shieldCapacity", "shieldCapacity"),
+    ("droneCapacity", "droneCapacity"),
+    ("maxLockedTargets", "maxLockedTargetsBonus"),
+    ("maxTargetRange", "maxTargetRange"),
+    ("capacity", "cargoCapacityAdd"),
+    ("cloakingCpuNeedBonus", "cloakingCpuNeedBonus"),
+    ("subsystemMHTFittingReduction", "subsystemMHTFittingReduction"),
+    ("subsystemMMissileFittingReduction", "subsystemMMissileFittingReduction"),
+)
+SUBSYSTEM_PERCENT_ATTRS = (
+    ("cpuOutput", "cpuOutputBonus2"),
+    ("powerOutput", "powerEngineeringOutputBonus"),
+)
 
 def normalize_attr(name: str) -> str:
     return re.sub(r"[^a-z0-9]", "", name.lower())
@@ -250,6 +271,32 @@ def ship_resource_capacity(ship_attrs: dict[str, float], skill_levels: dict[int,
     }
 
 
+def effective_ship_attrs_with_subsystems(ship_attrs: dict[str, float], items: list[CharacterFittingItem], dogma: dict[int, dict[str, float]]) -> dict[str, float]:
+    effective = dict(ship_attrs)
+    subsystem_items = [item for item in items if slot_prefix(item.flag) == "SubSystemSlot" and item_is_online(item)]
+    if not subsystem_items:
+        return effective
+
+    for item in subsystem_items:
+        attrs = dogma.get(item.type_id, {})
+        quantity = max(1, int(item.quantity or 1))
+        for target_attr, source_attr in SUBSYSTEM_ADDITIVE_ATTRS:
+            value = attr_value(attrs, source_attr)
+            if value is not None:
+                key = normalize_attr(target_attr)
+                effective[key] = safe_number(effective.get(key)) + float(value) * quantity
+
+    for item in subsystem_items:
+        attrs = dogma.get(item.type_id, {})
+        for target_attr, source_attr in SUBSYSTEM_PERCENT_ATTRS:
+            value = attr_value(attrs, source_attr)
+            if value is not None:
+                key = normalize_attr(target_attr)
+                effective[key] = safe_number(effective.get(key)) * max(0.0, 1 + float(value) / 100.0)
+
+    effective[normalize_attr("subSystemSlot")] = max(safe_number(effective.get(normalize_attr("subSystemSlot"))), float(len(subsystem_items)))
+    return effective
+
 def is_weapon_group(group_name: str) -> bool:
     normalized = group_name.lower()
     return "turret" in normalized or "launcher" in normalized or "smartbomb" in normalized
@@ -300,7 +347,7 @@ def required_skill_type_ids(dogma: dict[int, dict[str, float]]) -> set[int]:
     return skill_ids
 
 
-def item_resource_usage(item: CharacterFittingItem, attrs: dict[str, float], group_name: str, skill_levels: dict[int, int]) -> dict[str, float]:
+def item_resource_usage(item: CharacterFittingItem, attrs: dict[str, float], group_name: str, skill_levels: dict[int, int], ship_attrs: dict[str, float] | None = None) -> dict[str, float]:
     slot = slot_prefix(item.flag)
     if slot not in FITTED_SLOT_PREFIXES or not item_is_online(item):
         return {"cpu": 0.0, "powergrid": 0.0, "calibration": 0.0}
@@ -314,13 +361,34 @@ def item_resource_usage(item: CharacterFittingItem, attrs: dict[str, float], gro
         cpu *= max(0.0, 1 - 0.05 * skill_level(skill_levels, MINING_UPGRADES_TYPE_ID))
     if is_shield_extender_group(group_name):
         powergrid *= max(0.0, 1 - 0.05 * skill_level(skill_levels, SHIELD_UPGRADES_TYPE_ID))
+
+    ship_attrs = ship_attrs or {}
+    family = f"{getattr(item.item_type, 'name', '')} {group_name}".lower()
+    if "probe launcher" in family:
+        probe_cpu_bonus = attr_value(ship_attrs, "roleBonusT3ProbeCPU")
+        if probe_cpu_bonus is not None:
+            cpu *= max(0.0, 1 + float(probe_cpu_bonus) / 100.0)
+    if "covert ops cloaking" in family or "covert ops cloak" in family:
+        cloaking_cpu = attr_value(ship_attrs, "cloakingCpuNeedBonus")
+        if cloaking_cpu is not None:
+            cpu = max(0.0, float(cloaking_cpu))
+
+    hybrid_reduction = attr_value(ship_attrs, "subsystemMHTFittingReduction")
+    if hybrid_reduction is not None and module_requires_skill(attrs, MEDIUM_HYBRID_TURRET_TYPE_ID):
+        multiplier = max(0.0, 1 + float(hybrid_reduction) / 100.0)
+        cpu *= multiplier
+        powergrid *= multiplier
+    missile_reduction = attr_value(ship_attrs, "subsystemMMissileFittingReduction")
+    if missile_reduction is not None and is_launcher_group(group_name):
+        multiplier = max(0.0, 1 + float(missile_reduction) / 100.0)
+        cpu *= multiplier
+        powergrid *= multiplier
+
     return {
         "cpu": cpu * quantity,
         "powergrid": powergrid * quantity,
         "calibration": float(attr_value(attrs, "upgradeCost") or 0) * quantity if slot == "RigSlot" else 0.0,
     }
-
-
 
 def safe_number(value: float | None, default: float = 0.0) -> float:
     return float(value) if value is not None else default
@@ -877,7 +945,7 @@ def compute_fitting_stats(
     skill_name_levels: dict[str, int],
     heat: bool = False,
 ) -> dict[str, Any]:
-    ship_attrs = dogma.get(fitting.ship_type_id, {})
+    ship_attrs = effective_ship_attrs_with_subsystems(dogma.get(fitting.ship_type_id, {}), fitting.items, dogma)
     shield_hp = safe_number(attr_value(ship_attrs, "shieldCapacity")) * (1 + 0.05 * skill_level(skill_levels, SHIELD_MANAGEMENT_TYPE_ID))
     armor_hp = safe_number(attr_value(ship_attrs, "armorHP")) * (1 + 0.05 * skill_level(skill_levels, HULL_UPGRADES_TYPE_ID))
     structure_hp = safe_number(attr_value(ship_attrs, "hp", "structureHP")) * (1 + 0.05 * skill_level(skill_levels, MECHANICS_TYPE_ID))
@@ -1308,8 +1376,9 @@ def simulate_fitting(db: Session, fitting: CharacterFitting, character: EveChara
     group_names = type_group_names(db, type_ids)
     skill_levels = character_skill_levels(db, character.id)
     skill_name_levels = character_skill_levels_by_name(db, character.id)
-    ship_attrs = dogma.get(fitting.ship_type_id, {})
-    dogma_loaded = bool(ship_attrs) or any(dogma.get(item.type_id) for item in fitting.items)
+    base_ship_attrs = dogma.get(fitting.ship_type_id, {})
+    ship_attrs = effective_ship_attrs_with_subsystems(base_ship_attrs, fitting.items, dogma)
+    dogma_loaded = bool(base_ship_attrs) or any(dogma.get(item.type_id) for item in fitting.items)
     dogma_effects_loaded = bool(dogma_effects.get(fitting.ship_type_id)) or any(dogma_effects.get(item.type_id) for item in fitting.items)
 
     slot_usage: dict[str, int] = {prefix: 0 for prefix in SLOT_CAPACITY_ATTRS}
@@ -1346,7 +1415,7 @@ def simulate_fitting(db: Session, fitting: CharacterFitting, character: EveChara
         item_attrs = dogma.get(item.type_id, {})
         if slot in slot_usage:
             slot_usage[slot] += max(1, int(item.quantity or 1))
-        usage = item_resource_usage(item, item_attrs, group_names.get(item.type_id, ""), skill_levels)
+        usage = item_resource_usage(item, item_attrs, group_names.get(item.type_id, ""), skill_levels, ship_attrs)
         resources["cpu"]["used"] += usage["cpu"]
         resources["powergrid"]["used"] += usage["powergrid"]
         resources["calibration"]["used"] += usage["calibration"]

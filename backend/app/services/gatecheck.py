@@ -18,7 +18,7 @@ from app.services.navigation import plan_gate_route, resolve_system, serialize_s
 
 ZKILLBOARD_BASE_URL = "https://zkillboard.com/api"
 ESI_BASE_URL = "https://esi.evetech.net/latest"
-USER_AGENT = "EVE-Quartermaster/0.1.5-beta navigation-intel"
+USER_AGENT = "EVE-Quartermaster/0.1.6-beta navigation-intel"
 INDUSTRIAL_CACHE_FEED = "zkill_industrial"
 PVP_CACHE_FEED = "zkill_pvp"
 INDUSTRIAL_CACHE_RETENTION_DAYS = 90
@@ -62,6 +62,23 @@ def optional_int(value: Any) -> int | None:
     except (TypeError, ValueError):
         return None
 
+
+
+
+
+def optional_float(value: Any) -> float | None:
+    try:
+        return float(value) if value is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def killmail_war_id(kill: dict[str, Any]) -> int | None:
+    zkb = kill.get("zkb") if isinstance(kill.get("zkb"), dict) else {}
+    raw = kill.get("war_id") or kill.get("warID") or kill.get("war")
+    if raw in (None, "") and isinstance(zkb, dict):
+        raw = zkb.get("war_id") or zkb.get("warID") or zkb.get("war")
+    return optional_int(raw)
 
 def victim_ship_type_id(kill: dict[str, Any]) -> int | None:
     victim = kill.get("victim") if isinstance(kill.get("victim"), dict) else {}
@@ -245,6 +262,16 @@ def collect_type_ids(kills: list[dict[str, Any]]) -> set[int]:
 async def killmail_samples(db: Session, client: httpx.AsyncClient, kills: list[dict[str, Any]]) -> list[dict[str, Any]]:
     names = await resolve_esi_names(client, collect_name_ids(kills))
     hulls = type_names(db, collect_type_ids(kills))
+    character_ids = {
+        entity_id
+        for kill in kills[:5]
+        for entity_id in (
+            optional_int((kill.get("victim") or {}).get("character_id")) if isinstance(kill.get("victim"), dict) else None,
+            optional_int((final_blow_attacker(kill) or {}).get("character_id")),
+        )
+        if entity_id is not None
+    }
+    security = await gather_with_limit(sorted(character_ids), LOCAL_THREAT_ZKILL_CONCURRENCY, lambda character_id: character_public_info(client, character_id))
     samples: list[dict[str, Any]] = []
     for kill in kills[:5]:
         victim = kill.get("victim") if isinstance(kill.get("victim"), dict) else {}
@@ -259,6 +286,7 @@ async def killmail_samples(db: Session, client: httpx.AsyncClient, kills: list[d
         corporation_id = optional_int(final.get("corporation_id"))
         alliance_id = optional_int(final.get("alliance_id"))
         location = await kill_location(db, client, kill)
+        war_id = killmail_war_id(kill)
         zkb = kill.get("zkb") if isinstance(kill.get("zkb"), dict) else {}
         samples.append(
             {
@@ -267,11 +295,14 @@ async def killmail_samples(db: Session, client: httpx.AsyncClient, kills: list[d
                 "zkb_url": zkill_url(kill),
                 "total_value": killmail_value(kill),
                 "smartbomb_used": kill_uses_smartbomb(kill, hulls),
+                "war_id": war_id,
+                "is_wardec": war_id is not None,
                 "victim_ship_type_id": victim_ship_type_id,
                 "victim_hull": hulls.get(victim_ship_type_id or 0, f"Type {victim_ship_type_id}" if victim_ship_type_id else "Unknown hull"),
                 "victim": {
                     "character_id": victim_character_id,
                     "character_name": names.get(victim_character_id or 0, f"Character {victim_character_id}" if victim_character_id else "Unknown pilot"),
+                    "security_status": optional_float(security.get(victim_character_id or 0, {}).get("security_status")),
                     "corporation_id": victim_corporation_id,
                     "corporation_name": names.get(victim_corporation_id or 0, f"Corporation {victim_corporation_id}" if victim_corporation_id else None),
                     "alliance_id": victim_alliance_id,
@@ -283,6 +314,7 @@ async def killmail_samples(db: Session, client: httpx.AsyncClient, kills: list[d
                 "final_blow": {
                     "character_id": character_id,
                     "character_name": names.get(character_id or 0, f"Character {character_id}" if character_id else "Unknown pilot"),
+                    "security_status": optional_float(security.get(character_id or 0, {}).get("security_status")),
                     "corporation_id": corporation_id,
                     "corporation_name": names.get(corporation_id or 0, f"Corporation {corporation_id}" if corporation_id else None),
                     "alliance_id": alliance_id,
@@ -556,6 +588,7 @@ async def local_threat_analysis(db: Session, raw_names: Any, *, days: int = 30) 
             info = public_infos.get(character_id, {})
             corporation_id = optional_int(info.get("corporation_id"))
             alliance_id = optional_int(info.get("alliance_id"))
+            security_status = optional_float(info.get("security_status"))
             detail = details.get(character_id, {})
             recent_kills = detail.get("recent_kills") or []
             recent_losses = detail.get("recent_losses") or []
@@ -572,6 +605,7 @@ async def local_threat_analysis(db: Session, raw_names: Any, *, days: int = 30) 
                     "name": str(resolved_row["name"]),
                     "resolved": True,
                     "character_id": character_id,
+                    "security_status": security_status,
                     "corporation_id": corporation_id,
                     "corporation_name": org_names.get(corporation_id or 0),
                     "alliance_id": alliance_id,
@@ -909,6 +943,7 @@ async def cache_system_industrial_kills(db: Session, client: httpx.AsyncClient, 
         observation.attacker_count = len(attackers)
         observation.combatant_count = len(attackers) + 1
         observation.smartbomb_used = kill_uses_smartbomb(kill, hulls)
+        observation.war_id = killmail_war_id(kill)
         observation.location_id = location.get("location_id")
         observation.location_kind = location.get("location_kind")
         observation.location_name = location.get("location_name")
@@ -1124,6 +1159,7 @@ async def cache_system_pvp_kills(db: Session, client: httpx.AsyncClient, system_
         observation.attacker_count = len(attackers)
         observation.combatant_count = len(attackers) + 1
         observation.smartbomb_used = kill_uses_smartbomb(kill, hulls)
+        observation.war_id = killmail_war_id(kill)
         observation.location_id = location.get("location_id")
         observation.location_kind = location.get("location_kind")
         observation.location_name = location.get("location_name")

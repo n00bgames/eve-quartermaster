@@ -4,6 +4,7 @@ import base64
 import asyncio
 import secrets
 import urllib.parse
+import uuid
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any
@@ -18,7 +19,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.core.config import get_settings
 from app.core.security import create_sso_state, decode_sso_state, decrypt_secret, encrypt_secret
-from app.db.session import get_db
+from app.db.session import SessionLocal, get_db
 from app.models import Asset, Blueprint, CharacterFitting, CharacterFittingItem, CharacterSkill, CharacterSkillQueueEntry, CorporationWalletDivision, EsiSyncJob, EsiToken, EveAlliance, EveCategory, EveCharacter, EveCorporation, EveGroup, EveSystem, EveType, Location, OwnershipEntity, User
 from app.models.enums import AssetSource, LocationKind, OwnerKind, SyncStatus
 from app.services.esi_client import EsiClient, esi_status, resolve_names
@@ -28,6 +29,9 @@ from app.api.auth import can_view_all_characters, get_current_user
 from app.services.permissions import ROLE_RANK, can_view_section, role_rank
 
 router = APIRouter(prefix="/esi", tags=["esi"])
+
+SKILL_SYNC_JOBS: dict[str, dict[str, Any]] = {}
+
 
 PUBLIC_SCOPES = [
     "publicData",
@@ -494,6 +498,7 @@ async def apply_corporation_metadata(client: EsiClient, db: Session, corp: EveCo
                 ceo = EveCharacter(character_id=corp.ceo_character_eve_id, name=ceo_payload["name"])
                 db.add(ceo)
             ceo.name = ceo_payload["name"]
+            ceo.security_status = ceo_payload.get("security_status")
             ceo.corporation_id = corp.id
             ceo.alliance_id = alliance_row.id if alliance_row else None
         except Exception:
@@ -513,6 +518,7 @@ async def apply_character_affiliation(client: EsiClient, db: Session, character:
     await apply_corporation_metadata(client, db, corp_row, corp_payload)
     character.corporation_id = corp_row.id
     character.alliance_id = corp_row.alliance_id
+    character.security_status = character_payload.get("security_status")
     db.flush()
 
 
@@ -615,6 +621,7 @@ async def import_character(character_id: int, db: Session = Depends(get_db)) -> 
         character = EveCharacter(character_id=character_id, name=payload["name"])
         db.add(character)
     character.name = payload["name"]
+    character.security_status = payload.get("security_status")
     character.corporation_id = corp_row.id if corp_row else None
     character.alliance_id = alliance_row.id if alliance_row else None
     db.flush()
@@ -691,6 +698,50 @@ async def import_station(station_id: int, db: Session = Depends(get_db)) -> dict
 
 
 
+
+WAYPOINT_SCOPE = "esi-ui.write_waypoint.v1"
+
+
+def find_waypoint_token(db: Session, current_user: User, token_id: int | None = None) -> EsiToken:
+    if token_id is not None:
+        token, _character = get_linked_token(db, token_id)
+        require_token_access(token, current_user, db)
+        require_scope(token, WAYPOINT_SCOPE, "Setting an EVE destination")
+        return token
+    tokens = db.scalars(
+        select(EsiToken)
+        .where(EsiToken.user_id == current_user.id)
+        .where(EsiToken.revoked_at.is_(None))
+        .order_by(EsiToken.id.desc())
+    ).all()
+    for token in tokens:
+        if WAYPOINT_SCOPE in token_scopes(token):
+            return token
+    raise HTTPException(status_code=400, detail="Setting an EVE destination requires esi-ui.write_waypoint.v1. Re-link a character through EVE SSO after enabling that scope.")
+
+
+@router.post("/ui/waypoint")
+async def set_eve_waypoint(payload: dict[str, Any], current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+    destination_id = payload.get("destination_id")
+    if destination_id is None:
+        raise HTTPException(status_code=400, detail="destination_id is required")
+    token = find_waypoint_token(db, current_user, payload.get("token_id"))
+    access_token = await refresh_access_token(token)
+    params = {
+        "destination_id": int(destination_id),
+        "clear_other_waypoints": str(bool(payload.get("clear_other_waypoints", True))).lower(),
+        "add_to_beginning": str(bool(payload.get("add_to_beginning", False))).lower(),
+    }
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.post(
+            "https://esi.evetech.net/latest/ui/autopilot/waypoint/",
+            params=params,
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+    if response.status_code >= 400:
+        raise HTTPException(status_code=response.status_code, detail=f"EVE waypoint failed: {response.text[:500]}")
+    return {"status": "sent", "destination_id": int(destination_id)}
+
 @router.get("/linked-characters")
 def linked_characters(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[dict[str, Any]]:
     query = (
@@ -720,6 +771,7 @@ def linked_characters(current_user: User = Depends(get_current_user), db: Sessio
                 "token_id": token.id,
                 "character_id": character.character_id,
                 "character_name": character.name,
+                "security_status": character.security_status,
                 "linked_user_id": token.user_id,
                 "linked_user_display_name": linked_user.display_name,
                 "can_sync_assets": can_manage_link,
@@ -790,6 +842,7 @@ def list_character_skills(current_user: User = Depends(get_current_user), db: Se
                 "token_id": token.id,
                 "character_id": character.character_id,
                 "character_name": character.name,
+                "security_status": character.security_status,
                 "owner_user_id": token.user_id,
                 "sync_opt_out": character.sync_opt_out,
                 "admin_override_visible": character.sync_opt_out and current_user.role == "admin" and token.user_id != current_user.id,
@@ -808,12 +861,11 @@ def list_character_skills(current_user: User = Depends(get_current_user), db: Se
     return results
 
 
-@router.post("/sync/character-skills/{token_id}")
-async def sync_character_skills(token_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+async def sync_character_skills_for_token(token_id: int, current_user: User, db: Session, *, allow_opt_out_override: bool = True) -> dict[str, Any]:
     token, character = get_linked_token(db, token_id)
     if not can_force_sync_character_token(token, character, current_user, db):
         raise HTTPException(status_code=403, detail="You can only sync characters you own or are permitted to administer")
-    if character.sync_opt_out and token.user_id != current_user.id and current_user.role != "admin":
+    if character.sync_opt_out and (not allow_opt_out_override or (token.user_id != current_user.id and current_user.role != "admin")):
         raise HTTPException(status_code=403, detail=f"{character.name} has opted out of Quartermaster sync")
     require_scope(token, "esi-skills.read_skills.v1", f"Reading skills for {character.name}")
     require_scope(token, "esi-skills.read_skillqueue.v1", f"Reading skill queue for {character.name}")
@@ -825,6 +877,9 @@ async def sync_character_skills(token_id: int, current_user: User = Depends(get_
     try:
         access_token = await refresh_access_token(token)
         client = EsiClient(access_token=access_token)
+        character_payload = await client.get(f"/characters/{character.character_id}/")
+        character.name = character_payload.get("name", character.name)
+        await apply_character_affiliation(client, db, character, character_payload)
         skills_payload = await client.get(f"/characters/{character.character_id}/skills/")
         queue_payload = await client.get(f"/characters/{character.character_id}/skillqueue/")
         skill_rows = skills_payload.get("skills", []) or []
@@ -870,8 +925,7 @@ async def sync_character_skills(token_id: int, current_user: User = Depends(get_
         character.skill_queue_synced_at = now
         character.last_synced_at = now
         job.status = SyncStatus.SUCCESS
-        opt_out_note = " Admin override used for opted-out character." if character.sync_opt_out and current_user.role == "admin" and token.user_id != current_user.id else ""
-        job.message = f"Synced {len(skill_rows)} trained skills and {len(queue_rows)} queued skills. Resolved {type_names} skill names and {type_metadata} skill metadata records during the foreground sync.{metadata_note}{opt_out_note}"
+        job.message = f"Synced {len(skill_rows)} trained skills and {len(queue_rows)} queued skills. Resolved {type_names} skill names and {type_metadata} skill metadata records during the skills sync.{metadata_note}"
         notify_if_other_user_synced_character(db, sync_label="skills", actor_user=current_user, character=character, detail=f"{len(skill_rows)} trained skills and {len(queue_rows)} queue entries were refreshed.")
         job.finished_at = now
         create_snapshot(db, scope_type="character", scope_id=character.id, source="character_skills", message=job.message)
@@ -884,6 +938,140 @@ async def sync_character_skills(token_id: int, current_user: User = Depends(get_
         db.commit()
         raise
 
+
+@router.post("/sync/character-skills/{token_id:int}")
+async def sync_character_skills(token_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+    return await sync_character_skills_for_token(token_id, current_user, db)
+
+
+def skill_sync_job_payload(job: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "job_id": job["job_id"],
+        "status": job["status"],
+        "created_at": job["created_at"],
+        "updated_at": job.get("updated_at"),
+        "completed_at": job.get("completed_at"),
+        "total_count": job["total_count"],
+        "processed_count": job["processed_count"],
+        "success_count": job["success_count"],
+        "failed_count": job["failed_count"],
+        "skipped_count": job["skipped_count"],
+        "current_character_name": job.get("current_character_name"),
+        "results": job["results"][-12:],
+        "errors": job["errors"][-12:],
+    }
+
+
+def utc_job_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def skill_sync_eligible_tokens(db: Session, current_user: User) -> tuple[list[int], int]:
+    rows = db.execute(
+        select(EsiToken, EveCharacter)
+        .join(EveCharacter, EveCharacter.id == EsiToken.character_id)
+        .where(EsiToken.revoked_at.is_(None))
+        .order_by(EveCharacter.name)
+    ).all()
+    token_ids: list[int] = []
+    skipped = 0
+    seen_characters: set[int] = set()
+    for token, character in rows:
+        if character.id in seen_characters:
+            skipped += 1
+            continue
+        seen_characters.add(character.id)
+        if character.sync_opt_out:
+            skipped += 1
+            continue
+        if not can_force_sync_character_token(token, character, current_user, db):
+            skipped += 1
+            continue
+        if missing_scopes(token, SKILL_SYNC_SCOPES):
+            skipped += 1
+            continue
+        token_ids.append(token.id)
+    return token_ids, skipped
+
+
+async def run_skill_sync_all_job(job_id: str, token_ids: list[int], user_id: int) -> None:
+    job = SKILL_SYNC_JOBS[job_id]
+    job["status"] = "running"
+    job["updated_at"] = utc_job_iso()
+    try:
+        for token_id in token_ids:
+            if job.get("cancel_requested"):
+                job["status"] = "cancelled"
+                job["completed_at"] = utc_job_iso()
+                job["updated_at"] = job["completed_at"]
+                return
+            with SessionLocal() as db:
+                user = db.get(User, user_id)
+                if user is None:
+                    job["failed_count"] += 1
+                    job["errors"].append("The user that started this skill sync no longer exists.")
+                    break
+                token = db.get(EsiToken, token_id)
+                character = db.get(EveCharacter, token.character_id) if token else None
+                character_name = character.name if character else f"Token {token_id}"
+                job["current_character_name"] = character_name
+                job["updated_at"] = utc_job_iso()
+                try:
+                    result = await sync_character_skills_for_token(token_id, user, db, allow_opt_out_override=False)
+                    job["success_count"] += 1
+                    job["results"].append({"character_name": result["character_name"], "skill_count": result["skill_count"], "queue_count": result["queue_count"]})
+                except Exception as exc:
+                    job["failed_count"] += 1
+                    detail = getattr(exc, "detail", None) or str(exc)
+                    job["errors"].append(f"{character_name}: {detail}")
+                finally:
+                    job["processed_count"] += 1
+                    job["updated_at"] = utc_job_iso()
+            await asyncio.sleep(0)
+        job["current_character_name"] = None
+        job["status"] = "complete" if job["failed_count"] == 0 else "failed"
+        job["completed_at"] = utc_job_iso()
+        job["updated_at"] = job["completed_at"]
+    except Exception as exc:
+        job["current_character_name"] = None
+        job["status"] = "failed"
+        job["failed_count"] += max(0, job["total_count"] - job["processed_count"])
+        job["errors"].append(f"Skill sync worker stopped unexpectedly: {exc}")
+        job["completed_at"] = utc_job_iso()
+        job["updated_at"] = job["completed_at"]
+
+@router.post("/sync/character-skills/all")
+async def start_character_skills_sync_all(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+    token_ids, skipped = skill_sync_eligible_tokens(db, current_user)
+    if not token_ids:
+        raise HTTPException(status_code=400, detail="No eligible characters with skill scopes are available to sync.")
+    job_id = uuid.uuid4().hex
+    now = utc_job_iso()
+    SKILL_SYNC_JOBS[job_id] = {
+        "job_id": job_id,
+        "status": "queued",
+        "created_at": now,
+        "updated_at": now,
+        "completed_at": None,
+        "total_count": len(token_ids),
+        "processed_count": 0,
+        "success_count": 0,
+        "failed_count": 0,
+        "skipped_count": skipped,
+        "current_character_name": None,
+        "results": [],
+        "errors": [],
+    }
+    asyncio.create_task(run_skill_sync_all_job(job_id, token_ids, current_user.id))
+    return skill_sync_job_payload(SKILL_SYNC_JOBS[job_id])
+
+
+@router.get("/sync/character-skills/all/{job_id}")
+def get_character_skills_sync_all_job(job_id: str, current_user: User = Depends(get_current_user)) -> dict[str, Any]:
+    job = SKILL_SYNC_JOBS.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Skill sync job was not found. It may have been cleared by a backend restart.")
+    return skill_sync_job_payload(job)
 
 @router.post("/sync/character-fittings/{token_id}")
 async def sync_character_fittings(token_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
@@ -1646,6 +1834,7 @@ async def auth_callback(code: str | None = None, state: str | None = None, db: S
         }
     )
     return RedirectResponse(url=f"{settings.frontend_url}/?{query}#esi", status_code=303)
+
 
 
 

@@ -30,6 +30,7 @@ export type NavigationKillmailSample = {
   victim?: {
     character_id?: number | null;
     character_name?: string | null;
+    security_status?: number | null;
     corporation_id?: number | null;
     corporation_name?: string | null;
     alliance_id?: number | null;
@@ -43,6 +44,7 @@ export type NavigationKillmailSample = {
   final_blow?: {
     character_id?: number | null;
     character_name?: string | null;
+    security_status?: number | null;
     corporation_id?: number | null;
     corporation_name?: string | null;
     alliance_id?: number | null;
@@ -65,6 +67,7 @@ export type JumpFreighterKillSummary = {
     is_wardec?: boolean;
     victim_character_id?: number | null;
     victim_character_name?: string | null;
+    victim_security_status?: number | null;
     victim_corporation_id?: number | null;
     victim_corporation_name?: string | null;
     victim_alliance_id?: number | null;
@@ -74,6 +77,7 @@ export type JumpFreighterKillSummary = {
     location_name?: string | null;
     final_blow_character_id?: number | null;
     final_blow_character_name?: string | null;
+    final_blow_security_status?: number | null;
     final_blow_corporation_id?: number | null;
     final_blow_corporation_name?: string | null;
     final_blow_alliance_id?: number | null;

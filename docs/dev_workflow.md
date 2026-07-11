@@ -74,10 +74,10 @@ Guidelines:
 
 Current segmentation direction:
 
-1. Continue Navigation segmentation, especially Jump Planner and threat/intel widgets.
-2. Extract Fittings editor and simulator pieces.
-3. Extract Characters and Profile pages.
-4. Extract Analytics widgets.
+1. Extract Characters and Profile pages.
+2. Extract Analytics widgets.
+3. Continue opportunistic cleanup of any remaining wrapper glue.
+4. Review whether Settings/ESI/Admin should be split before deeper feature work.
 
 ## Handoff And Future Work
 
@@ -103,9 +103,9 @@ The publish repository uses the AGPL-3.0 license. Keep comments useful and maint
 
 ## Git Layout Note
 
-`D:\Codex\EVE\.git` appears to be an empty or broken git directory. The actual repository is inside `_publish\e...`.
+The root `.git` directory was removed to avoid confusing the actual publish repository. The actual repository is inside `_publish\eve-quartermaster-20260628-092452`.
 
-To avoid root-level git hiccups, prefer renaming the root `.git` first instead of deleting it immediately:
+If a root-level `.git` directory ever reappears, prefer renaming it first instead of deleting it immediately:
 
 ```powershell
 cd D:\Codex\EVE

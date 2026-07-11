@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, Numeric, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -115,6 +115,7 @@ class EveCharacter(Base):
     alliance_id: Mapped[int | None] = mapped_column(ForeignKey("eve_alliances.id"))
     owner_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     portrait_url: Mapped[str | None] = mapped_column(String(500))
+    security_status: Mapped[float | None] = mapped_column(Float)
     public_assets_visible: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     sync_opt_out: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     total_skill_points: Mapped[int | None] = mapped_column(Integer)
