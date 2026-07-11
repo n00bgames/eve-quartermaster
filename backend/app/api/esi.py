@@ -11,7 +11,7 @@ from typing import Any
 import httpx
 from jose import jwt
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import RedirectResponse
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, selectinload
@@ -109,10 +109,57 @@ CONTACT_SYNC_SCOPES = [
     "esi-characters.write_contacts.v1",
 ]
 
+MAIL_SYNC_SCOPES = [
+    "esi-mail.read_mail.v1",
+    "esi-mail.send_mail.v1",
+    "esi-mail.organize_mail.v1",
+]
+
+CORE_AUTH_SCOPES = [
+    "publicData",
+    "esi-location.read_location.v1",
+    "esi-location.read_ship_type.v1",
+    "esi-universe.read_structures.v1",
+    "esi-search.search_structures.v1",
+    "esi-assets.read_assets.v1",
+    "esi-assets.read_corporation_assets.v1",
+    "esi-characters.read_blueprints.v1",
+    "esi-corporations.read_blueprints.v1",
+    "esi-characters.read_corporation_roles.v1",
+    "esi-corporations.read_structures.v1",
+    "esi-corporations.read_corporation_membership.v1",
+    "esi-corporations.track_members.v1",
+    "esi-corporations.read_divisions.v1",
+    "esi-wallet.read_character_wallet.v1",
+    "esi-wallet.read_corporation_wallets.v1",
+    "esi-industry.read_character_jobs.v1",
+    "esi-industry.read_corporation_jobs.v1",
+    "esi-contracts.read_character_contracts.v1",
+    "esi-contracts.read_corporation_contracts.v1",
+    "esi-skills.read_skills.v1",
+    "esi-skills.read_skillqueue.v1",
+    "esi-fittings.read_fittings.v1",
+    "esi-fittings.write_fittings.v1",
+]
+
+
+def _unique_scopes(scopes: list[str]) -> list[str]:
+    return list(dict.fromkeys(scopes))
+
+
+def auth_scopes_for_group(scope_group: str | None) -> list[str]:
+    group = (scope_group or "core").strip().lower().replace("-", "_")
+    if group in {"contact", "contacts", "standing", "standing_sync", "contact_sync"}:
+        return _unique_scopes(CORE_AUTH_SCOPES + CONTACT_SYNC_SCOPES)
+    if group == "mail":
+        return _unique_scopes(CORE_AUTH_SCOPES + MAIL_SYNC_SCOPES)
+    if group == "full":
+        return _unique_scopes(PUBLIC_SCOPES)
+    return _unique_scopes(CORE_AUTH_SCOPES)
 
 
 def standing_sync_scopes() -> list[str]:
-    return list(dict.fromkeys(PUBLIC_SCOPES + CONTACT_SYNC_SCOPES))
+    return auth_scopes_for_group("contacts")
 
 async def refresh_access_token(token: EsiToken) -> str:
     settings = get_settings()
@@ -683,7 +730,7 @@ def linked_characters(current_user: User = Depends(get_current_user), db: Sessio
                 "last_sync_at": last_sync_at.isoformat() if last_sync_at else None,
                 "last_sync_type": latest_job.sync_type if latest_job else None,
                 "last_sync_status": latest_job.status.value if latest_job else None,
-                "missing_public_scopes": missing_scopes(token, PUBLIC_SCOPES),
+                "missing_public_scopes": missing_scopes(token, CORE_AUTH_SCOPES),
                 "missing_standing_scopes": missing_scopes(token, CONTACT_SYNC_SCOPES),
             }
         )
@@ -1436,7 +1483,8 @@ def esi_config() -> dict[str, Any]:
         "client_secret_configured": bool(settings.eve_sso_client_secret),
         "token_encryption_key_configured": bool(settings.token_encryption_key),
         "callback_url": settings.eve_sso_callback_url,
-        "required_scopes": PUBLIC_SCOPES,
+        "required_scopes": CORE_AUTH_SCOPES,
+        "available_scopes": PUBLIC_SCOPES,
     }
 
 def build_auth_url(scopes: list[str], current_user: User, mode: str = "core") -> dict[str, Any]:
@@ -1469,8 +1517,9 @@ def build_auth_url(scopes: list[str], current_user: User, mode: str = "core") ->
 
 
 @router.get("/auth-url")
-def auth_url(current_user: User = Depends(get_current_user)) -> dict[str, Any]:
-    return build_auth_url(PUBLIC_SCOPES, current_user, "core")
+def auth_url(scope_group: str = Query("core", max_length=32), current_user: User = Depends(get_current_user)) -> dict[str, Any]:
+    group = scope_group.strip().lower().replace("-", "_")
+    return build_auth_url(auth_scopes_for_group(group), current_user, group)
 
 
 @router.get("/auth-url/standing-sync")

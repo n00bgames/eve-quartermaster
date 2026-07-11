@@ -6,6 +6,7 @@ import re
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+from collections.abc import Iterable
 from typing import Any
 
 import httpx
@@ -17,7 +18,7 @@ from app.services.navigation import plan_gate_route, resolve_system, serialize_s
 
 ZKILLBOARD_BASE_URL = "https://zkillboard.com/api"
 ESI_BASE_URL = "https://esi.evetech.net/latest"
-USER_AGENT = "EVE-Quartermaster/0.1.4-beta navigation-intel"
+USER_AGENT = "EVE-Quartermaster/0.1.5-beta navigation-intel"
 INDUSTRIAL_CACHE_FEED = "zkill_industrial"
 PVP_CACHE_FEED = "zkill_pvp"
 INDUSTRIAL_CACHE_RETENTION_DAYS = 90
@@ -617,11 +618,13 @@ async def gatecheck_route(
     destination: str,
     *,
     highsec_only: bool = False,
+    prefer_safer: bool = False,
+    avoid_system_ids: Iterable[int] | None = None,
     hours: int = 1,
     industrial_only: bool = True,
 ) -> dict[str, Any]:
     hours = max(1, min(hours, 168))
-    route = plan_gate_route(db, origin, destination, highsec_only=highsec_only)
+    route = plan_gate_route(db, origin, destination, highsec_only=highsec_only, prefer_safer=prefer_safer, avoid_system_ids=avoid_system_ids)
     past_seconds = hours * 3600
     enriched_systems: list[dict[str, Any]] = []
     total_kills = 0

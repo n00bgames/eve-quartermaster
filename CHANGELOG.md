@@ -4,6 +4,16 @@ All notable changes to EVE Quartermaster are tracked here.
 
 This project is moving quickly during beta. Version sections are written as user-facing release notes first, with implementation detail included where it helps operators understand deployment or testing impact.
 
+## [0.1.5-beta] - 2026-07-08
+
+### Added
+
+- Added a Prefer Safer Route option to Route Checker so gate routes can favor highsec travel even when the route becomes longer.
+- Added Route Checker avoid-list controls matching the Capital Jump Plotter flow, including per-system avoid buttons and a clearable avoid list.
+
+### Changed
+
+- Route Checker and Gatechecker now pass safer-route and avoid-system preferences through the same backend route planner, keeping navigation behavior consistent across route tools.
 ## [0.1.4-beta] - 2026-07-06
 
 ### Changed

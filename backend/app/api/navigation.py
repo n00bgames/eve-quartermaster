@@ -14,7 +14,7 @@ from app.db.session import SessionLocal, get_db
 from app.models import EveStargate, EveStation, EveSystem, User
 from app.services.gatecheck import LOCAL_THREAT_JOB_MAX_PILOTS, gatecheck_route, local_threat_analysis, local_threat_names, system_industrial_threat, system_pvp_intel
 from app.services.jump_freighter import JUMP_FREIGHTERS, plan_jump_freighter_route
-from app.services.navigation import plan_gate_route, search_systems
+from app.services.navigation import plan_gate_route, resolve_system, search_systems
 from app.services.twitch import uedama_scout_status
 from app.services.permissions import can_view_section
 
@@ -133,17 +133,36 @@ def systems(
     return search_systems(db, q, limit)
 
 
+def resolve_avoid_system_ids(db: Session, avoid_systems: str) -> set[int]:
+    resolved: set[int] = set()
+    for system_name in (part.strip() for part in avoid_systems.split(',')):
+        if not system_name:
+            continue
+        resolved.add(resolve_system(db, system_name).system_id)
+    return resolved
+
+
 @router.get("/route")
 def route(
     origin: str = Query(..., min_length=1),
     destination: str = Query(..., min_length=1),
     highsec_only: bool = False,
+    prefer_safer: bool = True,
+    avoid_systems: str = Query(""),
     context_gate_hops: int = Query(1, ge=0, le=2),
     _: User = Depends(require_navigation),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     try:
-        return plan_gate_route(db, origin, destination, highsec_only=highsec_only, context_gate_hops=context_gate_hops)
+        return plan_gate_route(
+            db,
+            origin,
+            destination,
+            highsec_only=highsec_only,
+            prefer_safer=prefer_safer,
+            avoid_system_ids=resolve_avoid_system_ids(db, avoid_systems),
+            context_gate_hops=context_gate_hops,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -152,13 +171,24 @@ async def gatecheck(
     origin: str = Query(..., min_length=1),
     destination: str = Query(..., min_length=1),
     highsec_only: bool = False,
+    prefer_safer: bool = True,
+    avoid_systems: str = Query(""),
     hours: int = Query(1, ge=1, le=168),
     industrial_only: bool = True,
     _: User = Depends(require_navigation),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     try:
-        return await gatecheck_route(db, origin, destination, highsec_only=highsec_only, hours=hours, industrial_only=industrial_only)
+        return await gatecheck_route(
+            db,
+            origin,
+            destination,
+            highsec_only=highsec_only,
+            prefer_safer=prefer_safer,
+            avoid_system_ids=resolve_avoid_system_ids(db, avoid_systems),
+            hours=hours,
+            industrial_only=industrial_only,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

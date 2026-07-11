@@ -19,7 +19,7 @@ android {
         minSdk = 26
         targetSdk = targetSdkVersion
         versionCode = 1
-        versionName = "0.1.4-beta"
+        versionName = "0.1.5-beta"
         buildConfigField "String", "EQM_URL", "\"${eqmUrl}\""
     }
 }

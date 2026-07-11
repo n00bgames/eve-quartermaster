@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from collections import deque
 from collections.abc import Iterable
+import heapq
 from typing import Any
 
 from sqlalchemy import func, or_, select
@@ -96,15 +96,82 @@ def _adjacency(db: Session, allowed_systems: set[int] | None = None) -> dict[int
     return graph
 
 
-def _reconstruct_path(parent: dict[int, int | None], destination_id: int) -> list[int]:
+RouteState = tuple[int, int]
+
+
+def _reconstruct_path(parent: dict[RouteState, RouteState | None], destination_state: RouteState) -> list[int]:
     path: list[int] = []
-    cursor: int | None = destination_id
+    cursor: RouteState | None = destination_state
     while cursor is not None:
-        path.append(cursor)
+        path.append(cursor[0])
         cursor = parent[cursor]
     path.reverse()
     return path
 
+
+def _lowsec_chain_penalty(chain_length: int) -> int:
+    if chain_length <= 0:
+        return 0
+    if chain_length == 1:
+        return 2
+    if chain_length == 2:
+        return 6
+    if chain_length == 3:
+        return 15
+    return 30 + max(0, chain_length - 4) * 10
+
+
+def _route_step_cost(system_id: int, security_by_system: dict[int, float | None], prefer_safer: bool, consecutive_lowsec: int) -> tuple[int, int]:
+    if not prefer_safer:
+        return 1, 0
+    band = security_band(security_by_system.get(system_id))
+    if band == "highsec":
+        return 1, 0
+    if band == "lowsec":
+        next_chain = consecutive_lowsec + 1
+        return 1 + 8 + _lowsec_chain_penalty(next_chain), next_chain
+    if band == "nullsec":
+        return 1 + 60, 0
+    return 1 + 10, 0
+
+
+def _route_path(
+    graph: dict[int, list[int]],
+    origin_id: int,
+    destination_id: int,
+    security_by_system: dict[int, float | None],
+    prefer_safer: bool,
+) -> list[int] | None:
+    origin_chain = 1 if prefer_safer and security_band(security_by_system.get(origin_id)) == "lowsec" else 0
+    origin_state: RouteState = (origin_id, origin_chain)
+    parent: dict[RouteState, RouteState | None] = {origin_state: None}
+    best_cost: dict[RouteState, int] = {origin_state: 0}
+    best_hops: dict[RouteState, int] = {origin_state: 0}
+    queue: list[tuple[int, int, int, int]] = [(0, 0, origin_id, origin_chain)]
+
+    while queue:
+        cost, hops, current, consecutive_lowsec = heapq.heappop(queue)
+        current_state: RouteState = (current, consecutive_lowsec)
+        if cost != best_cost.get(current_state) or hops != best_hops.get(current_state):
+            continue
+        if current == destination_id:
+            return _reconstruct_path(parent, current_state)
+
+        for next_system in graph.get(current, []):
+            step_cost, next_chain = _route_step_cost(next_system, security_by_system, prefer_safer, consecutive_lowsec)
+            next_state: RouteState = (next_system, next_chain)
+            next_cost = cost + step_cost
+            next_hops = hops + 1
+            known_cost = best_cost.get(next_state)
+            known_hops = best_hops.get(next_state)
+            if known_cost is not None and (next_cost > known_cost or (next_cost == known_cost and known_hops is not None and next_hops >= known_hops)):
+                continue
+            best_cost[next_state] = next_cost
+            best_hops[next_state] = next_hops
+            parent[next_state] = current_state
+            heapq.heappush(queue, (next_cost, next_hops, next_system, next_chain))
+
+    return None
 
 def route_map_context(db: Session, route_system_ids: list[int], gate_hops: int = 1, max_systems: int = 180) -> dict[str, Any]:
     if not route_system_ids:
@@ -175,6 +242,7 @@ def plan_gate_route(
     origin_query: str,
     destination_query: str,
     highsec_only: bool = False,
+    prefer_safer: bool = False,
     avoid_system_ids: Iterable[int] | None = None,
     context_gate_hops: int = 1,
 ) -> dict[str, Any]:
@@ -198,6 +266,9 @@ def plan_gate_route(
             "lowsec_count": 1 if serialized["security_band"] == "lowsec" else 0,
             "nullsec_count": 1 if serialized["security_band"] == "nullsec" else 0,
             "shortest_known": True,
+            "prefer_safer": prefer_safer,
+            "routing_preference": "highsec_only" if highsec_only else "prefer_safer" if prefer_safer else "shortest",
+            "avoided_system_ids": [],
             "map_context": route_map_context(db, [origin.system_id], context_gate_hops),
         }
 
@@ -220,24 +291,11 @@ def plan_gate_route(
     if not graph:
         raise ValueError("No stargate graph is loaded. Import the SDE map data first.")
 
-    parent: dict[int, int | None] = {origin.system_id: None}
-    queue: deque[int] = deque([origin.system_id])
-    while queue:
-        current = queue.popleft()
-        for next_system in graph.get(current, []):
-            if next_system in parent:
-                continue
-            parent[next_system] = current
-            if next_system == destination.system_id:
-                queue.clear()
-                break
-            queue.append(next_system)
-
-    if destination.system_id not in parent:
+    path_ids = _route_path(graph, origin.system_id, destination.system_id, security_by_system, prefer_safer and not highsec_only)
+    if path_ids is None:
         route_type = "highsec-only " if highsec_only else ""
         raise ValueError(f"No {route_type}gate route found from {origin.name} to {destination.name}")
 
-    path_ids = _reconstruct_path(parent, destination.system_id)
     systems = db.scalars(
         select(EveSystem)
         .options(selectinload(EveSystem.constellation).selectinload(EveConstellation.region))
@@ -257,6 +315,9 @@ def plan_gate_route(
         "highsec_count": highsec_count,
         "lowsec_count": lowsec_count,
         "nullsec_count": nullsec_count,
-        "shortest_known": True,
-            "map_context": route_map_context(db, [origin.system_id], context_gate_hops),
-        }
+        "shortest_known": not prefer_safer or highsec_only,
+        "prefer_safer": prefer_safer,
+        "routing_preference": "highsec_only" if highsec_only else "prefer_safer" if prefer_safer else "shortest",
+        "avoided_system_ids": sorted(avoid),
+        "map_context": route_map_context(db, path_ids, context_gate_hops),
+    }

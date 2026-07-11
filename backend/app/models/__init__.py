@@ -7,6 +7,7 @@ from app.models.esi import EsiApplication, EsiSyncJob, EsiToken
 from app.models.eve_static import EveCategory, EveConstellation, EveDogmaAttribute, EveDogmaEffect, EveGroup, EveRegion, EveStargate, EveStation, EveSystem, EveType, EveTypeDogmaAttribute, EveTypeDogmaEffect
 from app.models.fittings import CharacterFitting, CharacterFittingItem
 from app.models.identity import CorporationWalletDivision, EveAlliance, EveCharacter, EveCorporation, OwnershipEntity, RoleDefinition, RoleSectionPermission, User, UserInvite, UserSectionPermission
+from app.models.market import CustomMarketHub
 from app.models.industry import Blueprint, IndustryActivity, IndustryActivityInput, ProcurementSource, ProductionPlan, ProductionPlanInput
 from app.models.navigation import SystemIndustrialKillObservation, SystemJumpObservation, SystemKillFetchCache, SystemPvpKillObservation
 from app.models.skills import CharacterSkill, CharacterSkillQueueEntry
@@ -26,6 +27,7 @@ __all__ = [
     "CorporationSnapshot",
     "CorporationWalletDivision",
     "CorporationWalletSnapshot",
+    "CustomMarketHub",
     "EsiApplication",
     "EsiSyncJob",
     "EsiToken",
@@ -65,6 +67,7 @@ __all__ = [
     "UserInvite",
     "UserSectionPermission",
 ]
+
 
 
 

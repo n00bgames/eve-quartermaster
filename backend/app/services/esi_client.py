@@ -46,6 +46,27 @@ class EsiClient:
         result, _headers = await self.request("PUT", path, payload=payload, params=params)
         return result
 
+    async def close(self) -> None:
+        return None
+
+    async def get_public_market_orders(self, region_id: int, type_id: int) -> list[dict[str, Any]]:
+        orders: list[dict[str, Any]] = []
+        page = 1
+        while True:
+            payload, headers = await self.get_with_headers(
+                f"/markets/{region_id}/orders/",
+                params={"order_type": "all", "type_id": type_id, "page": page},
+            )
+            if not payload:
+                break
+            if isinstance(payload, list):
+                orders.extend(payload)
+            pages = int(headers.get("X-Pages") or 1)
+            if page >= pages:
+                break
+            page += 1
+        return orders
+
 
 async def esi_status() -> dict[str, Any]:
     return await EsiClient().get("/status/")
