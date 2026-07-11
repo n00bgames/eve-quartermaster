@@ -4,6 +4,19 @@ All notable changes to EVE Quartermaster are tracked here.
 
 This project is moving quickly during beta. Version sections are written as user-facing release notes first, with implementation detail included where it helps operators understand deployment or testing impact.
 
+## [0.1.6-beta] - 2026-07-10
+
+### Added
+
+- Added wardec indicators to route, capital jump, and character killmail displays so hostile intel can distinguish war-target losses from ordinary ganks.
+- Started frontend segmentation by moving the app version, killmail data shapes, and wardec badge into purpose-built modules.
+- Split market appraisal data shapes, pricing helpers, and reusable market widgets out of the large frontend entry module.
+
+### Changed
+
+- Renamed Capital Jump Plotter to Jump Capable Ship Plotter and added Black Ops battleships to the jump-capable ship list.
+- Bumped the visible app and package version to 0.1.6-beta.
+
 ## [0.1.5-beta] - 2026-07-08
 
 ### Added

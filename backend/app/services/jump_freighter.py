@@ -19,7 +19,7 @@ LIGHT_YEAR_METERS = 9_460_730_472_580_800
 JDC_RANGE_BONUS_PER_LEVEL = 0.2
 JFC_FUEL_REDUCTION_PER_LEVEL = 0.1
 ESI_SYSTEM_JUMPS_URL = "https://esi.evetech.net/latest/universe/system_jumps/?datasource=tranquility"
-USER_AGENT = "EVE-Quartermaster/0.1.5-beta capital-route-intel"
+USER_AGENT = "EVE-Quartermaster/0.1.6-beta jump-capable-route-intel"
 
 FUEL_TYPE_NAMES = {
     16274: "Helium Isotopes",
@@ -49,6 +49,11 @@ JUMP_FREIGHTERS: dict[str, JumpFreighterShip] = {
     "ark": capital_ship("Ark", 28850, 16274, 8800, 5.0, "Jump Freighter"),
     "nomad": capital_ship("Nomad", 28846, 17889, 8200, 5.0, "Jump Freighter"),
     "rhea": capital_ship("Rhea", 28844, 17888, 10000, 5.0, "Jump Freighter"),
+    "redeemer": capital_ship("Redeemer", 22428, 16274, 700, 4.0, "Black Ops"),
+    "sin": capital_ship("Sin", 22430, 17887, 700, 4.0, "Black Ops"),
+    "widow": capital_ship("Widow", 22436, 17888, 700, 4.0, "Black Ops"),
+    "panther": capital_ship("Panther", 22440, 17889, 700, 4.0, "Black Ops"),
+    "marshal": capital_ship("Marshal", 44996, 16274, 700, 4.0, "Black Ops"),
     "rorqual": capital_ship("Rorqual", 28352, 17887, 4000, 5.0, "Capital Industrial Ship"),
     "archon": capital_ship("Archon", 23757, 16274, 3000, 3.5, "Carrier"),
     "chimera": capital_ship("Chimera", 23915, 17888, 3000, 3.5, "Carrier"),
@@ -172,7 +177,7 @@ def clamp_skill(value: int) -> int:
 def ship_config(ship_name: str) -> JumpFreighterShip:
     key = ship_name.strip().lower()
     if key not in JUMP_FREIGHTERS:
-        raise ValueError(f"Unknown capital jump ship '{ship_name}'")
+        raise ValueError(f"Unknown jump-capable ship '{ship_name}'")
     return JUMP_FREIGHTERS[key]
 
 
@@ -367,8 +372,7 @@ def _station_roman_numeral(value: int | None) -> str | None:
 
 
 def station_display_name(station: EveStation, type_name: str | None) -> str:
-    generic_names = {name for name in (type_name, station.operation_name, f"Station {station.station_id}") if name}
-    if station.name and station.name not in generic_names and not station.name.startswith("Type "):
+    if station.name and not station.name.startswith("Type "):
         return station.name
 
     celestial = _station_roman_numeral(station.celestial_index)
@@ -604,6 +608,8 @@ def kill_summary(db: Session, system_id: int, hours: int = 24, kill_filter: str 
                 "zkb_url": row.zkb_url,
                 "victim_hull": row.victim_hull,
                 "smartbomb_used": row.smartbomb_used,
+                "war_id": row.war_id,
+                "is_wardec": row.war_id is not None,
                 "victim_character_id": row.victim_character_id,
                 "victim_character_name": row.victim_character_name,
                 "victim_corporation_id": row.victim_corporation_id,
@@ -734,7 +740,7 @@ def plan_jump_freighter_route(
             f"Kill display: {_kill_filter_label(kill_filter)}.",
             f"Observed activity window: {jump_activity_hours}h; confidence depends on hourly samples collected by EQM.",
             f"Avoiding {len(avoid_systems)} system{'' if len(avoid_systems) == 1 else 's'}.",
-            "Station guidance is operational reference data. Verify bookmarks and station geometry before risking a live capital jump.",
+            "Station guidance is operational reference data. Verify bookmarks and station geometry before risking a live jump.",
         ],
     }
 
