@@ -3,8 +3,8 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func, select
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import exists, func, select
 from sqlalchemy.orm import Session
 
 from app.api.auth import get_current_user
@@ -120,6 +120,7 @@ def serialize_corporation(corp: EveCorporation, current_user: User, db: Session)
         "ceo_character_eve_id": corp.ceo_character_eve_id,
         "ceo_character_name": ceo.name if ceo else None,
         "member_count": corp.member_count,
+        "hide_from_corporation_list": corp.hide_from_corporation_list,
         "last_synced_at": corp.last_synced_at.isoformat() if corp.last_synced_at else None,
         "asset_rows": asset_rows,
         "blueprint_rows": blueprint_rows,
@@ -148,10 +149,37 @@ def serialize_corporation(corp: EveCorporation, current_user: User, db: Session)
 
 
 @router.get("")
-def list_corporations(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[dict[str, Any]]:
+def list_corporations(include_hidden: bool = Query(False), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[dict[str, Any]]:
     require_corporation_view(current_user, db)
-    corporations = db.scalars(select(EveCorporation).order_by(EveCorporation.name)).all()
+    query = (
+        select(EveCorporation)
+        .where(
+            exists().where(
+                OwnershipEntity.owner_kind == OwnerKind.CORPORATION,
+                OwnershipEntity.corporation_id == EveCorporation.id,
+            )
+        )
+        .order_by(EveCorporation.name)
+    )
+    if not include_hidden:
+        query = query.where(EveCorporation.hide_from_corporation_list.is_(False))
+    corporations = db.scalars(query).all()
     return [serialize_corporation(corp, current_user, db) for corp in corporations]
+
+
+@router.patch("/{corporation_id}")
+def update_corporation_visibility(corporation_id: int, payload: dict[str, Any], current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+    require_corporation_view(current_user, db)
+    if not can_sync_corporation(current_user, db):
+        raise HTTPException(status_code=403, detail="director role is required")
+    corporation = db.get(EveCorporation, corporation_id)
+    if corporation is None:
+        raise HTTPException(status_code=404, detail="Corporation was not found")
+    if "hide_from_corporation_list" in payload:
+        corporation.hide_from_corporation_list = bool(payload["hide_from_corporation_list"])
+    db.commit()
+    db.refresh(corporation)
+    return serialize_corporation(corporation, current_user, db)
 
 
 

@@ -23,6 +23,7 @@ from app.db.session import SessionLocal, get_db
 from app.models import Asset, Blueprint, CharacterFitting, CharacterFittingItem, CharacterSkill, CharacterSkillQueueEntry, CorporationWalletDivision, EsiSyncJob, EsiToken, EveAlliance, EveCategory, EveCharacter, EveCorporation, EveGroup, EveSystem, EveType, Location, OwnershipEntity, User
 from app.models.enums import AssetSource, LocationKind, OwnerKind, SyncStatus
 from app.services.esi_client import EsiClient, esi_status, resolve_names
+from app.services.contracts import ACTIVE_CONTRACT_STATUSES, fetch_contract_pages, upsert_contract_rows
 from app.services.audit import notify_if_other_user_synced_character
 from app.services.analytics import create_snapshot
 from app.api.auth import can_view_all_characters, get_current_user
@@ -31,6 +32,7 @@ from app.services.permissions import ROLE_RANK, can_view_section, role_rank
 router = APIRouter(prefix="/esi", tags=["esi"])
 
 SKILL_SYNC_JOBS: dict[str, dict[str, Any]] = {}
+CHARACTER_SYNC_ALL_JOBS: dict[str, dict[str, Any]] = {}
 
 
 PUBLIC_SCOPES = [
@@ -481,7 +483,7 @@ def upsert_blueprint_rows(db: Session, owner: OwnershipEntity, blueprints_payloa
     return synced
 
 
-async def apply_corporation_metadata(client: EsiClient, db: Session, corp: EveCorporation, corp_payload: dict[str, Any] | None = None) -> EveCorporation:
+async def apply_corporation_metadata(client: EsiClient, db: Session, corp: EveCorporation, corp_payload: dict[str, Any] | None = None, *, ensure_owner_row: bool = True) -> EveCorporation:
     if corp_payload is None:
         corp_payload = await client.get(f"/corporations/{corp.corporation_id}/")
     alliance_row = None
@@ -512,7 +514,8 @@ async def apply_corporation_metadata(client: EsiClient, db: Session, corp: EveCo
             ceo.alliance_id = alliance_row.id if alliance_row else None
         except Exception:
             pass
-    ensure_owner(db, OwnerKind.CORPORATION, corp.name, corporation_id=corp.id)
+    if ensure_owner_row:
+        ensure_owner(db, OwnerKind.CORPORATION, corp.name, corporation_id=corp.id)
     db.flush()
     return corp
 
@@ -524,7 +527,7 @@ async def apply_character_affiliation(client: EsiClient, db: Session, character:
         corp_row = EveCorporation(corporation_id=character_payload["corporation_id"], name=corp_payload["name"])
         db.add(corp_row)
         db.flush()
-    await apply_corporation_metadata(client, db, corp_row, corp_payload)
+    await apply_corporation_metadata(client, db, corp_row, corp_payload, ensure_owner_row=False)
     character.corporation_id = corp_row.id
     character.alliance_id = corp_row.alliance_id
     character.security_status = character_payload.get("security_status")
@@ -1082,12 +1085,11 @@ def get_character_skills_sync_all_job(job_id: str, current_user: User = Depends(
         raise HTTPException(status_code=404, detail="Skill sync job was not found. It may have been cleared by a backend restart.")
     return skill_sync_job_payload(job)
 
-@router.post("/sync/character-fittings/{token_id}")
-async def sync_character_fittings(token_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+async def sync_character_fittings_for_token(token_id: int, current_user: User, db: Session, *, allow_opt_out_override: bool = True) -> dict[str, Any]:
     token, character = get_linked_token(db, token_id)
     if not can_force_sync_character_token(token, character, current_user, db):
         raise HTTPException(status_code=403, detail="You can only sync characters you own or are permitted to administer")
-    if character.sync_opt_out and token.user_id != current_user.id and current_user.role != "admin":
+    if character.sync_opt_out and (not allow_opt_out_override or (token.user_id != current_user.id and current_user.role != "admin")):
         raise HTTPException(status_code=403, detail=f"{character.name} has opted out of Quartermaster sync")
     require_scope(token, "esi-fittings.read_fittings.v1", f"Reading fittings for {character.name}")
 
@@ -1153,6 +1155,11 @@ async def sync_character_fittings(token_id: int, current_user: User = Depends(ge
         raise
 
 
+@router.post("/sync/character-fittings/{token_id}")
+async def sync_character_fittings(token_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+    return await sync_character_fittings_for_token(token_id, current_user, db)
+
+
 @router.delete("/linked-characters/{token_id}")
 def unlink_character(token_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
     token, character = get_linked_token(db, token_id)
@@ -1162,8 +1169,7 @@ def unlink_character(token_id: int, current_user: User = Depends(get_current_use
     db.commit()
     return {"status": "unlinked", "token_id": token.id, "character_name": character.name}
 
-@router.post("/sync/character-assets/{token_id}")
-async def sync_character_assets(token_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+async def sync_character_assets_for_token(token_id: int, current_user: User, db: Session, *, allow_opt_out_override: bool = True) -> dict[str, Any]:
     token = db.get(EsiToken, token_id)
     if token is None or token.revoked_at is not None:
         raise HTTPException(status_code=404, detail="Linked character token was not found")
@@ -1172,8 +1178,9 @@ async def sync_character_assets(token_id: int, current_user: User = Depends(get_
         raise HTTPException(status_code=404, detail="Linked character was not found")
     if not can_force_sync_character_token(token, character, current_user, db):
         raise HTTPException(status_code=403, detail="You can only sync characters you own or are permitted to administer")
-    if character.sync_opt_out and token.user_id != current_user.id and current_user.role != "admin":
+    if character.sync_opt_out and (not allow_opt_out_override or (token.user_id != current_user.id and current_user.role != "admin")):
         raise HTTPException(status_code=403, detail=f"{character.name} has opted out of Quartermaster sync")
+    require_scope(token, "esi-assets.read_assets.v1", f"Reading assets for {character.name}")
 
     owner = ensure_owner(db, OwnerKind.CHARACTER, character.name, character_id=character.id)
     job = EsiSyncJob(token_id=token.id, ownership_entity_id=owner.id, sync_type="character_assets", status=SyncStatus.RUNNING, started_at=datetime.now(timezone.utc))
@@ -1240,7 +1247,183 @@ async def sync_character_assets(token_id: int, current_user: User = Depends(get_
         raise
 
 
+@router.post("/sync/character-assets/{token_id}")
+async def sync_character_assets(token_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+    return await sync_character_assets_for_token(token_id, current_user, db)
 
+
+async def sync_character_contracts_for_token(token_id: int, current_user: User, db: Session, *, allow_opt_out_override: bool = True) -> dict[str, Any]:
+    token = db.get(EsiToken, token_id)
+    if token is None or token.revoked_at is not None:
+        raise HTTPException(status_code=404, detail="Linked character token was not found")
+    character = db.get(EveCharacter, token.character_id)
+    if character is None:
+        raise HTTPException(status_code=404, detail="Linked character was not found")
+    if not can_force_sync_character_token(token, character, current_user, db):
+        raise HTTPException(status_code=403, detail="You can only sync characters you own or are permitted to administer")
+    if character.sync_opt_out and (not allow_opt_out_override or (token.user_id != current_user.id and current_user.role != "admin")):
+        raise HTTPException(status_code=403, detail=f"{character.name} has opted out of Quartermaster sync")
+    require_scope(token, "esi-contracts.read_character_contracts.v1", f"Syncing contracts for {character.name}")
+
+    owner = db.get(User, token.user_id)
+    job = EsiSyncJob(token_id=token.id, sync_type="character_contracts", status=SyncStatus.RUNNING, started_at=datetime.now(timezone.utc))
+    db.add(job)
+    db.flush()
+    try:
+        access_token = await refresh_access_token(token)
+        client = EsiClient(access_token=access_token)
+        rows = await fetch_contract_pages(client, f"/characters/{character.character_id}/contracts/")
+        synced = upsert_contract_rows(db, rows, scope_type="character", owner_user=owner, character=character)
+        job.status = SyncStatus.SUCCESS
+        job.message = f"Synced {synced} character contracts for {character.name}."
+        job.finished_at = datetime.now(timezone.utc)
+        db.commit()
+        return {"status": "synced", "character_name": character.name, "contracts": synced, "active_contracts": sum(1 for row in rows if row.get("status") in ACTIVE_CONTRACT_STATUSES), "job_id": job.id}
+    except Exception as exc:
+        job.status = SyncStatus.FAILED
+        job.message = str(exc)
+        job.finished_at = datetime.now(timezone.utc)
+        db.commit()
+        raise
+
+
+def character_sync_all_job_payload(job: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "job_id": job["job_id"],
+        "status": job["status"],
+        "created_at": job["created_at"],
+        "updated_at": job.get("updated_at"),
+        "completed_at": job.get("completed_at"),
+        "total_count": job["total_count"],
+        "processed_count": job["processed_count"],
+        "success_count": job["success_count"],
+        "failed_count": job["failed_count"],
+        "skipped_count": job["skipped_count"],
+        "current_character_name": job.get("current_character_name"),
+        "current_sync_kind": job.get("current_sync_kind"),
+        "results": job["results"][-16:],
+        "errors": job["errors"][-16:],
+    }
+
+
+def character_sync_all_work_items(db: Session, current_user: User) -> tuple[list[dict[str, Any]], int]:
+    required_scopes = {
+        "assets": ["esi-assets.read_assets.v1"],
+        "skills": SKILL_SYNC_SCOPES,
+        "fittings": ["esi-fittings.read_fittings.v1"],
+        "contracts": ["esi-contracts.read_character_contracts.v1"],
+    }
+    rows = db.execute(
+        select(EsiToken, EveCharacter)
+        .join(EveCharacter, EveCharacter.id == EsiToken.character_id)
+        .where(EsiToken.revoked_at.is_(None))
+        .order_by(EveCharacter.name)
+    ).all()
+    work_items: list[dict[str, Any]] = []
+    skipped = 0
+    seen_characters: set[int] = set()
+    for token, character in rows:
+        if character.id in seen_characters:
+            skipped += 4
+            continue
+        seen_characters.add(character.id)
+        if character.sync_opt_out or not can_force_sync_character_token(token, character, current_user, db):
+            skipped += 4
+            continue
+        for kind, scopes in required_scopes.items():
+            if missing_scopes(token, scopes):
+                skipped += 1
+                continue
+            work_items.append({"token_id": token.id, "sync_kind": kind})
+    return work_items, skipped
+
+
+async def run_character_sync_all_job(job_id: str, work_items: list[dict[str, Any]], user_id: int) -> None:
+    job = CHARACTER_SYNC_ALL_JOBS[job_id]
+    job["status"] = "running"
+    job["updated_at"] = utc_job_iso()
+    sync_handlers = {
+        "assets": sync_character_assets_for_token,
+        "skills": sync_character_skills_for_token,
+        "fittings": sync_character_fittings_for_token,
+        "contracts": sync_character_contracts_for_token,
+    }
+    try:
+        for item in work_items:
+            token_id = int(item["token_id"])
+            sync_kind = str(item["sync_kind"])
+            with SessionLocal() as db:
+                user = db.get(User, user_id)
+                if user is None:
+                    job["failed_count"] += 1
+                    job["errors"].append("The user that started this character sync no longer exists.")
+                    break
+                token = db.get(EsiToken, token_id)
+                character = db.get(EveCharacter, token.character_id) if token else None
+                character_name = character.name if character else f"Token {token_id}"
+                job["current_character_name"] = character_name
+                job["current_sync_kind"] = sync_kind
+                job["updated_at"] = utc_job_iso()
+                try:
+                    result = await sync_handlers[sync_kind](token_id, user, db, allow_opt_out_override=False)
+                    job["success_count"] += 1
+                    job["results"].append({"character_name": result.get("character_name", character_name), "sync_kind": sync_kind, "status": result.get("status", "synced")})
+                except Exception as exc:
+                    job["failed_count"] += 1
+                    detail = getattr(exc, "detail", None) or str(exc)
+                    job["errors"].append(f"{character_name} {sync_kind}: {detail}")
+                finally:
+                    job["processed_count"] += 1
+                    job["updated_at"] = utc_job_iso()
+            await asyncio.sleep(0)
+        job["current_character_name"] = None
+        job["current_sync_kind"] = None
+        job["status"] = "complete" if job["failed_count"] == 0 else "failed"
+        job["completed_at"] = utc_job_iso()
+        job["updated_at"] = job["completed_at"]
+    except Exception as exc:
+        job["current_character_name"] = None
+        job["current_sync_kind"] = None
+        job["status"] = "failed"
+        job["failed_count"] += max(0, job["total_count"] - job["processed_count"])
+        job["errors"].append(f"Character sync worker stopped unexpectedly: {exc}")
+        job["completed_at"] = utc_job_iso()
+        job["updated_at"] = job["completed_at"]
+
+
+@router.post("/sync/characters/all")
+async def start_characters_sync_all(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+    work_items, skipped = character_sync_all_work_items(db, current_user)
+    if not work_items:
+        raise HTTPException(status_code=400, detail="No eligible character sync tasks are available. Check character privacy settings, role access, and ESI scopes.")
+    job_id = uuid.uuid4().hex
+    now = utc_job_iso()
+    CHARACTER_SYNC_ALL_JOBS[job_id] = {
+        "job_id": job_id,
+        "status": "queued",
+        "created_at": now,
+        "updated_at": now,
+        "completed_at": None,
+        "total_count": len(work_items),
+        "processed_count": 0,
+        "success_count": 0,
+        "failed_count": 0,
+        "skipped_count": skipped,
+        "current_character_name": None,
+        "current_sync_kind": None,
+        "results": [],
+        "errors": [],
+    }
+    asyncio.create_task(run_character_sync_all_job(job_id, work_items, current_user.id))
+    return character_sync_all_job_payload(CHARACTER_SYNC_ALL_JOBS[job_id])
+
+
+@router.get("/sync/characters/all/{job_id}")
+def get_characters_sync_all_job(job_id: str, current_user: User = Depends(get_current_user)) -> dict[str, Any]:
+    job = CHARACTER_SYNC_ALL_JOBS.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Character sync job was not found. It may have been cleared by a backend restart.")
+    return character_sync_all_job_payload(job)
 
 
 @router.post("/sync/linked-corporations")
@@ -1275,7 +1458,7 @@ async def sync_linked_corporations(current_user: User = Depends(get_current_user
     public_client = EsiClient()
     for corp in db.scalars(select(EveCorporation).order_by(EveCorporation.name)).all():
         try:
-            await apply_corporation_metadata(public_client, db, corp)
+            await apply_corporation_metadata(public_client, db, corp, ensure_owner_row=False)
             await asyncio.to_thread(db.commit)
             metadata_refreshed += 1
         except Exception as exc:
@@ -1843,23 +2026,3 @@ async def auth_callback(code: str | None = None, state: str | None = None, db: S
         }
     )
     return RedirectResponse(url=f"{settings.frontend_url}/?{query}#esi", status_code=303)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

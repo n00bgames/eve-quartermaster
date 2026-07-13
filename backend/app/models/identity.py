@@ -89,6 +89,7 @@ class EveCorporation(Base):
     alliance_id: Mapped[int | None] = mapped_column(ForeignKey("eve_alliances.id"))
     ceo_character_eve_id: Mapped[int | None] = mapped_column(Integer)
     member_count: Mapped[int | None] = mapped_column(Integer)
+    hide_from_corporation_list: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 

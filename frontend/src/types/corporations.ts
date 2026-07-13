@@ -26,6 +26,7 @@ export type EqmCorporation = {
   ceo_character_eve_id?: number | null;
   ceo_character_name?: string | null;
   member_count?: number | null;
+  hide_from_corporation_list?: boolean;
   last_synced_at?: string | null;
   asset_rows: number;
   blueprint_rows: number;
