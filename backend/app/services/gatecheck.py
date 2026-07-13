@@ -18,7 +18,7 @@ from app.services.navigation import plan_gate_route, resolve_system, serialize_s
 
 ZKILLBOARD_BASE_URL = "https://zkillboard.com/api"
 ESI_BASE_URL = "https://esi.evetech.net/latest"
-USER_AGENT = "EVE-Quartermaster/0.1.6-beta navigation-intel"
+USER_AGENT = "EVE-Quartermaster/0.1.7-beta navigation-intel"
 INDUSTRIAL_CACHE_FEED = "zkill_industrial"
 PVP_CACHE_FEED = "zkill_pvp"
 INDUSTRIAL_CACHE_RETENTION_DAYS = 90
@@ -1224,16 +1224,3 @@ async def system_pvp_intel(
         db.commit()
 
     return build_pvp_intel_analysis(db, system, days=days, refresh_hours=refresh_hours, live_fetch_performed=live_fetch_performed, cache=cache)
-
-
-
-
-
-
-
-
-
-
-
-
-

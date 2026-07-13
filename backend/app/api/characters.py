@@ -18,12 +18,14 @@ from app.models import (
     EsiToken,
     EveCharacter,
     EveContract,
+    EveCategory,
+    IndustryActivity,
     EveGroup,
     EveType,
     OwnershipEntity,
     User,
 )
-from app.models.enums import OwnerKind
+from app.models.enums import ActivityKind, OwnerKind
 from app.models.navigation import SystemIndustrialKillObservation, SystemPvpKillObservation
 from app.services.contracts import serialize_contract
 from app.services.permissions import ROLE_RANK, can_view_section, role_rank
@@ -129,6 +131,109 @@ def owner_for_character(db: Session, character: EveCharacter) -> OwnershipEntity
     )
 
 
+def type_metadata(prefix: str, item_type: EveType | None) -> dict[str, Any]:
+    group = item_type.group if item_type else None
+    category = group.category if group else None
+    return {
+        f"{prefix}_group_id": group.group_id if group else None,
+        f"{prefix}_group_name": group.name if group else None,
+        f"{prefix}_category_id": category.category_id if category else None,
+        f"{prefix}_category_name": category.name if category else None,
+        f"{prefix}_market_group_id": item_type.market_group_id if item_type else None,
+    }
+
+
+def item_family(item_type: EveType | None, fallback_name: str | None = None) -> str:
+    group_name = (item_type.group.name if item_type and item_type.group else "").lower()
+    category_name = (item_type.group.category.name if item_type and item_type.group and item_type.group.category else "").lower()
+    fallback = (fallback_name or "").lower()
+    if category_name == "ship":
+        return "ships"
+    if category_name == "charge":
+        return "ammunition"
+    if category_name in {"drone", "fighter"} or "drone" in group_name or "fighter" in group_name:
+        return "drones"
+    if "rig" in group_name:
+        return "rigs"
+    if "reaction" in group_name or "reaction formula" in fallback or " reaction " in fallback:
+        return "reactions"
+    if "r.a.m" in group_name or "ram" in group_name or "r.a.m" in fallback or "ram-" in fallback:
+        return "ram"
+    if category_name == "blueprint":
+        return "blueprints"
+    return "other"
+
+
+def inventory_subtype(item_type: EveType | None, fallback_name: str | None = None) -> str | None:
+    if item_type and item_type.group:
+        return item_type.group.name
+    fallback = (fallback_name or "").lower()
+    if "reaction formula" in fallback:
+        return "Reaction Formula"
+    if "r.a.m" in fallback or "ram-" in fallback:
+        return "R.A.M."
+    return None
+
+
+def blueprint_type_ids_for_capital_construction(db: Session) -> set[int]:
+    capital_ship_type_ids = set(db.scalars(
+        select(EveType.type_id)
+        .join(EveType.group)
+        .join(EveGroup.category)
+        .where(
+            (EveCategory.name == "Ship") & EveGroup.name.in_([
+                "Capital Industrial Ship", "Carrier", "Dreadnought", "Force Auxiliary",
+                "Freighter", "Jump Freighter", "Supercarrier", "Titan",
+            ])
+        )
+    ).all())
+    capital_related_type_ids = set(capital_ship_type_ids)
+    capital_related_type_ids.update(db.scalars(
+        select(EveType.type_id)
+        .join(EveType.group)
+        .where(EveGroup.name.ilike("%Capital%"))
+    ).all())
+    if not capital_related_type_ids:
+        return set()
+    capital_activities = db.scalars(
+        select(IndustryActivity)
+        .where(IndustryActivity.product_type_id.in_(capital_related_type_ids))
+        .options(selectinload(IndustryActivity.inputs))
+    ).all()
+    related_product_ids: set[int] = set(capital_related_type_ids - capital_ship_type_ids)
+    for activity in capital_activities:
+        related_product_ids.update(input_row.input_type_id for input_row in activity.inputs)
+    related_product_ids.difference_update(capital_ship_type_ids)
+    if not related_product_ids:
+        return set()
+    return set(db.scalars(select(IndustryActivity.blueprint_type_id).where(IndustryActivity.product_type_id.in_(related_product_ids))).all())
+
+
+def blueprint_product_type_fallbacks(db: Session, blueprint_type_ids: set[int]) -> dict[int, EveType]:
+    if not blueprint_type_ids:
+        return {}
+    rows = db.scalars(
+        select(IndustryActivity)
+        .where(IndustryActivity.blueprint_type_id.in_(blueprint_type_ids))
+        .where(IndustryActivity.activity_kind.in_([ActivityKind.MANUFACTURING, ActivityKind.REACTION]))
+        .where(IndustryActivity.product_type_id.is_not(None))
+        .order_by(IndustryActivity.blueprint_type_id, IndustryActivity.activity_kind)
+    ).all()
+    product_type_ids = {row.product_type_id for row in rows if row.product_type_id}
+    product_types = {
+        item_type.type_id: item_type
+        for item_type in db.scalars(
+            select(EveType)
+            .where(EveType.type_id.in_(product_type_ids))
+            .options(selectinload(EveType.group).selectinload(EveGroup.category))
+        ).all()
+    } if product_type_ids else {}
+    fallbacks: dict[int, EveType] = {}
+    for row in rows:
+        if row.blueprint_type_id in fallbacks or row.product_type_id not in product_types:
+            continue
+        fallbacks[row.blueprint_type_id] = product_types[row.product_type_id]
+    return fallbacks
 def serialize_asset(asset: Asset) -> dict[str, Any]:
     return {
         "id": asset.id,
@@ -145,16 +250,26 @@ def serialize_asset(asset: Asset) -> dict[str, Any]:
         "last_synced_at": iso(asset.last_synced_at),
         "parent_asset_item_id": asset.parent_asset.eve_item_id if asset.parent_asset else None,
         "parent_asset_type_name": asset.parent_asset.item_type.name if asset.parent_asset and asset.parent_asset.item_type else None,
+        "inventory_family": item_family(asset.item_type, asset.item_type.name if asset.item_type else None),
+        "inventory_subtype": inventory_subtype(asset.item_type, asset.item_type.name if asset.item_type else None),
+        **type_metadata("type", asset.item_type),
     }
 
 
-def serialize_blueprint(blueprint: Blueprint) -> dict[str, Any]:
+def serialize_blueprint(
+    blueprint: Blueprint,
+    capital_blueprint_type_ids: set[int] | None = None,
+    product_type_fallback: EveType | None = None,
+) -> dict[str, Any]:
+    product_type = blueprint.product_type or product_type_fallback
+    family = item_family(product_type, blueprint.blueprint_type.name if blueprint.blueprint_type else None)
     return {
         "id": blueprint.id,
         "owner_name": blueprint.ownership_entity.display_name if blueprint.ownership_entity else "Unknown",
         "blueprint_type_id": blueprint.blueprint_type_id,
         "blueprint_type_name": blueprint.blueprint_type.name if blueprint.blueprint_type else f"Type {blueprint.blueprint_type_id}",
-        "product_type_name": blueprint.product_type.name if blueprint.product_type else None,
+        "product_type_id": blueprint.product_type_id or (product_type.type_id if product_type else None),
+        "product_type_name": product_type.name if product_type else None,
         "material_efficiency": blueprint.material_efficiency,
         "time_efficiency": blueprint.time_efficiency,
         "runs_remaining": blueprint.runs_remaining,
@@ -162,8 +277,12 @@ def serialize_blueprint(blueprint: Blueprint) -> dict[str, Any]:
         "location_name": blueprint.location.name if blueprint.location else None,
         "location_id": blueprint.location.eve_location_id if blueprint.location else None,
         "last_synced_at": iso(blueprint.last_synced_at),
+        "inventory_family": family,
+        "inventory_subtype": inventory_subtype(product_type, blueprint.blueprint_type.name if blueprint.blueprint_type else None),
+        "capital_construction_related": blueprint.blueprint_type_id in (capital_blueprint_type_ids or set()) and family not in {"reactions", "ram"},
+        **type_metadata("blueprint", blueprint.blueprint_type),
+        **type_metadata("product", product_type),
     }
-
 
 def serialize_fitting(fitting: CharacterFitting) -> dict[str, Any]:
     return {
@@ -361,14 +480,14 @@ def get_character_dossier(character_id: int, current_user: User = Depends(get_cu
     asset_query = (
         select(Asset)
         .where(Asset.ownership_entity_id == owner.id if owner else False)
-        .options(selectinload(Asset.ownership_entity), selectinload(Asset.item_type), selectinload(Asset.location), selectinload(Asset.parent_asset).selectinload(Asset.item_type))
+        .options(selectinload(Asset.ownership_entity), selectinload(Asset.item_type).selectinload(EveType.group).selectinload(EveGroup.category), selectinload(Asset.location), selectinload(Asset.parent_asset).selectinload(Asset.item_type).selectinload(EveType.group).selectinload(EveGroup.category))
         .order_by(desc(Asset.quantity), Asset.id)
         .limit(50)
     )
     blueprint_query = (
         select(Blueprint)
         .where(Blueprint.ownership_entity_id == owner.id if owner else False)
-        .options(selectinload(Blueprint.ownership_entity), selectinload(Blueprint.blueprint_type), selectinload(Blueprint.product_type), selectinload(Blueprint.location))
+        .options(selectinload(Blueprint.ownership_entity), selectinload(Blueprint.blueprint_type).selectinload(EveType.group).selectinload(EveGroup.category), selectinload(Blueprint.product_type).selectinload(EveType.group).selectinload(EveGroup.category), selectinload(Blueprint.location))
         .order_by(Blueprint.blueprint_type_id, Blueprint.id)
         .limit(50)
     )
@@ -387,6 +506,9 @@ def get_character_dossier(character_id: int, current_user: User = Depends(get_cu
         .limit(30)
     )
     summary = character_summary_payload(db, character)
+    capital_blueprint_type_ids = blueprint_type_ids_for_capital_construction(db)
+    blueprint_rows = db.scalars(blueprint_query).all() if owner else []
+    blueprint_product_fallbacks = blueprint_product_type_fallbacks(db, {blueprint.blueprint_type_id for blueprint in blueprint_rows})
     return {
         "character": serialize_character(character, current_user, db),
         "summary": summary,
@@ -406,7 +528,7 @@ def get_character_dossier(character_id: int, current_user: User = Depends(get_cu
             ],
         },
         "assets": [serialize_asset(asset) for asset in db.scalars(asset_query).all()] if owner else [],
-        "blueprints": [serialize_blueprint(blueprint) for blueprint in db.scalars(blueprint_query).all()] if owner else [],
+        "blueprints": [serialize_blueprint(blueprint, capital_blueprint_type_ids, blueprint_product_fallbacks.get(blueprint.blueprint_type_id)) for blueprint in blueprint_rows],
         "fittings": [serialize_fitting(fitting) for fitting in db.scalars(fittings_query).all()],
         "contracts": [serialize_contract(contract) for contract in db.scalars(contracts_query).all()],
         "kill_history": character_kill_history(db, character),

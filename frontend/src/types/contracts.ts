@@ -1,0 +1,46 @@
+export type ContractToken = {
+  token_id: number;
+  character_id: number;
+  character_name: string;
+  user_id: number;
+  user_display_name: string;
+  corporation_id?: number | null;
+  corporation_name?: string | null;
+  has_character_contract_scope: boolean;
+  has_corporation_contract_scope: boolean;
+};
+
+export type EqmContract = {
+  id: number;
+  contract_id: number;
+  scope_type: string;
+  owner_user_id?: number | null;
+  character_id?: number | null;
+  character_name?: string | null;
+  corporation_id?: number | null;
+  corporation_name?: string | null;
+  issuer_id?: number | null;
+  issuer_corporation_id?: number | null;
+  assignee_id?: number | null;
+  acceptor_id?: number | null;
+  for_corporation: boolean;
+  contract_type?: string | null;
+  status?: string | null;
+  title?: string | null;
+  availability?: string | null;
+  date_issued?: string | null;
+  date_expired?: string | null;
+  date_accepted?: string | null;
+  date_completed?: string | null;
+  start_location_id?: number | null;
+  end_location_id?: number | null;
+  start_location_name?: string | null;
+  end_location_name?: string | null;
+  price?: number | null;
+  reward?: number | null;
+  collateral?: number | null;
+  buyout?: number | null;
+  volume?: number | null;
+  days_to_complete?: number | null;
+  last_synced_at?: string | null;
+};

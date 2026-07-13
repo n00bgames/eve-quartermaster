@@ -53,6 +53,94 @@ def get_or_404(db: Session, model: Any, object_id: int) -> Any:
     return item
 
 
+def type_metadata(prefix: str, item_type: EveType | None) -> dict[str, Any]:
+    group = item_type.group if item_type else None
+    category = group.category if group else None
+    return {
+        f"{prefix}_group_id": group.group_id if group else None,
+        f"{prefix}_group_name": group.name if group else None,
+        f"{prefix}_category_id": category.category_id if category else None,
+        f"{prefix}_category_name": category.name if category else None,
+        f"{prefix}_market_group_id": item_type.market_group_id if item_type else None,
+    }
+
+
+def item_family(item_type: EveType | None, fallback_name: str | None = None) -> str:
+    group_name = (item_type.group.name if item_type and item_type.group else "").lower()
+    category_name = (item_type.group.category.name if item_type and item_type.group and item_type.group.category else "").lower()
+    fallback = (fallback_name or "").lower()
+    if category_name == "ship":
+        return "ships"
+    if category_name == "charge":
+        return "ammunition"
+    if category_name in {"drone", "fighter"} or "drone" in group_name or "fighter" in group_name:
+        return "drones"
+    if "rig" in group_name:
+        return "rigs"
+    if "reaction" in group_name or "reaction formula" in fallback or " reaction " in fallback:
+        return "reactions"
+    if "r.a.m" in group_name or "ram" in group_name or "r.a.m" in fallback or "ram-" in fallback:
+        return "ram"
+    if category_name == "blueprint":
+        return "blueprints"
+    return "other"
+
+
+def inventory_subtype(item_type: EveType | None, fallback_name: str | None = None) -> str | None:
+    if item_type and item_type.group:
+        return item_type.group.name
+    fallback = (fallback_name or "").lower()
+    if "reaction formula" in fallback:
+        return "Reaction Formula"
+    if "r.a.m" in fallback or "ram-" in fallback:
+        return "R.A.M."
+    return None
+
+
+def is_capital_construction_type(item_type: EveType | None) -> bool:
+    if item_type is None or item_type.group is None:
+        return False
+    group_name = item_type.group.name.lower()
+    category_name = item_type.group.category.name.lower() if item_type.group.category else ""
+    capital_terms = ["capital", "dreadnought", "carrier", "force auxiliary", "supercarrier", "titan", "freighter", "jump freighter"]
+    if any(term in group_name for term in capital_terms):
+        return True
+    return category_name == "ship" and any(term in group_name for term in capital_terms)
+
+
+def blueprint_type_ids_for_capital_construction(db: Session) -> set[int]:
+    capital_ship_type_ids = set(db.scalars(
+        select(EveType.type_id)
+        .join(EveType.group)
+        .join(EveGroup.category)
+        .where(
+            (EveCategory.name == "Ship") & EveGroup.name.in_([
+                "Capital Industrial Ship", "Carrier", "Dreadnought", "Force Auxiliary",
+                "Freighter", "Jump Freighter", "Supercarrier", "Titan",
+            ])
+        )
+    ).all())
+    capital_related_type_ids = set(capital_ship_type_ids)
+    capital_related_type_ids.update(db.scalars(
+        select(EveType.type_id)
+        .join(EveType.group)
+        .where(EveGroup.name.ilike("%Capital%"))
+    ).all())
+    if not capital_related_type_ids:
+        return set()
+    capital_activities = db.scalars(
+        select(IndustryActivity)
+        .where(IndustryActivity.product_type_id.in_(capital_related_type_ids))
+        .options(selectinload(IndustryActivity.inputs))
+    ).all()
+    related_product_ids: set[int] = set(capital_related_type_ids - capital_ship_type_ids)
+    for activity in capital_activities:
+        related_product_ids.update(input_row.input_type_id for input_row in activity.inputs)
+    related_product_ids.difference_update(capital_ship_type_ids)
+    if not related_product_ids:
+        return set()
+    return set(db.scalars(select(IndustryActivity.blueprint_type_id).where(IndustryActivity.product_type_id.in_(related_product_ids))).all())
+
 def can_view_owner_records(owner: OwnershipEntity | None, current_user: User, db: Session) -> bool:
     if role_rank(current_user, db) >= ROLE_RANK["officer"]:
         return True
@@ -164,9 +252,9 @@ def list_assets(current_user: User = Depends(get_current_user), db: Session = De
         select(Asset)
         .options(
             selectinload(Asset.ownership_entity).selectinload(OwnershipEntity.character),
-            selectinload(Asset.item_type),
+            selectinload(Asset.item_type).selectinload(EveType.group).selectinload(EveGroup.category),
             selectinload(Asset.location),
-            selectinload(Asset.parent_asset).selectinload(Asset.item_type),
+            selectinload(Asset.parent_asset).selectinload(Asset.item_type).selectinload(EveType.group).selectinload(EveGroup.category),
         )
         .order_by(Asset.updated_at.desc(), Asset.id.desc())
     ).all()
@@ -189,8 +277,12 @@ def list_assets(current_user: User = Depends(get_current_user), db: Session = De
                     "owner_kind": asset.ownership_entity.owner_kind.value if asset.ownership_entity else None,
                     "type_name": asset.item_type.name if asset.item_type else None,
                     "location_name": location_name,
+                    "location_id": asset.location.eve_location_id if asset.location else None,
                     "parent_asset_item_id": asset.parent_asset.eve_item_id if asset.parent_asset else None,
                     "parent_asset_type_name": parent_type_name,
+                    "inventory_family": item_family(asset.item_type, asset.item_type.name if asset.item_type else None),
+                    "inventory_subtype": inventory_subtype(asset.item_type, asset.item_type.name if asset.item_type else None),
+                    **type_metadata("type", asset.item_type),
                 },
             )
         )
@@ -226,32 +318,162 @@ def create_asset(payload: dict[str, Any], db: Session = Depends(get_db)) -> dict
     return row_dict(asset)
 
 
+def blueprint_product_type_fallbacks(db: Session, blueprint_type_ids: set[int]) -> dict[int, EveType]:
+    if not blueprint_type_ids:
+        return {}
+    rows = db.scalars(
+        select(IndustryActivity)
+        .where(IndustryActivity.blueprint_type_id.in_(blueprint_type_ids))
+        .where(IndustryActivity.activity_kind.in_([ActivityKind.MANUFACTURING, ActivityKind.REACTION]))
+        .where(IndustryActivity.product_type_id.is_not(None))
+        .order_by(IndustryActivity.blueprint_type_id, IndustryActivity.activity_kind)
+    ).all()
+    product_type_ids = {row.product_type_id for row in rows if row.product_type_id}
+    product_types = {
+        item_type.type_id: item_type
+        for item_type in db.scalars(
+            select(EveType)
+            .where(EveType.type_id.in_(product_type_ids))
+            .options(selectinload(EveType.group).selectinload(EveGroup.category))
+        ).all()
+    } if product_type_ids else {}
+    fallbacks: dict[int, EveType] = {}
+    for row in rows:
+        if row.blueprint_type_id in fallbacks or row.product_type_id not in product_types:
+            continue
+        fallbacks[row.blueprint_type_id] = product_types[row.product_type_id]
+    return fallbacks
+
 @router.get("/blueprints")
 def list_blueprints(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[dict[str, Any]]:
+    capital_blueprint_type_ids = blueprint_type_ids_for_capital_construction(db)
     blueprints = db.scalars(
         select(Blueprint)
         .options(
             selectinload(Blueprint.ownership_entity).selectinload(OwnershipEntity.character),
             selectinload(Blueprint.blueprint_type),
-            selectinload(Blueprint.product_type),
+            selectinload(Blueprint.product_type).selectinload(EveType.group).selectinload(EveGroup.category),
             selectinload(Blueprint.location),
         )
         .order_by(Blueprint.id.desc())
     ).all()
-    return [
-        row_dict(
-            blueprint,
-            {
-                "owner_name": blueprint.ownership_entity.display_name if blueprint.ownership_entity else None,
-                "blueprint_type_name": blueprint.blueprint_type.name if blueprint.blueprint_type else None,
-                "product_type_name": blueprint.product_type.name if blueprint.product_type else None,
-                "location_name": blueprint.location.name if blueprint.location else None,
-            },
+    product_fallbacks = blueprint_product_type_fallbacks(db, {blueprint.blueprint_type_id for blueprint in blueprints})
+    results = []
+    for blueprint in blueprints:
+        if not can_view_owner_records(blueprint.ownership_entity, current_user, db):
+            continue
+        product_type = blueprint.product_type or product_fallbacks.get(blueprint.blueprint_type_id)
+        family = item_family(product_type, blueprint.blueprint_type.name if blueprint.blueprint_type else None)
+        results.append(
+            row_dict(
+                blueprint,
+                {
+                    "owner_name": blueprint.ownership_entity.display_name if blueprint.ownership_entity else None,
+                    "blueprint_type_name": blueprint.blueprint_type.name if blueprint.blueprint_type else None,
+                    "product_type_id": blueprint.product_type_id or (product_type.type_id if product_type else None),
+                    "product_type_name": product_type.name if product_type else None,
+                    "location_name": blueprint.location.name if blueprint.location else None,
+                    "location_id": blueprint.location.eve_location_id if blueprint.location else None,
+                    "inventory_family": family,
+                    "inventory_subtype": inventory_subtype(product_type, blueprint.blueprint_type.name if blueprint.blueprint_type else None),
+                    "capital_construction_related": blueprint.blueprint_type_id in capital_blueprint_type_ids and family not in {"reactions", "ram"},
+                    **type_metadata("blueprint", blueprint.blueprint_type),
+                    **type_metadata("product", product_type),
+                },
+            )
         )
-        for blueprint in blueprints
-        if can_view_owner_records(blueprint.ownership_entity, current_user, db)
-    ]
+    return results
 
+
+@router.get("/missing-blueprints")
+def missing_blueprints(
+    q: str | None = Query(default=None),
+    limit_per_category: int = Query(default=80, ge=5, le=250),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    owned_blueprints = db.scalars(
+        select(Blueprint)
+        .options(selectinload(Blueprint.ownership_entity).selectinload(OwnershipEntity.character))
+    ).all()
+    owned_bpo_type_ids = {
+        blueprint.blueprint_type_id
+        for blueprint in owned_blueprints
+        if not blueprint.is_copy and can_view_owner_records(blueprint.ownership_entity, current_user, db)
+    }
+    invention_blueprint_type_ids = set(db.scalars(
+        select(IndustryActivity.product_type_id)
+        .where(IndustryActivity.activity_kind == ActivityKind.INVENTION)
+        .where(IndustryActivity.product_type_id.is_not(None))
+    ).all())
+    activities = db.scalars(
+        select(IndustryActivity)
+        .where(IndustryActivity.activity_kind == ActivityKind.MANUFACTURING)
+        .where(IndustryActivity.product_type_id.is_not(None))
+        .order_by(IndustryActivity.blueprint_type_id)
+    ).all()
+    type_ids = {activity.blueprint_type_id for activity in activities}
+    type_ids.update(activity.product_type_id for activity in activities if activity.product_type_id)
+    types_by_id = {
+        item_type.type_id: item_type
+        for item_type in db.scalars(
+            select(EveType)
+            .where(EveType.type_id.in_(type_ids))
+            .options(selectinload(EveType.group).selectinload(EveGroup.category))
+        ).all()
+    } if type_ids else {}
+    capital_blueprint_type_ids = blueprint_type_ids_for_capital_construction(db)
+    search_text = q.strip().lower() if q else ""
+    buckets: dict[str, dict[str, Any]] = {}
+    seen_missing: set[int] = set()
+    for activity in activities:
+        if activity.blueprint_type_id in owned_bpo_type_ids or activity.blueprint_type_id in invention_blueprint_type_ids or activity.blueprint_type_id in seen_missing:
+            continue
+        blueprint_type = types_by_id.get(activity.blueprint_type_id)
+        product_type = types_by_id.get(activity.product_type_id) if activity.product_type_id else None
+        if blueprint_type is None:
+            continue
+        search_haystack = " ".join(
+            value for value in [
+                blueprint_type.name,
+                product_type.name if product_type else None,
+                product_type.group.name if product_type and product_type.group else None,
+                product_type.group.category.name if product_type and product_type.group and product_type.group.category else None,
+            ] if value
+        ).lower()
+        if search_text and search_text not in search_haystack:
+            continue
+        family = item_family(product_type, blueprint_type.name)
+        if family == "reactions":
+            category_name = "Reactions"
+        elif family == "ram":
+            category_name = "RAM"
+        elif family == "drones":
+            category_name = "Drones/Fighters"
+        else:
+            category_name = product_type.group.category.name if product_type and product_type.group and product_type.group.category else "Uncategorized"
+        group_name = inventory_subtype(product_type, blueprint_type.name) or "Uncategorized"
+        bucket = buckets.setdefault(category_name, {"category_name": category_name, "total_count": 0, "items": []})
+        bucket["total_count"] += 1
+        if len(bucket["items"]) < limit_per_category:
+            bucket["items"].append({
+                "blueprint_type_id": activity.blueprint_type_id,
+                "blueprint_type_name": blueprint_type.name,
+                "product_type_id": activity.product_type_id,
+                "product_type_name": product_type.name if product_type else None,
+                "product_group_name": group_name,
+                "product_category_name": category_name,
+                "inventory_family": item_family(product_type, blueprint_type.name),
+                "inventory_subtype": inventory_subtype(product_type, blueprint_type.name) or group_name,
+                "capital_construction_related": activity.blueprint_type_id in capital_blueprint_type_ids and item_family(product_type, blueprint_type.name) not in {"reactions", "ram"},
+            })
+        seen_missing.add(activity.blueprint_type_id)
+    categories = sorted(buckets.values(), key=lambda row: (-row["total_count"], row["category_name"]))
+    return {
+        "total_missing": sum(category["total_count"] for category in categories),
+        "owned_bpos": len(owned_bpo_type_ids),
+        "categories": categories,
+    }
 
 @router.post("/blueprints")
 def create_blueprint(payload: dict[str, Any], db: Session = Depends(get_db)) -> dict[str, Any]:
@@ -431,6 +653,7 @@ def seed_dev_data(db: Session = Depends(get_db)) -> dict[str, Any]:
     ])
     db.commit()
     return {"status": "seeded"}
+
 
 
 

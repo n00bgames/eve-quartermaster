@@ -6,17 +6,31 @@ import { createRoot } from "react-dom/client";
 
 import "./styles.css";
 
+import { api } from "./lib/api";
 import { eveSecurityClass, eveSecurityLabel, isUedamaSystem } from "./lib/evePresentation";
 import { BROWSER_TIMEZONE, formatDateTime, formatDurationMs, formatTimeOnly, localizeUtcHourLabel, preferredTimeZone, timezoneChoices } from "./lib/time";
+import { assetFamily, assetSubtype, blueprintFamily, blueprintSubtype, inventoryFamilyLabels, looksCapitalRelated, matchesInventoryFamily, sortedUnique, visibleAssetLocations, visibleAssetQuantity } from "./lib/inventory";
 import { WardecBadge } from "./components/WardecBadge";
 import { MarketAppraisalPage } from "./features/market/MarketAppraisalPage";
 import { FittingsPage } from "./features/fittings/FittingsPage";
+import { AnalyticsPlatform } from "./features/analytics/AnalyticsPlatform";
 import { JumpFreighterPlanner } from "./features/navigation/JumpFreighterPlanner";
-import { PilotSecurityStatus } from "./features/characters/PilotSecurityStatus";
+import { Roster } from "./features/characters/Roster";
+import { CharacterSkills } from "./features/characters/CharacterSkills";
+import { CharacterHoverName as CharacterHoverNameBase, type CharacterHoverNameProps } from "./features/characters/CharacterHoverName";
+import { CharactersPage } from "./features/characters/CharactersPage";
+import { ProfilePage } from "./features/profile/ProfilePage";
+import { SettingsPage } from "./features/settings/SettingsPage";
+import { EsiSyncPage } from "./features/esi/EsiSyncPage";
+import { ContractsPage } from "./features/contracts/ContractsPage";
+import { CorporationsPage } from "./features/corporations/CorporationsPage";
+import { BlueprintPreview } from "./features/industry/BlueprintPreview";
 import { IndustrialSystemThreatWidget, LocalThreatWidget, PvpIntelWidget } from "./features/navigation/ThreatIntelWidgets";
 import { RouteChecker } from "./features/navigation/RouteChecker";
-import { iskFormatter } from "./lib/market";
-import type { CharacterKillSample } from "./types/killmails";
+import type { CharacterFocus } from "./types/characters";
+import type { Asset, AssetFilter, AssetFilterKey, AssetSortKey, AssetTableSeed, Blueprint, EveType, IndustryActivity, InventoryFamilyFilter, Location, MissingBlueprintCatalog, Owner, OwnerKindFilter, SortDirection, Summary } from "./types/inventory";
+import type { AuditEvent, NotificationInbox, PrivateMessage, ProfileFocus } from "./types/profile";
+import type { SectionPermission } from "./types/settings";
 import type { FittingSeed } from "./types/fittings";
 import type { JumpFreighterRoute, NavigationGatecheckRoute, NavigationRoute, NavigationSystem, UedamaScoutStatus } from "./types/navigation";
 import { APP_VERSION } from "./version";
@@ -27,15 +41,7 @@ type Health = { status: string; app: string };
 
 type UserAccount = { id: number; email: string; display_name: string; role: string; timezone?: string; created_at?: string };
 
-type SectionPermission = { key: string; label: string; default_roles: string[] };
-
 type EffectivePermissions = { sections: SectionPermission[]; permissions: Record<string, boolean> };
-
-type SectionSettings = { sections: SectionPermission[]; disabled_sections: string[] };
-
-type RoleDefinition = { name: string; display_name: string; base_role: string; is_system: boolean; sort_order?: number; rank?: number };
-
-type PermissionMatrix = { sections: SectionPermission[]; roles: string[]; role_permissions: { id: number; role: string; section: string; can_view: boolean }[]; user_permissions: { id: number; user_id: number; section: string; can_view: boolean }[] };
 
 type AuthResponse = { access_token: string; user: UserAccount };
 
@@ -43,164 +49,10 @@ type BootstrapStatus = { needs_admin: boolean; roles: string[] };
 
 type InviteInfo = { email: string; role: string; expires_at?: string | null };
 
-type UserInvite = { id: number; email: string; role: string; status?: string; created_by_display_name?: string | null; created_at?: string | null; expires_at?: string | null; accepted_at?: string | null; revoked_at?: string | null; invite_url?: string };
-
-type Summary = { owners: number; locations: number; types: number; asset_stacks: number; asset_units: number; blueprints: number; industry_activities: number };
-
-type SdeStatus = { default_source_path: string; categories: number; groups: number; types: number; regions?: number; constellations?: number; systems?: number; stargates?: number; dogma_attributes?: number; dogma_effects?: number; type_dogma_attributes?: number; type_dogma_effects?: number; blueprint_activities: number; activity_inputs: number };
-
-type SdeImportResult = SdeStatus & { source_path: string; skipped_activities: number };
-
-type SdeImportProgress = { running: boolean; status: string; stage?: string | null; source_path?: string | null; started_at?: string | null; updated_at?: string | null; completed_at?: string | null; error?: string | null; stats?: Partial<SdeImportResult> | null };
-
-type Owner = { id: number; owner_kind: string; display_name: string; notes?: string };
-
-type EveType = { type_id: number; name: string; group_id?: number; volume?: number };
-
-type Location = { id: number; location_kind: string; name: string; notes?: string };
-
-type Asset = { id: number; ownership_entity_id: number; owner_name: string; owner_kind?: string; type_id: number; type_name: string; quantity: number; location_name?: string; location_id?: number | null; location_flag?: string; source: string; last_synced_at?: string | null; parent_asset_item_id?: number; parent_asset_type_name?: string };
-
-type Blueprint = { id: number; owner_name: string; blueprint_type_id: number; blueprint_type_name: string; product_type_id?: number | null; product_type_name?: string; material_efficiency: number; time_efficiency: number; runs_remaining?: number; is_copy: boolean; location_name?: string; location_id?: number | null; last_synced_at?: string | null };
-
-type ActivityInput = { id: number; input_type_id?: number | null; input_type_name: string; quantity: number; consume_type: string };
-
-type IndustryActivity = { id: number; activity_kind: string; blueprint_type_id?: number | null; blueprint_type_name: string; product_type_id?: number | null; product_type_name?: string; product_quantity: number; time_seconds?: number; inputs: ActivityInput[] };
-
-type EsiAuthInfo = { ready: boolean; message?: string; url?: string; required_scopes: string[] };
-
-type LinkedCharacter = { token_id: number; character_id: number; character_name: string; security_status?: number | null; linked_user_id: number; linked_user_display_name: string; can_sync_assets: boolean; can_unlink: boolean; scopes: string; access_token_expires_at?: string; linked_at?: string; last_sync_at?: string; last_sync_type?: string; last_sync_status?: string; missing_public_scopes: string[]; missing_standing_scopes: string[] };
-
-type EqmCharacter = { id: number; character_id?: number; name: string; security_status?: number | null; can_view_detail: boolean; owner_user_id?: number | null; owner_display_name?: string | null; owner_role?: string | null; corporation_id?: number | null; corporation_name?: string | null; alliance_id?: number | null; alliance_name?: string | null; public_assets_visible?: boolean; sync_opt_out?: boolean; last_synced_at?: string | null; can_manage?: boolean; can_assign?: boolean };
-type CharacterSkillCategorySummary = { name: string; skill_points: number; skill_count: number };
-
-type CharacterSummary = {
-  character: { id: number; character_id: number; name: string; portrait_url?: string | null; security_status?: number | null; corporation_name?: string | null; alliance_name?: string | null; owner_display_name?: string | null; owner_role?: string | null };
-  total_skill_points: number;
-  unallocated_skill_points: number;
-  skills_synced_at?: string | null;
-  queue_count: number;
-  skill_categories: CharacterSkillCategorySummary[];
-  asset_rows: number;
-  asset_units: number;
-  ship_units: number;
-  blueprints: number;
-  bpos: number;
-  bpcs: number;
-  fittings: number;
-  contracts: number;
-};
-
-type CharacterDossierToken = { token_id: number; linked_user_id: number; linked_user_display_name: string; can_sync: boolean; has_asset_scope: boolean; has_skill_scope: boolean; has_fitting_scope: boolean; has_contract_scope: boolean; missing_scopes: string[]; linked_at?: string | null };
-
-type CharacterDossierFitting = { id: number; name: string; ship_type_id: number; ship_type_name: string; is_shared: boolean; is_draft: boolean; last_synced_at?: string | null; updated_at?: string | null };
-
-type CharacterDossier = {
-  character: EqmCharacter;
-  summary: CharacterSummary;
-  sync_tokens: CharacterDossierToken[];
-  skills: { categories: CharacterSkillCategorySummary[]; queue: { id: number; queue_position: number; skill_type_id: number; skill_name: string; finished_level: number; finish_date?: string | null }[] };
-  assets: Asset[];
-  blueprints: Blueprint[];
-  fittings: CharacterDossierFitting[];
-  contracts: EqmContract[];
-  kill_history: { kills_count: number; losses_count: number; isk_destroyed: number; isk_lost: number; kills: CharacterKillSample[]; losses: CharacterKillSample[] };
-  permissions: { public_assets_visible: boolean; sync_opt_out: boolean; can_manage: boolean; can_assign: boolean };
-};
-
-type RosterCharacter = { character_id: number; name: string; portrait_url?: string | null; security_status?: number | null };
-
-type RosterCorporation = { corporation_id?: number | null; corporation_name: string; ticker?: string | null; alliance_id?: number | null; alliance_name?: string | null; member_count?: number | null; characters: RosterCharacter[] };
 
 type MarketSeed = { text: string; nonce: number };
 
 
-type AssetTableSeed = { key: AssetFilterKey; value: string; mode: AssetFilter["mode"]; nonce: number };
-
-type ContractToken = { token_id: number; character_id: number; character_name: string; user_id: number; user_display_name: string; corporation_id?: number | null; corporation_name?: string | null; has_character_contract_scope: boolean; has_corporation_contract_scope: boolean };
-
-type EqmContract = { id: number; contract_id: number; scope_type: string; owner_user_id?: number | null; character_id?: number | null; character_name?: string | null; corporation_id?: number | null; corporation_name?: string | null; issuer_id?: number | null; issuer_corporation_id?: number | null; assignee_id?: number | null; acceptor_id?: number | null; for_corporation: boolean; contract_type?: string | null; status?: string | null; title?: string | null; availability?: string | null; date_issued?: string | null; date_expired?: string | null; date_accepted?: string | null; date_completed?: string | null; start_location_id?: number | null; end_location_id?: number | null; start_location_name?: string | null; end_location_name?: string | null; price?: number | null; reward?: number | null; collateral?: number | null; buyout?: number | null; volume?: number | null; days_to_complete?: number | null; last_synced_at?: string | null };
-
-type CorporationToken = { token_id: number; character_name: string; user_display_name: string; has_corporation_asset_scope: boolean; can_sync: boolean; has_corporation_blueprint_scope: boolean; can_sync_blueprints: boolean; has_corporation_wallet_scope?: boolean; can_sync_wallets?: boolean };
-
-type CorporationWalletDivision = { division: number; balance: number; last_synced_at?: string | null };
-
-type EqmCorporation = { id: number; corporation_id: number; name: string; ticker?: string | null; alliance_id?: number | null; alliance_name?: string | null; ceo_character_eve_id?: number | null; ceo_character_name?: string | null; member_count?: number | null; last_synced_at?: string | null; asset_rows: number; blueprint_rows: number; last_asset_sync_at?: string | null; last_asset_sync_status?: string | null; last_asset_sync_message?: string | null; asset_sync_stale?: boolean; last_blueprint_sync_at?: string | null; last_blueprint_sync_status?: string | null; last_blueprint_sync_message?: string | null; blueprint_sync_stale?: boolean; last_wallet_sync_at?: string | null; last_wallet_sync_status?: string | null; last_wallet_sync_message?: string | null; wallet_sync_stale?: boolean; wallet_divisions: CorporationWalletDivision[]; eligible_tokens: CorporationToken[] };
-
-type ContactSample = { contact_id: number; name: string; contact_type?: string; standing: number; is_watched: boolean };
-
-type ContactPreviewTarget = { token_id: number; character_id: number; character_name: string; create_count: number; update_count: number; skip_count: number; create_sample: ContactSample[]; update_sample: ContactSample[] };
-
-type ContactSyncPreview = { source_character_name: string; source_contact_count: number; overwrite_existing: boolean; totals: { create: number; update: number; skip: number }; targets: ContactPreviewTarget[] };
-
-type ContactApplyResult = { status: string; source_character_name: string; created: number; updated: number; targets: { character_name: string; created: number; updated: number; skipped: number }[] };
-
-type SkillRecord = { id: number; skill_type_id: number; skill_name: string; skill_group_name: string; skill_category_name: string; trained_skill_level: number; active_skill_level: number; skillpoints_in_skill: number; last_synced_at?: string | null };
-
-type SkillQueueEntry = { id: number; queue_position: number; skill_type_id: number; skill_name: string; finished_level: number; training_start_sp?: number | null; level_start_sp?: number | null; level_end_sp?: number | null; start_date?: string | null; finish_date?: string | null };
-
-type CharacterSkillProfile = { token_id: number; character_id: number; character_name: string; security_status?: number | null; owner_user_id: number; sync_opt_out: boolean; admin_override_visible: boolean; can_sync?: boolean; total_skill_points?: number | null; unallocated_skill_points?: number | null; skills_synced_at?: string | null; skill_queue_synced_at?: string | null; missing_skill_scopes: string[]; skill_count: number; queue_count: number; skills: SkillRecord[]; queue: SkillQueueEntry[] };
-
-type SkillSyncAllJob = { job_id: string; status: "queued" | "running" | "complete" | "failed" | "cancelled"; created_at: string; updated_at?: string | null; completed_at?: string | null; total_count: number; processed_count: number; success_count: number; failed_count: number; skipped_count: number; current_character_name?: string | null; results: { character_name: string; skill_count: number; queue_count: number }[]; errors: string[] };
-
-
-type AuditEvent = { id: number; event_kind: string; title: string; body?: string | null; actor_display_name?: string | null; recipient_display_name?: string | null; character_name?: string | null; is_read: boolean; created_at?: string | null };
-
-type PrivateMessage = { id: number; sender_user_id: number; sender_display_name?: string | null; recipient_user_id: number; recipient_display_name?: string | null; subject: string; body: string; is_read: boolean; created_at?: string | null };
-
-type EveMailCharacter = { token_id: number; character_id: number; character_name: string; can_read: boolean; can_send: boolean; can_organize: boolean; missing_mail_scopes: string[] };
-
-type EveMailRecipient = { recipient_id: number; recipient_type: string; name?: string | null };
-
-type EveMailHeader = { mail_id: number; subject?: string | null; from?: number | null; from_name?: string | null; recipients?: EveMailRecipient[]; timestamp?: string | null; is_read?: boolean; labels?: number[] };
-
-type EveMailMessage = EveMailHeader & { body?: string | null };
-
-type NotificationInbox = { unread_count: number; events: AuditEvent[]; messages: PrivateMessage[]; sent_messages?: PrivateMessage[]; users: UserAccount[] };
-
-type ProfileFocus = { section: "messages"; replyTo?: PrivateMessage; nonce: number };
-
-type CharacterFocus = { characterId?: number | null; name?: string; nonce: number };
-
-type AnalyticsPoint = { date?: string | null; corporation_name?: string; value: number };
-
-type AnalyticsGrowth = { id?: number; name: string; value?: number; delta: number };
-
-type DuplicateBlueprint = { owner_name: string; blueprint_type_name: string; is_copy: boolean; quantity: number };
-
-type MetricCatalogItem = { metric: string; version: number; label: string; unit: string; aggregation: string; category: string; supportsCharacter: boolean; supportsCorporation: boolean; chartTypes: string[]; deprecated: boolean; hasData?: boolean };
-
-type AnalyticsSummary = {
-
-  days: number;
-
-  latest_snapshot_at?: string | null;
-
-  latest_snapshot_status?: string | null;
-
-  snapshot_count: number;
-
-  cards: { wallet_total: number; blueprint_total: number; member_total: number; character_count: number };
-
-  top_sp_gainers: AnalyticsGrowth[];
-
-  top_sp_losses: AnalyticsGrowth[];
-
-  top_skill_category_gainers: { name: string; delta: number }[];
-
-  top_skill_category_losses: { name: string; delta: number }[];
-
-  wallet_growth: AnalyticsGrowth[];
-
-  member_growth: AnalyticsGrowth[];
-
-  blueprint_growth: AnalyticsGrowth[];
-
-  duplicate_blueprints: DuplicateBlueprint[];
-
-  series: { wallet_totals: AnalyticsPoint[]; member_counts: AnalyticsPoint[]; blueprint_counts: AnalyticsPoint[] };
-
-};
 
 
 
@@ -226,7 +78,6 @@ type AppData = {
 
 
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
 
 
 
@@ -246,146 +97,6 @@ const emptyData: AppData = { health: null, summary: null, owners: [], types: [],
 
 const numberFormatter = new Intl.NumberFormat();
 
-function plainEveMailBody(value?: string | null): string {
-
-  if (!value) return "";
-
-  return value
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/p>/gi, "\n\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'");
-
-}
-
-function eveMailRecipientLabel(recipient?: EveMailRecipient | null): string {
-
-  if (!recipient) return "Unknown";
-
-  const name = recipient.name ?? String(recipient.recipient_id);
-
-  return `${name} (${recipient.recipient_type.replace("_", " ")})`;
-
-}
-
-
-
-
-
-
-function formatApiError(detail: unknown): string {
-
-  if (typeof detail === "string") return detail;
-
-  if (detail && typeof detail === "object") {
-
-    const maybeMessage = (detail as { message?: unknown }).message;
-
-    if (typeof maybeMessage === "string") return maybeMessage;
-
-    const nestedDetail = (detail as { detail?: unknown }).detail;
-
-    if (typeof nestedDetail === "string") return nestedDetail;
-
-    return JSON.stringify(detail);
-
-  }
-
-  return "Request failed";
-
-}
-
-
-
-function requestTimeoutMs(path: string): number {
-
-  if (path.startsWith("/esi/sync/")) return 300000;
-
-  if (path.startsWith("/sde/import-status")) return 20000;
-
-  if (path.startsWith("/sde/import")) return 1800000;
-
-  if (path.startsWith("/navigation/gatecheck")) return 180000;
-
-  if (path.startsWith("/navigation/industrial-threat")) return 180000;
-
-  if (path.startsWith("/navigation/pvp-intel")) return 180000;
-
-  if (path.startsWith("/navigation/local-threat")) return 600000;
-
-  if (path.startsWith("/navigation/jump-freighter")) return 180000;
-
-  if (path.startsWith("/market/appraise")) return 180000;
-
-  if (path.startsWith("/contracts/sync/")) return 180000;
-
-  if (path.startsWith("/mail/")) return 60000;
-
-  return 20000;
-
-}
-
-
-
-async function api<T>(path: string, options?: RequestInit): Promise<T> {
-
-  const token = localStorage.getItem("eq_access_token");
-
-  const controller = new AbortController();
-
-  const timer = window.setTimeout(() => controller.abort(), requestTimeoutMs(path));
-
-  try {
-
-    const response = await fetch(`${API_BASE}${path}`, {
-
-      ...options,
-
-      signal: options?.signal ?? controller.signal,
-
-      headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}), ...options?.headers },
-
-    });
-
-    const contentType = response.headers.get("content-type") ?? "";
-
-    const payload = contentType.includes("application/json") ? await response.json() : await response.text();
-
-    if (!response.ok) {
-
-      if (typeof payload === "string") {
-
-        const detail = payload.trim() || response.statusText || "Request failed";
-
-        throw new Error(`${response.status} ${detail}`);
-
-      }
-
-      throw new Error(formatApiError(payload.detail ?? payload.message ?? "Request failed"));
-
-    }
-
-    if (typeof payload === "string") throw new Error(`Unexpected non-JSON response from ${path}: ${payload.slice(0, 120)}`);
-
-    return payload;
-
-  } catch (err) {
-
-    if (err instanceof DOMException && err.name === "AbortError") throw new Error(`Request timed out while calling ${path}.`);
-
-    throw err;
-
-  } finally {
-
-    window.clearTimeout(timer);
-
-  }
-
-}
 
 
 
@@ -452,21 +163,16 @@ function EveEntityIcon({ kind, id, name, size = "sm" }: { kind: EveEntityKind; i
 
 }
 
+function CharacterHoverName(props: CharacterHoverNameProps) {
+  return <CharacterHoverNameBase {...props} api={api} EveEntityIcon={EveEntityIcon} numberFormatter={numberFormatter} />;
+}
 
 
 
 
 
 
-type AssetSortKey = "item" | "owner" | "quantity" | "location" | "flag";
 
-type AssetFilterKey = Exclude<AssetSortKey, "quantity">;
-
-type OwnerKindFilter = "character" | "corporation" | "alliance" | "manual_group";
-
-type AssetFilter = { key: AssetFilterKey; value: string; label: string; mode: "exact" | "contains" };
-
-type SortDirection = "asc" | "desc";
 
 
 
@@ -790,38 +496,45 @@ function App() {
 
           {canView("overview") && <button className={activeTab === "overview" ? "active" : ""} onClick={() => setActiveTab("overview")}><Database size={18} /> Overview</button>}
 
-          {canView("ownership") && <button className={activeTab === "ownership" ? "active" : ""} onClick={() => setActiveTab("ownership")}><Boxes size={18} /> Ownership</button>}
-
-          {canView("characters") && <button className={activeTab === "characters" ? "active" : ""} onClick={() => setActiveTab("characters")}><UserRoundCheck size={18} /> Characters</button>}
-
-          {canView("roster") && <button className={activeTab === "roster" ? "active" : ""} onClick={() => setActiveTab("roster")}><Building2 size={18} /> Roster</button>}
-
           {canView("navigation") && <button className={activeTab === "navigation" ? "active" : ""} onClick={() => setActiveTab("navigation")}><MapIcon size={18} /> Navigation</button>}
 
-          {canView("market") && <button className={activeTab === "market" ? "active" : ""} onClick={() => setActiveTab("market")}><ShoppingCart size={18} /> Market</button>}
+          {["characters", "skills", "fittings", "roster", "esi"].some(canView) && <span className="nav-section-label">Character Functions</span>}
 
-          {canView("contracts") && <button className={activeTab === "contracts" ? "active" : ""} onClick={() => setActiveTab("contracts")}><ScrollText size={18} /> Contracts</button>}
-
-          {canView("analytics") && <button className={activeTab === "analytics" ? "active" : ""} onClick={() => setActiveTab("analytics")}><Activity size={18} /> Analytics</button>}
+          {canView("characters") && <button className={activeTab === "characters" ? "active" : ""} onClick={() => setActiveTab("characters")}><UserRoundCheck size={18} /> Characters</button>}
 
           {canView("skills") && <button className={activeTab === "skills" ? "active" : ""} onClick={() => setActiveTab("skills")}><GraduationCap size={18} /> Skills</button>}
 
           {canView("fittings") && <button className={activeTab === "fittings" ? "active" : ""} onClick={() => setActiveTab("fittings")}><ClipboardList size={18} /> Fittings</button>}
 
-          {canView("settings") && <button className={activeTab === "settings" ? "active" : ""} onClick={() => setActiveTab("settings")}><Settings size={18} /> Settings</button>}
+          {canView("roster") && <button className={activeTab === "roster" ? "active" : ""} onClick={() => setActiveTab("roster")}><Building2 size={18} /> Roster</button>}
+
+          {canView("esi") && <button className={activeTab === "esi" ? "active" : ""} onClick={() => setActiveTab("esi")}><KeyRound size={18} /> ESI Sync</button>}
+
+          {["market", "corporations", "ownership", "assets", "industry", "contracts", "analytics"].some(canView) && <span className="nav-section-label">Inventory & Industry</span>}
+
+          {canView("market") && <button className={activeTab === "market" ? "active" : ""} onClick={() => setActiveTab("market")}><ShoppingCart size={18} /> Market</button>}
 
           {canView("corporations") && <button className={activeTab === "corporations" ? "active" : ""} onClick={() => setActiveTab("corporations")}><Building2 size={18} /> Corporations</button>}
+
+          {canView("ownership") && <button className={activeTab === "ownership" ? "active" : ""} onClick={() => setActiveTab("ownership")}><Boxes size={18} /> Ownership</button>}
 
           {canView("assets") && <button className={activeTab === "assets" ? "active" : ""} onClick={() => setActiveTab("assets")}><PackagePlus size={18} /> Assets</button>}
 
           {canView("industry") && <button className={activeTab === "industry" ? "active" : ""} onClick={() => setActiveTab("industry")}><Factory size={18} /> Industry</button>}
 
-          {canView("esi") && <button className={activeTab === "esi" ? "active" : ""} onClick={() => setActiveTab("esi")}><KeyRound size={18} /> ESI Sync</button>}
+          {canView("contracts") && <button className={activeTab === "contracts" ? "active" : ""} onClick={() => setActiveTab("contracts")}><ScrollText size={18} /> Contracts</button>}
+
+          {canView("analytics") && <button className={activeTab === "analytics" ? "active" : ""} onClick={() => setActiveTab("analytics")}><Activity size={18} /> Analytics</button>}
+
+          {["profile", "settings", "audit"].some(canView) && <span className="nav-section-label">Account & Admin</span>}
 
           {canView("profile") && <button className={activeTab === "profile" ? "active" : ""} onClick={() => setActiveTab("profile")}><UserRoundCheck size={18} /> Profile</button>}
 
-          {canView("audit") && <button className={activeTab === "audit" ? "active" : ""} onClick={() => setActiveTab("audit")}><ScrollText size={18} /> Audit</button>}        </nav>
+          {canView("settings") && <button className={activeTab === "settings" ? "active" : ""} onClick={() => setActiveTab("settings")}><Settings size={18} /> Settings</button>}
 
+          {canView("audit") && <button className={activeTab === "audit" ? "active" : ""} onClick={() => setActiveTab("audit")}><ScrollText size={18} /> Audit</button>}
+
+        </nav>
       </aside>
 
 
@@ -870,37 +583,37 @@ function App() {
 
         {!canView(activeTab) && <section className="panel"><h3>Permission required</h3><p className="muted">This section is not enabled for your account.</p></section>}
 
-        {activeTab === "overview" && canView("overview") && <Overview data={data} />}
+        {activeTab === "overview" && canView("overview") && <Overview data={data} onOpenIndustry={canView("industry") ? () => setActiveTab("industry") : undefined} />}
 
         {activeTab === "ownership" && canView("ownership") && <Ownership data={data} submit={submit} />}
 
-        {activeTab === "characters" && canView("characters") && <Characters currentUser={user} focus={characterFocus} />}
+        {activeTab === "characters" && canView("characters") && <CharactersPage currentUser={user} focus={characterFocus} api={api} Metric={Metric} EveEntityIcon={EveEntityIcon} CharacterHoverName={CharacterHoverName} AssetTable={AssetTable} BlueprintList={BlueprintList} formatDateTime={formatDateTime} numberFormatter={numberFormatter} accountLabel={accountLabel} />}
 
-        {activeTab === "roster" && canView("roster") && <Roster />}
+        {activeTab === "roster" && canView("roster") && <Roster api={api} EveEntityIcon={EveEntityIcon} CharacterHoverName={CharacterHoverName} />}
 
         {activeTab === "navigation" && canView("navigation") && <NavigationPlanner currentUser={user} />}
 
         {activeTab === "market" && canView("market") && <MarketAppraisalPage currentUser={user} seed={marketSeed} assets={data.assets} onOpenAssets={(itemName) => { setAssetSeed({ key: "item", value: itemName, mode: "exact", nonce: Date.now() }); setActiveTab("assets"); }} onOpenFittings={(itemName) => { setFittingSeed({ text: itemName, nonce: Date.now() }); setActiveTab("fittings"); }} api={api} sendDestinationToEve={sendDestinationToEve} ItemContextPanel={ItemContextPanel} numberFormatter={numberFormatter} />}
 
-        {activeTab === "contracts" && canView("contracts") && <ContractsPage currentUser={user} />}
+        {activeTab === "contracts" && canView("contracts") && <ContractsPage currentUser={user} api={api} CharacterHoverName={CharacterHoverName} />}
 
-        {activeTab === "analytics" && canView("analytics") && <AnalyticsPlatform currentUser={user} />}
+        {activeTab === "analytics" && canView("analytics") && <AnalyticsPlatform currentUser={user} api={api} Metric={Metric} />}
 
-        {activeTab === "skills" && canView("skills") && <CharacterSkills currentUser={user} />}
+        {activeTab === "skills" && canView("skills") && <CharacterSkills currentUser={user} api={api} Metric={Metric} CharacterHoverName={CharacterHoverName} />}
 
         {activeTab === "fittings" && canView("fittings") && <FittingsPage currentUser={user} assets={data.assets} seed={fittingSeed} api={api} onOpenAssets={(itemName) => { setAssetSeed(itemName ? { key: "item", value: itemName, mode: "exact", nonce: Date.now() } : { key: "item", value: "", mode: "contains", nonce: Date.now() }); setActiveTab("assets"); }} onOpenMarket={(text) => { setMarketSeed({ text, nonce: Date.now() }); setActiveTab("market"); }} />}
 
-        {activeTab === "settings" && canView("settings") && <SettingsPage currentUser={user} />}
+        {activeTab === "settings" && canView("settings") && <SettingsPage currentUser={user} api={api} Metric={Metric} ManagedForm={ManagedForm} accountLabel={accountLabel} />}
 
-        {activeTab === "corporations" && canView("corporations") && <Corporations loadAssets={load} />}
+        {activeTab === "corporations" && canView("corporations") && <CorporationsPage api={api} loadAssets={load} EveEntityIcon={EveEntityIcon} />}
 
         {activeTab === "assets" && canView("assets") && <Assets data={data} seed={assetSeed} submit={submit} ownerOptions={ownerOptions} typeOptions={typeOptions} locationOptions={locationOptions} onOpenFittings={(itemName) => { setFittingSeed({ text: itemName, nonce: Date.now() }); setActiveTab("fittings"); }} onOpenMarket={(text) => { setMarketSeed({ text, nonce: Date.now() }); setActiveTab("market"); }} />}
 
         {activeTab === "industry" && canView("industry") && <Industry data={data} submit={submit} ownerOptions={ownerOptions} typeOptions={typeOptions} locationOptions={locationOptions} activityOptions={activityOptions} onOpenMarket={(text) => { setMarketSeed({ text, nonce: Date.now() }); setActiveTab("market"); }} onOpenAssets={(itemName) => { setAssetSeed({ key: "item", value: itemName, mode: "exact", nonce: Date.now() }); setActiveTab("assets"); }} />}
 
-        {activeTab === "esi" && canView("esi") && <Esi load={load} currentUser={user} />}
+        {activeTab === "esi" && canView("esi") && <EsiSyncPage load={load} currentUser={user} api={api} ManagedForm={ManagedForm} Metric={Metric} CharacterHoverName={CharacterHoverName} />}
 
-        {activeTab === "profile" && canView("profile") && <ProfilePage currentUser={user} onUserUpdated={setUser} focus={profileFocus} />}
+        {activeTab === "profile" && canView("profile") && <ProfilePage currentUser={user} onUserUpdated={setUser} focus={profileFocus} api={api} ManagedForm={ManagedForm} accountLabel={accountLabel} />}
 
         {activeTab === "audit" && canView("audit") && <AuditLog currentUser={user} />}
 
@@ -1004,209 +717,6 @@ function NavigationPlanner({ currentUser }: { currentUser: UserAccount }) {
     <LocalThreatWidget currentUser={currentUser} api={api} Metric={Metric} EveEntityIcon={EveEntityIcon} CharacterHoverName={CharacterHoverName} />
   </>;
 }
-function AnalyticsPlatform({ currentUser }: { currentUser: UserAccount }) {
-
-  const [days, setDays] = useState(30);
-
-  const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
-
-  const [catalog, setCatalog] = useState<MetricCatalogItem[]>([]);
-
-  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
-
-  const [message, setMessage] = useState<string | null>(null);
-
-  const [busy, setBusy] = useState(false);
-
-
-
-  async function loadAnalytics(selectedDays = days) {
-
-    setAnalyticsError(null);
-
-    const [nextSummary, nextCatalog] = await Promise.all([api<AnalyticsSummary>(`/analytics/summary?days=${selectedDays}`), api<MetricCatalogItem[]>("/analytics/metrics")]);
-
-    setSummary(nextSummary);
-
-    setCatalog(nextCatalog);
-
-  }
-
-
-
-  async function downloadExport(format: "csv" | "json") {
-
-    const token = localStorage.getItem("eq_access_token");
-
-    const response = await fetch(`${API_BASE}/analytics/exports/metrics.${format}?days=${days}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
-
-    if (!response.ok) throw new Error(`Export failed: ${response.status}`);
-
-    const blob = await response.blob();
-
-    const url = URL.createObjectURL(blob);
-
-    const link = document.createElement("a");
-
-    link.href = url;
-
-    link.download = `eqm-metrics-${days}d.${format}`;
-
-    link.click();
-
-    URL.revokeObjectURL(url);
-
-  }
-
-
-
-  async function clearSnapshots() {
-
-    if (!window.confirm("Clear all analytics snapshot history? Current synced assets, skills, wallets, and corporation records will stay intact.")) return;
-
-    setBusy(true);
-
-    setAnalyticsError(null);
-
-    try {
-
-      const result = await api<{ status: string; deleted_snapshot_runs: number }>("/analytics/snapshots", { method: "DELETE" });
-
-      setMessage(`Cleared ${result.deleted_snapshot_runs.toLocaleString()} analytics snapshot run${result.deleted_snapshot_runs === 1 ? "" : "s"}.`);
-
-      await loadAnalytics();
-
-    } catch (err) {
-
-      setAnalyticsError(err instanceof Error ? err.message : "Snapshot cleanup failed");
-
-    } finally {
-
-      setBusy(false);
-
-    }
-
-  }
-
-
-
-  async function captureSnapshot() {
-
-    setBusy(true);
-
-    setAnalyticsError(null);
-
-    try {
-
-      const result = await api<{ status: string; snapshot_run_id: number }>("/analytics/snapshot", { method: "POST", body: "{}" });
-
-      setMessage(`Snapshot ${result.snapshot_run_id} captured.`);
-
-      await loadAnalytics();
-
-    } catch (err) {
-
-      setAnalyticsError(err instanceof Error ? err.message : "Snapshot failed");
-
-    } finally {
-
-      setBusy(false);
-
-    }
-
-  }
-
-
-
-  useEffect(() => { void loadAnalytics().catch((err) => setAnalyticsError(err instanceof Error ? err.message : "Unable to load analytics")); }, []);
-
-
-
-  return <section className="panel stacked analytics-platform"><div className="section-heading"><div><h3>Analytics Platform</h3><p>Historical snapshot engine, metric providers, report exports, and composable widgets. First observations establish baselines; deltas start after a later snapshot.</p></div><div className="button-row compact"><select value={days} onChange={(event) => { const next = Number(event.target.value); setDays(next); void loadAnalytics(next); }}><option value={7}>7 days</option><option value={30}>30 days</option><option value={90}>90 days</option><option value={365}>1 year</option></select><button type="button" disabled={busy} onClick={() => void captureSnapshot()}>{busy ? "Capturing" : "Capture snapshot"}</button>{currentUser.role === "admin" && <button type="button" className="danger" disabled={busy} onClick={() => void clearSnapshots()}>Clear snapshots</button>}</div></div>{message && <div className="notice inline">{message}</div>}{analyticsError && <div className="mini-alert">{analyticsError}</div>}{summary ? <><div className="status-grid wide"><Metric icon={<Database size={18} />} label="Snapshots" value={summary.snapshot_count} delta={summary.latest_snapshot_at ? `latest ${new Date(summary.latest_snapshot_at).toLocaleString()}` : "none yet"} /><Metric icon={<GraduationCap size={18} />} label="Characters" value={summary.cards.character_count} /><Metric icon={<Building2 size={18} />} label="Members" value={summary.cards.member_total} /><Metric icon={<ScrollText size={18} />} label="Blueprints" value={summary.cards.blueprint_total} /><Metric icon={<Activity size={18} />} label="Corp wallets" value={`${iskFormatter.format(summary.cards.wallet_total)} ISK`} /></div><div className="analytics-export-row"><button type="button" onClick={() => void downloadExport("csv")}>Export metrics CSV</button><button type="button" onClick={() => void downloadExport("json")}>Export metrics JSON</button><button type="button" onClick={() => void navigator.clipboard.writeText(discordAnalyticsSummary(summary))}>Copy Discord summary</button></div><MetricCatalogWidget rows={catalog} /><div className="widget-grid"><AnalyticsWidget title="SP Gain" rows={summary.top_sp_gainers} unit="SP" /><AnalyticsWidget title="Skill Point History" rows={summary.top_sp_losses} unit="SP extracted" loss /><AnalyticsWidget title="Skill Category Gain" rows={summary.top_skill_category_gainers} unit="SP" /><AnalyticsWidget title="Category Extraction" rows={summary.top_skill_category_losses} unit="SP extracted" loss /><AnalyticsWidget title="Wallet Growth" rows={summary.wallet_growth} unit="ISK" isk /><AnalyticsWidget title="Corporation Growth" rows={summary.member_growth} unit="members" /><AnalyticsWidget title="Blueprint Growth" rows={summary.blueprint_growth} unit="BPs" /><DuplicateBlueprintWidget rows={summary.duplicate_blueprints} /><TrendWidget title="Wallet Trend" points={summary.series.wallet_totals} isk /><TrendWidget title="Blueprint Trend" points={summary.series.blueprint_counts} /></div></> : <p className="empty">No analytics snapshots yet. Capture one manually or run a sync to start building history.</p>}</section>;
-
-}
-
-
-
-function discordAnalyticsSummary(summary: AnalyticsSummary): string {
-
-  const topSp = summary.top_sp_gainers[0];
-
-  const wallet = summary.wallet_growth[0];
-
-  return [`EQM ${summary.days}-day report`, `Snapshots: ${summary.snapshot_count}`, `Top SP: ${topSp ? `${topSp.name} +${numberFormatter.format(topSp.delta)} SP` : "none"}`, `Top wallet: ${wallet ? `${wallet.name} ${iskFormatter.format(wallet.delta)} ISK` : "none"}`, `Blueprints: ${numberFormatter.format(summary.cards.blueprint_total)}`].join("\n");
-
-}
-
-
-
-function AnalyticsWidget({ title, rows, unit, isk = false, loss = false }: { title: string; rows: { name: string; delta: number }[]; unit: string; isk?: boolean; loss?: boolean }) {
-
-  const max = Math.max(...rows.map((row) => Math.abs(row.delta)), 1);
-
-  return <article className="analytics-widget"><h4>{title}</h4><div className="widget-list">{rows.slice(0, 8).map((row) => <div key={`${title}-${row.name}`} className={loss ? "widget-row loss-row" : "widget-row"}><span>{row.name}</span><strong>{loss ? formatLoss(row.delta, unit, isk) : formatDelta(row.delta, unit, isk)}</strong><i style={{ width: `${Math.max(4, Math.abs(row.delta) / max * 100)}%` }} /></div>)}{rows.length === 0 && <p className="empty">No movement yet.</p>}</div></article>;
-
-}
-
-
-function MetricCatalogWidget({ rows }: { rows: MetricCatalogItem[] }) {
-
-  return <article className="analytics-widget metric-catalog"><h4>Metric Catalog</h4><div className="metric-chip-row">{rows.map((row) => <span key={row.metric} className={row.hasData ? "metric-chip has-data" : "metric-chip"}>{row.label}<small>v{row.version} · {row.unit} · {row.chartTypes.join(", ")}{row.deprecated ? " · deprecated" : ""}</small></span>)}</div></article>;
-
-}
-
-function DuplicateBlueprintWidget({ rows }: { rows: DuplicateBlueprint[] }) {
-
-  const [kindFilter, setKindFilter] = useState<"all" | "bpo" | "bpc">("all");
-  const [ownerFilter, setOwnerFilter] = useState("all");
-  const ownerNames = Array.from(new Set(rows.map((row) => row.owner_name))).sort((left, right) => left.localeCompare(right));
-  const kindMatches = (row: DuplicateBlueprint) => kindFilter === "all" || (kindFilter === "bpc" ? row.is_copy : !row.is_copy);
-  const ownerMatches = (row: DuplicateBlueprint) => ownerFilter === "all" || row.owner_name === ownerFilter;
-  const kindOptions: { key: "all" | "bpo" | "bpc"; label: string }[] = [
-    { key: "all", label: "All" },
-    { key: "bpo", label: "BPO" },
-    { key: "bpc", label: "BPC" },
-  ];
-  const filteredRows = rows.filter((row) => kindMatches(row) && ownerMatches(row));
-  const maxQuantity = Math.max(...filteredRows.map((row) => row.quantity), 1);
-  const countForKind = (kind: "all" | "bpo" | "bpc") => rows.filter((row) => kind === "all" || (kind === "bpc" ? row.is_copy : !row.is_copy)).length;
-  const countForOwner = (ownerName: string) => rows.filter((row) => kindMatches(row) && (ownerName === "all" || row.owner_name === ownerName)).length;
-
-  return <article className="analytics-widget"><h4>Duplicate BPs</h4><div className="metric-chip-row duplicate-filter-row">{kindOptions.map((option) => <button key={option.key} type="button" className={kindFilter === option.key ? "metric-chip active" : "metric-chip"} onClick={() => setKindFilter(option.key)}>{option.label}<small>{countForKind(option.key).toLocaleString()}</small></button>)}</div><div className="metric-chip-row duplicate-filter-row duplicate-owner-row"><button type="button" className={ownerFilter === "all" ? "metric-chip active" : "metric-chip"} onClick={() => setOwnerFilter("all")}>All Corps<small>{countForOwner("all").toLocaleString()}</small></button>{ownerNames.map((ownerName) => <button key={ownerName} type="button" className={ownerFilter === ownerName ? "metric-chip active" : "metric-chip"} onClick={() => setOwnerFilter(ownerName)}>{ownerName}<small>{countForOwner(ownerName).toLocaleString()}</small></button>)}</div><div className="widget-list">{filteredRows.slice(0, 8).map((row) => <div key={`${row.owner_name}-${row.blueprint_type_name}-${row.is_copy}`} className="widget-row"><span>{row.blueprint_type_name}</span><strong>{row.quantity.toLocaleString()} {row.is_copy ? "BPC" : "BPO"}</strong><small>{row.owner_name}</small><i style={{ width: `${Math.max(5, row.quantity / maxQuantity * 100)}%` }} /></div>)}{filteredRows.length === 0 && <p className="empty">No duplicate blueprint stacks match this filter.</p>}</div></article>;
-
-}
-
-function TrendWidget({ title, points, isk = false }: { title: string; points: AnalyticsPoint[]; isk?: boolean }) {
-
-  const compact = points.slice(-24);
-
-  const max = Math.max(...compact.map((point) => point.value), 1);
-
-  return <article className="analytics-widget"><h4>{title}</h4><div className="trend-strip">{compact.map((point, index) => <i key={`${title}-${point.date}-${point.corporation_name}-${index}`} style={{ height: `${Math.max(6, point.value / max * 100)}%` }} title={`${point.corporation_name ?? "value"}: ${isk ? iskFormatter.format(point.value) : numberFormatter.format(point.value)}`} />)}</div>{compact.length === 0 && <p className="empty">No trend data yet.</p>}</article>;
-
-}
-
-
-
-function formatDelta(value: number, unit: string, isk = false) {
-
-  const sign = value > 0 ? "+" : "";
-
-  const formatted = isk ? iskFormatter.format(value) : numberFormatter.format(Math.round(value));
-
-  return `${sign}${formatted} ${unit}`;
-
-}
-
-function formatLoss(value: number, unit: string, isk = false) {
-
-  const formatted = isk ? iskFormatter.format(Math.abs(value)) : numberFormatter.format(Math.round(Math.abs(value)));
-
-  return `-${formatted} ${unit}`;
-
-}
-
-
 function AuditLog({ currentUser }: { currentUser: UserAccount }) {
 
   const [events, setEvents] = useState<AuditEvent[]>([]);
@@ -1334,717 +844,7 @@ function InviteScreen({ token, onAuth }: { token: string; onAuth: (path: string,
 
 }
 
-function ProfilePage({ currentUser, onUserUpdated, focus }: { currentUser: UserAccount; onUserUpdated: (user: UserAccount) => void; focus: ProfileFocus | null }) {
-
-  const [inbox, setInbox] = useState<NotificationInbox | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
-  const [profileError, setProfileError] = useState<string | null>(null);
-  const [replyTo, setReplyTo] = useState<PrivateMessage | undefined>(undefined);
-  const [mailCharacters, setMailCharacters] = useState<EveMailCharacter[]>([]);
-  const [selectedMailTokenId, setSelectedMailTokenId] = useState<number | "">("");
-  const [mailHeaders, setMailHeaders] = useState<EveMailHeader[]>([]);
-  const [mailHasMore, setMailHasMore] = useState(false);
-  const [selectedMail, setSelectedMail] = useState<EveMailMessage | null>(null);
-  const [mailBusy, setMailBusy] = useState(false);
-  const [mailAuthInfo, setMailAuthInfo] = useState<EsiAuthInfo | null>(null);
-  const [mailNotice, setMailNotice] = useState<string | null>(null);
-  const [mailError, setMailError] = useState<string | null>(null);
-  const [eveMailReplyTo, setEveMailReplyTo] = useState("");
-  const [eveMailSubject, setEveMailSubject] = useState("");
-  const [eveMailBody, setEveMailBody] = useState("");
-  const messagesRef = useRef<HTMLDivElement | null>(null);
-  const recipients = (inbox?.users ?? []).filter((user) => user.id !== currentUser.id);
-  const timeZone = preferredTimeZone(currentUser);
-  const profileTimezones = timezoneChoices(timeZone);
-  const selectedMailCharacter = mailCharacters.find((character) => character.token_id === selectedMailTokenId);
-
-  async function loadInbox() {
-
-    setInbox(await api<NotificationInbox>("/notifications"));
-
-  }
-
-  async function loadMailCharacters() {
-
-    const rows = await api<EveMailCharacter[]>("/mail/characters");
-    setMailCharacters(rows);
-    setSelectedMailTokenId((current) => current || rows.find((row) => row.can_read)?.token_id || rows[0]?.token_id || "");
-
-  }
-
-  async function loadEveMail(tokenId: number | "" = selectedMailTokenId, append = false) {
-
-    if (!tokenId) return;
-    setMailBusy(true);
-    setMailError(null);
-    try {
-      const lastMailId = append && mailHeaders.length > 0 ? mailHeaders[mailHeaders.length - 1].mail_id : null;
-      const cursor = lastMailId ? `&last_mail_id=${lastMailId}` : "";
-      const rows = await api<EveMailHeader[]>(`/mail/${tokenId}/headers?limit=50${cursor}`);
-      setMailHeaders((current) => {
-        if (!append) return rows;
-        const seen = new Set(current.map((item) => item.mail_id));
-        return [...current, ...rows.filter((row) => !seen.has(row.mail_id))];
-      });
-      setMailHasMore(rows.length >= 50);
-      setMailNotice(append ? `Loaded ${rows.length} older EVE mail headers.` : `Loaded ${rows.length} EVE mail headers.`);
-    } catch (err) {
-      setMailError(err instanceof Error ? err.message : "Unable to load EVE mail");
-    } finally {
-      setMailBusy(false);
-    }
-
-  }
-
-  async function openEveMail(header: EveMailHeader) {
-
-    if (!selectedMailTokenId) return;
-    setMailBusy(true);
-    setMailError(null);
-    try {
-      const row = await api<EveMailMessage>(`/mail/${selectedMailTokenId}/messages/${header.mail_id}`);
-      setSelectedMail(row);
-      if (!header.is_read && selectedMailCharacter?.can_organize) {
-        await api<{ status: string }>(`/mail/${selectedMailTokenId}/messages/${header.mail_id}/read`, { method: "PUT" });
-        setMailHeaders((rows) => rows.map((item) => item.mail_id === header.mail_id ? { ...item, is_read: true } : item));
-      }
-    } catch (err) {
-      setMailError(err instanceof Error ? err.message : "Unable to open EVE mail");
-    } finally {
-      setMailBusy(false);
-    }
-
-  }
-
-  async function sendEveMail(form: FormData) {
-
-    if (!selectedMailTokenId) return;
-    setMailBusy(true);
-    setMailError(null);
-    try {
-      await api<{ status: string }>(`/mail/${selectedMailTokenId}/send`, {
-        method: "POST",
-        body: JSON.stringify({
-          recipient_names: String(form.get("recipient_names") ?? "").trim(),
-          subject: String(form.get("subject") ?? "").trim(),
-          body: String(form.get("body") ?? ""),
-        }),
-      });
-      setEveMailReplyTo("");
-      setEveMailSubject("");
-      setEveMailBody("");
-      setMailNotice("EVE mail sent.");
-      await loadEveMail(selectedMailTokenId);
-    } catch (err) {
-      setMailError(err instanceof Error ? err.message : "Unable to send EVE mail");
-    } finally {
-      setMailBusy(false);
-    }
-
-  }
-
-  async function updateAccount(form: FormData) {
-
-    setProfileError(null);
-    try {
-      const payload: Record<string, unknown> = {};
-      const displayName = String(form.get("display_name") ?? "").trim();
-      const email = String(form.get("email") ?? "").trim();
-      const password = String(form.get("password") ?? "");
-      const currentPassword = String(form.get("current_password") ?? "");
-      const timezone = String(form.get("timezone") ?? "").trim();
-      if (displayName) payload.display_name = displayName;
-      if (email && email !== currentUser.email) payload.email = email;
-      if (timezone && timezone !== preferredTimeZone(currentUser)) payload.timezone = timezone;
-      if (password) payload.password = password;
-      if (currentPassword) payload.current_password = currentPassword;
-      const updated = await api<UserAccount>("/auth/me", { method: "PATCH", body: JSON.stringify(payload) });
-      onUserUpdated(updated);
-      setMessage("Profile updated.");
-    } catch (err) {
-      setProfileError(err instanceof Error ? err.message : "Profile update failed");
-    }
-
-  }
-
-  async function sendMessage(form: FormData) {
-
-    setProfileError(null);
-    try {
-      await api<PrivateMessage>("/notifications/messages", { method: "POST", body: JSON.stringify({ recipient_user_id: form.get("recipient_user_id"), subject: form.get("subject"), body: form.get("body") }) });
-      setReplyTo(undefined);
-      setMessage("Message sent.");
-      await loadInbox();
-    } catch (err) {
-      setProfileError(err instanceof Error ? err.message : "Message failed");
-    }
-
-  }
-
-  async function markMessageRead(messageId: number) {
-
-    await api<{ status: string }>("/notifications/read", { method: "POST", body: JSON.stringify({ event_ids: [], message_ids: [messageId] }) });
-    await loadInbox();
-
-  }
-
-  async function deleteMessage(messageId: number) {
-
-    if (!window.confirm("Delete this private message from your mailbox?")) return;
-    await api<{ status: string }>(`/notifications/messages/${messageId}`, { method: "DELETE" });
-    if (replyTo?.id === messageId) setReplyTo(undefined);
-    setMessage("Message deleted.");
-    await loadInbox();
-
-  }
-
-  useEffect(() => {
-    void loadInbox().catch((err) => setProfileError(err instanceof Error ? err.message : "Unable to load messages"));
-    void loadMailCharacters().catch((err) => setMailError(err instanceof Error ? err.message : "Unable to load EVE mail characters"));
-    void api<EsiAuthInfo>("/esi/auth-url?scope_group=mail").then(setMailAuthInfo).catch(() => undefined);
-  }, []);
-
-  useEffect(() => {
-    if (!selectedMailTokenId) return;
-    setSelectedMail(null);
-    setMailHasMore(false);
-    void loadEveMail(selectedMailTokenId);
-  }, [selectedMailTokenId]);
-
-  useEffect(() => {
-    if (!focus || focus.section !== "messages") return;
-    setReplyTo(focus.replyTo);
-    window.setTimeout(() => messagesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
-    if (focus.replyTo && !focus.replyTo.is_read) void markMessageRead(focus.replyTo.id).catch(() => undefined);
-  }, [focus?.nonce]);
-
-  const replySubject = replyTo?.subject?.toLowerCase().startsWith("re:") ? replyTo.subject : replyTo ? `Re: ${replyTo.subject}` : "";
-
-  return <div className="profile-page"><section className="panel stacked"><h3>Profile</h3>{message && <div className="notice inline">{message}</div>}{profileError && <div className="mini-alert">{profileError}</div>}<ManagedForm submitLabel="Update profile" onSubmit={updateAccount}><label>Display name<input name="display_name" defaultValue={currentUser.display_name} required /></label><label>Email<input name="email" type="email" defaultValue={currentUser.email} required /></label><label>Local timezone<select name="timezone" defaultValue={timeZone}>{profileTimezones.map((zone) => <option key={zone} value={zone}>{zone}</option>)}</select></label><label>Current password<input name="current_password" type="password" placeholder="Required for email or password changes" /></label><label>New password<input name="password" type="password" minLength={8} placeholder="Leave blank to keep current password" /></label></ManagedForm></section><section className="panel stacked eve-mail-panel"><div className="section-heading"><div><h3>EVE Mail</h3><p>Select one of your linked characters to read or send in-game mail.</p></div><button type="button" disabled={!selectedMailTokenId || mailBusy} onClick={() => void loadEveMail()}>Refresh mail</button></div>{mailNotice && <div className="notice inline">{mailNotice}</div>}{mailError && <div className="mini-alert">{mailError}</div>}<label>Character<select value={selectedMailTokenId} onChange={(event) => { setSelectedMailTokenId(event.target.value ? Number(event.target.value) : ""); setSelectedMail(null); setMailHasMore(false); }}><option value="">No linked mail character</option>{mailCharacters.map((character) => <option key={character.token_id} value={character.token_id}>{character.character_name}{character.can_read ? "" : " (missing mail read)"}</option>)}</select></label>{selectedMailCharacter?.missing_mail_scopes?.length ? <div className="mini-alert">Missing mail scopes: {selectedMailCharacter.missing_mail_scopes.join(", ")}{mailAuthInfo?.ready ? <> <a className="mini-link" href={mailAuthInfo.url}>Authorize mail scopes</a></> : null}</div> : null}<div className="eve-mail-grid"><div className="eve-mail-list"><h4>Mailbox</h4>{mailHeaders.map((header) => <button type="button" key={header.mail_id} className={header.is_read ? "eve-mail-row" : "eve-mail-row unread-card"} onClick={() => void openEveMail(header)}><strong>{header.subject || "(No subject)"}</strong><span>From {header.from_name ?? (header.from ? `Character ${header.from}` : "Unknown")}</span><span>{header.timestamp ? formatDateTime(header.timestamp, timeZone) : "recently"}</span></button>)}{mailHeaders.length === 0 && <p className="empty">No EVE mail loaded.</p>}{mailHeaders.length > 0 && mailHasMore && <button type="button" className="secondary" disabled={mailBusy} onClick={() => void loadEveMail(selectedMailTokenId, true)}>{mailBusy ? "Loading..." : "Load older mail"}</button>}</div><div className="eve-mail-message"><h4>Message</h4>{selectedMail ? <><strong>{selectedMail.subject || "(No subject)"}</strong><span>From {selectedMail.from_name ?? (selectedMail.from ? `Character ${selectedMail.from}` : "Unknown")}</span><span>To {(selectedMail.recipients ?? []).map(eveMailRecipientLabel).join(", ") || "Unknown"}</span>{selectedMail.timestamp && <span>{formatDateTime(selectedMail.timestamp, timeZone)}</span>}<div className="eve-mail-message-body">{plainEveMailBody(selectedMail.body)}</div><div className="card-actions"><button type="button" disabled={!selectedMailCharacter?.can_send} onClick={() => { const sender = selectedMail.from_name || (selectedMail.from ? String(selectedMail.from) : ""); const subject = selectedMail.subject ?? ""; setEveMailReplyTo(sender); setEveMailSubject(subject.toLowerCase().startsWith("re:") ? subject : `Re: ${subject}`); setEveMailBody(""); }}>Reply</button></div></> : <p className="empty">Select an EVE mail message.</p>}</div><div className="eve-mail-compose"><h4>Send EVE mail</h4><ManagedForm submitLabel="Send EVE mail" onSubmit={sendEveMail}><label>To<input name="recipient_names" required placeholder="Character, corporation, or alliance name" value={eveMailReplyTo} onChange={(event) => setEveMailReplyTo(event.target.value)} /></label><label>Subject<input name="subject" required value={eveMailSubject} onChange={(event) => setEveMailSubject(event.target.value)} /></label><label>Message<textarea name="body" required value={eveMailBody} onChange={(event) => setEveMailBody(event.target.value)} /></label></ManagedForm>{selectedMailCharacter && !selectedMailCharacter.can_send && <p className="empty">This character needs esi-mail.send_mail.v1 before it can send mail.</p>}</div></div></section><section className="panel stacked" ref={messagesRef}><div className="section-heading"><h3>Private Messages</h3><button type="button" onClick={() => void loadInbox()}>Refresh</button></div><div className="two-column"><div className="stacked"><h4>Inbox</h4><div className="card-list message-list">{inbox?.messages.map((item) => <article key={item.id} className={item.is_read ? "" : "unread-card"}><strong>{item.subject}</strong><span>From {item.sender_display_name ?? "Unknown"} - {item.created_at ? formatDateTime(item.created_at, timeZone) : "recently"}</span><p>{item.body}</p><div className="card-actions"><button type="button" onClick={() => setReplyTo(item)}>Reply</button>{!item.is_read && <button type="button" onClick={() => void markMessageRead(item.id)}>Mark read</button>}<button className="danger" type="button" onClick={() => void deleteMessage(item.id)}>Delete</button></div></article>)}{inbox && inbox.messages.length === 0 && <p className="empty">No private messages.</p>}</div></div><div className="stacked"><h4>Sent</h4><div className="card-list message-list">{inbox?.sent_messages?.map((item) => <article key={item.id}><strong>{item.subject}</strong><span>To {item.recipient_display_name ?? "Unknown"} - {item.created_at ? formatDateTime(item.created_at, timeZone) : "recently"}</span><p>{item.body}</p><div className="card-actions"><button className="danger" type="button" onClick={() => void deleteMessage(item.id)}>Delete</button></div></article>)}{inbox && (inbox.sent_messages ?? []).length === 0 && <p className="empty">No sent messages.</p>}</div></div></div><h4>{replyTo ? `Reply to ${replyTo.sender_display_name ?? "Unknown"}` : "Compose"}</h4><ManagedForm key={replyTo?.id ?? "compose"} submitLabel={replyTo ? "Send reply" : "Send message"} onSubmit={sendMessage}><label>To<select name="recipient_user_id" required defaultValue={replyTo?.sender_user_id ?? recipients[0]?.id ?? ""}>{recipients.map((user) => <option key={user.id} value={user.id}>{accountLabel(user)} ({user.role})</option>)}</select></label><label>Subject<input name="subject" required defaultValue={replySubject} /></label><label>Message<textarea name="body" required /></label></ManagedForm></section>{currentUser.role === "admin" && <UsersAdmin currentUser={currentUser} />}</div>;
-
-}
-function UsersAdmin({ currentUser }: { currentUser: UserAccount }) {
-
-  const [users, setUsers] = useState<UserAccount[]>([]);
-
-  const [invites, setInvites] = useState<UserInvite[]>([]);
-
-  const [characters, setCharacters] = useState<EqmCharacter[]>([]);
-
-  const [accounts, setAccounts] = useState<UserAccount[]>([]);
-
-  const [roleDefinitions, setRoleDefinitions] = useState<RoleDefinition[]>([]);
-
-  const [message, setMessage] = useState<string | null>(null);
-
-  const [latestInviteUrl, setLatestInviteUrl] = useState<string | null>(null);
-
-  const [userError, setUserError] = useState<string | null>(null);
-
-  const roles = roleDefinitions.length ? roleDefinitions.map((role) => role.name) : ["admin", "director", "officer", "member", "view_only"];
-
-  const roleLabel = (roleName: string) => roleDefinitions.find((role) => role.name === roleName)?.display_name ?? roleName;
-
-
-
-  async function loadUsers() {
-
-    setUsers(await api<UserAccount[]>("/auth/users"));
-
-  }
-
-
-
-  async function loadRoles() {
-
-    setRoleDefinitions(await api<RoleDefinition[]>("/auth/roles"));
-
-  }
-
-
-
-  async function loadInvites() {
-
-    setInvites(await api<UserInvite[]>("/auth/invites"));
-
-  }
-
-
-
-  async function loadCharacterAssignments() {
-
-    const [visibleCharacters, assignableAccounts] = await Promise.all([api<EqmCharacter[]>("/characters"), api<UserAccount[]>("/characters/accounts")]);
-
-    setCharacters(visibleCharacters);
-
-    setAccounts(assignableAccounts);
-
-  }
-
-
-
-  async function runUserAction(action: () => Promise<string>, refreshInvites = false) {
-
-    setUserError(null);
-
-    try {
-
-      const nextMessage = await action();
-
-      setMessage(nextMessage);
-
-      await Promise.all([loadUsers(), loadCharacterAssignments()]);
-
-      if (refreshInvites) await loadInvites();
-
-    } catch (err) {
-
-      setUserError(err instanceof Error ? err.message : "User action failed");
-
-    }
-
-  }
-
-
-
-  async function createAccount(form: FormData) {
-
-    await runUserAction(async () => {
-
-      const user = await api<UserAccount>("/auth/users", { method: "POST", body: JSON.stringify({ email: form.get("email"), display_name: form.get("display_name"), password: form.get("password"), role: form.get("role") }) });
-
-      return `${user.display_name} created.`;
-
-    });
-
-  }
-
-
-
-  async function createInvite(form: FormData) {
-
-    await runUserAction(async () => {
-
-      const invite = await api<UserInvite>("/auth/invites", { method: "POST", body: JSON.stringify({ email: form.get("email"), role: form.get("role") }) });
-
-      if (invite.invite_url) {
-
-        setLatestInviteUrl(invite.invite_url);
-
-        await navigator.clipboard.writeText(invite.invite_url).catch(() => undefined);
-
-      }
-
-      return `Invite generated for ${invite.email}.`;
-
-    }, true);
-
-  }
-
-
-
-  async function updateRole(userId: number, role: string) {
-
-    await runUserAction(async () => {
-
-      const user = await api<UserAccount>(`/auth/users/${userId}`, { method: "PATCH", body: JSON.stringify({ role }) });
-
-      return `${user.display_name} is now ${user.role}.`;
-
-    });
-
-  }
-
-
-
-  async function updateDisplayName(userId: number, form: FormData) {
-
-    await runUserAction(async () => {
-
-      const user = await api<UserAccount>(`/auth/users/${userId}`, { method: "PATCH", body: JSON.stringify({ display_name: form.get("display_name") }) });
-
-      return `${accountLabel(user)} renamed.`;
-
-    });
-
-  }
-
-  async function resetPassword(userId: number, form: FormData) {
-
-    await runUserAction(async () => {
-
-      const user = await api<UserAccount>(`/auth/users/${userId}`, { method: "PATCH", body: JSON.stringify({ password: form.get("password") }) });
-
-      return `${user.display_name}'s password was reset.`;
-
-    });
-
-  }
-
-
-
-  async function deleteAccount(user: UserAccount) {
-
-    if (!window.confirm(`Delete ${user.display_name}? This unlinks their ESI tokens and cannot be undone.`)) return;
-
-    await runUserAction(async () => {
-
-      await api<{ status: string }>(`/auth/users/${user.id}`, { method: "DELETE" });
-
-      return `${user.display_name} deleted.`;
-
-    });
-
-  }
-
-
-
-  async function revokeInvite(invite: UserInvite) {
-
-    if (!window.confirm(`Revoke invite for ${invite.email}?`)) return;
-
-    await runUserAction(async () => {
-
-      await api<UserInvite>(`/auth/invites/${invite.id}`, { method: "DELETE" });
-
-      return `Invite for ${invite.email} revoked.`;
-
-    }, true);
-
-  }
-
-
-
-  async function assignCharacter(character: EqmCharacter, ownerUserId: string) {
-
-    setUserError(null);
-
-    try {
-
-      const updated = await api<EqmCharacter>(`/characters/${character.id}`, { method: "PATCH", body: JSON.stringify({ owner_user_id: ownerUserId || null }) });
-
-      setCharacters((current) => current.map((item) => item.id === updated.id ? updated : item));
-
-      setMessage(`${updated.name} assigned to ${updated.owner_display_name ?? "Unassigned"}.`);
-
-    } catch (err) {
-
-      setUserError(err instanceof Error ? err.message : "Character assignment failed");
-
-    }
-
-  }
-
-
-
-  useEffect(() => {
-
-    void Promise.all([loadUsers(), loadInvites(), loadCharacterAssignments(), loadRoles()]).catch((err) => setUserError(err instanceof Error ? err.message : "Unable to load users"));
-
-  }, []);
-
-
-
-  return <div className="two-column"><section className="panel stacked"><h3>User Administration</h3><h4>Accounts</h4>{message && <div className="notice inline">{message}</div>}{latestInviteUrl && <div className="invite-link"><code>{latestInviteUrl}</code><button type="button" onClick={() => void navigator.clipboard.writeText(latestInviteUrl)}>Copy link</button></div>}{userError && <div className="mini-alert">{userError}</div>}<div className="card-list">{users.map((user) => <article key={user.id}><strong>{accountLabel(user)}</strong><span>{user.email}</span><ManagedForm submitLabel="Rename" onSubmit={(form) => updateDisplayName(user.id, form)}><label>Display name<input name="display_name" defaultValue={accountLabel(user)} required /></label></ManagedForm><label>Role<select value={user.role} onChange={(event) => void updateRole(user.id, event.target.value)}>{roles.map((role) => <option key={role} value={role}>{roleLabel(role)}</option>)}</select></label><ManagedForm submitLabel="Reset password" onSubmit={(form) => resetPassword(user.id, form)}><label>New password<input name="password" type="password" minLength={8} required /></label></ManagedForm><div className="card-actions"><button className="danger" type="button" disabled={user.id === currentUser.id} onClick={() => void deleteAccount(user)}>{user.id === currentUser.id ? "Signed in" : "Delete user"}</button></div></article>)}</div></section><section className="panel stacked"><h3>Create Invite</h3><ManagedForm submitLabel="Generate invite" onSubmit={createInvite}><label>Email<input name="email" type="email" required /></label><label>Role<select name="role" defaultValue="member">{roles.map((role) => <option key={role} value={role}>{roleLabel(role)}</option>)}</select></label></ManagedForm><h3>Pending Invites</h3><div className="card-list invite-list">{invites.map((invite) => <article key={invite.id}><strong>{invite.email}</strong><span>{invite.role} · {invite.status ?? "pending"}</span><span>Created {invite.created_at ? new Date(invite.created_at).toLocaleString() : "recently"}{invite.created_by_display_name ? ` by ${invite.created_by_display_name}` : ""}</span>{invite.accepted_at && <span>Accepted {new Date(invite.accepted_at).toLocaleString()}</span>}{invite.revoked_at && <span>Revoked {new Date(invite.revoked_at).toLocaleString()}</span>}<div className="card-actions"><button className="danger" type="button" disabled={invite.status !== "pending"} onClick={() => void revokeInvite(invite)}>Revoke</button></div></article>)}{invites.length === 0 && <p className="empty">No invites yet.</p>}</div><h3>Create Account Manually</h3><ManagedForm submitLabel="Create account" onSubmit={createAccount}><label>Display name<input name="display_name" required /></label><label>Email<input name="email" type="email" required /></label><label>Role<select name="role" defaultValue="member">{roles.map((role) => <option key={role} value={role}>{roleLabel(role)}</option>)}</select></label><label>Temporary password<input name="password" type="password" minLength={8} required /></label></ManagedForm><h3>Character Assignment</h3><div className="card-list character-assignment-list">{characters.map((character) => <article key={character.id}><strong>{character.name}</strong>{character.character_id && <span>Character ID {character.character_id}</span>}<span>{character.owner_display_name ?? "Unassigned"}</span><span>{character.corporation_name ?? "Unknown corporation"}{character.alliance_name ? ` · ${character.alliance_name}` : ""}</span><label>EQM Account<select value={character.owner_user_id ?? ""} onChange={(event) => void assignCharacter(character, event.target.value)}><option value="">Unassigned</option>{accounts.map((account) => <option key={account.id} value={account.id}>{accountLabel(account)} ({account.role})</option>)}</select></label></article>)}{characters.length === 0 && <p className="empty">No characters available for assignment.</p>}</div></section></div>;
-
-}
-
-function contractMoney(value?: number | null): string {
-
-  return value == null || value === 0 ? "-" : `${iskFormatter.format(value)} ISK`;
-
-}
-
-function contractOwner(contract: EqmContract): string {
-
-  if (contract.scope_type === "corporation") return contract.corporation_name ?? "Corporation";
-
-  return contract.character_name ?? "Character";
-
-}
-
-
-type ContractSortKey = "contract" | "scope" | "status" | "route" | "money" | "dates";
-
-type ContractStatusFilter = "all" | "active" | "outstanding" | "in_progress" | "finished" | "terminal";
-
-const CONTRACT_STATUS_OPTIONS: { value: ContractStatusFilter; label: string }[] = [
-
-  { value: "all", label: "All contracts" },
-
-  { value: "active", label: "Active" },
-
-  { value: "outstanding", label: "Outstanding" },
-
-  { value: "in_progress", label: "In progress" },
-
-  { value: "finished", label: "Finished" },
-
-  { value: "terminal", label: "Failed / rejected / expired" },
-
-];
-
-function contractStatusMatches(contract: EqmContract, filter: ContractStatusFilter): boolean {
-
-  const status = (contract.status ?? "").toLowerCase();
-
-  if (filter === "all") return true;
-
-  if (filter === "active") return status === "outstanding" || status === "in_progress";
-
-  if (filter === "outstanding") return status === "outstanding";
-
-  if (filter === "in_progress") return status === "in_progress";
-
-  if (filter === "finished") return status.startsWith("finished") || status === "completed";
-
-  return ["cancelled", "canceled", "deleted", "expired", "failed", "rejected", "reversed"].includes(status);
-
-}
-
-function contractSortValue(contract: EqmContract, key: ContractSortKey): string | number {
-
-  switch (key) {
-
-    case "contract": return contract.title || contract.contract_type || contract.contract_id;
-
-    case "scope": return `${contract.scope_type} ${contractOwner(contract)}`;
-
-    case "status": return `${contract.status ?? ""} ${contract.contract_type ?? ""}`;
-
-    case "route": return `${contract.start_location_name ?? ""} ${contract.end_location_name ?? ""}`;
-
-    case "money": return Math.max(contract.reward ?? 0, contract.price ?? 0, contract.collateral ?? 0, contract.buyout ?? 0);
-
-    case "dates": return Date.parse(contract.date_issued ?? contract.date_expired ?? "") || 0;
-
-  }
-
-}
-function ContractsPage({ currentUser }: { currentUser: UserAccount }) {
-
-  const [tokens, setTokens] = useState<ContractToken[]>([]);
-
-  const [contracts, setContracts] = useState<EqmContract[]>([]);
-
-  const [busy, setBusy] = useState<string | null>(null);
-
-  const [message, setMessage] = useState<string | null>(null);
-
-  const [error, setError] = useState<string | null>(null);
-
-  const timeZone = preferredTimeZone(currentUser);
-
-  const [sortKey, setSortKey] = useState<ContractSortKey>("dates");
-
-  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
-
-  const [statusFilter, setStatusFilter] = useState<ContractStatusFilter>("active");
-
-
-
-
-
-  async function loadContracts() {
-
-    const [tokenRows, contractRows] = await Promise.all([
-
-      api<ContractToken[]>("/contracts/tokens"),
-
-      api<EqmContract[]>("/contracts"),
-
-    ]);
-
-    setTokens(tokenRows);
-
-    setContracts(contractRows);
-
-  }
-
-  async function syncCharacterContracts(token: ContractToken) {
-
-    setBusy(`character-${token.token_id}`);
-
-    setError(null);
-
-    try {
-
-      const result = await api<{ character_name: string; contracts: number; active_contracts: number }>(`/contracts/sync/character/${token.token_id}`, { method: "POST" });
-
-      setMessage(`Synced ${result.contracts.toLocaleString()} contracts for ${result.character_name}; ${result.active_contracts.toLocaleString()} active.`);
-
-      await loadContracts();
-
-    } catch (err) {
-
-      setError(err instanceof Error ? err.message : "Character contract sync failed.");
-
-    } finally {
-
-      setBusy(null);
-
-    }
-
-  }
-
-  async function syncCorporationContracts(token: ContractToken) {
-
-    setBusy(`corporation-${token.token_id}`);
-
-    setError(null);
-
-    try {
-
-      const result = await api<{ corporation_name: string; contracts: number; active_contracts: number }>(`/contracts/sync/corporation/${token.token_id}`, { method: "POST" });
-
-      setMessage(`Synced ${result.contracts.toLocaleString()} corporation contracts for ${result.corporation_name}; ${result.active_contracts.toLocaleString()} active.`);
-
-      await loadContracts();
-
-    } catch (err) {
-
-      setError(err instanceof Error ? err.message : "Corporation contract sync failed.");
-
-    } finally {
-
-      setBusy(null);
-
-    }
-
-  }
-
-  useEffect(() => {
-
-    void loadContracts().catch((err) => setError(err instanceof Error ? err.message : "Unable to load contracts."));
-
-  }, []);
-
-
-  function toggleContractSort(nextKey: ContractSortKey) {
-
-    if (nextKey === sortKey) {
-
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
-
-      return;
-
-    }
-
-    setSortKey(nextKey);
-
-    setSortDirection(nextKey === "dates" || nextKey === "money" ? "desc" : "asc");
-
-  }
-
-  const contractSortMark = (key: ContractSortKey) => sortKey === key ? (sortDirection === "asc" ? "^" : "v") : "";
-
-  const visibleContracts = useMemo(() => {
-
-    return contracts.filter((contract) => contractStatusMatches(contract, statusFilter)).sort((left, right) => {
-
-      const leftValue = contractSortValue(left, sortKey);
-
-      const rightValue = contractSortValue(right, sortKey);
-
-      const result = typeof leftValue === "number" && typeof rightValue === "number"
-
-        ? leftValue - rightValue
-
-        : String(leftValue).localeCompare(String(rightValue), undefined, { numeric: true, sensitivity: "base" });
-
-      return sortDirection === "asc" ? result : -result;
-
-    });
-
-  }, [contracts, sortKey, sortDirection, statusFilter]);
-  return (
-
-    <section className="panel stacked contracts-page">
-
-      <div className="section-heading">
-
-        <div><h3>Contracts</h3><p>Pull current character contracts, plus corporation contracts for officer-level tokens and above.</p></div>
-
-        <button type="button" onClick={() => void loadContracts()}>Refresh</button>
-
-      </div>
-
-      {message && <div className="notice inline">{message}</div>}
-
-      {error && <div className="mini-alert">{error}</div>}
-
-      <h4>Linked contract tokens</h4>
-
-      <div className="contract-token-grid">
-
-        {tokens.map((token) => <article className="contract-token-card" key={token.token_id}>
-
-          <strong><CharacterHoverName characterId={token.character_id} name={token.character_name} /></strong>
-
-          <span>{token.user_display_name}{token.corporation_name ? ` · ${token.corporation_name}` : ""}</span>
-
-          <div className="button-row compact">
-
-            {token.has_character_contract_scope ? <button type="button" disabled={busy === `character-${token.token_id}`} onClick={() => void syncCharacterContracts(token)}>{busy === `character-${token.token_id}` ? "Syncing" : "Character contracts"}</button> : <span className="scope-warn">Missing character contract scope</span>}
-
-            {token.has_corporation_contract_scope && token.corporation_id ? <button type="button" disabled={busy === `corporation-${token.token_id}`} onClick={() => void syncCorporationContracts(token)}>{busy === `corporation-${token.token_id}` ? "Syncing" : "Corp contracts"}</button> : <span className="scope-warn">Missing corporation contract scope</span>}
-
-          </div>
-
-        </article>)}
-
-        {tokens.length === 0 && <p className="empty">No ESI-linked characters with contract access are visible to this account.</p>}
-
-      </div>
-
-      <div className="section-heading compact"><h4>Current contracts</h4><label className="compact-field">Status<select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as ContractStatusFilter)}>{CONTRACT_STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label></div>
-
-      <div className="table-wrap contracts-table-wrap">
-
-        <table className="contracts-table">
-
-          <thead><tr><th><button className="sort-header" type="button" onClick={() => toggleContractSort("contract")}>Contract <span>{contractSortMark("contract")}</span></button></th><th><button className="sort-header" type="button" onClick={() => toggleContractSort("scope")}>Scope <span>{contractSortMark("scope")}</span></button></th><th><button className="sort-header" type="button" onClick={() => toggleContractSort("status")}>Status <span>{contractSortMark("status")}</span></button></th><th><button className="sort-header" type="button" onClick={() => toggleContractSort("route")}>Route <span>{contractSortMark("route")}</span></button></th><th><button className="sort-header" type="button" onClick={() => toggleContractSort("money")}>Money <span>{contractSortMark("money")}</span></button></th><th><button className="sort-header" type="button" onClick={() => toggleContractSort("dates")}>Dates <span>{contractSortMark("dates")}</span></button></th></tr></thead>
-
-          <tbody>
-
-            {visibleContracts.map((contract) => {
-
-              const title = contract.title || `${contract.contract_type ?? "contract"} #${contract.contract_id}`;
-
-              return <tr key={`${contract.scope_type}-${contract.contract_id}`}>
-
-                <td><strong>{title}</strong><span>#{contract.contract_id}</span></td>
-
-                <td><span className="contract-scope-badge">{contract.scope_type}</span><br /><span>{contract.scope_type === "character" ? <CharacterHoverName characterId={contract.character_id} name={contract.character_name ?? "Character"} /> : contractOwner(contract)}</span></td>
-
-                <td><strong>{contract.status ?? "unknown"}</strong><br /><span>{contract.contract_type ?? "unknown"}{contract.availability ? ` · ${contract.availability}` : ""}</span>{contract.for_corporation ? <span><br />For corporation</span> : null}</td>
-
-                <td><strong>{contract.start_location_name ?? "Unknown start"}</strong><br /><span>{contract.end_location_name ?? "No destination"}</span>{contract.volume != null ? <span><br />{numberFormatter.format(contract.volume)} m3</span> : null}</td>
-
-                <td><div className="contract-money-cell"><b>Reward {contractMoney(contract.reward)}</b><b>Price {contractMoney(contract.price)}</b><b>Collateral {contractMoney(contract.collateral)}</b><b>Buyout {contractMoney(contract.buyout)}</b></div></td>
-
-                <td><strong>Issued {formatDateTime(contract.date_issued, timeZone)}</strong><br /><span>Expires {formatDateTime(contract.date_expired, timeZone)}</span>{contract.date_completed ? <span><br />Done {formatDateTime(contract.date_completed, timeZone)}</span> : null}</td>
-
-              </tr>;
-
-            })}
-
-            {contracts.length === 0 && <tr><td colSpan={6}>No contracts synced yet.</td></tr>}
-
-            {contracts.length > 0 && visibleContracts.length === 0 && <tr><td colSpan={6}>No contracts match this status filter.</td></tr>}
-
-          </tbody>
-
-        </table>
-
-      </div>
-
-    </section>
-
-  );
-
-}
-function Overview({ data }: { data: AppData }) {
+function Overview({ data, onOpenIndustry }: { data: AppData; onOpenIndustry?: () => void }) {
 
   const summary = data.summary;
 
@@ -2076,7 +876,7 @@ function Overview({ data }: { data: AppData }) {
 
         <section className="panel"><h3>Recent Assets</h3><AssetTable assets={data.assets.slice(0, 6)} /></section>
 
-        <section className="panel"><h3>Blueprint Library</h3><BlueprintList blueprints={data.blueprints} /></section>
+        <section className="panel"><h3>Blueprint Library</h3><BlueprintPreview blueprints={data.blueprints} onOpenIndustry={onOpenIndustry} /></section>
 
       </div>
 
@@ -2088,522 +888,7 @@ function Overview({ data }: { data: AppData }) {
 
 
 
-function CharacterHoverName({ characterId, name, className = "", href }: { characterId?: number | null; name: string; className?: string; href?: string }) {
-
-  const [open, setOpen] = useState(false);
-
-  const [summary, setSummary] = useState<CharacterSummary | null>(null);
-
-  const [error, setError] = useState<string | null>(null);
-
-  const [loading, setLoading] = useState(false);
-
-
-
-  async function loadSummary() {
-
-    if (!characterId || summary || loading) return;
-
-    setLoading(true);
-
-    setError(null);
-
-    try {
-
-      setSummary(await api<CharacterSummary>(`/characters/summary/${characterId}`));
-
-    } catch (err) {
-
-      setError(err instanceof Error ? err.message : "Summary unavailable");
-
-    } finally {
-
-      setLoading(false);
-
-    }
-
-  }
-
-
-
-  function showSummary() {
-
-    setOpen(true);
-
-    void loadSummary();
-
-  }
-
-
-
-  if (!characterId) return <span className={className}>{name}</span>;
-
-  function openCharacterPage(event: { preventDefault: () => void; stopPropagation: () => void }) {
-
-    event.preventDefault();
-
-    event.stopPropagation();
-
-    window.dispatchEvent(new CustomEvent<CharacterFocus>("eqm:open-character", { detail: { characterId, name, nonce: Date.now() } }));
-
-  }
-
-  const topCategories = summary?.skill_categories.slice(0, 5) ?? [];
-
-  const nameControl = <button type="button" className={`character-hover-name ${className}`} onClick={openCharacterPage} title="Open character dossier">{name}</button>;
-
-  return <span className="character-hover-wrap" onMouseEnter={showSummary} onMouseLeave={() => setOpen(false)} onFocus={showSummary} onBlur={() => setOpen(false)}>{nameControl}{open && <div className="character-hover-card"><div className="entity-card-heading"><EveEntityIcon kind="character" id={characterId} name={name} size="md" /><div><strong>{summary?.character.name ?? name}</strong><PilotSecurityStatus securityStatus={summary?.character.security_status} /><span>{summary?.character.corporation_name ?? "Unknown corporation"}{summary?.character.alliance_name ? ` · ${summary.character.alliance_name}` : ""}</span></div></div>{loading && <span className="muted">Loading character summary...</span>}{error && <span className="muted">Summary hidden by role policy.</span>}{summary && <><div className="character-hover-metrics"><span><b>{numberFormatter.format(summary.total_skill_points)}</b> SP</span><span><b>{summary.queue_count.toLocaleString()}</b> queued</span><span><b>{summary.ship_units.toLocaleString()}</b> ships</span><span><b>{summary.asset_units.toLocaleString()}</b> assets</span><span><b>{summary.bpos.toLocaleString()}</b> BPO</span><span><b>{summary.bpcs.toLocaleString()}</b> BPC</span></div>{topCategories.length > 0 && <div className="character-hover-categories">{topCategories.map((category) => <span key={category.name}>{category.name}<b>{numberFormatter.format(category.skill_points)} SP</b></span>)}</div>}</>}{<div className="character-hover-actions"><button type="button" onMouseDown={(event) => event.preventDefault()} onClick={openCharacterPage}>Open character</button>{href && <a className="character-hover-external" href={href} target="_blank" rel="noreferrer" onMouseDown={(event) => event.preventDefault()} onClick={(event) => event.stopPropagation()}>zKill</a>}</div>}</div>}</span>;
-
-}
-
-function Characters({ currentUser, focus }: { currentUser: UserAccount; focus?: CharacterFocus | null }) {
-
-  const [characters, setCharacters] = useState<EqmCharacter[]>([]);
-
-  const [selectedCharacterId, setSelectedCharacterId] = useState<number | null>(null);
-
-  const [dossier, setDossier] = useState<CharacterDossier | null>(null);
-
-  const [accounts, setAccounts] = useState<UserAccount[]>([]);
-
-  const [message, setMessage] = useState<string | null>(null);
-
-  const [characterError, setCharacterError] = useState<string | null>(null);
-
-  const [loadingDossier, setLoadingDossier] = useState(false);
-
-  const [busySync, setBusySync] = useState<string | null>(null);
-
-  const canLoadAccounts = ["admin", "director"].includes(currentUser.role);
-
-
-
-  async function loadCharacters(preferredId = selectedCharacterId, preferredEveId?: number | null) {
-
-    const loaded = await api<EqmCharacter[]>("/characters");
-
-    setCharacters(loaded);
-
-    if (canLoadAccounts) setAccounts(await api<UserAccount[]>("/characters/accounts"));
-
-    const byEveId = preferredEveId ? loaded.find((character) => character.character_id === preferredEveId)?.id ?? null : null;
-
-    const byInternalId = preferredId && loaded.some((character) => character.id === preferredId) ? preferredId : null;
-
-    const nextId = byEveId ?? byInternalId ?? loaded[0]?.id ?? null;
-
-    setSelectedCharacterId(nextId);
-
-    return nextId;
-
-  }
-
-
-
-  async function loadDossier(characterId: number | null) {
-
-    if (!characterId) {
-
-      setDossier(null);
-
-      return;
-
-    }
-
-    setLoadingDossier(true);
-
-    setCharacterError(null);
-
-    try {
-
-      setDossier(await api<CharacterDossier>(`/characters/dossier/${characterId}`));
-
-    } catch (err) {
-
-      setDossier(null);
-
-      setCharacterError(err instanceof Error ? err.message : "Unable to load character dossier");
-
-    } finally {
-
-      setLoadingDossier(false);
-
-    }
-
-  }
-
-
-
-  async function patchCharacter(characterId: number, body: Record<string, unknown>, success: string) {
-
-    setCharacterError(null);
-
-    try {
-
-      const updated = await api<EqmCharacter>(`/characters/${characterId}`, { method: "PATCH", body: JSON.stringify(body) });
-
-      setCharacters((current) => current.map((character) => character.id === updated.id ? updated : character));
-
-      setMessage(success);
-
-      if (selectedCharacterId === characterId) await loadDossier(characterId);
-
-    } catch (err) {
-
-      setCharacterError(err instanceof Error ? err.message : "Character update failed");
-
-    }
-
-  }
-
-
-
-  async function runCharacterSync(kind: "assets" | "skills" | "fittings" | "contracts", token: CharacterDossierToken) {
-
-    const endpoints = {
-
-      assets: `/esi/sync/character-assets/${token.token_id}`,
-
-      skills: `/esi/sync/character-skills/${token.token_id}`,
-
-      fittings: `/esi/sync/character-fittings/${token.token_id}`,
-
-      contracts: `/contracts/sync/character/${token.token_id}`,
-
-    };
-
-    setBusySync(`${token.token_id}-${kind}`);
-
-    setCharacterError(null);
-
-    try {
-
-      await api(endpoints[kind], { method: "POST", body: "{}" });
-
-      setMessage(`${dossier?.character.name ?? "Character"} ${kind} synced.`);
-
-      const nextId = await loadCharacters(selectedCharacterId);
-
-      await loadDossier(nextId);
-
-    } catch (err) {
-
-      setCharacterError(err instanceof Error ? err.message : `Unable to sync ${kind}`);
-
-    } finally {
-
-      setBusySync(null);
-
-    }
-
-  }
-
-
-
-  useEffect(() => { void loadCharacters().then((nextId) => loadDossier(nextId)).catch((err) => setCharacterError(err instanceof Error ? err.message : "Unable to load characters")); }, []);
-
-  useEffect(() => { void loadDossier(selectedCharacterId); }, [selectedCharacterId]);
-
-  useEffect(() => {
-
-    if (!focus?.characterId) return;
-
-    void loadCharacters(selectedCharacterId, focus.characterId).then((nextId) => loadDossier(nextId)).catch((err) => setCharacterError(err instanceof Error ? err.message : "Unable to open character"));
-
-  }, [focus?.nonce]);
-
-
-
-  const selectedCharacter = characters.find((character) => character.id === selectedCharacterId) ?? null;
-
-  const summary = dossier?.summary;
-
-  const canManage = Boolean(dossier?.permissions.can_manage);
-
-  const canAssign = Boolean(dossier?.permissions.can_assign);
-
-  const syncButton = (token: CharacterDossierToken, kind: "assets" | "skills" | "fittings" | "contracts", label: string, enabled: boolean) => <button type="button" disabled={!token.can_sync || !enabled || busySync !== null} onClick={() => void runCharacterSync(kind, token)}>{busySync === `${token.token_id}-${kind}` ? "Syncing..." : label}</button>;
-
-
-
-  return <section className="panel stacked"><div className="section-heading"><div><h3>Characters</h3><p>{characters.length.toLocaleString()} visible character{characters.length === 1 ? "" : "s"}</p></div><button type="button" onClick={() => void loadCharacters(selectedCharacterId).then((nextId) => loadDossier(nextId))}>Refresh</button></div>{message && <div className="notice inline">{message}</div>}{characterError && <div className="mini-alert">{characterError}</div>}<div className="character-dossier-layout"><aside className="character-picker-list">{characters.map((character) => <button type="button" key={character.id} className={`character-picker-card ${selectedCharacterId === character.id ? "active" : ""}`} onClick={() => setSelectedCharacterId(character.id)}><span className="entity-card-heading"><EveEntityIcon kind="character" id={character.character_id} name={character.name} size="sm" /><span><strong><CharacterHoverName characterId={character.character_id} name={character.name} /><PilotSecurityStatus securityStatus={character.security_status} compact /></strong><small>{character.owner_display_name ?? "Unassigned"}{character.owner_role ? ` · ${character.owner_role}` : ""}</small></span></span><small>{character.corporation_name ?? "Unknown corporation"}</small></button>)}{characters.length === 0 && <p className="empty">No characters visible to this account yet.</p>}</aside><div className="character-dossier-panel">{loadingDossier && <div className="notice inline">Loading character dossier...</div>}{!loadingDossier && !dossier && selectedCharacter && <div className="mini-alert">Details hidden by role policy.</div>}{dossier && summary && <><div className="character-dossier-header"><div className="entity-card-heading"><EveEntityIcon kind="character" id={dossier.character.character_id} name={dossier.character.name} size="lg" /><div><h3><CharacterHoverName characterId={dossier.character.character_id} name={dossier.character.name} /></h3><PilotSecurityStatus securityStatus={dossier.character.security_status} /><span>{dossier.character.owner_display_name ?? "Unassigned"}{dossier.character.owner_role ? ` · ${dossier.character.owner_role}` : ""}</span><span>{dossier.character.corporation_name ?? "Unknown corporation"}{dossier.character.alliance_name ? ` · ${dossier.character.alliance_name}` : ""}</span><span>Last sync {dossier.character.last_synced_at ? formatDateTime(dossier.character.last_synced_at) : "never"}</span></div></div></div><div className="character-summary-grid"><Metric icon={<GraduationCap size={18} />} label="Skill points" value={summary.total_skill_points} /><Metric icon={<Activity size={18} />} label="Queue" value={summary.queue_count} /><Metric icon={<Boxes size={18} />} label="Asset units" value={summary.asset_units} /><Metric icon={<PackagePlus size={18} />} label="Ships" value={summary.ship_units} /><Metric icon={<ScrollText size={18} />} label="Blueprints" value={`${summary.bpos.toLocaleString()} BPO / ${summary.bpcs.toLocaleString()} BPC`} /><Metric icon={<ClipboardList size={18} />} label="Contracts" value={summary.contracts} /></div>{canManage && <div className="character-admin-strip"><h4>Character Controls</h4>{canAssign && <label>EQM Account<select value={dossier.character.owner_user_id ?? ""} onChange={(event) => void patchCharacter(dossier.character.id, { owner_user_id: event.target.value || null }, `${dossier.character.name} reassigned.`)}><option value="">Unassigned</option>{accounts.map((account) => <option key={account.id} value={account.id}>{accountLabel(account)} ({account.role})</option>)}</select></label>}<label className="check"><input type="checkbox" checked={Boolean(dossier.permissions.public_assets_visible)} onChange={(event) => void patchCharacter(dossier.character.id, { public_assets_visible: event.target.checked }, `${dossier.character.name} visibility updated.`)} /> Public assets visible to members</label><label className="check"><input type="checkbox" checked={Boolean(dossier.permissions.sync_opt_out)} onChange={(event) => void patchCharacter(dossier.character.id, { sync_opt_out: event.target.checked }, `${dossier.character.name} sync preference updated.`)} /> Keep this character private from shared Quartermaster sync</label>{!dossier.permissions.public_assets_visible && <div className="privacy-placard">This character has not made assets public to members. Admin asset sync is an override for administrative review.</div>}{dossier.permissions.sync_opt_out && <div className="privacy-placard">This character does not wish to be synced. Admins can override temporarily for administrative review, but this preference remains visible.</div>}</div>}<div className="character-sync-grid">{dossier.sync_tokens.map((token) => <article key={token.token_id}><strong>SSO linked by {token.linked_user_display_name}</strong><span>Linked {token.linked_at ? formatDateTime(token.linked_at) : "unknown"}</span>{token.can_sync ? <span className="scope-ok">Sync permitted</span> : <span className="scope-warn">Sync hidden by role policy</span>}{token.missing_scopes.length > 0 && <small>Missing scopes: {token.missing_scopes.join(", ")}</small>}<div className="button-row compact">{syncButton(token, "assets", "Sync assets", token.has_asset_scope)}{syncButton(token, "skills", "Sync skills", token.has_skill_scope)}{syncButton(token, "fittings", "Sync fittings", token.has_fitting_scope)}{syncButton(token, "contracts", "Sync contracts", token.has_contract_scope)}</div></article>)}</div><div className="two-column character-dossier-sections"><section><h4>Skill Categories</h4><div className="mini-list">{dossier.skills.categories.map((category) => <div key={category.name}><strong>{category.name}</strong><span>{numberFormatter.format(category.skill_points)} SP · {category.skill_count.toLocaleString()} skills</span></div>)}{dossier.skills.categories.length === 0 && <p className="empty">No skill snapshot yet.</p>}</div></section><section><h4>Skill Queue</h4><div className="mini-list">{dossier.skills.queue.map((entry) => <div key={entry.id}><strong>{entry.queue_position}. {entry.skill_name} {entry.finished_level}</strong><span>{entry.finish_date ? `Finishes ${formatDateTime(entry.finish_date)}` : "No finish time"}</span></div>)}{dossier.skills.queue.length === 0 && <p className="empty">No queued skills stored.</p>}</div></section></div><div className="two-column character-dossier-sections"><section><h4>Assets Snapshot</h4><AssetTable assets={dossier.assets} /></section><section><h4>Blueprint Snapshot</h4><BlueprintList blueprints={dossier.blueprints} assets={dossier.assets} /></section></div><div className="two-column character-dossier-sections"><section><h4>Fittings</h4><div className="mini-list">{dossier.fittings.map((fitting) => <div key={fitting.id}><strong>{fitting.ship_type_name}</strong><span>{fitting.name}{fitting.is_draft ? " · Draft" : ""}{fitting.is_shared ? " · Shared" : " · Private"}</span></div>)}{dossier.fittings.length === 0 && <p className="empty">No saved fittings stored.</p>}</div></section><section><h4>Contracts</h4><div className="mini-list">{dossier.contracts.map((contract) => <div key={contract.id}><strong>{contract.title || contract.contract_type || `Contract ${contract.contract_id}`}</strong><span>{contract.status ?? "unknown"}{contract.reward ? ` · ${Math.round(contract.reward).toLocaleString()} ISK reward` : ""}</span></div>)}{dossier.contracts.length === 0 && <p className="empty">No contracts stored.</p>}</div></section></div><section><h4>Kill / Loss History</h4><div className="character-summary-grid"><Metric icon={<Activity size={18} />} label="Kills" value={dossier.kill_history.kills_count} /><Metric icon={<Activity size={18} />} label="Losses" value={dossier.kill_history.losses_count} /><Metric icon={<ShoppingCart size={18} />} label="ISK destroyed" value={Math.round(dossier.kill_history.isk_destroyed).toLocaleString()} /><Metric icon={<ShoppingCart size={18} />} label="ISK lost" value={Math.round(dossier.kill_history.isk_lost).toLocaleString()} /></div><div className="mini-list character-kill-list">{[...dossier.kill_history.kills, ...dossier.kill_history.losses].slice(0, 10).map((kill) => <div key={`${kill.killmail_id}-${kill.victim_character_name}`}><strong>{kill.victim_hull ?? "Unknown hull"}{kill.smartbomb_used ? " · Smartbombs" : ""}{kill.is_wardec ? " · Wardec" : ""}</strong><span>{kill.killmail_time ? formatDateTime(kill.killmail_time) : "Unknown time"} · {kill.location_name ?? "Unknown location"}{kill.zkb_url ? <a href={kill.zkb_url} target="_blank" rel="noreferrer"> zKill</a> : null}</span></div>)}{dossier.kill_history.kills.length + dossier.kill_history.losses.length === 0 && <p className="empty">No killmail observations stored for this character.</p>}</div></section></>}</div></div></section>;
-
-}
-
-function Roster() {
-
-  const [corporations, setCorporations] = useState<RosterCorporation[]>([]);
-
-  const [rosterError, setRosterError] = useState<string | null>(null);
-
-
-
-  async function loadRoster() {
-
-    setRosterError(null);
-
-    try {
-
-      setCorporations(await api<RosterCorporation[]>("/characters/roster"));
-
-    } catch (err) {
-
-      setRosterError(err instanceof Error ? err.message : "Unable to load roster");
-
-    }
-
-  }
-
-
-
-  useEffect(() => { void loadRoster(); }, []);
-
-
-
-  const totalCharacters = corporations.reduce((total, corporation) => total + corporation.characters.length, 0);
-
-  return <section className="panel stacked roster-page"><div className="section-heading"><div><h3>Roster</h3><p>{totalCharacters.toLocaleString()} character{totalCharacters === 1 ? "" : "s"} across {corporations.length.toLocaleString()} corporation{corporations.length === 1 ? "" : "s"}</p></div><button type="button" onClick={() => void loadRoster()}>Refresh</button></div>{rosterError && <div className="mini-alert">{rosterError}</div>}<div className="roster-corporations">{corporations.map((corporation) => <article key={corporation.corporation_id ?? corporation.corporation_name} className="roster-corp"><div className="roster-corp-heading"><div className="entity-card-heading"><EveEntityIcon kind="corporation" id={corporation.corporation_id} name={corporation.corporation_name} size="md" /><div><strong>{corporation.corporation_name}{corporation.ticker ? ` [${corporation.ticker}]` : ""}</strong><span>{corporation.alliance_id && <EveEntityIcon kind="alliance" id={corporation.alliance_id} name={corporation.alliance_name} size="tiny" />}{corporation.alliance_name ?? "No alliance"}{corporation.corporation_id ? ` · Corp ID ${corporation.corporation_id}` : ""}</span></div></div><span>{corporation.characters.length.toLocaleString()} listed · Members {corporation.member_count?.toLocaleString() ?? "unknown"}</span></div><div className="roster-character-grid">{corporation.characters.map((character) => <div key={character.character_id} className="roster-character"><EveEntityIcon kind="character" id={character.character_id} name={character.name} /><CharacterHoverName characterId={character.character_id} name={character.name} /><PilotSecurityStatus securityStatus={character.security_status} compact /></div>)}</div></article>)}{corporations.length === 0 && <p className="empty">No roster characters assigned to Quartermaster accounts yet.</p>}</div></section>;
-
-}
-function Corporations({ loadAssets }: { loadAssets: () => Promise<void> }) {
-
-  const [corporations, setCorporations] = useState<EqmCorporation[]>([]);
-
-  const [message, setMessage] = useState<string | null>(null);
-
-  const [corpError, setCorpError] = useState<string | null>(null);
-
-  const [busyTokenId, setBusyTokenId] = useState<number | null>(null);
-
-  const [busyAll, setBusyAll] = useState(false);
-
-
-
-  async function loadCorporations() {
-
-    setCorporations(await api<EqmCorporation[]>("/corporations"));
-
-  }
-
-
-
-  async function refreshCorporationLinks() {
-
-    setCorpError(null);
-
-    setMessage("Refreshing corporation links from enrolled characters...");
-
-    try {
-
-      const result = await api<{ characters_refreshed: number; skipped: number; failed?: number; errors?: string[] }>("/esi/sync/linked-corporations", { method: "POST", body: "{}" });
-
-      const failNote = result.failed ? ` ${result.failed.toLocaleString()} failed; ${result.errors?.[0] ?? "check backend logs"}.` : "";
-
-      setMessage(`Refreshed ${result.characters_refreshed.toLocaleString()} linked character corporation record${result.characters_refreshed === 1 ? "" : "s"}.${failNote}`);
-
-      await loadCorporations();
-
-    } catch (err) {
-
-      setCorpError(err instanceof Error ? err.message : "Corporation discovery failed");
-
-    }
-
-  }
-
-
-
-  async function syncCorporationAssets(token: CorporationToken, corporation: EqmCorporation) {
-
-    setBusyTokenId(token.token_id);
-
-    setCorpError(null);
-
-    setMessage(`Syncing ${corporation.name} assets with ${token.character_name}...`);
-
-    try {
-
-      const result = await api<{ corporation_name: string; asset_rows: number }>(`/esi/sync/corporation-assets/${token.token_id}`, { method: "POST", body: "{}" });
-
-      setMessage(`Synced ${result.asset_rows.toLocaleString()} asset rows for ${result.corporation_name}.`);
-
-      await Promise.all([loadCorporations(), loadAssets()]);
-
-    } catch (err) {
-
-      setCorpError(err instanceof Error ? err.message : "Corporation asset sync failed");
-
-    } finally {
-
-      setBusyTokenId(null);
-
-    }
-
-  }
-
-
-
-  async function syncCorporationWallets(token: CorporationToken, corporation: EqmCorporation) {
-
-    setBusyTokenId(token.token_id);
-
-    setCorpError(null);
-
-    setMessage(`Syncing ${corporation.name} wallet divisions with ${token.character_name}...`);
-
-    try {
-
-      const result = await api<{ corporation_name: string; wallet_divisions: number }>(`/esi/sync/corporation-wallets/${token.token_id}`, { method: "POST", body: "{}" });
-
-      setMessage(`Synced ${result.wallet_divisions.toLocaleString()} wallet divisions for ${result.corporation_name}.`);
-
-      await loadCorporations();
-
-    } catch (err) {
-
-      setMessage(null);
-
-      setCorpError(err instanceof Error ? err.message : "Corporation wallet sync failed");
-
-    } finally {
-
-      setBusyTokenId(null);
-
-    }
-
-  }
-
-
-
-  async function syncCorporationBlueprints(token: CorporationToken, corporation: EqmCorporation) {
-
-    setBusyTokenId(token.token_id);
-
-    setCorpError(null);
-
-    setMessage(`Syncing ${corporation.name} blueprints with ${token.character_name}...`);
-
-    try {
-
-      const result = await api<{ corporation_name: string; blueprint_rows: number }>(`/esi/sync/corporation-blueprints/${token.token_id}`, { method: "POST", body: "{}" });
-
-      setMessage(`Synced ${result.blueprint_rows.toLocaleString()} blueprint rows for ${result.corporation_name}.`);
-
-      await loadCorporations();
-
-    } catch (err) {
-
-      setCorpError(err instanceof Error ? err.message : "Corporation blueprint sync failed");
-
-    } finally {
-
-      setBusyTokenId(null);
-
-    }
-
-  }
-
-
-
-  async function syncAllEligible() {
-
-    setBusyAll(true);
-
-    setCorpError(null);
-
-    let assetJobs = 0;
-
-    let blueprintJobs = 0;
-
-    let walletJobs = 0;
-
-    const failures: string[] = [];
-
-    async function attemptSync(label: string, request: () => Promise<unknown>) {
-
-      try {
-
-        await request();
-
-        return true;
-
-      } catch (err) {
-
-        const detail = err instanceof Error ? err.message : "sync failed";
-
-        failures.push(`${label}: ${detail}`);
-
-        return false;
-
-      }
-
-    }
-
-    try {
-
-      for (const [index, corporation] of corporations.entries()) {
-
-        const step = `${index + 1}/${corporations.length}`;
-
-        const assetToken = corporation.eligible_tokens.find((token) => token.can_sync);
-
-        if (assetToken) {
-
-          setMessage(`${step}: syncing ${corporation.name} corporation assets with ${assetToken.character_name}...`);
-
-          if (await attemptSync(`${corporation.name} assets via ${assetToken.character_name}`, () => api(`/esi/sync/corporation-assets/${assetToken.token_id}`, { method: "POST", body: "{}" }))) assetJobs += 1;
-
-        }
-
-        const blueprintToken = corporation.eligible_tokens.find((token) => token.can_sync_blueprints);
-
-        if (blueprintToken) {
-
-          setMessage(`${step}: syncing ${corporation.name} corporation blueprints with ${blueprintToken.character_name}...`);
-
-          if (await attemptSync(`${corporation.name} blueprints via ${blueprintToken.character_name}`, () => api(`/esi/sync/corporation-blueprints/${blueprintToken.token_id}`, { method: "POST", body: "{}" }))) blueprintJobs += 1;
-
-        }
-
-        const walletToken = corporation.eligible_tokens.find((token) => token.can_sync_wallets);
-
-        if (walletToken) {
-
-          setMessage(`${step}: syncing ${corporation.name} wallet divisions with ${walletToken.character_name}...`);
-
-          if (await attemptSync(`${corporation.name} wallets via ${walletToken.character_name}`, () => api(`/esi/sync/corporation-wallets/${walletToken.token_id}`, { method: "POST", body: "{}" }))) walletJobs += 1;
-
-        }
-
-      }
-
-      setMessage(`Synced ${assetJobs} corporation asset ledger${assetJobs === 1 ? "" : "s"}, ${blueprintJobs} blueprint ledger${blueprintJobs === 1 ? "" : "s"}, and ${walletJobs} wallet ledger${walletJobs === 1 ? "" : "s"}.${failures.length ? ` ${failures.length} failed and were skipped.` : ""}`);
-
-      if (failures.length) setCorpError(failures.slice(0, 3).join(" | "));
-
-      await Promise.all([loadCorporations(), loadAssets()]);
-
-    } catch (err) {
-
-      setCorpError(err instanceof Error ? err.message : "Sync all failed");
-
-    } finally {
-
-      setBusyAll(false);
-
-    }
-
-  }
-
-
-
-  useEffect(() => { void loadCorporations().catch((err) => setCorpError(err instanceof Error ? err.message : "Unable to load corporations")); }, []);
-
-
-
-  return <section className="panel stacked"><div className="section-heading"><h3>Corporations</h3><div className="button-row compact"><button type="button" onClick={() => void refreshCorporationLinks()}>Refresh corporation links</button><button type="button" disabled={busyAll || corporations.length === 0} onClick={() => void syncAllEligible()}>{busyAll ? "Syncing all" : "Sync all eligible"}</button></div></div>{message && <div className="notice inline">{message}</div>}{corpError && <div className="mini-alert">{corpError}</div>}<div className="card-list corporation-list">{corporations.map((corporation) => <article key={corporation.id} className="entity-card"><div className="entity-card-heading"><EveEntityIcon kind="corporation" id={corporation.corporation_id} name={corporation.name} size="md" /><div><strong>{corporation.name}{corporation.ticker ? ` [${corporation.ticker}]` : ""}</strong><span>{corporation.alliance_id && <EveEntityIcon kind="alliance" id={corporation.alliance_id} name={corporation.alliance_name} size="tiny" />}{corporation.alliance_name ?? "No alliance"} · Corp ID {corporation.corporation_id}</span></div></div><span>CEO {corporation.ceo_character_name ?? corporation.ceo_character_eve_id ?? "unknown"}</span><span className="scope-ok">Members {corporation.member_count?.toLocaleString() ?? "unknown"}</span><span>{corporation.asset_rows.toLocaleString()} tracked asset rows · {corporation.blueprint_rows.toLocaleString()} blueprints</span><span className={corporation.asset_sync_stale ? "scope-warn" : "scope-ok"}>Assets {corporation.last_asset_sync_at ? `${new Date(corporation.last_asset_sync_at).toLocaleString()} (${corporation.last_asset_sync_status ?? "sync"})` : "never synced"}</span><span className={corporation.blueprint_sync_stale ? "scope-warn" : "scope-ok"}>Blueprints {corporation.last_blueprint_sync_at ? `${new Date(corporation.last_blueprint_sync_at).toLocaleString()} (${corporation.last_blueprint_sync_status ?? "sync"})` : "never synced"}</span><span className={corporation.wallet_sync_stale ? "scope-warn" : "scope-ok"}>Wallets {corporation.last_wallet_sync_at ? `${new Date(corporation.last_wallet_sync_at).toLocaleString()} (${corporation.last_wallet_sync_status ?? "sync"})` : "never synced"}</span>{corporation.last_asset_sync_message && <code>{corporation.last_asset_sync_message}</code>}{corporation.last_blueprint_sync_message && <code>{corporation.last_blueprint_sync_message}</code>}{corporation.last_wallet_sync_message && <code>{corporation.last_wallet_sync_message}</code>}<div className="wallet-grid"><span>Wallet divisions</span>{corporation.wallet_divisions.length > 0 ? corporation.wallet_divisions.map((wallet) => <div key={wallet.division}><strong>Division {wallet.division}</strong><span>{iskFormatter.format(wallet.balance)} ISK</span></div>) : <p className="muted">No wallet divisions synced yet.</p>}</div><div className="choice-list"><span>Corp sync tokens</span>{corporation.eligible_tokens.length > 0 ? corporation.eligible_tokens.map((token) => <div className="token-row" key={token.token_id}><span>{token.character_name} · {token.user_display_name}</span><div className="button-row compact">{token.has_corporation_asset_scope ? <button type="button" disabled={!token.can_sync || busyTokenId === token.token_id} onClick={() => void syncCorporationAssets(token, corporation)}>Assets</button> : <span className="scope-warn">Missing asset scope</span>}{token.has_corporation_blueprint_scope ? <button type="button" disabled={!token.can_sync_blueprints || busyTokenId === token.token_id} onClick={() => void syncCorporationBlueprints(token, corporation)}>Blueprints</button> : <span className="scope-warn">Missing blueprint scope</span>}{token.has_corporation_wallet_scope ? <button type="button" disabled={!token.can_sync_wallets || busyTokenId === token.token_id} onClick={() => void syncCorporationWallets(token, corporation)}>Wallets</button> : <span className="scope-warn">Missing wallet scope</span>}</div></div>) : <p className="muted">No linked character tokens found for this corporation yet.</p>}</div></article>)}</div>{corporations.length === 0 && <p className="empty">No corporations imported or linked yet. Re-link a CEO/director through EVE SSO to populate this list.</p>}</section>;
-
-}function Ownership({ data, submit }: { data: AppData; submit: (path: string, body: Record<string, unknown>, success: string) => Promise<void> }) {
+function Ownership({ data, submit }: { data: AppData; submit: (path: string, body: Record<string, unknown>, success: string) => Promise<void> }) {
 
   return (
 
@@ -2715,855 +1000,6 @@ function Industry({ data, submit, ownerOptions, typeOptions, locationOptions, ac
 
 }
 
-function SettingsPage({ currentUser }: { currentUser: UserAccount }) {
-
-  const [characters, setCharacters] = useState<EqmCharacter[]>([]);
-
-  const [message, setMessage] = useState<string | null>(null);
-
-  const [settingsError, setSettingsError] = useState<string | null>(null);
-
-  const [suppressPeekNotifications, setSuppressPeekNotifications] = useState(false);
-
-  const [sdeStatus, setSdeStatus] = useState<SdeStatus | null>(null);
-
-  const [sdePath, setSdePath] = useState("/sde");
-
-  const [sdeBusy, setSdeBusy] = useState(false);
-
-  const [sdeImportState, setSdeImportState] = useState<SdeImportProgress | null>(null);
-
-
-
-  async function loadCharacters() {
-
-    setCharacters(await api<EqmCharacter[]>("/characters"));
-
-  }
-
-
-
-  async function loadSdeStatus() {
-
-    if (currentUser.role !== "admin") return;
-
-    const status = await api<SdeStatus>("/sde/status");
-
-    setSdeStatus(status);
-
-    setSdePath((current) => current || status.default_source_path || "/sde");
-
-  }
-
-
-
-  async function loadSdeImportState() {
-
-    if (currentUser.role !== "admin") return;
-
-    const previousCompletedAt = sdeImportState?.completed_at;
-
-    const state = await api<SdeImportProgress>("/sde/import-status");
-
-    setSdeImportState(state);
-
-    setSdeBusy(Boolean(state.running));
-
-    if (state.status === "success" && state.completed_at && state.completed_at !== previousCompletedAt) {
-
-      await loadSdeStatus();
-
-      setMessage("SDE import complete. Static data counts refreshed.");
-
-    }
-
-  }
-
-  async function patchNotificationSuppression(value: boolean) {
-
-    setSettingsError(null);
-
-    try {
-
-      const settings = await api<{ suppress_peek_notifications: boolean }>("/notifications/settings", { method: "PATCH", body: JSON.stringify({ suppress_peek_notifications: value }) });
-
-      setSuppressPeekNotifications(settings.suppress_peek_notifications);
-
-      setMessage("Notification suppression updated.");
-
-    } catch (err) {
-
-      setSettingsError(err instanceof Error ? err.message : "Settings update failed");
-
-    }
-
-  }
-
-
-
-  async function patchCharacter(character: EqmCharacter, body: Record<string, unknown>, success: string) {
-
-    setSettingsError(null);
-
-    try {
-
-      const updated = await api<EqmCharacter>(`/characters/${character.id}`, { method: "PATCH", body: JSON.stringify(body) });
-
-      setCharacters((current) => current.map((item) => item.id === updated.id ? updated : item));
-
-      setMessage(success);
-
-    } catch (err) {
-
-      setSettingsError(err instanceof Error ? err.message : "Settings update failed");
-
-    }
-
-  }
-
-
-
-  async function importSde() {
-
-    setSdeBusy(true);
-
-    setSettingsError(null);
-
-    setMessage("Starting SDE import. Progress will update here while EQM keeps working...");
-
-    try {
-
-      const state = await api<SdeImportProgress>("/sde/import", { method: "POST", body: JSON.stringify({ source_path: sdePath }) });
-
-      setSdeImportState(state);
-
-      setSdeBusy(Boolean(state.running));
-
-      setMessage("SDE import started. You can leave this page open and watch the progress badge.");
-
-    } catch (err) {
-
-      setMessage(null);
-
-      setSdeBusy(false);
-
-      setSettingsError(err instanceof Error ? err.message : "SDE import failed");
-
-    }
-
-  }
-
-
-
-  useEffect(() => {
-
-    void loadCharacters().catch((err) => setSettingsError(err instanceof Error ? err.message : "Unable to load settings"));
-
-    void loadSdeStatus().catch((err) => currentUser.role === "admin" && setSettingsError(err instanceof Error ? err.message : "Unable to load SDE status"));
-
-    void loadSdeImportState().catch(() => undefined);
-
-  }, []);
-
-
-
-  useEffect(() => {
-
-    if (currentUser.role !== "admin") return;
-
-    const timer = window.setInterval(() => { void loadSdeImportState().catch(() => undefined); }, sdeBusy ? 3000 : 15000);
-
-    return () => window.clearInterval(timer);
-
-  }, [currentUser.role, sdeBusy]);
-
-  const manageable = characters.filter((character) => character.can_manage || currentUser.role === "admin");
-
-  const sdeProgressStats = sdeImportState?.stats;
-
-  const sdeProgressLabel = sdeImportState?.running ? `${sdeImportState.stage ?? "working"}${sdeProgressStats?.type_dogma_attributes ? ` · ${sdeProgressStats.type_dogma_attributes.toLocaleString()} type dogma attrs` : ""}${sdeProgressStats?.type_dogma_effects ? ` · ${sdeProgressStats.type_dogma_effects.toLocaleString()} type effects` : ""}${sdeProgressStats?.blueprint_activities ? ` · ${sdeProgressStats.blueprint_activities.toLocaleString()} recipes` : ""}` : sdeImportState?.status === "success" ? `Last import complete${sdeImportState.completed_at ? ` at ${new Date(sdeImportState.completed_at).toLocaleString()}` : ""}` : sdeImportState?.status === "failed" ? sdeImportState.error ?? "Last import failed" : "No SDE import running";  return <div className="stacked"><section className="panel stacked"><h3>Character Privacy</h3>{message && <div className="notice inline">{message}</div>}{settingsError && <div className="mini-alert">{settingsError}</div>}{currentUser.role === "admin" && <div className="privacy-placard"><label className="check"><input type="checkbox" checked={suppressPeekNotifications} onChange={(event) => void patchNotificationSuppression(event.target.checked)} /> Suppress sync peek notifications for development or mandatory-public ESI corporations</label></div>}<div className="card-list">{manageable.map((character) => <article key={character.id}><strong>{character.name}</strong><span>{character.corporation_name ?? "Unknown corporation"}{character.owner_display_name ? ` · ${character.owner_display_name}` : ""}</span><label className="check"><input type="checkbox" checked={Boolean(character.public_assets_visible)} onChange={(event) => void patchCharacter(character, { public_assets_visible: event.target.checked }, `${character.name} public asset visibility updated.`)} /> Public assets visible to members</label><label className="check"><input type="checkbox" checked={Boolean(character.sync_opt_out)} onChange={(event) => void patchCharacter(character, { sync_opt_out: event.target.checked }, `${character.name} sync preference updated.`)} /> Keep this character private from shared Quartermaster sync</label>{character.sync_opt_out && <div className="privacy-placard">This character does not wish to be synced. Admins can override temporarily for administrative review, but this preference remains visible.</div>}</article>)}{manageable.length === 0 && <p className="empty">No manageable characters found.</p>}</div></section>{currentUser.role === "admin" && <section className="panel stacked"><div className="section-heading"><div><h3>SDE Import</h3><p>Load EVE static data from a mounted SDE folder or zip inside the backend container.</p></div><button type="button" onClick={() => { void loadSdeStatus(); void loadSdeImportState(); }}>Refresh</button></div><div className="status-grid compact"><Metric icon={<Database size={18} />} label="Categories" value={sdeStatus?.categories ?? 0} /><Metric icon={<Boxes size={18} />} label="Groups" value={sdeStatus?.groups ?? 0} /><Metric icon={<PackagePlus size={18} />} label="Types" value={sdeStatus?.types ?? 0} /><Metric icon={<MapIcon size={18} />} label="Systems" value={sdeStatus?.systems ?? 0} /><Metric icon={<MapIcon size={18} />} label="Stargates" value={sdeStatus?.stargates ?? 0} /><Metric icon={<Factory size={18} />} label="Recipes" value={sdeStatus?.blueprint_activities ?? 0} /><Metric icon={<ScrollText size={18} />} label="Inputs" value={sdeStatus?.activity_inputs ?? 0} /><Metric icon={<KeyRound size={18} />} label="Dogma attrs" value={sdeStatus?.dogma_attributes ?? sdeProgressStats?.dogma_attributes ?? 0} /><Metric icon={<KeyRound size={18} />} label="Dogma effects" value={sdeStatus?.dogma_effects ?? sdeProgressStats?.dogma_effects ?? 0} /><Metric icon={<KeyRound size={18} />} label="Type dogma" value={sdeStatus?.type_dogma_attributes ?? sdeProgressStats?.type_dogma_attributes ?? 0} /><Metric icon={<KeyRound size={18} />} label="Type effects" value={sdeStatus?.type_dogma_effects ?? sdeProgressStats?.type_dogma_effects ?? 0} /></div>{sdeImportState && <div className={sdeImportState.status === "failed" ? "mini-alert" : "notice inline"}>{sdeProgressLabel}</div>}<label>SDE path<input value={sdePath} onChange={(event) => setSdePath(event.target.value)} placeholder="/sde or /sde/sde.zip" /></label><button type="button" disabled={sdeBusy} onClick={() => void importSde()}><RefreshCw size={18} /> {sdeBusy ? "Importing" : "Import SDE"}</button></section>}{currentUser.role === "admin" && <SectionModuleSettings />}{currentUser.role === "admin" && <PermissionsAdmin />}</div>;
-
-}
-
-function SectionModuleSettings() {
-
-  const [settings, setSettings] = useState<SectionSettings | null>(null);
-
-  const [message, setMessage] = useState<string | null>(null);
-
-  const [error, setError] = useState<string | null>(null);
-
-  async function loadSettings() {
-
-    setSettings(await api<SectionSettings>("/auth/sections/enabled"));
-
-  }
-
-  async function toggleSection(sectionKey: string) {
-
-    if (!settings) return;
-
-    const disabled = new Set(settings.disabled_sections);
-
-    if (disabled.has(sectionKey)) disabled.delete(sectionKey); else disabled.add(sectionKey);
-
-    setError(null);
-
-    try {
-
-      const updated = await api<SectionSettings>("/auth/sections/enabled", { method: "PATCH", body: JSON.stringify({ disabled_sections: Array.from(disabled) }) });
-
-      setSettings(updated);
-
-      const label = settings.sections.find((section) => section.key === sectionKey)?.label ?? sectionKey;
-
-      setMessage(`${label} ${disabled.has(sectionKey) ? "disabled" : "enabled"}. Refresh signed-in sessions to apply navigation changes.`);
-
-    } catch (err) {
-
-      setError(err instanceof Error ? err.message : "Unable to update section switches.");
-
-    }
-
-  }
-
-  useEffect(() => {
-
-    void loadSettings().catch((err) => setError(err instanceof Error ? err.message : "Unable to load section switches."));
-
-  }, []);
-
-  const protectedSections = new Set(["overview", "settings", "profile"]);
-
-  return <section className="panel stacked"><div className="section-heading"><div><h3>Section Switches</h3><p>Globally enable or disable major EQM modules without changing role permission rules.</p></div><button type="button" onClick={() => void loadSettings()}>Refresh</button></div>{message && <div className="notice inline">{message}</div>}{error && <div className="mini-alert">{error}</div>}<div className="section-toggle-grid">{settings?.sections.map((section) => { const disabled = settings.disabled_sections.includes(section.key); const locked = protectedSections.has(section.key); return <label key={section.key} className={`section-toggle-card ${disabled ? "disabled" : "enabled"}`}><input type="checkbox" checked={!disabled} disabled={locked} onChange={() => void toggleSection(section.key)} /><strong>{section.label}</strong><span>{locked ? "Always available" : disabled ? "Hidden globally" : "Enabled"}</span></label>; })}{!settings && <p className="empty">Loading section switches...</p>}</div></section>;
-
-}
-function PermissionsAdmin() {
-
-  const [matrix, setMatrix] = useState<PermissionMatrix | null>(null);
-
-  const [users, setUsers] = useState<UserAccount[]>([]);
-
-  const [message, setMessage] = useState<string | null>(null);
-
-  const [error, setError] = useState<string | null>(null);
-
-  const roles = matrix?.roles.filter((role) => role !== "admin") ?? [];
-
-
-
-  async function loadPermissions() {
-
-    const [permissionPayload, userRows] = await Promise.all([
-
-      api<PermissionMatrix>("/auth/permissions"),
-
-      api<UserAccount[]>("/auth/users"),
-
-    ]);
-
-    setMatrix(permissionPayload);
-
-    setUsers(userRows);
-
-  }
-
-
-
-  function roleValue(role: string, section: string) {
-
-    return matrix?.role_permissions.find((row) => row.role === role && row.section === section)?.can_view;
-
-  }
-
-
-
-  function userValue(userId: number, section: string) {
-
-    return matrix?.user_permissions.find((row) => row.user_id === userId && row.section === section)?.can_view;
-
-  }
-
-
-
-
-
-  async function createRole(form: FormData) {
-
-    setError(null);
-
-    try {
-
-      const role = await api<RoleDefinition>("/auth/roles", { method: "POST", body: JSON.stringify({ display_name: form.get("display_name"), name: form.get("name"), base_role: form.get("base_role") }) });
-
-      setMessage(`${role.display_name} role created.`);
-
-      await loadPermissions();
-
-    } catch (err) {
-
-      setError(err instanceof Error ? err.message : "Unable to create role");
-
-    }
-
-  }
-
-  async function patchRole(role: string, section: string, value: string) {
-
-    setError(null);
-
-    await api(`/auth/permissions/roles/${role}`, { method: "PATCH", body: JSON.stringify({ section, can_view: value === "default" ? null : value === "allow" }) });
-
-    setMessage(`${role} ${section} permission updated.`);
-
-    await loadPermissions();
-
-  }
-
-
-
-  async function patchUser(userId: number, section: string, value: string) {
-
-    setError(null);
-
-    await api(`/auth/permissions/users/${userId}`, { method: "PATCH", body: JSON.stringify({ section, can_view: value === "inherit" ? null : value === "allow" }) });
-
-    setMessage(`User permission updated.`);
-
-    await loadPermissions();
-
-  }
-
-
-
-  useEffect(() => { void loadPermissions().catch((err) => setError(err instanceof Error ? err.message : "Unable to load permissions")); }, []);
-
-
-
-  return <section className="panel stacked"><div className="section-heading"><div><h3>Section Permissions</h3><p>Choose what roles can see, then add individual account exceptions where needed.</p></div><button type="button" onClick={() => void loadPermissions()}>Refresh</button></div>{message && <div className="notice inline">{message}</div>}{error && <div className="mini-alert">{error}</div>}<h4>Create role</h4><ManagedForm submitLabel="Create role" onSubmit={createRole}><label>Display name<input name="display_name" placeholder="Logistics" required /></label><label>Machine name<input name="name" placeholder="logistics" /></label><label>Base role<select name="base_role" defaultValue="member"><option value="view_only">View Only</option><option value="member">Member</option><option value="officer">Officer</option><option value="director">Director</option></select></label></ManagedForm><h4>Role defaults</h4><div className="permission-grid"><div className="permission-header">Section</div>{roles.map((role) => <div key={role} className="permission-header">{role}</div>)}{matrix?.sections.map((section) => <React.Fragment key={section.key}><div><strong>{section.label}</strong><span>Default: {section.default_roles.join(", ")}</span></div>{roles.map((role) => { const value = roleValue(role, section.key); return <label key={`${role}-${section.key}`}><select value={value === undefined ? "default" : value ? "allow" : "deny"} onChange={(event) => void patchRole(role, section.key, event.target.value)}><option value="default">Default</option><option value="allow">Allow</option><option value="deny">Deny</option></select></label>; })}</React.Fragment>)}</div><h4>User overrides</h4><div className="card-list permission-user-list">{users.filter((user) => user.role !== "admin").map((user) => <article key={user.id}><strong>{accountLabel(user)} <span className="muted">({user.role})</span></strong><div className="permission-user-grid">{matrix?.sections.map((section) => { const value = userValue(user.id, section.key); return <label key={`${user.id}-${section.key}`}>{section.label}<select value={value === undefined ? "inherit" : value ? "allow" : "deny"} onChange={(event) => void patchUser(user.id, section.key, event.target.value)}><option value="inherit">Inherit</option><option value="allow">Allow</option><option value="deny">Deny</option></select></label>; })}</div></article>)}</div></section>;
-
-}
-
-function CharacterSkills({ currentUser }: { currentUser: UserAccount }) {
-
-  const [profiles, setProfiles] = useState<CharacterSkillProfile[]>([]);
-
-  const [expandedProfileIds, setExpandedProfileIds] = useState<Set<number>>(new Set());
-
-  const [skillError, setSkillError] = useState<string | null>(null);
-
-  const [message, setMessage] = useState<string | null>(null);
-
-  const [busyTokenId, setBusyTokenId] = useState<number | null>(null);
-
-  const [syncAllJob, setSyncAllJob] = useState<SkillSyncAllJob | null>(null);
-
-  const syncAllPollingRef = useRef(false);
-
-  const baseSkillSp = [0, 250, 1415, 8000, 45255, 256000];
-
-  const syncAllActive = syncAllJob?.status === "queued" || syncAllJob?.status === "running";
-
-  const syncAllPercent = syncAllJob?.total_count ? Math.round((syncAllJob.processed_count / syncAllJob.total_count) * 100) : 0;
-
-  const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
-
-
-
-  async function loadSkills() {
-
-    setProfiles(await api<CharacterSkillProfile[]>("/esi/character-skills"));
-
-  }
-
-
-
-  async function syncSkills(profile: CharacterSkillProfile) {
-
-    if (!profile.can_sync || syncAllActive) return;
-
-    if (profile.sync_opt_out && profile.owner_user_id !== currentUser.id && currentUser.role === "admin" && !window.confirm(`${profile.character_name} has opted out of normal sync. Temporarily override as admin?`)) return;
-
-    setBusyTokenId(profile.token_id);
-
-    setSkillError(null);
-
-    setMessage(`Syncing skills for ${profile.character_name}...`);
-
-    try {
-
-      const result = await api<{ character_name: string; skill_count: number; queue_count: number; total_skill_points: number }>(`/esi/sync/character-skills/${profile.token_id}`, { method: "POST", body: "{}" });
-
-      setMessage(`Synced ${result.skill_count.toLocaleString()} skills and ${result.queue_count.toLocaleString()} queued skills for ${result.character_name}.`);
-
-      await loadSkills();
-
-    } catch (err) {
-
-      setMessage(null);
-
-      setSkillError(err instanceof Error ? err.message : "Skill sync failed");
-
-    } finally {
-
-      setBusyTokenId(null);
-
-    }
-
-  }
-
-
-
-  async function syncAllSkills() {
-
-    if (syncAllPollingRef.current) return;
-
-    syncAllPollingRef.current = true;
-
-    setSkillError(null);
-
-    setMessage("Queued skill sync for every eligible character...");
-
-    try {
-
-      let job = await api<SkillSyncAllJob>("/esi/sync/character-skills/all", { method: "POST", body: "{}" });
-
-      setSyncAllJob(job);
-
-      const startedAt = Date.now();
-
-      while (job.status === "queued" || job.status === "running") {
-
-        if (Date.now() - startedAt > 10 * 60 * 1000) {
-
-          setMessage(null);
-
-          setSkillError("Skill sync is still running after 10 minutes, so polling was stopped to quiet the logs. Refresh Skills to check the latest status, or restart the backend worker if the count is not moving.");
-
-          setSyncAllJob((current) => current ? { ...current, status: "failed", errors: ["Polling stopped after 10 minutes while the backend job was still running.", ...current.errors] } : current);
-
-          return;
-
-        }
-
-        await wait(2000);
-
-        job = await api<SkillSyncAllJob>(`/esi/sync/character-skills/all/${job.job_id}`);
-
-        setSyncAllJob(job);
-
-      }
-
-      await loadSkills();
-
-      if (job.status === "complete") {
-
-        setMessage(`Synced ${job.success_count.toLocaleString()} of ${job.total_count.toLocaleString()} eligible characters. Skipped ${job.skipped_count.toLocaleString()} opted-out, duplicate, hidden, or missing-scope character${job.skipped_count === 1 ? "" : "s"}.`);
-
-      } else {
-
-        setMessage(null);
-
-        setSkillError(job.errors[0] ?? "One or more character skill syncs failed.");
-
-      }
-
-    } catch (err) {
-
-      setMessage(null);
-
-      setSkillError(err instanceof Error ? err.message : "Sync all skills failed");
-
-    } finally {
-
-      syncAllPollingRef.current = false;
-
-    }
-
-  }
-
-
-  function toggleProfile(tokenId: number) {
-
-    setExpandedProfileIds((current) => {
-
-      const next = new Set(current);
-
-      if (next.has(tokenId)) next.delete(tokenId);
-
-      else next.add(tokenId);
-
-      return next;
-
-    });
-
-  }
-
-
-
-  function groupedSkills(profile: CharacterSkillProfile) {
-
-    const groups = new Map<string, SkillRecord[]>();
-
-    for (const skill of profile.skills) {
-
-      const key = skill.skill_group_name || skill.skill_category_name || "Uncategorized";
-
-      groups.set(key, [...(groups.get(key) ?? []), skill]);
-
-    }
-
-    return [...groups.entries()].sort(([left], [right]) => left.localeCompare(right, undefined, { numeric: true, sensitivity: "base" }));
-
-  }
-
-
-
-  function categorySkillPoints(skills: SkillRecord[]) {
-
-    return skills.reduce((total, skill) => total + skill.skillpoints_in_skill, 0);
-
-  }
-
-
-
-  function skillProgress(skill: SkillRecord) {
-
-    const currentSp = skill.skillpoints_in_skill;
-
-    const currentLevel = Math.max(0, Math.min(5, skill.trained_skill_level || skill.active_skill_level || 0));
-
-    const nextLevel = Math.min(5, currentLevel + (currentLevel < 5 ? 1 : 0));
-
-    const baseForCurrent = baseSkillSp[currentLevel] || 250;
-
-    const rankEstimate = currentLevel > 0 ? Math.max(1, Math.min(16, Math.floor(currentSp / baseForCurrent) || 1)) : 1;
-
-    const targetSp = Math.max(baseSkillSp[nextLevel] * rankEstimate, currentSp || baseSkillSp[1]);
-
-    return { targetSp, percent: Math.max(0, Math.min(100, (currentSp / targetSp) * 100)) };
-
-  }
-
-
-
-  useEffect(() => { void loadSkills().catch((err) => setSkillError(err instanceof Error ? err.message : "Unable to load character skills")); }, []);
-
-
-
-  return <section className="panel stacked"><div className="section-heading"><h3>Character Skills</h3><div className="button-row compact"><button type="button" onClick={() => setExpandedProfileIds(new Set(profiles.map((profile) => profile.token_id)))}>Expand all</button><button type="button" onClick={() => setExpandedProfileIds(new Set())}>Collapse all</button><button type="button" disabled={syncAllActive || busyTokenId !== null || profiles.length === 0} onClick={() => void syncAllSkills()}>{syncAllActive ? "Syncing all" : "Sync all eligible"}</button><button type="button" disabled={syncAllActive} onClick={() => void loadSkills()}>Refresh</button></div></div>{syncAllJob && <div className={`queue-badge queue-${syncAllJob.status}`}><strong>{syncAllJob.processed_count.toLocaleString()} / {syncAllJob.total_count.toLocaleString()}</strong><span>{syncAllJob.status === "complete" ? "Skill sync complete" : syncAllJob.status === "failed" ? "Skill sync needs review" : syncAllJob.current_character_name ? `Syncing ${syncAllJob.current_character_name}` : "Skill sync queued"} · {syncAllJob.success_count.toLocaleString()} synced · {syncAllJob.failed_count.toLocaleString()} failed · {syncAllJob.skipped_count.toLocaleString()} skipped</span><i style={{ width: `${syncAllPercent}%` }} /></div>}{message && <div className="notice inline">{message}</div>}{skillError && <div className="mini-alert">{skillError}</div>}<div className="card-list skill-profiles">{profiles.map((profile) => { const expanded = expandedProfileIds.has(profile.token_id); return <article key={profile.token_id} className="skill-profile-card"><div className="section-heading compact skill-profile-heading"><button type="button" className="skill-profile-toggle" onClick={() => toggleProfile(profile.token_id)} aria-expanded={expanded}>{expanded ? "Collapse" : "Expand"}</button><div><strong><CharacterHoverName characterId={profile.character_id} name={profile.character_name} /><PilotSecurityStatus securityStatus={profile.security_status} compact /></strong><span>Character ID {profile.character_id}</span></div><div className="button-row compact">{profile.can_sync && <button type="button" disabled={syncAllActive || profile.missing_skill_scopes.length > 0 || busyTokenId === profile.token_id} onClick={() => void syncSkills(profile)}>{busyTokenId === profile.token_id ? "Syncing" : profile.sync_opt_out && profile.owner_user_id !== currentUser.id && currentUser.role === "admin" ? "Admin override sync" : "Sync skills"}</button>}</div></div>{profile.sync_opt_out && <div className="privacy-placard">This character does not wish to be synced.{profile.admin_override_visible ? " Admin view is active for administrative review." : " This data stays private to the character owner unless an admin opens an override view."}</div>}{profile.can_sync && profile.missing_skill_scopes.length > 0 && <span className="scope-warn">Missing skill scopes: {profile.missing_skill_scopes.join(", ")}. Re-link through ESI Sync.</span>}<div className="status-grid compact"><Metric icon={<GraduationCap size={18} />} label="Total SP" value={profile.total_skill_points ?? 0} /><Metric icon={<Plus size={18} />} label="Unallocated SP" value={profile.unallocated_skill_points ?? 0} /><Metric icon={<ScrollText size={18} />} label="Skills" value={profile.skill_count} /></div><span>Skills synced {profile.skills_synced_at ? new Date(profile.skills_synced_at).toLocaleString() : "never"} · Queue synced {profile.skill_queue_synced_at ? new Date(profile.skill_queue_synced_at).toLocaleString() : "never"}</span>{expanded && <div className="two-column skill-columns"><section><h4>Trained Skills</h4><div className="skill-group-list">{groupedSkills(profile).map(([groupName, skills]) => <details key={groupName} className="skill-group" open><summary>{groupName}<span>{skills.length.toLocaleString()} skills · {categorySkillPoints(skills).toLocaleString()} SP</span></summary><div className="mini-list">{skills.map((skill) => { const progress = skillProgress(skill); return <div key={skill.id} className="skill-row"><strong>{skill.skill_name}</strong><span>Level {skill.trained_skill_level} · Active {skill.active_skill_level}</span><div className="skill-progress-line"><span>{skill.skillpoints_in_skill.toLocaleString()} / {progress.targetSp.toLocaleString()} SP</span><span>{Math.round(progress.percent)}%</span></div><div className="skill-progress-bar" title="Progress target is estimated until SDE dogma skill ranks are imported."><i style={{ width: `${progress.percent}%` }} /></div></div>; })}</div></details>)}{profile.skills.length === 0 && <p className="empty">No trained skills imported yet.</p>}</div></section><section><h4>Current Queue</h4><div className="mini-list">{profile.queue.map((entry) => <div key={entry.id}><strong>{entry.queue_position + 1}. {entry.skill_name}</strong><span>To level {entry.finished_level}{entry.finish_date ? ` · finishes ${new Date(entry.finish_date).toLocaleString()}` : ""}</span></div>)}{profile.queue.length === 0 && <p className="empty">No active queue imported.</p>}</div></section></div>}</article>; })}{profiles.length === 0 && <p className="empty">No linked characters visible. Link a character through ESI Sync first.</p>}</div></section>;
-
-}
-function Esi({ load, currentUser }: { load: () => Promise<void>; currentUser: UserAccount }) {
-
-  const [status, setStatus] = useState<string>("Not checked");
-
-  const [authInfo, setAuthInfo] = useState<EsiAuthInfo | null>(null);
-
-  const [standingAuthInfo, setStandingAuthInfo] = useState<EsiAuthInfo | null>(null);
-
-  const [linked, setLinked] = useState<LinkedCharacter[]>([]);
-
-  const [resolveResult, setResolveResult] = useState<string>("");
-
-  const [message, setMessage] = useState<string | null>(null);
-
-  const [sourceTokenId, setSourceTokenId] = useState<number | "">("");
-
-  const [targetTokenIds, setTargetTokenIds] = useState<number[]>([]);
-
-  const [overwriteContacts, setOverwriteContacts] = useState(false);
-
-  const [contactPreview, setContactPreview] = useState<ContactSyncPreview | null>(null);
-
-  const [contactBusy, setContactBusy] = useState(false);
-
-
-
-  async function checkStatus() {
-
-    const payload = await api<{ players?: number; server_version?: string }>("/esi/status");
-
-    setStatus(`${payload.players?.toLocaleString() ?? "Unknown"} pilots online · ${payload.server_version ?? "version unknown"}`);
-
-  }
-
-
-
-  async function loadEsiState() {
-
-    const [auth, standingAuth, linkedCharacters] = await Promise.all([
-
-      api<EsiAuthInfo>("/esi/auth-url"),
-
-      api<EsiAuthInfo>("/esi/auth-url/standing-sync"),
-
-      api<LinkedCharacter[]>("/esi/linked-characters"),
-
-    ]);
-
-    setAuthInfo(auth);
-
-    setStandingAuthInfo(standingAuth);
-
-    setLinked(linkedCharacters);
-
-  }
-
-
-
-  async function resolveNames(form: FormData) {
-
-    const payload = await api<Record<string, unknown>>("/esi/resolve", { method: "POST", body: JSON.stringify({ names: form.get("names") }) });
-
-    setResolveResult(JSON.stringify(payload, null, 2));
-
-  }
-
-
-
-  async function importPublic(form: FormData) {
-
-    const kind = form.get("kind");
-
-    const id = form.get("id");
-
-    await api(`/esi/import/${kind}/${id}`, { method: "POST", body: "{}" });
-
-    setMessage(`${kind} ${id} imported from ESI.`);
-
-    await load();
-
-  }
-
-
-
-  async function syncAssets(tokenId: number, characterName: string) {
-
-    setMessage(`Syncing assets for ${characterName}...`);
-
-    const result = await api<{ asset_rows: number; character_name: string }>(`/esi/sync/character-assets/${tokenId}`, { method: "POST", body: "{}" });
-
-    setMessage(`Synced ${result.asset_rows.toLocaleString()} asset rows for ${result.character_name}.`);
-
-    await Promise.all([load(), loadEsiState()]);
-
-  }
-
-
-
-  async function unlinkCharacter(tokenId: number, characterName: string) {
-
-    if (!window.confirm(`Unlink ${characterName}? You can re-link through EVE SSO to refresh scopes.`)) return;
-
-    const result = await api<{ character_name: string }>(`/esi/linked-characters/${tokenId}`, { method: "DELETE" });
-
-    setMessage(`${result.character_name} unlinked. Re-authorize to pull fresh ESI scopes.`);
-
-    setContactPreview(null);
-
-    setTargetTokenIds((current) => current.filter((id) => id !== tokenId));
-
-    setSourceTokenId((current) => current === tokenId ? "" : current);
-
-    await loadEsiState();
-
-  }
-
-
-
-  function toggleTarget(tokenId: number) {
-
-    setContactPreview(null);
-
-    setTargetTokenIds((current) => current.includes(tokenId) ? current.filter((id) => id !== tokenId) : [...current, tokenId]);
-
-  }
-
-
-
-  async function previewContactSync() {
-
-    if (sourceTokenId === "") return;
-
-    setContactBusy(true);
-
-    setMessage(null);
-
-    try {
-
-      const preview = await api<ContactSyncPreview>("/esi/standings/preview", {
-
-        method: "POST",
-
-        body: JSON.stringify({ source_token_id: sourceTokenId, target_token_ids: targetTokenIds, overwrite_existing: overwriteContacts }),
-
-      });
-
-      setContactPreview(preview);
-
-      setMessage(`Preview ready: ${preview.totals.create.toLocaleString()} create, ${preview.totals.update.toLocaleString()} update.`);
-
-    } catch (err) {
-
-      setMessage(err instanceof Error ? err.message : "Standing sync preview failed.");
-
-    } finally {
-
-      setContactBusy(false);
-
-    }
-
-  }
-
-
-
-  async function applyContactSync() {
-
-    if (sourceTokenId === "") return;
-
-    setContactBusy(true);
-
-    try {
-
-      const result = await api<ContactApplyResult>("/esi/standings/apply", {
-
-        method: "POST",
-
-        body: JSON.stringify({ source_token_id: sourceTokenId, target_token_ids: targetTokenIds, overwrite_existing: overwriteContacts }),
-
-      });
-
-      setMessage(`Copied contacts from ${result.source_character_name}: ${result.created.toLocaleString()} created, ${result.updated.toLocaleString()} updated.`);
-
-      setContactPreview(null);
-
-      await loadEsiState();
-
-    } catch (err) {
-
-      setMessage(err instanceof Error ? err.message : "Standing sync failed.");
-
-    } finally {
-
-      setContactBusy(false);
-
-    }
-
-  }
-
-
-
-  useEffect(() => { void loadEsiState(); }, []);
-
-
-
-  useEffect(() => {
-
-    if (linked.length === 0) return;
-
-    setSourceTokenId((current) => current === "" ? linked[0].token_id : current);
-
-  }, [linked]);
-
-
-
-  const targetOptions = linked.filter((character) => character.token_id !== sourceTokenId);
-
-
-
-  function scopeStatus(character: LinkedCharacter, kind: "public" | "standing") {
-
-    const missing = kind === "public" ? character.missing_public_scopes : character.missing_standing_scopes;
-
-    return missing.length === 0 ? <span className="scope-ok">{kind === "public" ? "Core scopes current" : "Contact scopes current"}</span> : <span className="scope-warn">Missing {kind === "public" ? "core" : "contact"} scopes: {missing.join(", ")}</span>;
-
-  }
-
-
-
-  return (
-
-    <div className="two-column">
-
-      <section className="panel stacked">
-
-        <h3>Linked Characters</h3>
-
-        {linked.length > 0 ? <div className="card-list">{linked.map((character) => <article key={character.token_id}><strong><CharacterHoverName characterId={character.character_id} name={character.character_name} /></strong><span>Character ID {character.character_id}</span>{currentUser.role === "admin" && <span>SSO linked by {character.linked_user_display_name}</span>}<span>Last sync {character.last_sync_at ? `${new Date(character.last_sync_at).toLocaleString()} (${character.last_sync_type ?? "sync"})` : "never"}</span><span>Linked {character.linked_at ? new Date(character.linked_at).toLocaleString() : "recently"}</span>{scopeStatus(character, "public")}{scopeStatus(character, "standing")}{(character.can_sync_assets || character.can_unlink || (character.linked_user_id === currentUser.id && character.missing_standing_scopes.length > 0 && standingAuthInfo?.ready)) && <div className="card-actions">{character.can_sync_assets && <button type="button" onClick={() => void syncAssets(character.token_id, character.character_name)}>Sync assets</button>}{character.linked_user_id === currentUser.id && character.missing_standing_scopes.length > 0 && standingAuthInfo?.ready ? <a className="mini-link" href={standingAuthInfo.url}>Authorize contact sync</a> : null}{character.can_unlink && <button className="danger" type="button" onClick={() => void unlinkCharacter(character.token_id, character.character_name)}>Unlink</button>}</div>}</article>)}</div> : <p className="muted">No EVE characters linked yet.</p>}
-
-        <h3>Authenticated Sync</h3>
-
-        {authInfo?.ready ? <a className="auth-link" href={authInfo.url}>Start EVE SSO</a> : <p className="muted">{authInfo?.message ?? "Checking SSO setup..."}</p>}
-
-        <div className="scope-list">{authInfo?.required_scopes.map((scope) => <code key={scope}>{scope}</code>)}</div>
-
-      </section>
-
-
-
-      <section className="panel stacked">
-
-        <h3><UserRoundCheck size={20} /> Character Contacts Sync</h3>
-
-        {standingAuthInfo?.ready ? <a className="auth-link secondary" href={standingAuthInfo.url}>Authorize contact sync</a> : <p className="muted">{standingAuthInfo?.message ?? "Checking contact sync setup..."}</p>}
-
-        <div className="scope-list compact">{standingAuthInfo?.required_scopes.map((scope) => <code key={scope}>{scope}</code>)}</div>
-
-        <label>Copy contacts from<select value={sourceTokenId} onChange={(event) => { setSourceTokenId(Number(event.target.value)); setTargetTokenIds([]); setContactPreview(null); }}><option value="">Choose source</option>{linked.map((character) => <option key={character.token_id} value={character.token_id}>{character.character_name}</option>)}</select></label>
-
-        <div className="choice-list">
-
-          <span>Copy to</span>
-
-          {targetOptions.length > 0 ? targetOptions.map((character) => <label className="check" key={character.token_id}><input type="checkbox" checked={targetTokenIds.includes(character.token_id)} onChange={() => toggleTarget(character.token_id)} /> {character.character_name}</label>) : <p className="muted">Link at least one more character before syncing contacts.</p>}
-
-        </div>
-
-        <label className="check"><input type="checkbox" checked={overwriteContacts} onChange={(event) => { setOverwriteContacts(event.target.checked); setContactPreview(null); }} /> Update existing target contacts when contact standings differ</label>
-
-        <div className="button-row"><button type="button" disabled={sourceTokenId === "" || targetTokenIds.length === 0 || contactBusy} onClick={() => void previewContactSync()}>Preview</button><button type="button" disabled={!contactPreview || contactBusy} onClick={() => void applyContactSync()}>Apply sync</button></div>
-
-        {contactPreview && <ContactPreview preview={contactPreview} />}
-
-      </section>
-
-
-
-      <section className="panel stacked">
-
-        <h3>Public ESI</h3>
-
-        <div className="esi-status-row"><button type="button" onClick={() => void checkStatus()}>Check server status</button><span>{status}</span></div>
-
-        {message && <div className="notice inline">{message}</div>}
-
-        <h3>Resolve Names</h3>
-
-        <ManagedForm onSubmit={resolveNames} submitLabel="Resolve"><label>Names<textarea name="names" placeholder="Jita&#10;The Scare Bears&#10;Steihl Lianul" required /></label></ManagedForm>
-
-        {resolveResult && <pre className="json-output">{resolveResult}</pre>}
-
-        <h3>Import Public ID</h3>
-
-        <ManagedForm onSubmit={importPublic} submitLabel="Import"><label>Kind<select name="kind"><option value="type">Item type</option><option value="character">Character</option><option value="corporation">Corporation</option><option value="alliance">Alliance</option><option value="system">System</option><option value="station">Station</option></select></label><label>ESI ID<input name="id" type="number" required placeholder="34" /></label></ManagedForm>
-
-      </section>
-
-    </div>
-
-  );
-
-}
-
-
-
-function ContactPreview({ preview }: { preview: ContactSyncPreview }) {
-
-  return <div className="contact-preview"><strong>{preview.source_character_name}: {preview.source_contact_count.toLocaleString()} source contacts</strong><div className="status-grid compact"><Metric icon={<Plus size={18} />} label="Creates" value={preview.totals.create} /><Metric icon={<RefreshCw size={18} />} label="Updates" value={preview.totals.update} /><Metric icon={<UserRoundCheck size={18} />} label="Skipped" value={preview.totals.skip} /></div>{preview.targets.map((target) => <article key={target.token_id}><strong>{target.character_name}</strong><span>{target.create_count.toLocaleString()} create · {target.update_count.toLocaleString()} update · {target.skip_count.toLocaleString()} skip</span>{[...target.create_sample, ...target.update_sample].slice(0, 8).map((contact) => <code key={`${target.token_id}-${contact.contact_id}`}>{contact.name}: {contact.standing}</code>)}</article>)}</div>;
-
-}
-
 function Metric({ icon, label, value, delta }: { icon: React.ReactNode; label: string; value: string | number; delta?: string }) {
 
   const isEmptyDelta = delta?.startsWith("No ");
@@ -3587,6 +1023,10 @@ function AssetTable({ assets, seed, onOpenFittings, onOpenMarket }: { assets: As
   const [copyNotice, setCopyNotice] = useState<string | null>(null);
 
   const [ownerKindFilter, setOwnerKindFilter] = useState<OwnerKindFilter | "">("");
+
+  const [categoryFilter, setCategoryFilter] = useState<InventoryFamilyFilter>("all");
+
+  const [subtypeFilter, setSubtypeFilter] = useState<string>("");
 
   const [contextTypeId, setContextTypeId] = useState<number | null>(null);
 
@@ -3725,6 +1165,12 @@ function AssetTable({ assets, seed, onOpenFittings, onOpenMarket }: { assets: As
 
     if (ownerKindFilter && asset.owner_kind !== ownerKindFilter) return false;
 
+    const capitalRelated = looksCapitalRelated(asset.type_group_name, asset.type_category_name, asset.type_name);
+
+    if (!matchesInventoryFamily(categoryFilter, assetFamily(asset), capitalRelated)) return false;
+
+    if (subtypeFilter && assetSubtype(asset) !== subtypeFilter) return false;
+
     if (!filter) return true;
 
     const value = filterValue(asset, filter.key);
@@ -3757,7 +1203,7 @@ function AssetTable({ assets, seed, onOpenFittings, onOpenMarket }: { assets: As
 
     });
 
-  }, [assets, filter, ownerKindFilter, sortKey, sortDirection]);
+  }, [assets, filter, ownerKindFilter, categoryFilter, subtypeFilter, sortKey, sortDirection]);
 
 
 
@@ -3831,6 +1277,10 @@ function AssetTable({ assets, seed, onOpenFittings, onOpenMarket }: { assets: As
 
 
 
+  const assetCategoryOptions: InventoryFamilyFilter[] = ["all", "ships", "ammunition", "drones", "rigs", "reactions", "ram", "blueprints", "capital-construction"];
+
+  const assetSubtypeOptions = useMemo(() => sortedUnique(assets.filter((asset) => matchesInventoryFamily(categoryFilter, assetFamily(asset), looksCapitalRelated(asset.type_group_name, asset.type_category_name, asset.type_name))).map(assetSubtype)), [assets, categoryFilter]);
+
   const sortMark = (key: AssetSortKey) => sortKey === key ? (sortDirection === "asc" ? "^" : "v") : "";
 
   const filterButton = (key: AssetFilterKey, value: string) => (
@@ -3866,6 +1316,10 @@ function AssetTable({ assets, seed, onOpenFittings, onOpenMarket }: { assets: As
     <div className="asset-ledger">
 
       <div className="owner-kind-chips"><button type="button" className={ownerKindFilter === "" ? "active" : ""} onClick={() => setOwnerKindFilter("")}>All owners</button><button type="button" className={ownerKindFilter === "character" ? "active" : ""} onClick={() => setOwnerKindFilter("character")}>Characters</button><button type="button" className={ownerKindFilter === "corporation" ? "active" : ""} onClick={() => setOwnerKindFilter("corporation")}>Corporations</button><button type="button" className={ownerKindFilter === "alliance" ? "active" : ""} onClick={() => setOwnerKindFilter("alliance")}>Alliances</button><button type="button" className={ownerKindFilter === "manual_group" ? "active" : ""} onClick={() => setOwnerKindFilter("manual_group")}>Manual</button></div>
+
+      <div className="blueprint-filter asset-category-filter">{assetCategoryOptions.map((family) => <button type="button" key={family} className={categoryFilter === family ? "active" : ""} onClick={() => { setCategoryFilter(family); setSubtypeFilter(""); }}>{inventoryFamilyLabels[family]}</button>)}</div>
+
+      <label className="inventory-subtype-filter">Subtype<select value={subtypeFilter} onChange={(event) => setSubtypeFilter(event.target.value)}><option value="">All subtypes</option>{assetSubtypeOptions.map((subtype) => <option key={subtype} value={subtype}>{subtype}</option>)}</select></label>
 
       <div className="ledger-filter-grid">{filterSelect("item")}{filterSelect("owner")}{filterSelect("location")}{filterSelect("flag")}</div>
 
@@ -3919,25 +1373,6 @@ function AssetTable({ assets, seed, onOpenFittings, onOpenMarket }: { assets: As
 
 }
 
-function visibleAssetQuantity(assets: Asset[], itemName?: string | null): number {
-
-  if (!itemName) return 0;
-
-  const normalized = itemName.toLowerCase();
-
-  return assets.filter((asset) => asset.type_name.toLowerCase() === normalized).reduce((total, asset) => total + asset.quantity, 0);
-
-}
-
-function visibleAssetLocations(assets: Asset[], itemName?: string | null): string[] {
-
-  if (!itemName) return [];
-
-  const normalized = itemName.toLowerCase();
-
-  return assets.filter((asset) => asset.type_name.toLowerCase() === normalized).slice(0, 3).map((asset) => `${asset.owner_name} @ ${asset.location_name ?? "Unknown"}${asset.location_flag ? ` (${asset.location_flag})` : ""} x${numberFormatter.format(asset.quantity)}`);
-
-}
 
 type ItemContextOwner = { owner_name: string; owner_kind?: string | null; quantity: number; stacks: number };
 type ItemContextLocation = { owner_name: string; location_name?: string | null; location_flag?: string | null; quantity: number; stacks: number };
@@ -4060,6 +1495,10 @@ function BlueprintList({ blueprints, assets = [], onOpenMarket, onOpenAssets }: 
 
   const [ownerFilter, setOwnerFilter] = useState<string | null>(null);
 
+  const [categoryFilter, setCategoryFilter] = useState<InventoryFamilyFilter>("all");
+
+  const [subtypeFilter, setSubtypeFilter] = useState("");
+
   const [searchText, setSearchText] = useState("");
 
   const [sortKey, setSortKey] = useState<"name" | "me" | "te">("name");
@@ -4070,19 +1509,27 @@ function BlueprintList({ blueprints, assets = [], onOpenMarket, onOpenAssets }: 
 
   const bpcCount = blueprints.filter((blueprint) => blueprint.is_copy).length;
 
-  const ownerOptions = [...new Set(blueprints.map((blueprint) => blueprint.owner_name).filter(Boolean))].sort((left, right) => left.localeCompare(right, undefined, { numeric: true, sensitivity: "base" }));
+  const ownerOptions = sortedUnique(blueprints.map((blueprint) => blueprint.owner_name));
 
   const ownerCounts = new Map<string, number>();
 
   for (const blueprint of blueprints) ownerCounts.set(blueprint.owner_name, (ownerCounts.get(blueprint.owner_name) ?? 0) + 1);
 
+  const blueprintCategoryOptions: InventoryFamilyFilter[] = ["all", "ships", "ammunition", "drones", "rigs", "reactions", "ram", "capital-construction"];
+
   const kindFilteredBlueprints = kindFilter === "all" ? blueprints : blueprints.filter((blueprint) => kindFilter === "bpc" ? blueprint.is_copy : !blueprint.is_copy);
 
   const ownerFilteredBlueprints = ownerFilter ? kindFilteredBlueprints.filter((blueprint) => blueprint.owner_name === ownerFilter) : kindFilteredBlueprints;
 
+  const categoryFilteredBlueprints = ownerFilteredBlueprints.filter((blueprint) => matchesInventoryFamily(categoryFilter, blueprintFamily(blueprint), Boolean(blueprint.capital_construction_related)));
+
+  const subtypeOptions = sortedUnique(categoryFilteredBlueprints.map(blueprintSubtype));
+
+  const subtypeFilteredBlueprints = subtypeFilter ? categoryFilteredBlueprints.filter((blueprint) => blueprintSubtype(blueprint) === subtypeFilter) : categoryFilteredBlueprints;
+
   const searchNeedle = searchText.trim().toLowerCase();
 
-  const filteredBlueprints = searchNeedle ? ownerFilteredBlueprints.filter((blueprint) => [blueprint.blueprint_type_name, blueprint.product_type_name, blueprint.owner_name, blueprint.location_name, blueprint.is_copy ? "BPC" : "BPO", `ME ${blueprint.material_efficiency}`, `TE ${blueprint.time_efficiency}`].filter(Boolean).join(" ").toLowerCase().includes(searchNeedle)) : ownerFilteredBlueprints;
+  const filteredBlueprints = searchNeedle ? subtypeFilteredBlueprints.filter((blueprint) => [blueprint.blueprint_type_name, blueprint.product_type_name, blueprint.owner_name, blueprint.location_name, blueprint.product_category_name, blueprint.product_group_name, blueprint.is_copy ? "BPC" : "BPO", `ME ${blueprint.material_efficiency}`, `TE ${blueprint.time_efficiency}`].filter(Boolean).join(" ").toLowerCase().includes(searchNeedle)) : subtypeFilteredBlueprints;
 
   const visibleBlueprints = [...filteredBlueprints].sort((left, right) => {
 
@@ -4126,10 +1573,117 @@ function BlueprintList({ blueprints, assets = [], onOpenMarket, onOpenAssets }: 
 
 
 
-  return <div className="blueprint-browser"><div className="blueprint-controls"><div className="blueprint-filter"><button type="button" className={kindFilter === "all" ? "active" : ""} onClick={() => setKindFilter("all")}>All <span>{blueprints.length.toLocaleString()}</span></button><button type="button" className={kindFilter === "bpo" ? "active" : ""} onClick={() => setKindFilter("bpo")}>BPO <span>{bpoCount.toLocaleString()}</span></button><button type="button" className={kindFilter === "bpc" ? "active" : ""} onClick={() => setKindFilter("bpc")}>BPC <span>{bpcCount.toLocaleString()}</span></button></div><div className="blueprint-filter sort"><button type="button" className={sortKey === "name" ? "active" : ""} onClick={() => chooseSort("name")}>A-Z <span>{sortLabel("name")}</span></button><button type="button" className={sortKey === "me" ? "active" : ""} onClick={() => chooseSort("me")}>ME <span>{sortLabel("me")}</span></button><button type="button" className={sortKey === "te" ? "active" : ""} onClick={() => chooseSort("te")}>TE <span>{sortLabel("te")}</span></button></div></div><label className="blueprint-search">Search blueprints<input value={searchText} onChange={(event) => setSearchText(event.target.value)} placeholder="Blueprint, product, owner, location, ME, TE" /></label><div className="blueprint-filter owners"><button type="button" className={ownerFilter === null ? "active" : ""} onClick={() => setOwnerFilter(null)}>All owners <span>{blueprints.length.toLocaleString()}</span></button>{ownerOptions.map((owner) => <button type="button" key={owner} className={ownerFilter === owner ? "active" : ""} onClick={() => setOwnerFilter(owner)}>{owner} <span>{(ownerCounts.get(owner) ?? 0).toLocaleString()}</span></button>)}</div><div className="card-list">{visibleBlueprints.map((bp) => { const ownedOutput = visibleAssetQuantity(assets, bp.product_type_name); const outputLocations = visibleAssetLocations(assets, bp.product_type_name); return <article key={bp.id}><strong>{bp.blueprint_type_name}</strong><span><button type="button" className="inline-filter" onClick={() => setOwnerFilter(bp.owner_name)}>{bp.owner_name}</button> · {bp.product_type_name ?? "No product"}</span>{bp.product_type_name && <div className="blueprint-context"><span className={ownedOutput > 0 ? "context-owned" : "context-missing"}>Owned output: {numberFormatter.format(ownedOutput)}</span>{outputLocations.length > 0 && <small>{outputLocations.join(" | ")}</small>}<div className="context-actions">{onOpenAssets && <button type="button" onClick={() => onOpenAssets(bp.product_type_name!)}>Assets</button>}{onOpenMarket && <button type="button" onClick={() => onOpenMarket(`1 ${bp.product_type_name}`)}>Price output</button>}</div></div>}<div className="badge-row"><button type="button" className="bp-badge" onClick={() => chooseSort("me")}>ME {bp.material_efficiency}</button><button type="button" className="bp-badge" onClick={() => chooseSort("te")}>TE {bp.time_efficiency}</button><button type="button" className={bp.is_copy ? "bp-badge copy" : "bp-badge original"} onClick={() => setKindFilter(bp.is_copy ? "bpc" : "bpo")}>{bp.is_copy ? "BPC" : "BPO"}</button></div></article>; })}{blueprints.length === 0 && <p className="empty">No blueprints yet.</p>}{blueprints.length > 0 && visibleBlueprints.length === 0 && <p className="empty">{searchNeedle ? `No blueprints match "${searchText.trim()}".` : "No blueprints match this filter."}</p>}</div></div>;
+  function applyBlueprintSubtypeFilter(blueprint: Blueprint) {
+
+    const family = blueprintFamily(blueprint);
+
+    setCategoryFilter(family === "other" ? "all" : family);
+
+    setSubtypeFilter(blueprintSubtype(blueprint) ?? "");
+
+  }
+
+
+  return <div className="blueprint-browser">
+    <div className="blueprint-controls">
+      <div className="blueprint-filter">
+        <button type="button" className={kindFilter === "all" ? "active" : ""} onClick={() => setKindFilter("all")}>All <span>{blueprints.length.toLocaleString()}</span></button>
+        <button type="button" className={kindFilter === "bpo" ? "active" : ""} onClick={() => setKindFilter("bpo")}>BPO <span>{bpoCount.toLocaleString()}</span></button>
+        <button type="button" className={kindFilter === "bpc" ? "active" : ""} onClick={() => setKindFilter("bpc")}>BPC <span>{bpcCount.toLocaleString()}</span></button>
+      </div>
+      <div className="blueprint-filter sort">
+        <button type="button" className={sortKey === "name" ? "active" : ""} onClick={() => chooseSort("name")}>A-Z <span>{sortLabel("name")}</span></button>
+        <button type="button" className={sortKey === "me" ? "active" : ""} onClick={() => chooseSort("me")}>ME <span>{sortLabel("me")}</span></button>
+        <button type="button" className={sortKey === "te" ? "active" : ""} onClick={() => chooseSort("te")}>TE <span>{sortLabel("te")}</span></button>
+      </div>
+    </div>
+    <div className="blueprint-filter family-filter">
+      {blueprintCategoryOptions.map((family) => <button type="button" key={family} className={categoryFilter === family ? "active" : ""} onClick={() => { setCategoryFilter(family); setSubtypeFilter(""); }}>{inventoryFamilyLabels[family]}</button>)}
+    </div>
+    <div className="blueprint-refine-row">
+      <label className="blueprint-search">Search blueprints<input value={searchText} onChange={(event) => setSearchText(event.target.value)} placeholder="Blueprint, product, owner, location, hull class, ammo, rig" /></label>
+      <label>Subtype<select value={subtypeFilter} onChange={(event) => setSubtypeFilter(event.target.value)}><option value="">All subtypes</option>{subtypeOptions.map((subtype) => <option key={subtype} value={subtype}>{subtype}</option>)}</select></label>
+    </div>
+    <div className="blueprint-filter owners"><button type="button" className={ownerFilter === null ? "active" : ""} onClick={() => setOwnerFilter(null)}>All owners <span>{blueprints.length.toLocaleString()}</span></button>{ownerOptions.map((owner) => <button type="button" key={owner} className={ownerFilter === owner ? "active" : ""} onClick={() => setOwnerFilter(owner)}>{owner} <span>{(ownerCounts.get(owner) ?? 0).toLocaleString()}</span></button>)}</div>
+    <div className="card-list">{visibleBlueprints.map((bp) => { const ownedOutput = visibleAssetQuantity(assets, bp.product_type_name); const outputLocations = visibleAssetLocations(assets, bp.product_type_name); return <article key={bp.id}><strong>{bp.blueprint_type_name}</strong><span><button type="button" className="inline-filter" onClick={() => setOwnerFilter(bp.owner_name)}>{bp.owner_name}</button> · {bp.product_type_name ?? "No product"}</span>{bp.product_group_name && <small>{bp.product_category_name ? `${bp.product_category_name} / ` : ""}{bp.product_group_name}</small>}{bp.product_type_name && <div className="blueprint-context"><span className={ownedOutput > 0 ? "context-owned" : "context-missing"}>Owned output: {numberFormatter.format(ownedOutput)}</span>{outputLocations.length > 0 && <small>{outputLocations.join(" | ")}</small>}<div className="context-actions">{onOpenAssets && <button type="button" onClick={() => onOpenAssets(bp.product_type_name!)}>Assets</button>}{onOpenMarket && <button type="button" onClick={() => onOpenMarket(`1 ${bp.product_type_name}`)}>Price output</button>}</div></div>}<div className="badge-row"><button type="button" className="bp-badge" onClick={() => chooseSort("me")}>ME {bp.material_efficiency}</button><button type="button" className="bp-badge" onClick={() => chooseSort("te")}>TE {bp.time_efficiency}</button><button type="button" className={bp.is_copy ? "bp-badge copy" : "bp-badge original"} onClick={() => setKindFilter(bp.is_copy ? "bpc" : "bpo")}>{bp.is_copy ? "BPC" : "BPO"}</button>{bp.product_group_name && <button type="button" className="bp-badge" onClick={() => applyBlueprintSubtypeFilter(bp)}>{bp.product_group_name}</button>}{bp.capital_construction_related && <button type="button" className="bp-badge original" onClick={() => { setCategoryFilter("capital-construction"); setSubtypeFilter(""); }}>Capital chain</button>}</div></article>; })}{blueprints.length === 0 && <p className="empty">No blueprints yet.</p>}{blueprints.length > 0 && visibleBlueprints.length === 0 && <p className="empty">{searchNeedle ? `No blueprints match "${searchText.trim()}".` : "No blueprints match this filter."}</p>}</div>
+    <MissingBlueprintPane onOpenMarket={onOpenMarket} onOpenAssets={onOpenAssets} />
+  </div>;
 
 }
 
+
+function MissingBlueprintPane({ onOpenMarket, onOpenAssets }: { onOpenMarket?: (text: string) => void; onOpenAssets?: (itemName: string) => void }) {
+
+  const [catalog, setCatalog] = useState<MissingBlueprintCatalog | null>(null);
+
+  const [searchText, setSearchText] = useState("");
+
+  const [activeCategory, setActiveCategory] = useState<string>("all");
+
+  const [busy, setBusy] = useState(false);
+
+  const [error, setError] = useState<string | null>(null);
+
+  async function loadMissingBlueprints(query = searchText) {
+
+    setBusy(true);
+
+    setError(null);
+
+    try {
+
+      const params = query.trim() ? `?q=${encodeURIComponent(query.trim())}` : "";
+
+      const nextCatalog = await api<MissingBlueprintCatalog>(`/quartermaster/missing-blueprints${params}`);
+
+      setCatalog(nextCatalog);
+
+      if (activeCategory !== "all" && !nextCatalog.categories.some((category) => category.category_name === activeCategory)) setActiveCategory("all");
+
+    } catch (err) {
+
+      setError(err instanceof Error ? err.message : "Unable to load missing BPOs.");
+
+    } finally {
+
+      setBusy(false);
+
+    }
+
+  }
+
+
+
+  useEffect(() => {
+
+    void loadMissingBlueprints("");
+
+  }, []);
+
+
+
+  const visibleCategories = catalog ? (activeCategory === "all" ? catalog.categories : catalog.categories.filter((category) => category.category_name === activeCategory)) : [];
+
+  const marketText = visibleCategories.flatMap((category) => category.items.map((item) => `1 ${item.blueprint_type_name}`)).join("\n");
+
+  return <section className="missing-bpo-pane">
+    <div className="section-heading compact">
+      <div>
+        <h4>Missing BPOs</h4>
+        <p className="muted">{catalog ? `${catalog.total_missing.toLocaleString()} missing originals by product category · ${catalog.owned_bpos.toLocaleString()} owned originals visible` : "Loading blueprint coverage..."}</p>
+      </div>
+      <div className="button-row compact"><button type="button" disabled={busy} onClick={() => void loadMissingBlueprints()}>{busy ? "Refreshing..." : "Refresh"}</button>{onOpenMarket && marketText && <button type="button" onClick={() => onOpenMarket(marketText)}>Price visible</button>}</div>
+    </div>
+    <div className="blueprint-refine-row">
+      <label>Search missing BPOs<input value={searchText} onChange={(event) => setSearchText(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void loadMissingBlueprints(); }} placeholder="Ship, ammo, rig, component, blueprint" /></label>
+      <button type="button" disabled={busy} onClick={() => void loadMissingBlueprints()}>Search</button>
+    </div>
+    {error && <div className="mini-alert">{error}</div>}
+    {catalog && <div className="blueprint-filter owners"><button type="button" className={activeCategory === "all" ? "active" : ""} onClick={() => setActiveCategory("all")}>All categories <span>{catalog.total_missing.toLocaleString()}</span></button>{catalog.categories.map((category) => <button type="button" key={category.category_name} className={activeCategory === category.category_name ? "active" : ""} onClick={() => setActiveCategory(category.category_name)}>{category.category_name} <span>{category.total_count.toLocaleString()}</span></button>)}</div>}
+    <div className="missing-bpo-groups">{visibleCategories.map((category) => <article key={category.category_name}><div className="section-heading compact"><div><strong>{category.category_name}</strong><span>{category.total_count.toLocaleString()} missing BPO{category.total_count === 1 ? "" : "s"}</span></div></div><div className="mini-list">{category.items.map((item) => <div key={item.blueprint_type_id}><strong>{item.blueprint_type_name}</strong><span>{item.product_type_name ?? "No product"}{item.product_group_name ? ` · ${item.product_group_name}` : ""}{item.capital_construction_related ? " · Capital chain" : ""}</span><div className="context-actions">{onOpenMarket && <button type="button" onClick={() => onOpenMarket(`1 ${item.blueprint_type_name}`)}>Price BPO</button>}{onOpenAssets && item.product_type_name && <button type="button" onClick={() => onOpenAssets(item.product_type_name!)}>Assets</button>}</div></div>)}{category.items.length < category.total_count && <p className="muted">Showing {category.items.length.toLocaleString()} of {category.total_count.toLocaleString()} missing in this category. Search to narrow.</p>}</div></article>)}{catalog && catalog.total_missing === 0 && <p className="empty">No missing BPOs match this search.</p>}</div>
+  </section>;
+
+}
 
 
 function RecipeList({ activities, onSelect, onLoadMore, loadingMore, hasMore }: { activities: IndustryActivity[]; onSelect: (activity: IndustryActivity) => void; onLoadMore: () => void; loadingMore: boolean; hasMore: boolean }) {
@@ -4270,29 +1824,3 @@ function subtitleFor(tab: string) {
 
 
 createRoot(document.getElementById("root")!).render(<App />);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -341,3 +341,68 @@
   border-color: rgba(255, 111, 111, 0.68);
   color: #ffb0b0;
 }
+.roster-corp,.roster-character{position:relative;overflow:visible}.roster-corp{z-index:1}.roster-corp:has(.character-hover-wrap:hover),.roster-corp:has(.character-hover-wrap:focus-within){z-index:180}.roster-character{z-index:1}.roster-character:hover,.roster-character:focus-within{z-index:220}.roster-character .character-hover-wrap{z-index:230}.roster-character .character-hover-card{z-index:240}.blueprint-refine-row{display:grid;grid-template-columns:minmax(220px,1fr) minmax(180px,260px);gap:10px;align-items:end}.inventory-subtype-filter{max-width:320px}.asset-category-filter{margin-top:2px}@media (width<=760px){.blueprint-refine-row{grid-template-columns:1fr}.inventory-subtype-filter{max-width:none}}
+.missing-bpo-pane{background:#0c1118d9;border:1px solid #303741;border-radius:8px;display:grid;gap:12px;margin-top:10px;padding:12px}.missing-bpo-pane h4{margin:0}.missing-bpo-groups{display:grid;gap:10px;max-height:min(46vh,620px);overflow:auto;padding-right:4px}.missing-bpo-groups>article{background:#10151bd1;border:1px solid #303741;border-radius:8px;display:grid;gap:10px;padding:12px}.missing-bpo-groups .section-heading span{color:#aab4c2}.missing-bpo-groups .mini-list{max-height:none}.missing-bpo-pane .blueprint-refine-row button{color:#141414;cursor:pointer;background:#e8b84d;border:1px solid #e8b84d;border-radius:8px;justify-content:center;align-items:center;min-height:40px;padding:0 14px;font-weight:800;display:inline-flex}
+.character-hover-card{padding-right:42px}.character-hover-close{position:absolute;top:8px;right:8px;width:28px;min-height:28px;padding:0;border-radius:999px;background:#10151b;border:1px solid #303741;color:#dce3ec;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}.character-hover-close:hover,.character-hover-close:focus-visible{border-color:#e8b84d;color:#fff;box-shadow:0 0 14px #e8b84d55}
+.character-dossier-layout{grid-template-columns:minmax(420px,520px) minmax(0,1fr)}.character-picker-list .character-hover-card{left:-54px;width:min(430px,calc(100vw - 96px))}.character-picker-list .character-picker-card{overflow:visible}.character-picker-list .character-hover-wrap{z-index:260}.character-picker-list .character-hover-card{z-index:270}@media (width<=1100px){.character-dossier-layout{grid-template-columns:1fr}.character-picker-list .character-hover-card{left:0;right:auto;width:min(430px,calc(100vw - 72px))}}
+.nav-section-label{color:#8b98a8;text-transform:uppercase;letter-spacing:0;margin:14px 0 2px;padding:0 10px;font-size:.72rem;font-weight:900}
+.skill-profile-card{position:relative;overflow:visible;z-index:1}.skill-profile-card:hover,.skill-profile-card:focus-within,.skill-profile-card:has(.character-hover-wrap:hover),.skill-profile-card:has(.character-hover-wrap:focus-within){z-index:260}.skill-profile-card .character-hover-wrap{z-index:270}.skill-profile-card .character-hover-card{z-index:280}
+
+/* Visual hierarchy tuning: keep dense tools readable without making every repeated label compete as a headline. */
+:root {
+  --eqm-weight-label: 500;
+  --eqm-weight-medium: 580;
+  --eqm-weight-strong: 680;
+  --eqm-weight-command: 640;
+}
+
+.content :where(strong, b) {
+  font-weight: var(--eqm-weight-strong);
+}
+
+.content :where(td) {
+  font-weight: 400;
+}
+
+.content :where(.card-list article strong, .mini-list strong, .widget-row strong, .recipe-card-button strong, .market-hub-option strong, .item-context-list strong, .wallet-grid strong, .roster-corp-heading strong, .character-picker-card strong, .contract-token-card strong, .charge-group-actions strong) {
+  font-weight: var(--eqm-weight-medium);
+}
+
+.content :where(.status-grid strong, .market-total-grid strong, .character-hover-metrics b, .character-hover-categories b, .fitting-context-row > b, .market-margin-card b, .contract-money-cell b, .market-price-cell b) {
+  font-weight: var(--eqm-weight-strong);
+}
+
+.content :where(.blueprint-filter button, .owner-kind-chips button, .status-badge, .bp-badge, .contract-scope-badge, .pilot-security-status, .wardec-badge, .risk-badge, .intel-badge, .metric-chip, .market-depth, .route-avoid-button, .destination-link, .twitch-live-link, .scope-ok, .scope-warn, .privacy-placard, .market-no-quote, .market-no-profit) {
+  font-weight: var(--eqm-weight-medium);
+}
+
+.content :where(.blueprint-filter button.active, .owner-kind-chips button.active, .status-badge.version-badge, .rank-badge) {
+  font-weight: var(--eqm-weight-strong);
+}
+
+.content :where(button[type=submit], .toolbar button, .button-row button, .esi-status-row button, .card-list button, .section-heading button, .charge-group-actions button, .charge-group-card button, .context-actions button, .jf-jump-actions button, .missing-bpo-pane .blueprint-refine-row button) {
+  font-weight: var(--eqm-weight-command);
+}
+
+.content :where(.sort-header, .inline-filter, .active-filter button, .cell-filter, .character-hover-actions button, .character-hover-external, .avoid-chip, .avoid-clear, .card-actions .mini-link) {
+  font-weight: var(--eqm-weight-medium);
+}
+
+.content :where(th, .nav-section-label, .permission-header, .skill-group summary, .fitting-import-panel summary) {
+  font-weight: var(--eqm-weight-strong);
+}
+
+.content :where(article span, .mini-list span, .recipe-card-button span, .market-hub-option span, .skill-progress-line, .choice-list, label) {
+  font-weight: 400;
+}
+
+.content :where(.metric-delta, .wallet-grid > span, .charge-group-card small, .charge-group-actions span) {
+  font-weight: var(--eqm-weight-label);
+}
+
+.roster-character span,
+.roster-character .character-hover-name,
+.character-picker-card .character-hover-name,
+.skill-profile-heading .character-hover-name {
+  font-weight: var(--eqm-weight-medium);
+}

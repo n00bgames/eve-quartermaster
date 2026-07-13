@@ -1,0 +1,7 @@
+export type SkillRecord = { id: number; skill_type_id: number; skill_name: string; skill_group_name: string; skill_category_name: string; trained_skill_level: number; active_skill_level: number; skillpoints_in_skill: number; last_synced_at?: string | null };
+
+export type SkillQueueEntry = { id: number; queue_position: number; skill_type_id: number; skill_name: string; finished_level: number; training_start_sp?: number | null; level_start_sp?: number | null; level_end_sp?: number | null; start_date?: string | null; finish_date?: string | null };
+
+export type CharacterSkillProfile = { token_id: number; character_id: number; character_name: string; security_status?: number | null; owner_user_id: number; sync_opt_out: boolean; admin_override_visible: boolean; can_sync?: boolean; total_skill_points?: number | null; unallocated_skill_points?: number | null; skills_synced_at?: string | null; skill_queue_synced_at?: string | null; missing_skill_scopes: string[]; skill_count: number; queue_count: number; skills: SkillRecord[]; queue: SkillQueueEntry[] };
+
+export type SkillSyncAllJob = { job_id: string; status: "queued" | "running" | "complete" | "failed" | "cancelled"; created_at: string; updated_at?: string | null; completed_at?: string | null; total_count: number; processed_count: number; success_count: number; failed_count: number; skipped_count: number; current_character_name?: string | null; results: { character_name: string; skill_count: number; queue_count: number }[]; errors: string[] };

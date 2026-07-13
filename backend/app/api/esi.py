@@ -167,7 +167,16 @@ def standing_sync_scopes() -> list[str]:
 
 async def refresh_access_token(token: EsiToken) -> str:
     settings = get_settings()
-    refresh_token = decrypt_secret(token.encrypted_refresh_token, settings.token_encryption_key)
+    try:
+        refresh_token = decrypt_secret(token.encrypted_refresh_token, settings.token_encryption_key)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "This character's stored ESI authorization can no longer be decrypted. Re-link the character through EVE SSO, then try syncing again.",
+                "code": "esi_token_reauthorization_required",
+            },
+        ) from exc
     async with httpx.AsyncClient(timeout=30.0, follow_redirects=False) as client:
         response = await client.post(
             "https://login.eveonline.com/v2/oauth/token",

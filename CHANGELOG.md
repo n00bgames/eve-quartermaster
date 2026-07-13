@@ -4,6 +4,17 @@ All notable changes to EVE Quartermaster are tracked here.
 
 This project is moving quickly during beta. Version sections are written as user-facing release notes first, with implementation detail included where it helps operators understand deployment or testing impact.
 
+## [0.1.7-beta] - 2026-07-13
+
+### Added
+
+- Expanded the README with detailed EVE developer application, ESI/SSO scope, SDE YAML download/import, and EQM section usage instructions.
+
+### Changed
+
+- Updated installer next-step guidance to point operators at EVE developer credentials, YAML SDE setup, and README setup details.
+- Bumped the visible app, package, backend API, Android wrapper, and ESI user-agent versions to 0.1.7-beta.
+
 ## [0.1.6-beta] - 2026-07-10
 
 ### Added
@@ -15,18 +26,44 @@ This project is moving quickly during beta. Version sections are written as user
 - Split fitting shared types, simulation helpers, and fit-context widgets out of the large frontend entry module.
 - Split fitting sync, import, and saved-fitting list panels out of the large frontend entry module.
 - Moved the remaining Fittings page container out of the large frontend entry module.
+- Split the Analytics Platform page and analytics data shapes out of the large frontend entry module.
+- Split the Alliance Roster page and roster data shapes out of the large frontend entry module.
+- Split the Character Skills page and skill sync data shapes out of the large frontend entry module.
+- Split the Characters page, persistent character hover card, and character dossier data shapes out of the large frontend entry module.
+- Split the Profile page and profile/mail/message data shapes out of the large frontend entry module.
+- Split the Settings page, section switch controls, SDE import panel, and permission data shapes out of the large frontend entry module.
+- Split the ESI Sync page and ESI contact-sync data shapes out of the large frontend entry module.
+- Split the profile user administration pane out of the large frontend entry module.
+- Split the Contracts page and contract data shapes out of the large frontend entry module.
+- Split the Corporations page and corporation sync data shapes out of the large frontend entry module.
+- Extracted the shared frontend API client and inventory classification/types helpers out of the large frontend entry module.
+- Added SDE-backed category and subtype filters for Assets and Blueprint Library views, including ship hull classes, ammunition/charge groups, rig groups, and capital-construction blueprint chain filtering.
+- Added a Missing BPOs pane at the bottom of the Blueprint Library, grouped by product category from the SDE manufacturing catalog.
 - Added fitting ammo/script groups so multiple launchers, turrets, or scripted modules can share charge assignment from one group control.
 - Added reusable pilot security-status badges for character cards, local threat pilots, route killmail rows, and jump-planner killmail rows.
 - Added a Skills-page sync-all action that queues backend skill refreshes for every eligible character, skips opted-out characters, and shows progress with the queue badge.
+- Added prompted prerequisite bootstrapping to the Windows and Linux installer scripts for Git, WSL2, Docker Desktop, Docker Engine, and Docker Compose support.
 
 ### Fixed
 
+- Made character hover cards persist until closed with the new X button or Escape so zKill links and card actions remain reachable.
+- Widened the character picker pane so persistent character hover cards show their close button without horizontal scrolling.
+- Raised Skills-page character hover cards above neighboring skill profile rows so persistent character summaries stay readable while open.
+- Restored character dossier blueprint-product fallback logic so character pages no longer 500 when loading visible characters.
+- Converted undecryptable ESI refresh tokens into a clear reauthorization-needed sync error instead of a 500 during asset sync.
+- Backfilled blueprint product classification from SDE industry activities so blueprint category/subtype filters populate correctly, including Drones/Fighters.
+- Kept final capital, freighter, and jump freighter hull BPOs out of the Capital construction blueprint filter while retaining supporting chain inputs/components.
+- Split RAM and reaction formulas into their own blueprint filter categories and kept them out of capital-construction-only blueprint views.
+- Excluded invention-produced Tech II blueprint copies from the Missing BPOs catalog so copy-only blueprints are not listed as missing originals.
 - Applied strategic cruiser subsystem slot/resource dogma before fitting simulation readiness checks so T3C CPU, powergrid, slot capacities, probe launcher CPU, covert cloak CPU, and medium weapon required-skill fitting reductions are not evaluated from bare hull/module values only.
 - Stored ESI character security status during public character imports and SSO sync so pilot identity surfaces can display current security information when available.
 
 ### Changed
 
 - Renamed Capital Jump Plotter to Jump Capable Ship Plotter and added Black Ops battleships to the jump-capable ship list.
+- Reorganized the sidebar navigation into overview/navigation, character functions, inventory and industry tools, and account/admin groups.
+- Tuned the frontend typography hierarchy to reduce over-bold repeated labels, table values, filter chips, badges, and utility buttons so dense operational pages are easier to scan.
+- Replaced the Overview Blueprint Library panel with a lightweight blueprint preview so dashboard loads do not initialize the full blueprint tooling or Missing BPO pane.
 - Bumped the visible app and package version to 0.1.6-beta.
 
 ## [0.1.5-beta] - 2026-07-08

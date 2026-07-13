@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/n00bgames/eve-quartermaster"><img alt="Project" src="https://img.shields.io/badge/project-eve--quartermaster-e8b84d?style=for-the-badge"></a>
-  <img alt="Version" src="https://img.shields.io/badge/version-0.1.5--beta-4fb3c7?style=for-the-badge">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.1.7--beta-4fb3c7?style=for-the-badge">
   <img alt="License" src="https://img.shields.io/badge/license-AGPL--3.0--or--later-70c894?style=for-the-badge">
 </p>
 
@@ -41,7 +41,7 @@ See [CHANGELOG.md](CHANGELOG.md) for version-by-version release notes.
 - Historical analytics foundation with snapshot runs, metric metadata/versioning, baseline-aware deltas, exports, and composable widgets.
 - Navigation suite with SDE-backed route planning, gatecheck summaries, operational starmap rendering, and security-status color coding.
 - Hauling intelligence widgets for industrial kill heat, PvP system intel, smartbomb indicators, and Local Threat analysis with background queue progress for large systems.
-- Jump Freighter plotter with JDC/JFC fuel math, station/cyno guidance, nearby operational map context, and 24-hour industrial kill visibility per jump.
+- Jump Capable Ship Plotter with JDC/JFC fuel math, station/cyno guidance, nearby operational map context, and 24-hour industrial kill visibility per jump.
 - Sideloadable Android WebView wrapper build script that outputs `EQM.apk`.
 
 ## Screenshots
@@ -120,6 +120,7 @@ A quick tour of the current beta surface, ordered roughly the way a new Quarterm
 
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) with Docker Compose support enabled.
 - Git for cloning the repository.
+- On Windows, WSL2 is recommended for Docker Desktop Linux containers.
 - An EVE developer application if you want ESI/SSO sync locally.
 - Optional: Android Studio or Android SDK command-line tools if you want to build `EQM.apk`.
 
@@ -137,7 +138,7 @@ chmod +x install-eqm.sh rebuild-eqm.sh update-eqm.sh
 ./install-eqm.sh
 ```
 
-The installer checks for Docker Compose, creates `.env` from `.env.example` when needed, generates local auth/encryption secrets, creates the `sde/` folder, builds the containers, and starts EQM at http://localhost:5173.
+The installer checks for Docker Compose, creates `.env` from `.env.example` when needed, generates local auth/encryption secrets, creates the `sde/` folder, builds the containers, and starts EQM at http://localhost:5173. If prerequisites are missing, the Windows installer can offer to install Git, WSL2, and Docker Desktop with `winget`/`wsl`; the Linux installer can offer to install Git/curl with the detected package manager and Docker Engine with Compose using Docker's official installer. These prerequisite installs are prompted and may require administrator or `sudo` approval, a restart, or opening a new terminal before rerunning EQM setup. The installer does not create your EVE developer application or download the SDE for you; follow the EVE SSO and SDE sections below after the containers start.
 
 For day-to-day local rebuilds without pulling new code:
 
@@ -196,48 +197,44 @@ That deletes the local PostgreSQL and Redis volumes, so only use it when you int
 
 ## EVE SSO Configuration
 
-EQM can run for a first look without EVE SSO, but character login and live ESI sync need an EVE Developer application. The developer application is where CCP gives you a **Client ID** and **Client Secret**. EQM uses those two values to send users to the real EVE login page and then receive permission to call ESI.
+EQM can run for a first look without EVE SSO, but character login and live ESI sync need an EVE Developer application. CCP's EVE SSO uses OAuth 2.0: players sign in through EVE, explicitly approve scopes, and EQM receives scoped access and refresh tokens for the selected character. The EVE SSO docs describe the same registration, callback URL, client ID/secret, scope, and refresh-token flow: https://developers.eveonline.com/docs/services/sso/
 
 ![EVE developer application setup](static/ss/developer.png)
 
-### Create The EVE Developer App
+### Create An EVE Developer Account And Application
 
-1. Go to [developers.eveonline.com](https://developers.eveonline.com/) and sign in with an EVE account.
-2. Create a new application.
-3. Give it a recognizable name, such as `EVE Quartermaster Local` or `EVE Quartermaster Test`.
-4. Use a short private description, such as `Private EVE Online asset, blueprint, industry, and quartermaster tracking tool.`
-5. Set the callback URL to the exact backend address EQM will use.
+1. Go to https://developers.eveonline.com/ and sign in with an EVE Online account.
+2. Open **Applications** / **My Applications** and create a new application.
+3. Use a recognizable name, such as `EVE Quartermaster Local`, `EVE Quartermaster Test`, or your corporation/alliance name.
+4. Use a private description, such as `Private EVE Online asset, blueprint, industry, and quartermaster tracking tool.`
+5. Choose the web application / authentication option that allows EVE SSO plus ESI API scopes. The portal wording can change, but the application must support OAuth authorization-code login and scoped ESI access.
+6. Add the callback URL for your EQM backend.
 
-For local testing on the same machine, use:
+For local testing on the same machine, use exactly:
 
 ```text
 http://localhost:8000/api/esi/auth/callback
 ```
 
-For a hosted test instance, use your public HTTPS domain:
+For a hosted test instance, use the public HTTPS backend callback:
 
 ```text
 https://your-domain.example/api/esi/auth/callback
 ```
 
-The callback in the EVE developer portal and the callback in `.env` must match exactly. If they do not, EVE login may appear to work but return users to the wrong place or fail during token exchange.
+The callback in the EVE developer portal and `EVE_SSO_CALLBACK_URL` in `.env` must match exactly. If they do not, EVE login can fail during the callback/token exchange even when the EVE login page itself appears to work.
 
-### Configure EQM
+### Client ID, Secret, And Local `.env`
 
-Local EVE SSO settings live in `.env`, which is intentionally ignored by source control. If you used the installer script, `.env` is created from `.env.example` for you.
+After saving the EVE application, copy the application **Client ID** and **Secret** from the developer portal. The Client ID is okay to identify the application; the Secret must stay private and must not be committed.
 
-Paste the developer values into `.env`:
-
-```env
-EVE_SSO_CLIENT_ID=paste_client_id_here
-EVE_SSO_CLIENT_SECRET=paste_client_secret_here
-```
-
-Then set the callback and frontend URL for the place EQM is running.
+Local EVE SSO settings live in `.env`, which is intentionally ignored by source control. If you used `install-eqm.bat` or `install-eqm.sh`, `.env` is created from `.env.example` for you.
 
 Local development:
 
 ```env
+EVE_SSO_CLIENT_ID=paste_client_id_here
+EVE_SSO_CLIENT_SECRET=paste_client_secret_here
 EVE_SSO_CALLBACK_URL=http://localhost:8000/api/esi/auth/callback
 FRONTEND_URL=http://localhost:5173
 ```
@@ -245,11 +242,13 @@ FRONTEND_URL=http://localhost:5173
 Hosted testing:
 
 ```env
+EVE_SSO_CLIENT_ID=paste_client_id_here
+EVE_SSO_CLIENT_SECRET=paste_client_secret_here
 EVE_SSO_CALLBACK_URL=https://your-domain.example/api/esi/auth/callback
 FRONTEND_URL=https://your-domain.example
 ```
 
-After changing `.env`, rebuild or restart EQM:
+After changing `.env`, restart or rebuild EQM:
 
 ```powershell
 .\rebuild-eqm.bat
@@ -262,6 +261,13 @@ After changing `.env`, rebuild or restart EQM:
 ### Scope Guidance
 
 For a full EQM evaluation, enable every ESI scope that EQM requests from the EVE developer page. Login may work with fewer scopes, but individual features can later show missing-scope warnings or fail when syncing assets, blueprints, skills, fittings, wallets, corporation data, structures, markets, contacts, or navigation support data.
+
+EQM uses scope groups internally:
+
+- **Core authorization** covers the normal character/corporation quartermaster workflow: assets, corporation assets, blueprints, corporation roles, structures, wallets, industry jobs, contracts, skills, and fittings.
+- **Contact sync** adds `esi-characters.read_contacts.v1` and `esi-characters.write_contacts.v1` so standing/contact propagation can read and apply contacts.
+- **Mail sync** adds EVE mail read/send/organize scopes for the profile mail tools.
+- **Full evaluation** uses the broader scope list below so one developer application can cover current features and near-term modules without repeatedly editing the CCP developer entry.
 
 Current full-evaluation scope list:
 
@@ -335,14 +341,59 @@ esi-structures.read_corporation.v1
 esi-structures.read_character.v1
 ```
 
-EQM requests this broad list so the same EVE developer application can cover current features and near-term modules without repeatedly editing the CCP developer entry. Features still enforce the relevant scope at sync time, so a missing scope usually appears as a warning on the affected page rather than blocking the whole site.
 Only grant scopes you are comfortable granting. When scopes are added or changed later, each linked character needs to run EVE SSO again before the new permissions are available to sync workers.
 
 ## SDE Import
 
-The app can import EVE Static Data Export files from a local read-only mount. Put an extracted SDE folder or SDE zip under `./sde`, or set `SDE_HOST_PATH` in `.env` to another host folder. Inside containers this is mounted as `/sde` by default.
+EQM uses the EVE Static Data Export for type names, groups, market/category metadata, blueprints, industry activities, dogma, skills, systems, stargates, stations, and navigation maps. The official EVE Static Data docs list the current download locations and formats: https://developers.eveonline.com/docs/services/static-data/
 
-Accepted layouts include modern SDE root files:
+Use the **YAML** SDE for EQM. CCP also offers JSON Lines, but EQM's importer is built around YAML files and YAML zip layouts.
+
+### Download The Latest YAML SDE
+
+Windows PowerShell from the repository root:
+
+```powershell
+New-Item -ItemType Directory -Force -Path .\sde
+Invoke-WebRequest -Uri "https://developers.eveonline.com/static-data/eve-online-static-data-latest-yaml.zip" -OutFile ".\sde\eve-online-static-data-latest-yaml.zip"
+```
+
+Linux/macOS shell from the repository root:
+
+```bash
+mkdir -p sde
+curl -L "https://developers.eveonline.com/static-data/eve-online-static-data-latest-yaml.zip" -o "sde/eve-online-static-data-latest-yaml.zip"
+```
+
+You may import directly from the zip by using this SDE path in EQM:
+
+```text
+/sde/eve-online-static-data-latest-yaml.zip
+```
+
+### Extracted Layout Option
+
+If you prefer extracting it first, extract the YAML zip into `./sde` so the files are visible to the Docker bind mount.
+
+Windows PowerShell:
+
+```powershell
+Expand-Archive -Path ".\sde\eve-online-static-data-latest-yaml.zip" -DestinationPath ".\sde" -Force
+```
+
+Linux/macOS shell:
+
+```bash
+unzip -o sde/eve-online-static-data-latest-yaml.zip -d sde
+```
+
+Then use this SDE path in EQM:
+
+```text
+/sde
+```
+
+Accepted extracted layouts include modern SDE root files:
 
 - `categories.yaml`
 - `groups.yaml`
@@ -356,7 +407,53 @@ Older FSD layouts are also accepted:
 - `fsd/typeIDs.yaml`
 - `fsd/blueprints.yaml`
 
-Admins can run the import from **Settings -> SDE Import**. Navigation, route maps, recipes, blueprint activity, station guidance, and skill grouping all get better as SDE coverage improves.
+If you keep the SDE somewhere else, set `SDE_HOST_PATH` in `.env` to that host folder. The container path remains `/sde` unless you also change `SDE_SOURCE_PATH`.
+
+### Import The SDE In EQM
+
+1. Start EQM and sign in as an admin.
+2. Open **Settings -> SDE Import**.
+3. Use `/sde/eve-online-static-data-latest-yaml.zip` if importing the zip, or `/sde` if importing an extracted folder.
+4. Click **Import SDE**.
+5. Leave Settings open if you want to watch progress. The progress message updates while EQM keeps working.
+6. When the import completes, refresh the page or use **Refresh** in the SDE panel to confirm category, type, system, stargate, recipe, and dogma counts.
+
+Navigation, route maps, recipes, blueprint activity, fitting simulation, station guidance, skill grouping, market item matching, and blueprint/category filters all get better as SDE coverage improves. Re-import after major EVE updates or when a new YAML SDE is published.
+
+## Using ESI/SSO Sync
+
+1. Confirm `.env` has `EVE_SSO_CLIENT_ID`, `EVE_SSO_CLIENT_SECRET`, `EVE_SSO_CALLBACK_URL`, and `FRONTEND_URL` set correctly.
+2. Sign in to EQM with your local/admin account.
+3. Open **ESI Sync**.
+4. Use the main EVE SSO authorization link to connect a character. EVE will ask which character to authorize and which scopes to grant.
+5. After the callback returns to EQM, the linked character appears on the ESI Sync page and on character-aware pages.
+6. If a page shows missing scopes, return to **ESI Sync** and re-authorize that character after adding the missing scope to the EVE developer application.
+7. Use **Authorize contact sync** only for characters that should read/write EVE contacts for standing propagation.
+8. Use **Sync assets**, **Sync skills**, **Sync fittings**, and **Sync contracts** from character-aware pages when you want fresh data. The Skills page also has **Sync all skills** for every eligible character; characters marked as opted out are skipped.
+9. Use **Corporations** for corporation asset, blueprint, and wallet syncs. Corporation sync requires a linked CEO/director-style character with the relevant corporation scopes.
+10. If an ESI token cannot be decrypted after moving environments or changing `TOKEN_ENCRYPTION_KEY`, re-link the affected character through EVE SSO.
+
+Privacy controls live under **Settings -> Character Privacy**. A character can be marked private from shared Quartermaster sync, and that preference is respected by sync-all workflows.
+
+## Using EQM Sections
+
+- **Overview:** quick health, totals, recent assets, and a lightweight blueprint preview. Use this as the command-center landing page, not as the full industry workspace.
+- **Navigation:** route checker, operational maps, industrial system threat, PvP intel, local threat analysis, Uedama scout status, and the Jump Capable Ship Plotter.
+- **Characters:** assign EVE characters to EQM accounts, review character dossiers, inspect assets/skills/queues, control visibility, and use character hover cards for quick context.
+- **Character Skills:** expand/collapse skill groups, refresh displayed skills, sync one character, or queue **Sync all skills** for every eligible non-opted-out character.
+- **Fittings:** sync saved fittings, import EFT-style fits, inspect readiness and dogma-derived resources, assign grouped ammo/scripts, price missing/full fits, and jump to assets or market.
+- **Alliance Roster:** review corporations and pilots grouped for diplomacy, recruiting, or operational awareness.
+- **Market:** paste item lists, compare trade hubs, inspect order depth signals, and jump from market rows into visible assets or fittings.
+- **Assets:** filter inventory by owner kind, item, owner, location, flag, category, and subtype; export CSV; copy Janice-friendly lists; open item context and market/fitting handoffs.
+- **Industry:** use the full Blueprint Library, BPO/BPC filters, SDE-backed category/subtype filters, Missing BPO pane, blueprint output context, recipes, and material input views.
+- **Corporations:** refresh corporation links, sync corporation assets/blueprints/wallet divisions through eligible tokens, and inspect sync stale/error messages.
+- **Contracts:** sync current character and eligible corporation contracts, then sort/filter active contract data.
+- **Analytics:** capture and inspect snapshots, metric widgets, baseline-aware deltas, and exports.
+- **Profile:** manage account details, timezone, private messages, and EVE mail features when mail scopes are present.
+- **Settings:** configure character privacy, import SDE data, enable/disable major sections, and manage role/section permissions.
+- **ESI Sync:** link/re-link EVE characters, inspect server status, review missing scopes, authorize contact sync, unlink tokens, and import public ESI entities by ID.
+- **User Administration:** invite users, manage local accounts, and assign roles.
+- **Audit Log:** review sync peeks, system events, admin activity, and operational history.
 
 ## Android APK
 
@@ -422,6 +519,3 @@ This project is not affiliated with or endorsed by CCP Games. EVE Online and rel
 ## AI Collaboration Notice
 
 This project is collaboratively created with generative AI. Human project direction, review, testing, deployment choices, EVE domain decisions, and final stewardship remain with the project maintainers.
-
-
-
