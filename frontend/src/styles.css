@@ -406,3 +406,915 @@
 .skill-profile-heading .character-hover-name {
   font-weight: var(--eqm-weight-medium);
 }
+
+.asset-ledger{gap:14px}
+.asset-ledger .owner-kind-chips,.asset-ledger .blueprint-filter{padding:2px 0}
+.asset-ledger .inventory-subtype-filter,.asset-ledger .ledger-filter-grid,.asset-ledger .ledger-actions,.ledger-pagination{background:#10151b99;border:1px solid #303741;border-radius:8px;padding:10px}
+.ledger-pagination{align-items:center;display:flex;gap:12px;justify-content:space-between}
+.ledger-pagination>span{color:#aab4c2;font-size:.9rem}
+.ledger-pagination label{align-items:center;display:flex;gap:8px;grid-template-columns:auto auto}.ledger-pagination select{min-height:34px;min-width:92px;padding:5px 8px}
+.asset-ledger td{vertical-align:top}
+.asset-ledger .cell-action-row,.asset-ledger .asset-item-context{min-width:0}.asset-ledger .cell-filter{overflow-wrap:anywhere;line-height:1.25}.asset-ledger .context-actions{padding-top:2px}
+@media (width<=720px){.ledger-pagination{align-items:flex-start;display:grid}.ledger-pagination .button-row{width:100%}}
+
+.threat-analyzer-button {
+  color: #fff4f4 !important;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  background: linear-gradient(135deg, #8b1018, #e1272f) !important;
+  border-color: #ff646c !important;
+  box-shadow: 0 0 0 1px #ff646c55, 0 0 20px #e1272f66;
+}
+
+.threat-analyzer-button svg {
+  color: #fff4f4;
+}
+
+.threat-analyzer-button:not(:disabled):hover,
+.threat-analyzer-button:not(:disabled):focus-visible {
+  filter: brightness(1.08);
+  box-shadow: 0 0 0 1px #ff858b88, 0 0 26px #ff303a88;
+}
+
+.threat-analyzer-anchor {
+  scroll-margin-top: 24px;
+}
+.fitting-stat-pair.over-limit b{color:#ff9d9d}.fitting-cargo-card .cargo-bay-grid{grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;display:grid}.cargo-bay-section{background:#080d14b8;border:1px solid #303741;border-radius:8px;gap:8px;padding:10px;display:grid}.cargo-bay-section.over-limit{border-color:#ef776e;background:#351d1f80}.cargo-bay-heading{justify-content:space-between;align-items:baseline;gap:8px;display:flex}.cargo-bay-heading h5{color:#f5f7fb;margin:0}.cargo-bay-heading span{color:#aab4c2;font-size:.84rem}.cargo-bay-meter{background:#101820;border-radius:999px;height:7px;display:block;overflow:hidden}.cargo-bay-meter b{background:linear-gradient(90deg,#4fb3c7,#e8b84d);height:100%;display:block}.cargo-bay-section.over-limit .cargo-bay-meter b{background:#ef776e}.cargo-bay-items{gap:7px;display:grid}
+.fitting-sim-toolbar{grid-template-columns:minmax(240px,1fr) auto auto auto}
+.fitting-dev-warning{color:#ffd8d5;background:#4a1519;border:1px solid #ef776e;border-radius:999px;justify-content:center;align-items:center;min-height:42px;padding:0 14px;font-weight:900;display:inline-flex;box-shadow:0 0 18px #ef776e24}
+@media (width<=1100px){.fitting-sim-toolbar{grid-template-columns:1fr}.fitting-dev-warning{justify-content:center}}
+.fitting-sim-toolbar{grid-template-columns:minmax(210px,1fr) minmax(210px,1fr) auto auto auto}
+.jump-clones-page,.jump-clone-detail,.implant-set-workshop{gap:14px;display:grid}.jump-clone-layout{grid-template-columns:minmax(280px,.38fr) minmax(0,1fr)}.jump-clone-grid{grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;display:grid}.jump-clone-grid.compact{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}.jump-clone-card{background:#10151bd1;border:1px solid #303741;border-radius:8px;gap:10px;padding:12px;display:grid}.jump-clone-card strong{color:#f5f7fa}.jump-clone-card span,.jump-clone-card small{color:#aab4c2}.implant-chip-list{flex-wrap:wrap;gap:6px;display:flex}.implant-chip-list span{color:#cfeef5;background:#4fb3c71a;border:1px solid #4fb3c75c;border-radius:999px;padding:5px 8px;font-size:.78rem;font-weight:750}.implant-set-form{grid-template-columns:minmax(220px,1fr) minmax(220px,1fr) auto auto}.implant-set-form .wide{grid-column:1/-1}.implant-set-form textarea{min-height:96px}.implant-set-list{max-height:min(44vh,620px)}.character-jump-clone-summary{background:#0a151bd1;border:1px solid #4fb3c75c;border-radius:8px;padding:10px}.character-jump-clone-summary summary{color:#f5f7fa;cursor:pointer;font-weight:850}.character-jump-clone-summary summary span{color:#e8b84d;margin-left:8px}@media (width<=1100px){.fitting-sim-toolbar,.jump-clone-layout,.implant-set-form{grid-template-columns:1fr}}
+.jump-clone-character-text,
+.jump-clone-card-heading {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.jump-clone-character-text strong,
+.jump-clone-card-heading strong {
+  line-height: 1.2;
+}
+
+.jump-clone-character-text small,
+.jump-clone-card-heading span,
+.jump-clone-card-heading small {
+  display: block;
+  line-height: 1.25;
+}
+
+.implant-chip-list {
+  align-items: flex-start;
+}
+
+.implant-chip-list .implant-chip {
+  align-items: center;
+  border-radius: 999px;
+  display: inline-flex;
+  gap: 6px;
+  line-height: 1.2;
+  max-width: 100%;
+}
+
+.implant-chip-list .implant-chip img {
+  background: #050a10;
+  border: 1px solid #4fb3c747;
+  border-radius: 5px;
+  flex: none;
+  height: 24px;
+  object-fit: contain;
+  width: 24px;
+}
+
+.implant-chip-list .implant-chip-label {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  color: inherit;
+  font: inherit;
+  min-width: 0;
+  padding: 0;
+}
+
+.implant-chip-list .implant-empty {
+  align-self: flex-start;
+  background: #10151b;
+  border-style: dashed;
+  color: #aab4c2;
+}
+
+.implant-chip-list .implant-chip {
+  cursor: help;
+  overflow: visible;
+  position: relative;
+}
+
+.implant-chip-list .implant-chip:focus-visible {
+  outline: 2px solid #e8b84d;
+  outline-offset: 2px;
+}
+
+.implant-chip-list .implant-dogma-card {
+  background: #080d14f8;
+  border: 1px solid #4fb3c7a6;
+  border-radius: 8px;
+  box-shadow: 0 18px 44px #000c, 0 0 0 1px #0008;
+  color: #d8e9f1;
+  display: none;
+  gap: 10px;
+  left: 0;
+  line-height: 1.25;
+  max-height: min(70vh, 560px);
+  overflow: auto;
+  padding: 12px;
+  position: absolute;
+  text-align: left;
+  top: calc(100% + 8px);
+  width: min(380px, calc(100vw - 36px));
+  z-index: 90;
+}
+
+.implant-chip-list .implant-chip:hover .implant-dogma-card,
+.implant-chip-list .implant-chip:focus .implant-dogma-card,
+.implant-chip-list .implant-chip:focus-within .implant-dogma-card {
+  display: grid;
+}
+
+.implant-chip-list .implant-dogma-card,
+.implant-chip-list .implant-dogma-card span,
+.implant-chip-list .implant-dogma-card small,
+.implant-chip-list .implant-dogma-card strong,
+.implant-chip-list .implant-dogma-card b {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  padding: 0;
+}
+
+.implant-chip-list .implant-dogma-heading {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.implant-chip-list .implant-dogma-heading img {
+  background: #050a10;
+  border: 1px solid #4fb3c747;
+  border-radius: 7px;
+  flex: none;
+  height: 42px;
+  object-fit: contain;
+  width: 42px;
+}
+
+.implant-chip-list .implant-dogma-heading strong,
+.implant-chip-list .implant-dogma-section b {
+  color: #f5f7fa;
+  display: block;
+  font-weight: 750;
+}
+
+.implant-chip-list .implant-dogma-heading small,
+.implant-chip-list .implant-dogma-card small {
+  color: #aab4c2;
+  display: block;
+  font-size: .78rem;
+  margin-top: 2px;
+}
+
+.implant-chip-list .implant-dogma-section {
+  border-top: 1px solid #303741;
+  display: grid;
+  gap: 6px;
+  padding-top: 9px;
+}
+
+.implant-chip-list .implant-dogma-row {
+  align-items: baseline;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.implant-chip-list .implant-dogma-row span {
+  color: #aab4c2;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.implant-chip-list .implant-dogma-row strong {
+  color: #d7eff7;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.app-shell {
+  height: 100vh;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.sidebar {
+  height: 100vh;
+  overflow: hidden;
+  padding: 16px 18px;
+  position: sticky;
+  top: 0;
+}
+
+.brand-logo {
+  height: 118px;
+  margin-bottom: 16px;
+}
+
+.sidebar h1 {
+  font-size: 1.15rem;
+  margin-bottom: 5px;
+}
+
+.sidebar p {
+  font-size: 0.83rem;
+  line-height: 1.35;
+  margin-bottom: 6px;
+}
+
+.sidebar-tagline {
+  margin-top: 6px;
+}
+
+.sidebar nav {
+  gap: 5px;
+  margin-top: 16px;
+  max-height: calc(100vh - 245px);
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.nav-section-label {
+  font-size: 0.68rem;
+  margin-top: 5px;
+}
+
+.sidebar nav button {
+  border-radius: 7px;
+  font-size: 0.9rem;
+  gap: 8px;
+  min-height: 34px;
+  padding: 0 8px;
+}
+
+.sidebar nav button svg {
+  height: 16px;
+  width: 16px;
+}
+
+.content {
+  min-height: 0;
+  overflow: auto;
+  padding: 24px;
+}
+
+@media (width<=900px) {
+  .app-shell {
+    height: auto;
+    overflow: visible;
+  }
+
+  .sidebar {
+    height: auto;
+    overflow: visible;
+    position: static;
+  }
+
+  .sidebar nav {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .content {
+    overflow: visible;
+  }
+}
+.jump-clone-card,
+.character-picker-card,
+.character-jump-clone-summary {
+  background: #10151b;
+}
+
+.character-picker-card.active,
+.character-picker-card:hover {
+  background: #12313a;
+}
+
+.jump-clone-character-text {
+  gap: 4px;
+}
+
+.entity-card-heading .jump-clone-character-text {
+  margin-left: 8px;
+}
+
+.jump-clone-card-heading {
+  gap: 5px;
+}
+
+.jump-clone-card-heading strong,
+.jump-clone-card-heading span,
+.jump-clone-card-heading small,
+.jump-clone-character-text strong,
+.jump-clone-character-text small {
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.implant-chip-list .implant-chip {
+  isolation: isolate;
+  min-height: 34px;
+}
+
+.implant-chip-list .implant-dogma-card {
+  background: #080d14;
+  border: 1px solid #4fb3c7;
+  box-shadow: 0 22px 56px #000, 0 0 0 1px #000, 0 0 28px #4fb3c733;
+  color: #d8e9f1;
+  gap: 12px;
+  line-height: 1.32;
+  max-height: min(72vh, 620px);
+  padding: 14px;
+  width: min(460px, calc(100vw - 42px));
+  z-index: 320;
+}
+
+.implant-chip-list .implant-dogma-card span,
+.implant-chip-list .implant-dogma-card small,
+.implant-chip-list .implant-dogma-card strong,
+.implant-chip-list .implant-dogma-card b {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  font-size: inherit;
+  padding: 0;
+}
+
+.implant-chip-list .implant-dogma-heading {
+  align-items: center;
+  background: #10151b;
+  border: 1px solid #303741;
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 46px minmax(0, 1fr);
+  padding: 8px;
+}
+
+.implant-chip-list .implant-dogma-heading span {
+  min-width: 0;
+}
+
+.implant-chip-list .implant-dogma-heading strong {
+  color: #f5f7fa;
+  display: block;
+  font-size: 0.98rem;
+  font-weight: 850;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.implant-chip-list .implant-dogma-heading small,
+.implant-chip-list .implant-dogma-card small {
+  color: #9eabbc;
+  font-size: 0.78rem;
+  line-height: 1.25;
+}
+
+.implant-chip-list .implant-dogma-section {
+  background: #0d141c;
+  border: 1px solid #26313d;
+  border-radius: 8px;
+  display: grid;
+  gap: 7px;
+  padding: 10px;
+}
+
+.implant-chip-list .implant-dogma-section b {
+  color: #f5f7fa;
+  font-size: 0.82rem;
+  font-weight: 850;
+  letter-spacing: 0;
+}
+
+.implant-chip-list .implant-dogma-row {
+  align-items: start;
+  background: #10151b;
+  border: 1px solid #25303b;
+  border-radius: 7px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  padding: 7px 8px;
+}
+
+.implant-chip-list .implant-dogma-row span {
+  color: #b7c4d4;
+  line-height: 1.25;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.implant-chip-list .implant-dogma-row strong {
+  color: #d7eff7;
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: right;
+  white-space: nowrap;
+}
+
+@media (width<=720px) {
+  .implant-chip-list .implant-dogma-card {
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(420px, calc(100vw - 28px));
+  }
+}
+.manufacturing-page {
+  gap: 14px;
+}
+
+.manufacturing-layout {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+  align-items: start;
+}
+
+.manufacturing-ledger {
+  position: sticky;
+  top: 0;
+  max-height: calc(100vh - 160px);
+  overflow: auto;
+}
+
+.manufacturing-ledger h4,
+.manufacturing-summary-card h4,
+.manufacturing-line-editor h4,
+.manufacturing-prices h4 {
+  margin: 0;
+}
+
+.manufacturing-ledger-list {
+  display: grid;
+  gap: 8px;
+}
+
+.manufacturing-ledger-list article {
+  align-items: stretch;
+  background: #10151b;
+  border: 1px solid #303741;
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 8px;
+}
+
+.manufacturing-ledger-list article.active {
+  background: #12313a;
+  border-color: #4fb3c7;
+}
+
+.manufacturing-ledger-list article > button:first-child {
+  background: transparent;
+  border: 0;
+  color: #d8e3f0;
+  cursor: pointer;
+  display: grid;
+  gap: 4px;
+  min-height: 0;
+  padding: 0;
+  text-align: left;
+}
+
+.manufacturing-ledger-list strong {
+  color: #f5f7fa;
+  line-height: 1.2;
+}
+
+.manufacturing-ledger-list span,
+.manufacturing-ledger-list small {
+  color: #9eabbc;
+  line-height: 1.25;
+}
+
+.manufacturing-workspace,
+.manufacturing-summary-card,
+.manufacturing-line-editor,
+.manufacturing-prices {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.manufacturing-summary-card,
+.manufacturing-line-editor,
+.manufacturing-prices {
+  background: #10151b;
+  border: 1px solid #303741;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.manufacturing-title-row {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.manufacturing-summary-card textarea {
+  min-height: 72px;
+}
+
+.manufacturing-total-strip {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.manufacturing-total-strip article {
+  background: #080d14;
+  border: 1px solid #26313d;
+  border-radius: 8px;
+  display: grid;
+  gap: 3px;
+  padding: 10px;
+}
+
+.manufacturing-total-strip span,
+.manufacturing-category-block .muted {
+  color: #9eabbc;
+}
+
+.manufacturing-total-strip strong {
+  color: #f5f7fa;
+}
+
+.manufacturing-category-block {
+  border: 1px solid #26313d;
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+}
+
+.manufacturing-category-heading {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.manufacturing-category-heading strong {
+  color: #f5f7fa;
+}
+
+.manufacturing-category-heading button,
+.compact-icon-button {
+  align-items: center;
+  background: #102934;
+  border: 1px solid #4fb3c7;
+  border-radius: 999px;
+  color: #d9f8ff;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.82rem;
+  font-weight: 850;
+  gap: 5px;
+  min-height: 30px;
+  padding: 3px 9px;
+}
+
+.compact-icon-button {
+  justify-content: center;
+  min-width: 32px;
+  padding: 0 8px;
+}
+
+.compact-icon-button.danger,
+.manufacturing-ledger-list .danger {
+  background: #351d1f;
+  border-color: #ef776e;
+  color: #ffd8d5;
+}
+
+.manufacturing-line-list {
+  display: grid;
+  gap: 8px;
+}
+
+.manufacturing-line-row {
+  align-items: end;
+  background: #080d14;
+  border: 1px solid #26313d;
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(130px, 0.7fr) minmax(220px, 1.5fr) minmax(90px, 0.45fr) minmax(120px, 0.55fr) minmax(120px, 0.55fr) auto;
+  padding: 8px;
+}
+
+.manufacturing-line-row input,
+.manufacturing-line-row select {
+  min-height: 36px;
+}
+
+.manufacturing-price-wrap {
+  max-height: min(62vh, 760px);
+}
+
+.manufacturing-price-table {
+  min-width: 960px;
+}
+
+.manufacturing-price-table td:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.manufacturing-price-table td:first-child small {
+  color: #9eabbc;
+}
+
+.manufacturing-price-cell {
+  display: grid;
+  gap: 2px;
+}
+
+.manufacturing-price-cell b {
+  color: #d7eff7;
+  white-space: nowrap;
+}
+
+.manufacturing-price-cell small {
+  color: #9eabbc;
+  white-space: nowrap;
+}
+
+@media (width<=1180px) {
+  .manufacturing-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .manufacturing-ledger {
+    max-height: 320px;
+    position: static;
+  }
+}
+
+@media (width<=820px) {
+  .manufacturing-line-row {
+    grid-template-columns: 1fr;
+  }
+
+  .compact-icon-button {
+    justify-self: start;
+  }
+}
+.manufacturing-ledger-actions {
+  align-items: start;
+  display: grid;
+  gap: 6px;
+}
+
+.manufacturing-status-badge {
+  border: 1px solid #303741;
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1;
+  margin-right: 6px;
+  min-height: 20px;
+  padding: 3px 7px;
+  text-transform: uppercase;
+}
+
+.manufacturing-status-badge.status-draft {
+  background: #202733;
+  border-color: #4b5666;
+  color: #d8e3f0;
+}
+
+.manufacturing-status-badge.status-running {
+  background: #332813;
+  border-color: #e8b84d99;
+  color: #ffe39a;
+}
+
+.manufacturing-status-badge.status-completed {
+  background: #123421;
+  border-color: #70c89488;
+  color: #8ff0ad;
+}
+.manufacturing-output-prices {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+
+.manufacturing-output-prices article {
+  background: #080d14;
+  border: 1px solid #26313d;
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+}
+
+.manufacturing-output-prices strong {
+  color: #f5f7fa;
+}
+
+.manufacturing-output-prices span {
+  color: #9eabbc;
+}
+
+.manufacturing-output-prices .best-buy {
+  color: #8ff0ad;
+  font-weight: 850;
+}
+
+.manufacturing-output-prices .best-sell {
+  color: #ffd166;
+  font-weight: 850;
+}
+
+.manufacturing-status-badge.output-sold {
+  background: #123421;
+  border-color: #70c89488;
+  color: #8ff0ad;
+}
+
+.manufacturing-status-badge.output-kept {
+  background: #102934;
+  border-color: #4fb3c7;
+  color: #d9f8ff;
+}
+
+.manufacturing-status-badge.output-pending {
+  background: #202733;
+  border-color: #4b5666;
+  color: #d8e3f0;
+}
+
+.manufacturing-activity-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.manufacturing-activity-selector .check {
+  align-items: center;
+  background: #0b121b;
+  border: 1px solid #26313d;
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.82rem;
+  gap: 6px;
+  padding: 7px 10px;
+}
+
+.manufacturing-research-row {
+  background: #080d14;
+  border: 1px solid #26313d;
+  border-radius: 8px;
+  padding: 10px;
+}
+.manufacturing-analytics-widget {
+  align-content: start;
+  gap: 14px;
+  display: grid;
+}
+
+.manufacturing-analytics-widget > header {
+  align-items: center;
+  gap: 9px;
+  display: flex;
+}
+
+.manufacturing-analytics-widget > header svg {
+  color: #4fb3c7;
+  flex: 0 0 auto;
+}
+
+.manufacturing-analytics-widget h4,
+.manufacturing-analytics-widget header small {
+  margin: 0;
+}
+
+.manufacturing-analytics-widget header small {
+  color: #8b98a8;
+  display: block;
+  font-size: 0.78rem;
+  margin-top: 3px;
+}
+
+.manufacturing-kpi-grid {
+  border-bottom: 1px solid #303741;
+  border-top: 1px solid #303741;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: grid;
+}
+
+.manufacturing-kpi-grid > div {
+  gap: 5px;
+  min-width: 0;
+  padding: 10px 8px;
+  display: grid;
+}
+
+.manufacturing-kpi-grid > div:nth-child(odd) {
+  border-right: 1px solid #303741;
+}
+
+.manufacturing-kpi-grid span {
+  color: #8b98a8;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  display: flex;
+}
+
+.manufacturing-kpi-grid strong {
+  color: #e7edf5;
+  overflow-wrap: anywhere;
+  font-size: 1rem;
+}
+
+.manufacturing-kpi-grid .positive strong {
+  color: #79e0a7;
+}
+
+.manufacturing-kpi-grid .negative strong {
+  color: #ff9b94;
+}
+
+.manufacturing-item-summary {
+  max-height: 250px;
+  padding-right: 4px;
+  overflow: auto;
+}
+
+.manufacturing-item-summary > div {
+  border-top: 1px solid #303741;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+  padding: 9px 0;
+  display: grid;
+}
+
+.manufacturing-item-summary > div:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.manufacturing-item-summary span,
+.manufacturing-item-summary strong {
+  color: #dce3ec;
+  min-width: 0;
+  display: grid;
+}
+
+.manufacturing-item-summary strong {
+  text-align: right;
+}
+
+.manufacturing-item-summary small {
+  color: #8b98a8;
+  font-size: 0.74rem;
+  font-weight: 400;
+}
+
+@media (width <= 620px) {
+  .manufacturing-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .manufacturing-kpi-grid > div:nth-child(odd) {
+    border-right: 0;
+  }
+}
+
+:root {
+  --eqm-tagline-red: #c65b5b;
+}
+
+.sidebar p.sidebar-tagline,
+.auth-tagline {
+  color: var(--eqm-tagline-red);
+}

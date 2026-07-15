@@ -60,6 +60,7 @@ export type CharacterDossierToken = {
   has_skill_scope: boolean;
   has_fitting_scope: boolean;
   has_contract_scope: boolean;
+  has_clone_scope: boolean;
   missing_scopes: string[];
   linked_at?: string | null;
 };

@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models import CharacterFitting, CharacterFittingItem, CharacterSkill, EveCharacter, EveDogmaAttribute, EveDogmaEffect, EveGroup, EveType, EveTypeDogmaAttribute, EveTypeDogmaEffect
+from app.services.ship_capacity import resolved_ship_capacity
 
 FITTED_SLOT_PREFIXES = {"HiSlot", "MedSlot", "LoSlot", "RigSlot", "SubSystemSlot", "ServiceSlot"}
 CPU_MANAGEMENT_TYPE_ID = 3426
@@ -64,7 +65,42 @@ SLOT_CAPACITY_ATTRS = {
     "SubSystemSlot": ("subSystemSlot", "Subsystems"),
     "ServiceSlot": ("serviceSlots", "Services"),
 }
-
+BAY_SLOT_PREFIXES = (
+    "Cargo",
+    "DroneBay",
+    "FighterBay",
+    "FuelBay",
+    "FleetHangar",
+    "ShipMaintenanceBay",
+    "FleetMaintenanceBay",
+    "InfrastructureBay",
+    "OreHold",
+    "MineralHold",
+    "GasHold",
+    "IceHold",
+    "AmmoHold",
+    "PlanetaryCommoditiesHold",
+    "CommandCenterHold",
+    "QuafeHold",
+)
+BAY_CAPACITY_ATTRS = (
+    ("Cargo", "Cargo hold", ("capacity", "cargoCapacity", "cargoHoldCapacity")),
+    ("DroneBay", "Drone bay", ("droneCapacity",)),
+    ("FighterBay", "Fighter hangar", ("fighterCapacity", "fighterBayCapacity", "fighterHangarCapacity")),
+    ("FuelBay", "Fuel bay", ("fuelBayCapacity",)),
+    ("FleetHangar", "Fleet hangar", ("fleetHangarCapacity",)),
+    ("ShipMaintenanceBay", "Ship maintenance bay", ("shipMaintenanceBayCapacity",)),
+    ("FleetMaintenanceBay", "Fleet maintenance bay", ("fleetMaintenanceBayCapacity",)),
+    ("InfrastructureBay", "Infrastructure bay", ("infrastructureBayCapacity",)),
+    ("OreHold", "Ore hold", ("oreHoldCapacity",)),
+    ("MineralHold", "Mineral hold", ("mineralHoldCapacity",)),
+    ("GasHold", "Gas hold", ("gasHoldCapacity",)),
+    ("IceHold", "Ice hold", ("iceHoldCapacity",)),
+    ("AmmoHold", "Ammo hold", ("ammoHoldCapacity",)),
+    ("PlanetaryCommoditiesHold", "PI hold", ("planetaryCommoditiesHoldCapacity", "planetaryCommoditiesCapacity")),
+    ("CommandCenterHold", "Command center hold", ("commandCenterHoldCapacity",)),
+    ("QuafeHold", "Quafe hold", ("quafeHoldCapacity",)),
+)
 SUBSYSTEM_ADDITIVE_ATTRS = (
     ("hiSlots", "hiSlotModifier"),
     ("medSlots", "medSlotModifier"),
@@ -85,6 +121,12 @@ SUBSYSTEM_PERCENT_ATTRS = (
     ("cpuOutput", "cpuOutputBonus2"),
     ("powerOutput", "powerEngineeringOutputBonus"),
 )
+FREIGHTER_CARGO_SKILL_BONUSES = {
+    "providence": ("Amarr Freighter", ("shipBonusAF", "shipBonusAmarrFreighter")),
+    "charon": ("Caldari Freighter", ("shipBonusCF", "shipBonusCaldariFreighter")),
+    "obelisk": ("Gallente Freighter", ("shipBonusGF", "shipBonusGallenteFreighter")),
+    "fenrir": ("Minmatar Freighter", ("shipBonusMF", "shipBonusMinmatarFreighter")),
+}
 
 def normalize_attr(name: str) -> str:
     return re.sub(r"[^a-z0-9]", "", name.lower())
@@ -92,7 +134,7 @@ def normalize_attr(name: str) -> str:
 
 def slot_prefix(flag: str) -> str:
     normalized = flag.lower()
-    for prefix in ["HiSlot", "MedSlot", "LoSlot", "RigSlot", "SubSystemSlot", "ServiceSlot", "DroneBay", "FighterBay", "Cargo"]:
+    for prefix in ["HiSlot", "MedSlot", "LoSlot", "RigSlot", "SubSystemSlot", "ServiceSlot", *BAY_SLOT_PREFIXES]:
         if flag.startswith(prefix):
             return prefix
     if "cargo" in normalized:
@@ -235,6 +277,24 @@ def type_names(db: Session, type_ids: set[int]) -> dict[int, str]:
     rows = db.execute(select(EveType.type_id, EveType.name).where(EveType.type_id.in_(type_ids))).all()
     return {int(type_id): str(name) for type_id, name in rows}
 
+def type_volumes(db: Session, type_ids: set[int]) -> dict[int, float]:
+    if not type_ids:
+        return {}
+    rows = db.execute(select(EveType.type_id, EveType.volume).where(EveType.type_id.in_(type_ids))).all()
+    return {int(type_id): float(volume or 0.0) for type_id, volume in rows}
+
+
+def type_capacities(db: Session, type_ids: set[int]) -> dict[int, float]:
+    if not type_ids:
+        return {}
+    rows = db.execute(select(EveType.type_id, EveType.name, EveType.capacity).where(EveType.type_id.in_(type_ids))).all()
+    capacities: dict[int, float] = {}
+    for type_id, name, capacity in rows:
+        resolved = resolved_ship_capacity(int(type_id), str(name) if name else None, float(capacity) if capacity is not None else None)
+        if resolved is not None:
+            capacities[int(type_id)] = resolved
+    return capacities
+
 
 def type_group_names(db: Session, type_ids: set[int]) -> dict[int, str]:
     if not type_ids:
@@ -317,7 +377,7 @@ def module_is_passive(item: CharacterFittingItem, attrs: dict[str, float], group
 
 
 def item_effects_apply(item: CharacterFittingItem, attrs: dict[str, float], group_name: str, item_name: str) -> bool:
-    return item_is_online(item) and (item_is_running(item) or module_is_passive(item, attrs, group_name, item_name))
+    return item_is_online(item)
 
 
 def is_mining_upgrade_group(group_name: str) -> bool:
@@ -347,11 +407,60 @@ def required_skill_type_ids(dogma: dict[int, dict[str, float]]) -> set[int]:
     return skill_ids
 
 
+def cargo_bay_rows(ship_attrs: dict[str, float], items: list[CharacterFittingItem], volumes: dict[int, float], ship_capacity: float | None = None, cargo_capacity: float | None = None) -> list[dict[str, Any]]:
+    used_by_key: dict[str, float] = {key: 0.0 for key, _, _ in BAY_CAPACITY_ATTRS}
+    for item in items:
+        key = slot_prefix(item.flag)
+        if key not in used_by_key:
+            continue
+        quantity = max(1, int(item.quantity or 1))
+        used_by_key[key] += float(volumes.get(item.type_id, 0.0) or 0.0) * quantity
+
+    rows: list[dict[str, Any]] = []
+    for key, label, attr_names in BAY_CAPACITY_ATTRS:
+        capacity = cargo_capacity if key == "Cargo" and cargo_capacity is not None else attr_value(ship_attrs, *attr_names)
+        if key == "Cargo" and capacity is None and ship_capacity is not None:
+            capacity = ship_capacity
+        used = used_by_key.get(key, 0.0)
+        if capacity is None and used <= 0:
+            continue
+        capacity_value = float(capacity) if capacity is not None else None
+        if capacity_value is not None and capacity_value <= 0 and used <= 0:
+            continue
+        ok = capacity_value is None or used <= capacity_value + 0.0001
+        rows.append({
+            "key": key,
+            "label": label,
+            "used": used,
+            "capacity": capacity_value,
+            "ok": ok,
+            "percent": min(999.0, used / capacity_value * 100.0) if capacity_value and capacity_value > 0 else None,
+        })
+    return rows
+
+
+def fitted_items_within_slot_capacity(items: list[CharacterFittingItem], ship_attrs: dict[str, float]) -> list[CharacterFittingItem]:
+    ordered_items = sorted(items, key=lambda item: (slot_prefix(item.flag), item.flag, item.id or 0))
+    counts = {prefix: 0 for prefix in SLOT_CAPACITY_ATTRS}
+    valid_items: list[CharacterFittingItem] = []
+    for item in ordered_items:
+        slot = slot_prefix(item.flag)
+        if slot not in SLOT_CAPACITY_ATTRS:
+            valid_items.append(item)
+            continue
+        attr_name, _ = SLOT_CAPACITY_ATTRS[slot]
+        capacity_value = attr_value(ship_attrs, attr_name)
+        quantity = module_quantity(item)
+        if capacity_value is None or counts[slot] < int(capacity_value):
+            valid_items.append(item)
+        counts[slot] += quantity
+    return valid_items
+
 def item_resource_usage(item: CharacterFittingItem, attrs: dict[str, float], group_name: str, skill_levels: dict[int, int], ship_attrs: dict[str, float] | None = None) -> dict[str, float]:
     slot = slot_prefix(item.flag)
     if slot not in FITTED_SLOT_PREFIXES or not item_is_online(item):
         return {"cpu": 0.0, "powergrid": 0.0, "calibration": 0.0}
-    quantity = max(1, int(item.quantity or 1))
+    quantity = module_quantity(item)
     cpu = float(attr_value(attrs, "cpu") or 0)
     powergrid = float(attr_value(attrs, "power", "powergridUsage") or 0)
     if is_weapon_group(group_name):
@@ -425,6 +534,8 @@ def percent_bonus_multiplier(values: list[float]) -> float:
 
 
 def module_quantity(item: CharacterFittingItem) -> int:
+    if slot_prefix(item.flag) in FITTED_SLOT_PREFIXES:
+        return 1
     return max(1, int(item.quantity or 1))
 
 
@@ -734,6 +845,47 @@ def ship_shield_boost_multiplier(ship_attrs: dict[str, float], skill_name_levels
     return multiplier
 
 
+def ship_cargo_skill_multiplier(ship_attrs: dict[str, float], ship_name: str, skill_name_levels: dict[str, int]) -> float:
+    skill_info = FREIGHTER_CARGO_SKILL_BONUSES.get(ship_name.strip().lower())
+    if not skill_info:
+        return 1.0
+    skill_name, bonus_attrs = skill_info
+    level = named_skill_level(skill_name_levels, skill_name)
+    bonus = attr_value(ship_attrs, *bonus_attrs)
+    if bonus is None:
+        bonus = 5.0
+    return per_level_bonus_multiplier(bonus, level)
+
+
+def cargo_capacity_multiplier_from_item(attrs: dict[str, float], group_name: str, item_name: str) -> float | None:
+    family = f"{item_name} {group_name}".lower()
+    if not any(token in family for token in ("cargo", "cargohold", "expanded cargohold")):
+        return None
+    multiplier = attr_value(attrs, "cargoCapacityMultiplier")
+    if multiplier is not None and multiplier > 0:
+        return float(multiplier)
+    bonus = attr_value(attrs, "cargoCapacityBonus")
+    if bonus is not None:
+        return 1 + float(bonus) / 100.0
+    return None
+
+
+def effective_cargo_capacity(
+    ship_attrs: dict[str, float],
+    ship_name: str,
+    skill_name_levels: dict[str, int],
+    cargo_capacity_multipliers: list[float],
+    ship_capacity: float | None = None,
+) -> float | None:
+    base_capacity = attr_value(ship_attrs, "capacity", "cargoCapacity", "cargoHoldCapacity")
+    if base_capacity is None:
+        base_capacity = ship_capacity
+    if base_capacity is None:
+        return None
+    capacity = float(base_capacity) * ship_cargo_skill_multiplier(ship_attrs, ship_name, skill_name_levels)
+    capacity *= unpenalized_multiplier(cargo_capacity_multipliers)
+    return capacity
+
 def ship_missile_damage_multiplier(ship_attrs: dict[str, float], kind: str, skill_name_levels: dict[str, int]) -> float:
     multiplier = 1.0
     if "torpedo" in kind or "cruise missile" in kind:
@@ -943,6 +1095,8 @@ def compute_fitting_stats(
     group_names: dict[int, str],
     skill_levels: dict[int, int],
     skill_name_levels: dict[str, int],
+    volumes: dict[int, float],
+    ship_capacity: float | None = None,
     heat: bool = False,
 ) -> dict[str, Any]:
     ship_attrs = effective_ship_attrs_with_subsystems(dogma.get(fitting.ship_type_id, {}), fitting.items, dogma)
@@ -952,7 +1106,8 @@ def compute_fitting_stats(
     shield_recharge_ms = attr_value(ship_attrs, "shieldRechargeRate")
 
     fitted_items = [item for item in fitting.items if slot_prefix(item.flag) in FITTED_SLOT_PREFIXES]
-    active_fitted_items = [item for item in fitted_items if item_is_online(item)]
+    effect_fitted_items = fitted_items_within_slot_capacity(fitted_items, ship_attrs)
+    active_fitted_items = [item for item in effect_fitted_items if item_is_online(item)]
     bay_items = [item for item in fitting.items if slot_prefix(item.flag) in {"DroneBay", "FighterBay"}]
     cargo_items = [item for item in fitting.items if slot_prefix(item.flag) == "Cargo"]
 
@@ -971,8 +1126,10 @@ def compute_fitting_stats(
     drone_control_bonus_m = 0.0
     drone_control_multipliers: list[float] = []
     velocity_multipliers: list[float] = []
+    structure_multipliers: list[float] = []
     signature_multipliers: list[float] = []
     capacitor_multipliers: list[float] = []
+    cargo_capacity_multipliers: list[float] = []
     shield_repair_hps = 0.0
     armor_repair_hps = 0.0
     structure_repair_hps = 0.0
@@ -1012,6 +1169,9 @@ def compute_fitting_stats(
         armor_pct = attr_value(attrs, "armorHPBonus", "armorHpBonus")
         if armor_pct:
             armor_hp_pct_mods.extend([float(armor_pct)] * qty)
+        structure_multiplier = attr_value(attrs, "structureHPMultiplier")
+        if structure_multiplier:
+            structure_multipliers.extend([float(structure_multiplier)] * qty)
         structure_pct = attr_value(attrs, "hpBonus", "structureHitpointBonus")
         if structure_pct:
             structure_hp_pct_mods.extend([float(structure_pct)] * qty)
@@ -1062,6 +1222,9 @@ def compute_fitting_stats(
             elif damage_bonus or "heat sink" in f"{name} {group}".lower() or "gyrostabilizer" in f"{name} {group}".lower() or "magnetic field" in f"{name} {group}".lower():
                 turret_rof_mods.extend([float(speed_multiplier)] * qty)
 
+        velocity_multiplier = dogma_multiplier(attr_value(attrs, "maxVelocityModifier"))
+        if velocity_multiplier:
+            velocity_multipliers.extend([velocity_multiplier] * qty)
         speed_factor = attr_value(attrs, "speedFactor", "maxVelocityBonus")
         if speed_factor and is_prop_family:
             heated_speed_factor = float(speed_factor) + (float(attr_value(attrs, "overloadSpeedFactorBonus") or 0.0) if overheated else 0.0)
@@ -1076,6 +1239,9 @@ def compute_fitting_stats(
         cap_multiplier = dogma_multiplier(attr_value(attrs, "capacitorCapacityMultiplier", "capacitorCapacityBonus"))
         if cap_multiplier:
             capacitor_multipliers.extend([cap_multiplier] * qty)
+        cargo_multiplier = cargo_capacity_multiplier_from_item(attrs, group, name)
+        if cargo_multiplier:
+            cargo_capacity_multipliers.extend([cargo_multiplier] * qty)
 
         repair_cycle = cycle_seconds(attrs)
         if repair_cycle:
@@ -1112,6 +1278,7 @@ def compute_fitting_stats(
     shield_hp *= percent_bonus_multiplier(shield_hp_pct_mods)
     armor_hp *= percent_bonus_multiplier(armor_hp_pct_mods)
     structure_hp *= percent_bonus_multiplier(structure_hp_pct_mods)
+    structure_hp *= unpenalized_multiplier(structure_multipliers)
     shield_repair_hps *= stacking_raw_multiplier(shield_repair_multipliers) * ship_shield_boost_multiplier(ship_attrs, skill_name_levels)
     armor_repair_hps *= stacking_raw_multiplier(armor_repair_multipliers)
     structure_repair_hps *= stacking_raw_multiplier(structure_repair_multipliers)
@@ -1305,6 +1472,8 @@ def compute_fitting_stats(
         for item in active_fitted_items:
             signature_radius += safe_number(attr_value(dogma.get(item.type_id, {}), "signatureRadiusAdd")) * module_quantity(item)
 
+    cargo_capacity = effective_cargo_capacity(ship_attrs, names.get(fitting.ship_type_id, ""), skill_name_levels, cargo_capacity_multipliers, ship_capacity)
+
     return {
         "offense": {
             "turret_dps": turret_dps,
@@ -1351,6 +1520,7 @@ def compute_fitting_stats(
             "depletion_seconds": depletion_seconds,
             "modules": capacitor_modules,
         },
+        "cargo_bays": cargo_bay_rows(ship_attrs, fitting.items, volumes, ship_capacity, cargo_capacity),
         "targeting": {
             "max_targets": attr_value(ship_attrs, "maxLockedTargets"),
             "targeting_range": attr_value(ship_attrs, "maxTargetRange"),
@@ -1368,11 +1538,14 @@ def compute_fitting_stats(
         ],
     }
 
-def simulate_fitting(db: Session, fitting: CharacterFitting, character: EveCharacter, heat: bool = False) -> dict[str, Any]:
-    type_ids = {fitting.ship_type_id, *(item.type_id for item in fitting.items), *(item.charge_type_id for item in fitting.items if getattr(item, "charge_type_id", None))}
+def simulate_fitting(db: Session, fitting: CharacterFitting, character: EveCharacter, heat: bool = False, implant_type_ids: set[int] | None = None, implant_context: dict[str, Any] | None = None) -> dict[str, Any]:
+    implant_type_ids = implant_type_ids or set()
+    type_ids = {fitting.ship_type_id, *(item.type_id for item in fitting.items), *(item.charge_type_id for item in fitting.items if getattr(item, "charge_type_id", None)), *implant_type_ids}
     dogma = dogma_for_types(db, type_ids)
     dogma_effects = dogma_effects_for_types(db, type_ids)
     names = type_names(db, type_ids | required_skill_type_ids(dogma))
+    volumes = type_volumes(db, type_ids)
+    capacities = type_capacities(db, {fitting.ship_type_id})
     group_names = type_group_names(db, type_ids)
     skill_levels = character_skill_levels(db, character.id)
     skill_name_levels = character_skill_levels_by_name(db, character.id)
@@ -1414,7 +1587,7 @@ def simulate_fitting(db: Session, fitting: CharacterFitting, character: EveChara
         slot = slot_prefix(item.flag)
         item_attrs = dogma.get(item.type_id, {})
         if slot in slot_usage:
-            slot_usage[slot] += max(1, int(item.quantity or 1))
+            slot_usage[slot] += module_quantity(item)
         usage = item_resource_usage(item, item_attrs, group_names.get(item.type_id, ""), skill_levels, ship_attrs)
         resources["cpu"]["used"] += usage["cpu"]
         resources["powergrid"]["used"] += usage["powergrid"]
@@ -1458,9 +1631,11 @@ def simulate_fitting(db: Session, fitting: CharacterFitting, character: EveChara
     status = "pass" if dogma_loaded and not missing_skills and not slot_failures and not resource_failures else "warning" if dogma_loaded else "unknown"
 
     notes = [] if dogma_loaded else ["Dogma attributes are not imported yet. Import the SDE dogma section before relying on simulation checks."]
+    if implant_context and implant_context.get("implant_count", 0) > 0:
+        notes.append(f"Implant set selected: {implant_context.get('name', 'Implants')} ({implant_context.get('implant_count', 0)} implant{'' if implant_context.get('implant_count', 0) == 1 else 's'}). Full implant dogma modifiers are still in development.")
     if dogma_loaded and not dogma_effects_loaded:
         notes.append("Dogma effects are not imported yet. Re-import SDE dogma to unlock effect-graph based simulation passes.")
-    stats = compute_fitting_stats(fitting, dogma, names, group_names, skill_levels, skill_name_levels, heat=heat) if dogma_loaded else None
+    stats = compute_fitting_stats(fitting, dogma, names, group_names, skill_levels, skill_name_levels, volumes, capacities.get(fitting.ship_type_id), heat=heat) if dogma_loaded else None
 
     return {
         "fitting_id": fitting.id,
@@ -1480,6 +1655,7 @@ def simulate_fitting(db: Session, fitting: CharacterFitting, character: EveChara
         "items": item_checks,
         "stats": stats,
         "heat": heat,
+        "implant_context": implant_context,
         "notes": notes + (stats.get("notes", []) if stats else []),
     }
 

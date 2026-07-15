@@ -8,7 +8,9 @@ from app.models.eve_static import EveCategory, EveConstellation, EveDogmaAttribu
 from app.models.fittings import CharacterFitting, CharacterFittingItem
 from app.models.identity import CorporationWalletDivision, EveAlliance, EveCharacter, EveCorporation, OwnershipEntity, RoleDefinition, RoleSectionPermission, User, UserInvite, UserSectionPermission
 from app.models.market import CustomMarketHub
+from app.models.manufacturing import ManufacturingJob, ManufacturingJobItem
 from app.models.industry import Blueprint, IndustryActivity, IndustryActivityInput, ProcurementSource, ProductionPlan, ProductionPlanInput
+from app.models.jump_clones import CharacterJumpClone, ImplantSet, ImplantSetImplant, JumpCloneImplant
 from app.models.navigation import SystemIndustrialKillObservation, SystemJumpObservation, SystemKillFetchCache, SystemPvpKillObservation
 from app.models.skills import CharacterSkill, CharacterSkillQueueEntry
 
@@ -23,6 +25,7 @@ __all__ = [
     "CharacterFittingItem",
     "CharacterSkill",
     "CharacterSkillQueueEntry",
+    "CharacterJumpClone",
     "CharacterSkillSnapshot",
     "CorporationSnapshot",
     "CorporationWalletDivision",
@@ -49,7 +52,12 @@ __all__ = [
     "EveTypeDogmaEffect",
     "IndustryActivity",
     "IndustryActivityInput",
+    "ImplantSet",
+    "ImplantSetImplant",
+    "JumpCloneImplant",
     "Location",
+    "ManufacturingJob",
+    "ManufacturingJobItem",
     "OwnershipEntity",
     "PrivateMessage",
     "ProcurementSource",
@@ -67,9 +75,3 @@ __all__ = [
     "UserInvite",
     "UserSectionPermission",
 ]
-
-
-
-
-
-

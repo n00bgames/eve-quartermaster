@@ -36,6 +36,7 @@ ASSET_SCOPE = "esi-assets.read_assets.v1"
 SKILL_SCOPES = ["esi-skills.read_skills.v1", "esi-skills.read_skillqueue.v1"]
 FITTING_SCOPE = "esi-fittings.read_fittings.v1"
 CONTRACT_SCOPE = "esi-contracts.read_character_contracts.v1"
+CLONE_SCOPES = ["esi-clones.read_clones.v1", "esi-clones.read_implants.v1"]
 
 
 def iso(value: Any) -> str | None:
@@ -419,7 +420,8 @@ def character_tokens_payload(db: Session, viewer: User, character: EveCharacter)
                 "has_skill_scope": all(scope in scopes for scope in SKILL_SCOPES),
                 "has_fitting_scope": FITTING_SCOPE in scopes,
                 "has_contract_scope": CONTRACT_SCOPE in scopes,
-                "missing_scopes": [scope for scope in [ASSET_SCOPE, *SKILL_SCOPES, FITTING_SCOPE, CONTRACT_SCOPE] if scope not in scopes],
+                "has_clone_scope": all(scope in scopes for scope in CLONE_SCOPES),
+                "missing_scopes": [scope for scope in [ASSET_SCOPE, *SKILL_SCOPES, FITTING_SCOPE, CONTRACT_SCOPE, *CLONE_SCOPES] if scope not in scopes],
                 "linked_at": iso(token.created_at),
             }
         )
@@ -630,4 +632,3 @@ def update_character(character_id: int, payload: dict[str, Any], current_user: U
         .options(selectinload(EveCharacter.owner_user), selectinload(EveCharacter.corporation), selectinload(EveCharacter.alliance))
     )
     return serialize_character(character, current_user, db)
-

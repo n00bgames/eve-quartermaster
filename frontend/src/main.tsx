@@ -1,4 +1,4 @@
-import { Activity, Boxes, Building2, ClipboardList, Database, Factory, GraduationCap, KeyRound, MapIcon, MessageCircle, PackagePlus, Plus, RefreshCw, ScrollText, Settings, ShoppingCart, Sparkles, UserRoundCheck } from "lucide-react";
+import { Activity, Boxes, Building2, ClipboardList, Database, Factory, GraduationCap, KeyRound, MapIcon, MessageCircle, PackagePlus, Plus, RefreshCw, ScrollText, Settings, ShoppingCart, Siren, Sparkles, UserRoundCheck } from "lucide-react";
 
 import React, { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
@@ -12,6 +12,7 @@ import { BROWSER_TIMEZONE, formatDateTime, formatDurationMs, formatTimeOnly, loc
 import { assetFamily, assetSubtype, blueprintFamily, blueprintSubtype, inventoryFamilyLabels, looksCapitalRelated, matchesInventoryFamily, sortedUnique, visibleAssetLocations, visibleAssetQuantity } from "./lib/inventory";
 import { WardecBadge } from "./components/WardecBadge";
 import { MarketAppraisalPage } from "./features/market/MarketAppraisalPage";
+import { ManufacturingPage } from "./features/manufacturing/ManufacturingPage";
 import { FittingsPage } from "./features/fittings/FittingsPage";
 import { AnalyticsPlatform } from "./features/analytics/AnalyticsPlatform";
 import { JumpFreighterPlanner } from "./features/navigation/JumpFreighterPlanner";
@@ -19,6 +20,7 @@ import { Roster } from "./features/characters/Roster";
 import { CharacterSkills } from "./features/characters/CharacterSkills";
 import { CharacterHoverName as CharacterHoverNameBase, type CharacterHoverNameProps } from "./features/characters/CharacterHoverName";
 import { CharactersPage } from "./features/characters/CharactersPage";
+import { JumpClonesPage } from "./features/characters/JumpClonesPage";
 import { ProfilePage } from "./features/profile/ProfilePage";
 import { SettingsPage } from "./features/settings/SettingsPage";
 import { EsiSyncPage } from "./features/esi/EsiSyncPage";
@@ -28,7 +30,7 @@ import { BlueprintPreview } from "./features/industry/BlueprintPreview";
 import { IndustrialSystemThreatWidget, LocalThreatWidget, PvpIntelWidget } from "./features/navigation/ThreatIntelWidgets";
 import { RouteChecker } from "./features/navigation/RouteChecker";
 import type { CharacterFocus } from "./types/characters";
-import type { Asset, AssetFilter, AssetFilterKey, AssetSortKey, AssetTableSeed, Blueprint, EveType, IndustryActivity, InventoryFamilyFilter, Location, MissingBlueprintCatalog, Owner, OwnerKindFilter, SortDirection, Summary } from "./types/inventory";
+import type { Asset, AssetFilter, AssetFilterKey, AssetPagePayload, AssetSortKey, AssetTableSeed, Blueprint, EveType, IndustryActivity, InventoryFamilyFilter, Location, MissingBlueprintCatalog, Owner, OwnerKindFilter, SortDirection, Summary } from "./types/inventory";
 import type { AuditEvent, NotificationInbox, PrivateMessage, ProfileFocus } from "./types/profile";
 import type { SectionPermission } from "./types/settings";
 import type { FittingSeed } from "./types/fittings";
@@ -36,6 +38,8 @@ import type { JumpFreighterRoute, NavigationGatecheckRoute, NavigationRoute, Nav
 import { APP_VERSION } from "./version";
 
 
+
+type ApiClient = <T>(path: string, options?: RequestInit) => Promise<T>;
 
 type Health = { status: string; app: string };
 
@@ -340,7 +344,7 @@ function App() {
 
         api<Location[]>("/quartermaster/locations"),
 
-        api<Asset[]>("/quartermaster/assets"),
+        api<Asset[]>("/quartermaster/assets?limit=250"),
 
         api<Blueprint[]>("/quartermaster/blueprints"),
 
@@ -464,6 +468,13 @@ function App() {
 
   function canView(section: string) { return permissions[section] !== false || ["overview", "settings", "profile"].includes(section); }
 
+  function openThreatAnalyzer() {
+    setActiveTab("navigation");
+    window.setTimeout(() => {
+      document.getElementById("local-threat-analyzer")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
+  }
+
 
 
   const inviteToken = new URLSearchParams(window.location.search).get("invite");
@@ -498,7 +509,7 @@ function App() {
 
           {canView("navigation") && <button className={activeTab === "navigation" ? "active" : ""} onClick={() => setActiveTab("navigation")}><MapIcon size={18} /> Navigation</button>}
 
-          {["characters", "skills", "fittings", "roster", "esi"].some(canView) && <span className="nav-section-label">Character Functions</span>}
+          {["characters", "skills", "fittings", "jump_clones", "roster", "esi"].some(canView) && <span className="nav-section-label">Character Functions</span>}
 
           {canView("characters") && <button className={activeTab === "characters" ? "active" : ""} onClick={() => setActiveTab("characters")}><UserRoundCheck size={18} /> Characters</button>}
 
@@ -506,13 +517,17 @@ function App() {
 
           {canView("fittings") && <button className={activeTab === "fittings" ? "active" : ""} onClick={() => setActiveTab("fittings")}><ClipboardList size={18} /> Fittings</button>}
 
+          {canView("jump_clones") && <button className={activeTab === "jump_clones" ? "active" : ""} onClick={() => setActiveTab("jump_clones")}><UserRoundCheck size={18} /> Jump Clones</button>}
+
           {canView("roster") && <button className={activeTab === "roster" ? "active" : ""} onClick={() => setActiveTab("roster")}><Building2 size={18} /> Roster</button>}
 
           {canView("esi") && <button className={activeTab === "esi" ? "active" : ""} onClick={() => setActiveTab("esi")}><KeyRound size={18} /> ESI Sync</button>}
 
-          {["market", "corporations", "ownership", "assets", "industry", "contracts", "analytics"].some(canView) && <span className="nav-section-label">Inventory & Industry</span>}
+          {["market", "manufacturing", "corporations", "ownership", "assets", "industry", "contracts", "analytics"].some(canView) && <span className="nav-section-label">Inventory & Industry</span>}
 
           {canView("market") && <button className={activeTab === "market" ? "active" : ""} onClick={() => setActiveTab("market")}><ShoppingCart size={18} /> Market</button>}
+
+          {canView("manufacturing") && <button className={activeTab === "manufacturing" ? "active" : ""} onClick={() => setActiveTab("manufacturing")}><Factory size={18} /> Manufacturing</button>}
 
           {canView("corporations") && <button className={activeTab === "corporations" ? "active" : ""} onClick={() => setActiveTab("corporations")}><Building2 size={18} /> Corporations</button>}
 
@@ -557,6 +572,8 @@ function App() {
 
             <span className="status-badge version-badge">v{APP_VERSION}</span>
 
+            {canView("navigation") && <button type="button" className="threat-analyzer-button" onClick={openThreatAnalyzer}><Siren size={18} /> Threat Analyzer</button>}
+
             <span className="status-badge">{user.display_name}</span>
 
             <NotificationBubble currentUser={user} onOpenMessages={(message) => { setProfileFocus({ section: "messages", replyTo: message, nonce: Date.now() }); setActiveTab("profile"); }} />
@@ -595,6 +612,8 @@ function App() {
 
         {activeTab === "market" && canView("market") && <MarketAppraisalPage currentUser={user} seed={marketSeed} assets={data.assets} onOpenAssets={(itemName) => { setAssetSeed({ key: "item", value: itemName, mode: "exact", nonce: Date.now() }); setActiveTab("assets"); }} onOpenFittings={(itemName) => { setFittingSeed({ text: itemName, nonce: Date.now() }); setActiveTab("fittings"); }} api={api} sendDestinationToEve={sendDestinationToEve} ItemContextPanel={ItemContextPanel} numberFormatter={numberFormatter} />}
 
+        {activeTab === "manufacturing" && canView("manufacturing") && <ManufacturingPage api={api} formatDateTime={(value) => formatDateTime(value, preferredTimeZone(user))} />}
+
         {activeTab === "contracts" && canView("contracts") && <ContractsPage currentUser={user} api={api} CharacterHoverName={CharacterHoverName} />}
 
         {activeTab === "analytics" && canView("analytics") && <AnalyticsPlatform currentUser={user} api={api} Metric={Metric} />}
@@ -603,11 +622,13 @@ function App() {
 
         {activeTab === "fittings" && canView("fittings") && <FittingsPage currentUser={user} assets={data.assets} seed={fittingSeed} api={api} onOpenAssets={(itemName) => { setAssetSeed(itemName ? { key: "item", value: itemName, mode: "exact", nonce: Date.now() } : { key: "item", value: "", mode: "contains", nonce: Date.now() }); setActiveTab("assets"); }} onOpenMarket={(text) => { setMarketSeed({ text, nonce: Date.now() }); setActiveTab("market"); }} />}
 
+        {activeTab === "jump_clones" && canView("jump_clones") && <JumpClonesPage api={api} EveEntityIcon={EveEntityIcon} formatDateTime={(value) => formatDateTime(value, preferredTimeZone(user))} />}
+
         {activeTab === "settings" && canView("settings") && <SettingsPage currentUser={user} api={api} Metric={Metric} ManagedForm={ManagedForm} accountLabel={accountLabel} />}
 
         {activeTab === "corporations" && canView("corporations") && <CorporationsPage api={api} loadAssets={load} EveEntityIcon={EveEntityIcon} />}
 
-        {activeTab === "assets" && canView("assets") && <Assets data={data} seed={assetSeed} submit={submit} ownerOptions={ownerOptions} typeOptions={typeOptions} locationOptions={locationOptions} onOpenFittings={(itemName) => { setFittingSeed({ text: itemName, nonce: Date.now() }); setActiveTab("fittings"); }} onOpenMarket={(text) => { setMarketSeed({ text, nonce: Date.now() }); setActiveTab("market"); }} />}
+        {activeTab === "assets" && canView("assets") && <Assets data={data} seed={assetSeed} submit={submit} ownerOptions={ownerOptions} typeOptions={typeOptions} locationOptions={locationOptions} api={api} onOpenFittings={(itemName) => { setFittingSeed({ text: itemName, nonce: Date.now() }); setActiveTab("fittings"); }} onOpenMarket={(text) => { setMarketSeed({ text, nonce: Date.now() }); setActiveTab("market"); }} />}
 
         {activeTab === "industry" && canView("industry") && <Industry data={data} submit={submit} ownerOptions={ownerOptions} typeOptions={typeOptions} locationOptions={locationOptions} activityOptions={activityOptions} onOpenMarket={(text) => { setMarketSeed({ text, nonce: Date.now() }); setActiveTab("market"); }} onOpenAssets={(itemName) => { setAssetSeed({ key: "item", value: itemName, mode: "exact", nonce: Date.now() }); setActiveTab("assets"); }} />}
 
@@ -714,7 +735,9 @@ function NavigationPlanner({ currentUser }: { currentUser: UserAccount }) {
     <JumpFreighterPlanner currentUser={currentUser} api={api} numberFormatter={numberFormatter} Metric={Metric} EveEntityIcon={EveEntityIcon} CharacterHoverName={CharacterHoverName} UedamaScoutLiveLink={UedamaScoutLiveLink} />
     <IndustrialSystemThreatWidget currentUser={currentUser} api={api} Metric={Metric} />
     <PvpIntelWidget currentUser={currentUser} api={api} Metric={Metric} />
-    <LocalThreatWidget currentUser={currentUser} api={api} Metric={Metric} EveEntityIcon={EveEntityIcon} CharacterHoverName={CharacterHoverName} />
+    <div id="local-threat-analyzer" className="threat-analyzer-anchor">
+      <LocalThreatWidget currentUser={currentUser} api={api} Metric={Metric} EveEntityIcon={EveEntityIcon} CharacterHoverName={CharacterHoverName} />
+    </div>
   </>;
 }
 function AuditLog({ currentUser }: { currentUser: UserAccount }) {
@@ -916,9 +939,9 @@ function Ownership({ data, submit }: { data: AppData; submit: (path: string, bod
 
 
 
-function Assets({ data, seed, submit, ownerOptions, typeOptions, locationOptions, onOpenFittings, onOpenMarket }: { data: AppData; seed?: AssetTableSeed | null; submit: (path: string, body: Record<string, unknown>, success: string) => Promise<void>; ownerOptions: React.ReactNode; typeOptions: React.ReactNode; locationOptions: React.ReactNode; onOpenFittings: (itemName: string) => void; onOpenMarket: (text: string) => void }) {
+function Assets({ data, seed, submit, ownerOptions, typeOptions, locationOptions, api, onOpenFittings, onOpenMarket }: { data: AppData; seed?: AssetTableSeed | null; submit: (path: string, body: Record<string, unknown>, success: string) => Promise<void>; ownerOptions: React.ReactNode; typeOptions: React.ReactNode; locationOptions: React.ReactNode; api: ApiClient; onOpenFittings: (itemName: string) => void; onOpenMarket: (text: string) => void }) {
 
-  return <div className="two-column main-heavy"><section className="panel"><h3>Tracked Assets</h3><AssetTable assets={data.assets} seed={seed} onOpenFittings={onOpenFittings} onOpenMarket={onOpenMarket} /></section><section className="panel"><h3>Add Asset</h3><AssetForm submit={submit} ownerOptions={ownerOptions} typeOptions={typeOptions} locationOptions={locationOptions} /></section></div>;
+  return <div className="two-column main-heavy"><section className="panel"><h3>Tracked Assets</h3><AssetTable assets={data.assets} seed={seed} api={api} serverMode onOpenFittings={onOpenFittings} onOpenMarket={onOpenMarket} /></section><section className="panel"><h3>Add Asset</h3><AssetForm submit={submit} ownerOptions={ownerOptions} typeOptions={typeOptions} locationOptions={locationOptions} /></section></div>;
 
 }
 
@@ -1010,7 +1033,7 @@ function Metric({ icon, label, value, delta }: { icon: React.ReactNode; label: s
 
 
 
-function AssetTable({ assets, seed, onOpenFittings, onOpenMarket }: { assets: Asset[]; seed?: AssetTableSeed | null; onOpenFittings?: (itemName: string) => void; onOpenMarket?: (text: string) => void }) {
+function AssetTable({ assets, seed, api, serverMode = false, onOpenFittings, onOpenMarket }: { assets: Asset[]; seed?: AssetTableSeed | null; api?: ApiClient; serverMode?: boolean; onOpenFittings?: (itemName: string) => void; onOpenMarket?: (text: string) => void }) {
 
   const [sortKey, setSortKey] = useState<AssetSortKey>("item");
 
@@ -1029,6 +1052,18 @@ function AssetTable({ assets, seed, onOpenFittings, onOpenMarket }: { assets: As
   const [subtypeFilter, setSubtypeFilter] = useState<string>("");
 
   const [contextTypeId, setContextTypeId] = useState<number | null>(null);
+
+  const [assetPage, setAssetPage] = useState(1);
+
+  const [assetPageSize, setAssetPageSize] = useState(100);
+
+  const [serverAssets, setServerAssets] = useState<Asset[]>([]);
+
+  const [serverTotal, setServerTotal] = useState(0);
+
+  const [serverBusy, setServerBusy] = useState(false);
+
+  const [serverError, setServerError] = useState<string | null>(null);
 
   const filterLabels: Record<AssetFilterKey, string> = { item: "Item", owner: "Owner", location: "Location", flag: "Flag" };
 
@@ -1183,9 +1218,13 @@ function AssetTable({ assets, seed, onOpenFittings, onOpenMarket }: { assets: As
 
 
 
+  const tableAssets = serverMode ? serverAssets : assets;
+
   const visibleAssets = useMemo(() => {
 
-    const filtered = assets.filter(matchesFilter);
+    if (serverMode) return tableAssets;
+
+    const filtered = tableAssets.filter(matchesFilter);
 
     return [...filtered].sort((left, right) => {
 
@@ -1203,7 +1242,87 @@ function AssetTable({ assets, seed, onOpenFittings, onOpenMarket }: { assets: As
 
     });
 
-  }, [assets, filter, ownerKindFilter, categoryFilter, subtypeFilter, sortKey, sortDirection]);
+  }, [tableAssets, serverMode, filter, ownerKindFilter, categoryFilter, subtypeFilter, sortKey, sortDirection]);
+
+
+
+  useEffect(() => {
+
+    setAssetPage(1);
+
+    setContextTypeId(null);
+
+  }, [filter, ownerKindFilter, categoryFilter, subtypeFilter, sortKey, sortDirection, assetPageSize, assets.length]);
+
+
+
+  const visibleAssetCount = serverMode ? serverTotal : visibleAssets.length;
+
+  const assetPageCount = Math.max(1, Math.ceil(visibleAssetCount / assetPageSize));
+
+  const safeAssetPage = Math.min(assetPage, assetPageCount);
+
+  const assetPageStart = visibleAssetCount === 0 ? 0 : (safeAssetPage - 1) * assetPageSize + 1;
+
+  const assetPageEnd = Math.min(visibleAssetCount, safeAssetPage * assetPageSize);
+
+  const pagedAssets = serverMode ? visibleAssets : visibleAssets.slice((safeAssetPage - 1) * assetPageSize, safeAssetPage * assetPageSize);
+
+
+
+  useEffect(() => {
+
+    if (!serverMode || !api) return;
+
+    const params = new URLSearchParams({ page: String(assetPage), page_size: String(assetPageSize), sort_key: sortKey, sort_direction: sortDirection, category: categoryFilter });
+
+    if (ownerKindFilter) params.set("owner_kind", ownerKindFilter);
+
+    if (subtypeFilter) params.set("subtype", subtypeFilter);
+
+    if (filter) {
+
+      params.set("filter_key", filter.key);
+
+      params.set("filter_value", filter.value);
+
+      params.set("filter_mode", filter.mode);
+
+    }
+
+    let cancelled = false;
+
+    setServerBusy(true);
+
+    setServerError(null);
+
+    void api<AssetPagePayload>(`/quartermaster/assets-page?${params.toString()}`)
+
+      .then((payload) => {
+
+        if (cancelled) return;
+
+        setServerAssets(payload.items);
+
+        setServerTotal(payload.total);
+
+      })
+
+      .catch((err) => {
+
+        if (!cancelled) setServerError(err instanceof Error ? err.message : "Unable to load assets");
+
+      })
+
+      .finally(() => {
+
+        if (!cancelled) setServerBusy(false);
+
+      });
+
+    return () => { cancelled = true; };
+
+  }, [api, serverMode, assetPage, assetPageSize, sortKey, sortDirection, ownerKindFilter, categoryFilter, subtypeFilter, filter]);
 
 
 
@@ -1327,11 +1446,17 @@ function AssetTable({ assets, seed, onOpenFittings, onOpenMarket }: { assets: As
 
       <div className="ledger-actions">
 
-        {filter ? <div className="active-filter"><span>{filter.label} {filter.mode === "contains" ? "contains" : "is"}: {filter.value}</span><button type="button" onClick={clearFilter}>Clear filter</button></div> : <span className="muted">Showing all assets</span>}
+        {filter ? <div className="active-filter"><span>{filter.label} {filter.mode === "contains" ? "contains" : "is"}: {filter.value}</span><button type="button" onClick={clearFilter}>Clear filter</button></div> : <span className="muted">{serverMode ? "Showing paged assets" : "Showing all assets"}</span>}
 
-        <div className="button-row compact"><button type="button" disabled={visibleAssets.length === 0} onClick={exportCsv}>Export CSV</button><button type="button" disabled={visibleAssets.length === 0} onClick={() => void copyJaniceList()}>Copy for Janice</button></div>
+        <div className="button-row compact"><button type="button" disabled={visibleAssets.length === 0} onClick={exportCsv}>{serverMode ? "Export page CSV" : "Export CSV"}</button><button type="button" disabled={visibleAssets.length === 0} onClick={() => void copyJaniceList()}>{serverMode ? "Copy page for Janice" : "Copy for Janice"}</button></div>
 
       </div>
+
+      {serverBusy && <div className="notice inline">Loading asset page...</div>}
+
+      {serverError && <div className="mini-alert">{serverError}</div>}
+
+      {visibleAssetCount > assetPageSize && <div className="ledger-pagination"><span>Showing {assetPageStart.toLocaleString()}-{assetPageEnd.toLocaleString()} of {visibleAssetCount.toLocaleString()} rows</span><div className="button-row compact"><button type="button" disabled={safeAssetPage <= 1} onClick={() => setAssetPage(1)}>First</button><button type="button" disabled={safeAssetPage <= 1} onClick={() => setAssetPage((page) => Math.max(1, page - 1))}>Prev</button><label>Rows<select value={assetPageSize} onChange={(event) => setAssetPageSize(Number(event.target.value))}><option value={50}>50</option><option value={100}>100</option><option value={250}>250</option><option value={500}>500</option></select></label><button type="button" disabled={safeAssetPage >= assetPageCount} onClick={() => setAssetPage((page) => Math.min(assetPageCount, page + 1))}>Next</button><button type="button" disabled={safeAssetPage >= assetPageCount} onClick={() => setAssetPage(assetPageCount)}>Last</button></div></div>}
 
       {copyNotice && <div className="notice inline">{copyNotice}</div>}
 
@@ -1347,7 +1472,7 @@ function AssetTable({ assets, seed, onOpenFittings, onOpenMarket }: { assets: As
 
         <th><button className="sort-header" type="button" onClick={() => toggleSort("flag")}>Flag <span>{sortMark("flag")}</span></button></th>
 
-      </tr></thead><tbody>{visibleAssets.map((asset) => <React.Fragment key={asset.id}>
+      </tr></thead><tbody>{pagedAssets.map((asset) => <React.Fragment key={asset.id}>
 
         <tr>
 
@@ -1365,7 +1490,7 @@ function AssetTable({ assets, seed, onOpenFittings, onOpenMarket }: { assets: As
 
         {contextTypeId === asset.type_id && <tr className="asset-context-row"><td colSpan={5}><ItemContextPanel typeId={asset.type_id} itemName={asset.type_name} assets={assets} onOpenMarket={onOpenMarket} onOpenFittings={onOpenFittings} /></td></tr>}
 
-      </React.Fragment>)}</tbody></table>{assets.length === 0 && <p className="empty">No assets yet. Use Seed or add one.</p>}{assets.length > 0 && visibleAssets.length === 0 && <p className="empty">No assets match this filter.</p>}</div>
+      </React.Fragment>)}</tbody></table>{visibleAssetCount === 0 && !serverBusy && <p className="empty">{assets.length === 0 && !serverMode ? "No assets yet. Use Seed or add one." : "No assets match this filter."}</p>}</div>
 
     </div>
 
@@ -1809,7 +1934,7 @@ function ManagedForm({ children, onSubmit, submitLabel = "Save" }: { children: R
 
 function titleFor(tab: string) {
 
-  return ({ overview: "Quartermaster Overview", ownership: "Ownership and Locations", characters: "Characters", roster: "Alliance Roster", navigation: "Navigation", market: "Market Appraisal", contracts: "Contracts", analytics: "Analytics Platform", skills: "Character Skills", fittings: "Fittings", settings: "Settings", corporations: "Corporations", assets: "Asset Ledger", industry: "Blueprints and Recipes", esi: "ESI Sync", profile: "Profile", users: "User Administration", audit: "Audit Log" } as Record<string, string>)[tab];
+  return ({ overview: "Quartermaster Overview", ownership: "Ownership and Locations", characters: "Characters", roster: "Alliance Roster", navigation: "Navigation", market: "Market Appraisal", manufacturing: "Manufacturing", contracts: "Contracts", analytics: "Analytics Platform", skills: "Character Skills", fittings: "Fittings", jump_clones: "Jump Clones", settings: "Settings", corporations: "Corporations", assets: "Asset Ledger", industry: "Blueprints and Recipes", esi: "ESI Sync", profile: "Profile", users: "User Administration", audit: "Audit Log" } as Record<string, string>)[tab];
 
 }
 
@@ -1817,7 +1942,7 @@ function titleFor(tab: string) {
 
 function subtitleFor(tab: string) {
 
-  return ({ overview: "Live status and the first useful totals from the database.", ownership: "Define the characters, corporations, manual buckets, and places assets can belong to.", characters: "Assign EVE characters to Quartermaster accounts and control public asset visibility.", roster: "A corporation-grouped character roster suitable for diplomats and prospective members.", navigation: "Plan gate routes from imported SDE map data before layering on kill checks and local threat analysis.", market: "Paste item lists and compare buy, sell, and split prices across trade hubs.", contracts: "Sync and review current character and corporation contracts.", analytics: "Snapshot history, metric widgets, exports, and the foundation for custom dashboards.", skills: "Import trained skills, total skill points, and active skill queues from ESI.", fittings: "Sync saved EVE fittings, review modules, experiment in a scratchpad, and copy EFT-style text.", settings: "Control character visibility and sync privacy.", corporations: "Review enrolled corporations and sync corporation asset ledgers through authorized CEO or director tokens.", assets: "Track item stacks by owner, type, location, and EVE-style location flag.", industry: "Store blueprints, recipe activities, and material inputs before wiring in SDE imports.", esi: "A holding area for the upcoming SSO and sync work.", profile: "Manage your account and private messages.", users: "Manage Quartermaster accounts and role levels.", audit: "Review sync peeks, system events, and administrative activity." } as Record<string, string>)[tab];
+  return ({ overview: "Live status and the first useful totals from the database.", ownership: "Define the characters, corporations, manual buckets, and places assets can belong to.", characters: "Assign EVE characters to Quartermaster accounts and control public asset visibility.", roster: "A corporation-grouped character roster suitable for diplomats and prospective members.", navigation: "Plan gate routes from imported SDE map data before layering on kill checks and local threat analysis.", market: "Paste item lists and compare buy, sell, and split prices across trade hubs.", manufacturing: "Track manufacturing jobs, costs, required inputs, hub prices, and production history.", contracts: "Sync and review current character and corporation contracts.", analytics: "Snapshot history, metric widgets, exports, and the foundation for custom dashboards.", skills: "Import trained skills, total skill points, and active skill queues from ESI.", fittings: "Sync saved EVE fittings, review modules, experiment in a scratchpad, and copy EFT-style text.", jump_clones: "Sync jump clones, inspect implants, and build custom implant sets for fitting experiments.", settings: "Control character visibility and sync privacy.", corporations: "Review enrolled corporations and sync corporation asset ledgers through authorized CEO or director tokens.", assets: "Track item stacks by owner, type, location, and EVE-style location flag.", industry: "Store blueprints, recipe activities, and material inputs before wiring in SDE imports.", esi: "A holding area for the upcoming SSO and sync work.", profile: "Manage your account and private messages.", users: "Manage Quartermaster accounts and role levels.", audit: "Review sync peeks, system events, and administrative activity." } as Record<string, string>)[tab];
 
 }
 

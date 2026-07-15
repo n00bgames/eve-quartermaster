@@ -4,13 +4,26 @@ import type { DragEvent } from "react";
 import { formatDateTime, preferredTimeZone } from "../../lib/time";
 import { FittingChargeGroups } from "./FittingChargeGroups";
 import { FittingImportPanel, FittingListPanel, FittingSyncControls } from "./FittingShellPanels";
-import { chargeMatchesModule, eveTypeImageUrl, fallbackShipImage, FittingContextPanel, FittingStatsPanel, fittingItemTooltip, fittingSkillPlanText, fittingSlotKey, fittingStateLabel, hideBrokenImage, nextFittingState, romanLevel } from "./FittingSupport";
+import { cargoBayLabel, chargeMatchesModule, eveTypeImageUrl, fallbackShipImage, FittingContextPanel, FittingStatsPanel, fittingItemTooltip, fittingSkillPlanText, fittingSlotKey, fittingStateLabel, formatVolumeM3, hideBrokenImage, isCargoBayKey, nextFittingState, romanLevel } from "./FittingSupport";
 import { FITTING_PICKER_TABS, fittingPickerBucket } from "../../types/fittings";
-import type { CharacterFittingRecord, FittingImportResult, FittingItem, FittingPickerTab, FittingSearchType, FittingSeed, FittingSimulation, FittingSyncToken, FittingsPayload, FittingWeaponEstimate } from "../../types/fittings";
+import type { CharacterFittingRecord, FittingCargoBay, FittingImportResult, FittingItem, FittingPickerTab, FittingSearchType, FittingSeed, FittingSimulation, FittingSyncToken, FittingsPayload, FittingWeaponEstimate } from "../../types/fittings";
+import type { JumpClonePayload } from "../../types/jumpClones";
 
 type ApiClient = <T>(path: string, options?: RequestInit) => Promise<T>;
 type FittingsUser = { timezone?: string };
 type FittingsAsset = { type_id: number; quantity: number; owner_name: string; location_name?: string | null; location_flag?: string | null };
+type FittingAssetSummary = { type_id: number; quantity: number; stacks: number; locations: { owner: string; location: string; flag?: string | null; quantity: number }[] };
+type CargoBayGroup = FittingCargoBay & { items: FittingItem[] };
+
+const DEFAULT_CARGO_BAY_KEYS = ["Cargo"] as const;
+
+function fittingItemVolume(item: FittingItem): number {
+  return Number(item.volume ?? 0) * Math.max(1, Number(item.quantity ?? 1));
+}
+
+function cargoBayUsageText(bay: Pick<FittingCargoBay, "used" | "capacity">): string {
+  return `${formatVolumeM3(bay.used)} / ${bay.capacity == null ? "?" : formatVolumeM3(bay.capacity)}`;
+}
 
 type FittingsPageProps = {
   currentUser: FittingsUser;
@@ -32,7 +45,15 @@ export function FittingsPage({ currentUser, assets, seed, onOpenAssets, onOpenMa
 
   const [simulationHeat, setSimulationHeat] = useState(false);
 
+  const [simulationImplantChoice, setSimulationImplantChoice] = useState("");
+
+  const [jumpClonePayload, setJumpClonePayload] = useState<JumpClonePayload>({ characters: [], clones: [], custom_sets: [], sync_tokens: [] });
+
   const [simulation, setSimulation] = useState<FittingSimulation | null>(null);
+
+  const [contextAssetSummaries, setContextAssetSummaries] = useState<FittingAssetSummary[]>([]);
+
+  const [contextAssetBusy, setContextAssetBusy] = useState(false);
 
   const [simulationBusy, setSimulationBusy] = useState(false);
 
@@ -92,33 +113,39 @@ export function FittingsPage({ currentUser, assets, seed, onOpenAssets, onOpenMa
 
   function flagLabel(flag: string) {
 
-    if (flag === "Cargo") return "Cargo hold";
-
-    if (flag === "DroneBay") return "Drone bay";
-
-    if (flag === "FighterBay") return "Fighter bay";
+    if (isCargoBayKey(flag)) return cargoBayLabel(flag);
 
     return flag.replace("HiSlot", "High ").replace("MedSlot", "Mid ").replace("LoSlot", "Low ").replace("RigSlot", "Rig ").replace("SubSystemSlot", "Subsystem ").replace("ServiceSlot", "Service ");
 
   }
 
 
+  function itemText(item: FittingSearchType) {
+    return [item.name, item.group_name ?? "", item.category_name ?? ""].join(" ").toLowerCase();
+  }
 
   function defaultFlagForPickerItem(item: FittingSearchType) {
 
     const bucket = item.bucket ?? fittingPickerBucket(item);
+    const haystack = itemText(item);
 
     if (bucket === "Rigs") return "RigSlot0";
 
-    if (bucket === "Drones") return "DroneBay";
+    if (bucket === "Drones") return haystack.includes("fighter") ? "FighterBay" : "DroneBay";
 
     if (bucket === "Ammo") return "Cargo";
+
+    const highTokens = ["launcher", "turret", "smartbomb", "cynosural", "probe launcher", "cloak", "salvager", "tractor beam", "mining laser", "strip miner"];
+    const lowTokens = ["armor", "damage control", "ballistic control", "gyrostabilizer", "heat sink", "magnetic field", "reactor control", "power diagnostic", "capacitor power relay", "shield power relay", "shield flux coil", "nanofiber", "inertia", "overdrive", "cargohold", "drone damage", "tracking enhancer", "weapon upgrade", "mining laser upgrade", "co-processor", "signal amplifier"];
+    const midTokens = ["shield", "propulsion", "afterburner", "microwarpdrive", "capacitor booster", "target painter", "stasis webifier", "warp disrupt", "warp scram", "tracking computer", "guidance computer", "sensor booster", "ecm", "scanner", "analyzer"];
+
+    if (highTokens.some((token) => haystack.includes(token))) return "HiSlot0";
+    if (lowTokens.some((token) => haystack.includes(token))) return "LoSlot0";
+    if (midTokens.some((token) => haystack.includes(token))) return "MedSlot0";
 
     return "HiSlot0";
 
   }
-
-
 
   function beginPickerDrag(event: DragEvent, item: FittingSearchType) {
 
@@ -173,6 +200,7 @@ export function FittingsPage({ currentUser, assets, seed, onOpenAssets, onOpenMa
   async function loadFittings() {
 
     const next = await api<FittingsPayload>("/fittings");
+    api<JumpClonePayload>("/jump-clones").then(setJumpClonePayload).catch(() => setJumpClonePayload({ characters: [], clones: [], custom_sets: [], sync_tokens: [] }));
 
     setPayload({ ...next, editable_flags: next.editable_flags ?? [] });
 
@@ -282,7 +310,8 @@ export function FittingsPage({ currentUser, assets, seed, onOpenAssets, onOpenMa
 
     try {
 
-      const updated = await api<CharacterFittingRecord>(`/fittings/${fitting.id}/items`, { method: "POST", body: JSON.stringify({ type_id: typeId, flag, quantity: Math.max(1, quantity || 1) }) });
+      const normalizedQuantity = isCargoBayKey(fittingSlotKey(flag)) ? Math.max(1, quantity || 1) : 1;
+      const updated = await api<CharacterFittingRecord>(`/fittings/${fitting.id}/items`, { method: "POST", body: JSON.stringify({ type_id: typeId, flag, quantity: normalizedQuantity }) });
 
       replaceFitting(updated);
 
@@ -493,7 +522,7 @@ export function FittingsPage({ currentUser, assets, seed, onOpenAssets, onOpenMa
 
 
 
-  async function loadSimulation(fitting: CharacterFittingRecord | null, characterId: number | "", heat = simulationHeat) {
+  async function loadSimulation(fitting: CharacterFittingRecord | null, characterId: number | "", heat = simulationHeat, implantChoice = simulationImplantChoice) {
 
     if (!fitting || characterId === "") {
 
@@ -507,7 +536,12 @@ export function FittingsPage({ currentUser, assets, seed, onOpenAssets, onOpenMa
 
     try {
 
-      setSimulation(await api<FittingSimulation>(`/fittings/${fitting.id}/simulation?character_id=${characterId}&heat=${heat ? "true" : "false"}`));
+      const params = new URLSearchParams({ character_id: String(characterId), heat: heat ? "true" : "false" });
+
+      if (implantChoice.startsWith("clone:")) params.set("jump_clone_id", implantChoice.slice("clone:".length));
+      if (implantChoice.startsWith("set:")) params.set("implant_set_id", implantChoice.slice("set:".length));
+
+      setSimulation(await api<FittingSimulation>(`/fittings/${fitting.id}/simulation?${params.toString()}`));
 
     } catch (err) {
 
@@ -559,6 +593,28 @@ export function FittingsPage({ currentUser, assets, seed, onOpenAssets, onOpenMa
 
   const selected = payload.fittings.find((fitting) => fitting.id === selectedId) ?? filteredFittings[0] ?? null;
 
+  const selectedContextTypeIds = useMemo(() => {
+    if (!selected) return [];
+    return [...new Set([selected.ship_type_id, ...selected.items.map((item) => item.type_id)].filter((typeId) => typeId > 0))];
+  }, [selected]);
+
+  const selectedContextKey = selectedContextTypeIds.join(",");
+
+  useEffect(() => {
+    if (!selectedContextKey) {
+      setContextAssetSummaries([]);
+      setContextAssetBusy(false);
+      return;
+    }
+    let cancelled = false;
+    setContextAssetBusy(true);
+    api<{ items: FittingAssetSummary[] }>("/context/assets-summary", { method: "POST", body: JSON.stringify({ type_ids: selectedContextTypeIds }) })
+      .then((result) => { if (!cancelled) setContextAssetSummaries(result.items ?? []); })
+      .catch(() => { if (!cancelled) setContextAssetSummaries([]); })
+      .finally(() => { if (!cancelled) setContextAssetBusy(false); });
+    return () => { cancelled = true; };
+  }, [api, selectedContextKey]);
+
   const syncToken = payload.sync_tokens.find((token) => token.token_id === syncTokenId) ?? null;
 
   const allPickerItems = useMemo(() => FITTING_PICKER_TABS.flatMap((tab) => itemCatalog[tab]), [itemCatalog]);
@@ -595,6 +651,22 @@ export function FittingsPage({ currentUser, assets, seed, onOpenAssets, onOpenMa
 
 
 
+
+  const implantOptions = useMemo(() => {
+
+    const characterId = simulationCharacterId === "" ? null : Number(simulationCharacterId);
+
+    const cloneOptions = jumpClonePayload.clones
+      .filter((clone) => characterId !== null && clone.character_id === characterId)
+      .map((clone) => ({ value: `clone:${clone.id}`, label: `${clone.name} (${clone.implants.length} implants)` }));
+
+    const setOptions = jumpClonePayload.custom_sets
+      .filter((set) => !set.character_id || characterId === null || set.character_id === characterId)
+      .map((set) => ({ value: `set:${set.id}`, label: `${set.name} (${set.implants.length} implants)` }));
+
+    return [...cloneOptions, ...setOptions];
+
+  }, [jumpClonePayload, simulationCharacterId]);
   const activeCatalogCount = itemCatalog[pickerTab].length;
 
   useEffect(() => {
@@ -705,20 +777,75 @@ export function FittingsPage({ currentUser, assets, seed, onOpenAssets, onOpenMa
 
 
 
-  const cargoHoldItems = useMemo(() => (selected?.items ?? []).filter((item) => fittingSlotKey(item.flag) === "Cargo").sort((left, right) => left.type_name.localeCompare(right.type_name, undefined, { numeric: true, sensitivity: "base" })), [selected]);
+  const cargoBayGroups = useMemo<CargoBayGroup[]>(() => {
+
+    const statByKey = new Map((simulation?.stats?.cargo_bays ?? []).map((bay) => [bay.key, bay]));
+
+    const itemsByKey = new Map<string, FittingItem[]>();
+
+    for (const item of selected?.items ?? []) {
+
+      const key = fittingSlotKey(item.flag);
+
+      if (!isCargoBayKey(key)) continue;
+
+      itemsByKey.set(key, [...(itemsByKey.get(key) ?? []), item]);
+
+    }
+
+    const keys = new Set<string>();
+
+    for (const bay of simulation?.stats?.cargo_bays ?? []) keys.add(bay.key);
+
+    for (const key of itemsByKey.keys()) keys.add(key);
+
+    if (selected?.is_draft && selected.can_manage) for (const key of DEFAULT_CARGO_BAY_KEYS) keys.add(key);
+
+    return [...keys].map((key) => {
+
+      const stat = statByKey.get(key);
+
+      const items = [...(itemsByKey.get(key) ?? [])].sort((left, right) => left.type_name.localeCompare(right.type_name, undefined, { numeric: true, sensitivity: "base" }));
+
+      const used = stat?.used ?? items.reduce((sum, item) => sum + fittingItemVolume(item), 0);
+
+      const capacity = stat?.capacity ?? (key === "Cargo" ? selected?.ship_capacity ?? null : null);
+
+      const ok = stat?.ok ?? (capacity == null || used <= Number(capacity) + 0.0001);
+
+      return {
+
+        key,
+
+        label: stat?.label ?? cargoBayLabel(key),
+
+        used,
+
+        capacity,
+
+        ok,
+
+        percent: stat?.percent ?? (capacity && capacity > 0 ? Math.min(999, used / Number(capacity) * 100) : null),
+
+        items,
+
+      };
+
+    }).filter((bay) => bay.capacity != null || bay.used > 0 || bay.items.length > 0 || (selected?.is_draft && selected.can_manage && DEFAULT_CARGO_BAY_KEYS.includes(bay.key as typeof DEFAULT_CARGO_BAY_KEYS[number])));
+
+  }, [selected, simulation?.stats?.cargo_bays]);
 
 
 
-  const bayGroups = useMemo(() => [
+  const cargoBayTotals = useMemo(() => {
 
-    { key: "DroneBay", label: "Drones" },
+    const used = cargoBayGroups.reduce((sum, bay) => sum + Number(bay.used ?? 0), 0);
 
-    { key: "FighterBay", label: "Fighters" },
+    const capacity = cargoBayGroups.reduce((sum, bay) => bay.capacity == null ? sum : sum + Number(bay.capacity), 0);
 
-    { key: "Other", label: "Other" },
+    return { used, capacity: capacity > 0 ? capacity : null };
 
-  ].map((group) => ({ ...group, items: (selected?.items ?? []).filter((item) => fittingSlotKey(item.flag) === group.key) })).filter((group) => group.items.length > 0), [selected]);
-
+  }, [cargoBayGroups]);
 
 
   const estimateByItemId = useMemo(() => {
@@ -741,7 +868,7 @@ export function FittingsPage({ currentUser, assets, seed, onOpenAssets, onOpenMa
 
   useEffect(() => { setSimulationCharacterId(selected?.character_id ?? simulationCharacterOptions[0]?.character_id ?? ""); }, [selected?.id, simulationCharacterOptions.length]);
 
-  useEffect(() => { void loadSimulation(selected, simulationCharacterId, simulationHeat); }, [selected?.id, simulationCharacterId, simulationHeat]);
+  useEffect(() => { void loadSimulation(selected, simulationCharacterId, simulationHeat, simulationImplantChoice); }, [selected?.id, simulationCharacterId, simulationHeat, simulationImplantChoice]);
 
 
 
@@ -803,7 +930,7 @@ export function FittingsPage({ currentUser, assets, seed, onOpenAssets, onOpenMa
     const actionClassName = [
       selected.is_draft ? "fitting-item-actions" : "fitting-item-actions simulation-only",
       canShowChargeSelector ? "has-charge-selector" : "no-charge-selector",
-      ["Cargo", "DroneBay", "FighterBay"].includes(itemSlotKey) ? "bay-item-actions" : "",
+      isCargoBayKey(itemSlotKey) ? "bay-item-actions" : "",
     ].filter(Boolean).join(" ");
 
     return <div className={actionClassName}>
@@ -865,7 +992,7 @@ export function FittingsPage({ currentUser, assets, seed, onOpenAssets, onOpenMa
 
           </div>
 
-          <div className="fitting-sim-toolbar"><label>Simulate as<select value={simulationCharacterId} onChange={(event) => setSimulationCharacterId(event.target.value ? Number(event.target.value) : "")}><option value="">Choose character</option>{simulationCharacterOptions.map((token) => <option key={token.character_id} value={token.character_id}>{token.character_name}</option>)}</select></label><div className="segmented-control compact"><button type="button" className={!simulationHeat ? "active" : ""} onClick={() => setSimulationHeat(false)}>Cold</button><button type="button" className={simulationHeat ? "active hot" : ""} onClick={() => setSimulationHeat(true)}>Hot</button></div><span className={`fitting-sim-status sim-${simulation?.status ?? "unknown"}`}>{simulationBusy ? "Simulating" : simulation?.status === "pass" ? "Ready" : simulation?.status === "warning" ? "Needs attention" : "Dogma pending"}</span></div>
+          <div className="fitting-sim-toolbar"><label>Simulate as<select value={simulationCharacterId} onChange={(event) => setSimulationCharacterId(event.target.value ? Number(event.target.value) : "")}><option value="">Choose character</option>{simulationCharacterOptions.map((token) => <option key={token.character_id} value={token.character_id}>{token.character_name}</option>)}</select></label><label>Implants<select value={simulationImplantChoice} onChange={(event) => setSimulationImplantChoice(event.target.value)}><option value="">No implants</option>{implantOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label><div className="segmented-control compact"><button type="button" className={!simulationHeat ? "active" : ""} onClick={() => setSimulationHeat(false)}>Cold</button><button type="button" className={simulationHeat ? "active hot" : ""} onClick={() => setSimulationHeat(true)}>Hot</button></div><span className="fitting-dev-warning">In development · values may be inaccurate</span><span className={`fitting-sim-status sim-${simulation?.status ?? "unknown"}`}>{simulationBusy ? "Simulating" : simulation?.status === "pass" ? "Ready" : simulation?.status === "warning" ? "Needs attention" : "Dogma pending"}</span></div>
 
           <div className="fitting-summary-row">{Object.entries(selected.summary).map(([key, value]) => <span key={key}>{key}: <strong>{value}</strong></span>)}<span>{selected.is_draft ? "Draft" : "ESI synced"}</span><span>{selected.is_shared ? "Shared" : "Private"}</span>{selected.source_fitting_name && <span>From {selected.source_fitting_name}</span>}{selected.last_synced_at && <span>Synced {formatDateTime(selected.last_synced_at, preferredTimeZone(currentUser))}</span>}{selected.updated_at && <span>Edited {formatDateTime(selected.updated_at, preferredTimeZone(currentUser))}</span>}</div>
 
@@ -873,7 +1000,7 @@ export function FittingsPage({ currentUser, assets, seed, onOpenAssets, onOpenMa
 
           {selected.description && <p className="muted">{selected.description}</p>}
 
-          <FittingContextPanel fitting={selected} assets={assets} onOpenAssets={onOpenAssets} onOpenMarket={onOpenMarket} />
+          <FittingContextPanel fitting={selected} assets={assets} assetSummaries={contextAssetSummaries} contextLoading={contextAssetBusy} onOpenAssets={onOpenAssets} onOpenMarket={onOpenMarket} />
 
           {selected.can_manage && <div className="fitting-editor-panel fitting-editor-with-picker">
 
@@ -891,7 +1018,7 @@ export function FittingsPage({ currentUser, assets, seed, onOpenAssets, onOpenMa
 
                   {catalogBusy && <p className="muted">Loading {pickerTab.toLowerCase()}...</p>}
 
-                  {!catalogBusy && groupedPickerResults.map(([group, rows], index) => <details key={group} className="fitting-picker-group" open={index < 2 || Boolean(itemSearch.trim())}><summary>{group}<span>{rows.length.toLocaleString()}</span></summary>{rows.map((item) => <button key={item.type_id} type="button" draggable className={selectedItemTypeId === item.type_id ? "active fitting-picker-item" : "fitting-picker-item"} onClick={() => { setSelectedItemTypeId(item.type_id); setDraftFlag(defaultFlagForPickerItem(item)); }} onDoubleClick={() => void addDraftItemToFlag(selected, item.type_id, draftFlag, draftQuantity, false)} onDragStart={(event) => beginPickerDrag(event, item)}><img src={eveTypeImageUrl(item.type_id, "icon", 64)} alt="" loading="lazy" onError={hideBrokenImage} /><span>{item.name}<small>{item.group_name ?? `Type ${item.type_id}`}</small></span></button>)}</details>)}
+                  {!catalogBusy && groupedPickerResults.map(([group, rows], index) => <details key={group} className="fitting-picker-group" open={index < 2 || Boolean(itemSearch.trim())}><summary>{group}<span>{rows.length.toLocaleString()}</span></summary>{rows.map((item) => <button key={item.type_id} type="button" draggable className={selectedItemTypeId === item.type_id ? "active fitting-picker-item" : "fitting-picker-item"} onClick={() => { setSelectedItemTypeId(item.type_id); setDraftFlag(defaultFlagForPickerItem(item)); }} onDoubleClick={() => void addDraftItemToFlag(selected, item.type_id, defaultFlagForPickerItem(item), draftQuantity, false)} onDragStart={(event) => beginPickerDrag(event, item)}><img src={eveTypeImageUrl(item.type_id, "icon", 64)} alt="" loading="lazy" onError={hideBrokenImage} /><span>{item.name}<small>{item.group_name ?? `Type ${item.type_id}`}</small></span></button>)}</details>)}
 
                   {!catalogBusy && itemCatalog[pickerTab].length > 0 && pickerResults.length === 0 && <p className="empty">No {pickerTab.toLowerCase()} match this filter.</p>}
 
@@ -911,7 +1038,7 @@ export function FittingsPage({ currentUser, assets, seed, onOpenAssets, onOpenMa
 
                   <label>Slot<select value={draftFlag} onChange={(event) => setDraftFlag(event.target.value)}>{editableFlags.map((flag) => <option key={flag} value={flag}>{flagLabel(flag)}</option>)}</select></label>
 
-                  <label>Qty<input type="number" min="1" value={draftQuantity} onChange={(event) => setDraftQuantity(Math.max(1, Number(event.target.value) || 1))} /></label>
+                  {isCargoBayKey(fittingSlotKey(draftFlag)) && <label>Qty<input type="number" min="1" value={draftQuantity} onChange={(event) => setDraftQuantity(Math.max(1, Number(event.target.value) || 1))} /></label>}
 
                   <button type="button" disabled={editorBusy || selectedItemTypeId === ""} onClick={() => void addDraftItem(selected)}>Add selected</button>
 
@@ -919,7 +1046,7 @@ export function FittingsPage({ currentUser, assets, seed, onOpenAssets, onOpenMa
 
                 <div className="fitting-drop-bays">
 
-                  {[{ flag: "Cargo", label: "Cargo hold" }, { flag: "DroneBay", label: "Drone bay" }, { flag: "FighterBay", label: "Fighter bay" }].map((target) => <div key={target.flag} className="fitting-drop-target" onDragOver={allowFittingDrop} onDrop={(event) => void dropPickerItem(event, target.flag)}><strong>{target.label}</strong><span>{fittingTargetCount(target.flag)} item{fittingTargetCount(target.flag) === 1 ? "" : "s"}</span></div>)}
+                  {cargoBayGroups.filter((bay) => bay.key === "Cargo" || bay.capacity != null || bay.items.length > 0).map((target) => <div key={target.key} className={target.ok ? "fitting-drop-target" : "fitting-drop-target over-limit"} onDragOver={allowFittingDrop} onDrop={(event) => void dropPickerItem(event, target.key)}><strong>{target.label}</strong><span>{fittingTargetCount(target.key)} item{fittingTargetCount(target.key) === 1 ? "" : "s"} · {cargoBayUsageText(target)}</span></div>)}
 
                 </div>
 
@@ -999,10 +1126,7 @@ export function FittingsPage({ currentUser, assets, seed, onOpenAssets, onOpenMa
 
           </article>}
 
-          {(cargoHoldItems.length > 0 || (selected.is_draft && selected.can_manage)) && <article className="fitting-cargo-hold fitting-drop-target" onDragOver={allowFittingDrop} onDrop={(event) => void dropPickerItem(event, "Cargo")}><div><h4>Cargo Hold</h4><span>{cargoHoldItems.length.toLocaleString()} carried item{cargoHoldItems.length === 1 ? "" : "s"}</span></div><div>{cargoHoldItems.length > 0 ? cargoHoldItems.map((item) => <div key={item.id} className="fitting-bay-item" title={fittingItemTooltip(item, estimateByItemId.get(item.id))}><img src={eveTypeImageUrl(item.type_id, "icon", 64)} alt="" loading="lazy" onError={hideBrokenImage} /><span>{item.type_name}</span><strong>{item.quantity > 1 ? `x${item.quantity.toLocaleString()}` : ""}</strong>{renderItemControls(item)}</div>) : <p className="empty">Drop ammo, charges, or cargo here.</p>}</div></article>}
-
-          {bayGroups.length > 0 && <div className="fitting-bays">{bayGroups.map((group) => <article key={group.key}><h4>{group.label}</h4>{group.items.map((item) => <div key={item.id} className="fitting-bay-item" title={fittingItemTooltip(item, estimateByItemId.get(item.id))}><img src={eveTypeImageUrl(item.type_id, "icon", 64)} alt="" loading="lazy" onError={hideBrokenImage} /><span>{item.type_name}</span><strong>{item.quantity > 1 ? `x${item.quantity.toLocaleString()}` : ""}</strong>{renderItemControls(item)}</div>)}</article>)}</div>}
-
+          {cargoBayGroups.length > 0 && <article className="fitting-cargo-hold fitting-cargo-card"><div><h4>Cargo</h4><span>{formatVolumeM3(cargoBayTotals.used)} carried{cargoBayTotals.capacity == null ? "" : ` / ${formatVolumeM3(cargoBayTotals.capacity)} known capacity`}</span></div><div className="cargo-bay-grid">{cargoBayGroups.map((bay) => <section key={bay.key} className={bay.ok ? "cargo-bay-section fitting-drop-target" : "cargo-bay-section fitting-drop-target over-limit"} onDragOver={allowFittingDrop} onDrop={(event) => void dropPickerItem(event, bay.key)}><div className="cargo-bay-heading"><h5>{bay.label}</h5><span>{cargoBayUsageText(bay)}</span></div>{bay.capacity != null && <i className="cargo-bay-meter"><b style={{ width: `${Math.min(100, bay.percent ?? 0)}%` }} /></i>}<div className="cargo-bay-items">{bay.items.length > 0 ? bay.items.map((item) => <div key={item.id} className="fitting-bay-item" title={fittingItemTooltip(item, estimateByItemId.get(item.id))}><img src={eveTypeImageUrl(item.type_id, "icon", 64)} alt="" loading="lazy" onError={hideBrokenImage} /><span>{item.type_name}</span><strong>{item.quantity > 1 ? `x${item.quantity.toLocaleString()}` : ""}</strong>{renderItemControls(item)}</div>) : <p className="empty">Drop items here.</p>}</div></section>)}</div></article>}
           <details><summary>Text item groups</summary><div className="fitting-items">{groupedItems.map(([group, items]) => <article key={group}><h4>{group}</h4>{items.map((item) => <div key={item.id}><span>{item.type_name}</span><strong>{item.quantity > 1 ? `x${item.quantity}` : ""}</strong><small>{item.flag}</small>{renderItemControls(item)}</div>)}</article>)}</div></details>
 
           <label>Scratchpad<textarea className="fitting-scratch" value={scratch} onChange={(event) => setScratch(event.target.value)} /></label>

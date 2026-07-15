@@ -14,6 +14,7 @@ function formatApiError(detail: unknown): string {
 
 function requestTimeoutMs(path: string): number {
   if (path.startsWith("/esi/sync/")) return 300000;
+  if (path.startsWith("/jump-clones/sync/")) return 300000;
   if (path.startsWith("/sde/import-status")) return 20000;
   if (path.startsWith("/sde/import")) return 1800000;
   if (path.startsWith("/navigation/gatecheck")) return 180000;
@@ -22,6 +23,7 @@ function requestTimeoutMs(path: string): number {
   if (path.startsWith("/navigation/local-threat")) return 600000;
   if (path.startsWith("/navigation/jump-freighter")) return 180000;
   if (path.startsWith("/market/appraise")) return 180000;
+  if (path.startsWith("/manufacturing/appraise")) return 180000;
   if (path.startsWith("/contracts/sync/")) return 180000;
   if (path.startsWith("/mail/")) return 60000;
   return 20000;

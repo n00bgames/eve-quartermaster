@@ -52,6 +52,45 @@ def top_rows(rows: dict[str, dict[str, Any]], limit: int = 6) -> list[dict[str, 
     return sorted(rows.values(), key=lambda row: row["quantity"], reverse=True)[:limit]
 
 
+def asset_location_name(asset: Asset) -> str:
+    if asset.location:
+        return asset.location.name
+    if asset.parent_asset:
+        parent_type = asset.parent_asset.item_type.name if asset.parent_asset.item_type else None
+        return f"Inside {parent_type or 'item'} {asset.parent_asset.eve_item_id}"
+    return "Unknown location"
+
+
+def summarize_assets_by_type(assets: list[Asset]) -> dict[int, dict[str, Any]]:
+    summaries: dict[int, dict[str, Any]] = {}
+    for asset in assets:
+        summary = summaries.setdefault(
+            asset.type_id,
+            {
+                "type_id": asset.type_id,
+                "quantity": 0,
+                "stacks": 0,
+                "locations": {},
+            },
+        )
+        summary["quantity"] += asset.quantity
+        summary["stacks"] += 1
+        owner_name = owner_label(asset.ownership_entity)
+        location_name = asset_location_name(asset)
+        location_key = f"{owner_name.lower()}|{location_name.lower()}|{asset.location_flag or ''}"
+        location = summary["locations"].setdefault(
+            location_key,
+            {
+                "owner": owner_name,
+                "location": location_name,
+                "flag": asset.location_flag,
+                "quantity": 0,
+            },
+        )
+        location["quantity"] += asset.quantity
+    return summaries
+
+
 def fitting_payload(fitting: CharacterFitting, quantity: int | None = None, flags: set[str] | None = None) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "id": fitting.id,
@@ -80,6 +119,43 @@ def blueprint_payload(blueprint: Blueprint) -> dict[str, Any]:
         "is_copy": blueprint.is_copy,
     }
 
+@router.post("/assets-summary")
+def assets_summary(payload: dict[str, Any], current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+    type_ids: set[int] = set()
+    for value in payload.get("type_ids", []):
+        try:
+            type_id = int(value)
+        except (TypeError, ValueError):
+            continue
+        if type_id > 0:
+            type_ids.add(type_id)
+    if len(type_ids) > 80:
+        raise HTTPException(status_code=400, detail="At most 80 item types can be summarized at once.")
+    if not type_ids:
+        return {"items": []}
+
+    assets = db.scalars(
+        select(Asset)
+        .where(Asset.type_id.in_(type_ids))
+        .options(
+            selectinload(Asset.ownership_entity).selectinload(OwnershipEntity.character),
+            selectinload(Asset.location),
+            selectinload(Asset.parent_asset).selectinload(Asset.item_type),
+        )
+    ).all()
+    visible_assets = [asset for asset in assets if can_view_owner_records(asset.ownership_entity, current_user, db)]
+    summaries = summarize_assets_by_type(visible_assets)
+    return {
+        "items": [
+            {
+                "type_id": type_id,
+                "quantity": int(summaries.get(type_id, {}).get("quantity", 0)),
+                "stacks": int(summaries.get(type_id, {}).get("stacks", 0)),
+                "locations": top_rows(summaries.get(type_id, {}).get("locations", {}), limit=6),
+            }
+            for type_id in sorted(type_ids)
+        ]
+    }
 
 @router.get("/item/{type_id}")
 def item_context(type_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
@@ -97,6 +173,7 @@ def item_context(type_id: int, current_user: User = Depends(get_current_user), d
         .options(
             selectinload(Asset.ownership_entity).selectinload(OwnershipEntity.character),
             selectinload(Asset.location),
+            selectinload(Asset.parent_asset).selectinload(Asset.item_type),
         )
     ).all()
     visible_assets = [asset for asset in assets if can_view_owner_records(asset.ownership_entity, current_user, db)]
@@ -118,7 +195,7 @@ def item_context(type_id: int, current_user: User = Depends(get_current_user), d
         owner_row["quantity"] += asset.quantity
         owner_row["stacks"] += 1
 
-        location_name = asset.location.name if asset.location else "Unknown location"
+        location_name = asset_location_name(asset)
         location_key = f"{owner_name.lower()}|{location_name.lower()}|{asset.location_flag or ''}"
         location_row = location_totals.setdefault(
             location_key,
@@ -218,6 +295,7 @@ def item_context(type_id: int, current_user: User = Depends(get_current_user), d
             "category_name": item_type.group.category.name if item_type.group and item_type.group.category else None,
             "volume": item_type.volume,
             "packaged_volume": item_type.packaged_volume,
+            "capacity": item_type.capacity,
             "market_group_id": item_type.market_group_id,
         },
         "owned": {

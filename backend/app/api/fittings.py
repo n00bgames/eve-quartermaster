@@ -10,9 +10,11 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.api.auth import can_view_all_characters, get_current_user
 from app.db.session import get_db
-from app.models import CharacterFitting, CharacterFittingItem, EsiToken, EveCategory, EveCharacter, EveGroup, EveType, User
+from app.models import CharacterFitting, CharacterFittingItem, CharacterJumpClone, EsiToken, EveCategory, EveCharacter, EveGroup, EveType, ImplantSet, ImplantSetImplant, JumpCloneImplant, User
+from app.services.esi_client import EsiClient
 from app.services.fitting_simulator import load_fitting_for_simulation, simulate_fitting
 from app.services.permissions import can_view_section
+from app.services.ship_capacity import resolved_ship_capacity
 
 router = APIRouter(prefix="/fittings", tags=["fittings"])
 
@@ -41,6 +43,44 @@ FLAG_LABELS = {
     "Cargo": "Cargo",
 }
 SIMULATION_STATES = {"offline", "online", "active", "overheated"}
+BAY_FLAGS = [
+    "Cargo",
+    "DroneBay",
+    "FighterBay",
+    "FuelBay",
+    "FleetHangar",
+    "ShipMaintenanceBay",
+    "FleetMaintenanceBay",
+    "InfrastructureBay",
+    "OreHold",
+    "MineralHold",
+    "GasHold",
+    "IceHold",
+    "AmmoHold",
+    "PlanetaryCommoditiesHold",
+    "CommandCenterHold",
+    "QuafeHold",
+]
+BAY_FLAG_LABELS = {
+    "Cargo": "Cargo hold",
+    "DroneBay": "Drone bay",
+    "FighterBay": "Fighter hangar",
+    "FuelBay": "Fuel bay",
+    "FleetHangar": "Fleet hangar",
+    "ShipMaintenanceBay": "Ship maintenance bay",
+    "FleetMaintenanceBay": "Fleet maintenance bay",
+    "InfrastructureBay": "Infrastructure bay",
+    "OreHold": "Ore hold",
+    "MineralHold": "Mineral hold",
+    "GasHold": "Gas hold",
+    "IceHold": "Ice hold",
+    "AmmoHold": "Ammo hold",
+    "PlanetaryCommoditiesHold": "PI hold",
+    "CommandCenterHold": "Command center hold",
+    "QuafeHold": "Quafe hold",
+}
+
+FITTED_SLOT_PREFIXES = {"HiSlot", "MedSlot", "LoSlot", "RigSlot", "SubSystemSlot", "ServiceSlot"}
 
 DRAFT_FLAGS = [
     "HiSlot0",
@@ -78,9 +118,7 @@ DRAFT_FLAGS = [
     "ServiceSlot1",
     "ServiceSlot2",
     "ServiceSlot3",
-    "DroneBay",
-    "FighterBay",
-    "Cargo",
+    *BAY_FLAGS,
 ]
 
 SECTION_SLOT_PREFIXES = ["LoSlot", "MedSlot", "HiSlot", "RigSlot", "SubSystemSlot", "ServiceSlot"]
@@ -118,7 +156,7 @@ def require_manageable_draft(user: User, fitting: CharacterFitting, db: Session)
 
 def slot_prefix(flag: str) -> str:
     normalized = flag.lower()
-    for prefix in FLAG_ORDER:
+    for prefix in [*FLAG_ORDER, *BAY_FLAGS]:
         if flag.startswith(prefix):
             return prefix
     if "cargo" in normalized:
@@ -131,14 +169,106 @@ def normalize_flag(flag: str) -> str:
     if candidate in DRAFT_FLAGS:
         return candidate
     prefix = slot_prefix(candidate)
-    if prefix in {"Cargo", "DroneBay", "FighterBay"}:
+    if prefix in set(BAY_FLAGS):
         return prefix
     if prefix in FLAG_ORDER:
-        return f"{prefix}0"
+        match = re.search(r"(\d+)$", candidate)
+        index = int(match.group(1)) if match else 0
+        return f"{prefix}{index}"
     return "Cargo"
 
 
+def get_type_with_group(db: Session, type_id: int) -> EveType | None:
+    return db.scalar(
+        select(EveType)
+        .options(selectinload(EveType.group).selectinload(EveGroup.category))
+        .where(EveType.type_id == type_id)
+    )
 
+
+def fitting_slot_index(flag: str) -> int:
+    match = re.search(r"(\d+)$", str(flag or ""))
+    return int(match.group(1)) if match else 0
+
+
+def fitting_item_quantity_for_flag(flag: str, quantity: int) -> int:
+    return 1 if slot_prefix(flag) in FITTED_SLOT_PREFIXES else max(1, int(quantity or 1))
+
+
+def normalize_item_flag_for_type(item_type: EveType, requested_flag: str) -> str:
+    flag = normalize_flag(requested_flag)
+    requested_prefix = slot_prefix(flag)
+    if requested_prefix in set(BAY_FLAGS):
+        return flag
+    if requested_prefix in FITTED_SLOT_PREFIXES:
+        inferred_prefix = fitting_slot_prefix_for_type(item_type, requested_prefix)
+        if inferred_prefix in FITTED_SLOT_PREFIXES:
+            return normalize_flag(f"{inferred_prefix}{fitting_slot_index(flag)}")
+    return flag
+
+
+def next_free_fitting_flag(fitting: CharacterFitting, requested_flag: str, ignore_item_id: int | None = None) -> str:
+    flag = normalize_flag(requested_flag)
+    prefix = slot_prefix(flag)
+    if prefix not in FITTED_SLOT_PREFIXES:
+        return flag
+    used = {item.flag for item in fitting.items if item.id != ignore_item_id and slot_prefix(item.flag) == prefix}
+    if flag not in used:
+        return flag
+    for index in range(8):
+        candidate = normalize_flag(f"{prefix}{index}")
+        if candidate not in used:
+            return candidate
+    return flag
+
+
+def normalize_draft_fitting_items(db: Session, fitting: CharacterFitting) -> bool:
+    if not fitting.is_draft:
+        return False
+    changed = False
+    for item in sorted(fitting.items, key=lambda row: (row.flag, row.id or 0)):
+        item_type = get_type_with_group(db, item.type_id)
+        if item_type is None:
+            continue
+        original_flag = item.flag
+        original_quantity = item.quantity
+        if slot_prefix(item.flag) in FITTED_SLOT_PREFIXES:
+            corrected_flag = normalize_item_flag_for_type(item_type, item.flag)
+            item.flag = next_free_fitting_flag(fitting, corrected_flag, item.id)
+        item.quantity = fitting_item_quantity_for_flag(item.flag, item.quantity)
+        changed = changed or item.flag != original_flag or item.quantity != original_quantity
+    if changed:
+        fitting.updated_at = datetime.now(timezone.utc)
+    return changed
+
+
+async def refresh_public_type_metadata(db: Session, type_ids: set[int], max_fetch: int = 80) -> int:
+    client = EsiClient()
+    refreshed = 0
+    for type_id in sorted(type_ids):
+        if refreshed >= max_fetch:
+            break
+        item_type = db.get(EveType, type_id)
+        if item_type is None:
+            item_type = EveType(type_id=type_id, name=f"Type {type_id}")
+            db.add(item_type)
+            db.flush()
+        if item_type.group_id is not None and item_type.capacity is not None and item_type.volume is not None:
+            continue
+        try:
+            payload = await client.get(f"/universe/types/{type_id}/", params={"language": "en"})
+        except HTTPException:
+            continue
+        item_type.name = payload.get("name", item_type.name)
+        item_type.description = payload.get("description")
+        item_type.group_id = payload.get("group_id")
+        item_type.volume = payload.get("volume")
+        item_type.packaged_volume = payload.get("packaged_volume")
+        item_type.capacity = payload.get("capacity")
+        item_type.market_group_id = payload.get("market_group_id")
+        item_type.published = bool(payload.get("published", True))
+        refreshed += 1
+    return refreshed
 
 def clean_eft_name(value: str) -> str:
     return " ".join(str(value or "").strip().split())
@@ -176,6 +306,9 @@ def fitting_slot_prefix_for_type(row: EveType, section_prefix: str | None) -> st
     group_name = (row.group.name if row.group else "") or ""
     category_name = (row.group.category.name if row.group and row.group.category else "") or ""
     haystack = f"{row.name} {group_name} {category_name}".lower()
+    high_tokens = ["launcher", "turret", "smartbomb", "cynosural", "probe launcher", "cloak", "salvager", "tractor beam", "mining laser", "strip miner"]
+    mid_tokens = ["shield", "propulsion", "afterburner", "microwarpdrive", "capacitor booster", "target painter", "stasis webifier", "warp disrupt", "warp scram", "tracking computer", "guidance computer", "sensor booster", "ecm", "scanner", "analyzer"]
+    low_tokens = ["armor", "damage control", "ballistic control", "gyrostabilizer", "heat sink", "magnetic field", "reactor control", "power diagnostic", "capacitor power relay", "nanofiber", "inertia", "overdrive", "cargohold", "drone damage", "tracking enhancer", "weapon upgrade", "mining laser upgrade", "co-processor", "signal amplifier"]
     if category_name in {"Drone", "Fighter"} or "drone" in haystack:
         return "DroneBay" if category_name != "Fighter" and "fighter" not in haystack else "FighterBay"
     if category_name == "Charge":
@@ -183,20 +316,20 @@ def fitting_slot_prefix_for_type(row: EveType, section_prefix: str | None) -> st
     if category_name == "Ship Modifications" or "rig" in group_name.lower():
         return "RigSlot"
     if category_name == "Module":
+        if any(token in haystack for token in high_tokens):
+            return "HiSlot"
+        if any(token in haystack for token in low_tokens):
+            return "LoSlot"
+        if any(token in haystack for token in mid_tokens):
+            return "MedSlot"
         if section_prefix in {"LoSlot", "MedSlot", "HiSlot", "SubSystemSlot", "ServiceSlot"}:
             return section_prefix
-        if any(token in haystack for token in ["launcher", "turret", "smartbomb", "cynosural", "probe launcher", "cloak", "salvager", "tractor beam", "mining laser", "strip miner"]):
-            return "HiSlot"
-        if any(token in haystack for token in ["shield", "propulsion", "afterburner", "microwarpdrive", "capacitor booster", "target painter", "stasis webifier", "warp disrupt", "warp scram", "tracking computer", "guidance computer", "sensor booster", "ecm", "scanner", "analyzer"]):
-            return "MedSlot"
-        if any(token in haystack for token in ["armor", "damage control", "ballistic control", "gyrostabilizer", "heat sink", "magnetic field", "reactor control", "power diagnostic", "capacitor power relay", "nanofiber", "inertia", "overdrive", "cargohold", "drone damage", "tracking enhancer", "weapon upgrade", "mining laser upgrade", "co-processor", "signal amplifier"]):
-            return "LoSlot"
-        return section_prefix or "HiSlot"
+        return "HiSlot"
     return "Cargo"
 
 
 def next_import_flag(prefix: str, counters: dict[str, int]) -> str:
-    if prefix in {"Cargo", "DroneBay", "FighterBay"}:
+    if prefix in set(BAY_FLAGS):
         return prefix
     index = counters.get(prefix, 0)
     counters[prefix] = index + 1
@@ -248,13 +381,15 @@ def parse_eft_fit(db: Session, text: str) -> tuple[EveType, str, list[dict[str, 
             if charge_name and charge_type is None:
                 warnings.append(f"Skipped unknown charge for {item_name}: {charge_name}")
             prefix = fitting_slot_prefix_for_type(item_type, section_prefix)
-            parsed_items.append({
-                "type_id": item_type.type_id,
-                "charge_type_id": charge_type.type_id if charge_type else None,
-                "flag": next_import_flag(prefix, counters),
-                "quantity": quantity,
-                "simulation_state": "online",
-            })
+            fitted_quantity = quantity if prefix in FITTED_SLOT_PREFIXES else 1
+            for _ in range(fitted_quantity):
+                parsed_items.append({
+                    "type_id": item_type.type_id,
+                    "charge_type_id": charge_type.type_id if charge_type else None,
+                    "flag": next_import_flag(prefix, counters),
+                    "quantity": 1 if prefix in FITTED_SLOT_PREFIXES else quantity,
+                    "simulation_state": "online",
+                })
     if not parsed_items:
         raise HTTPException(status_code=400, detail="No recognizable fitting items were found in the pasted text")
     return ship_type, fitting_name, parsed_items, warnings
@@ -288,7 +423,7 @@ def fitting_copy_text(fitting: CharacterFitting) -> str:
     for item in fitting.items:
         grouped.setdefault(slot_prefix(item.flag), []).append(item)
 
-    for group in [*FLAG_ORDER, "Other"]:
+    for group in [*FLAG_ORDER, *[flag for flag in BAY_FLAGS if flag not in FLAG_ORDER], "Other"]:
         items = grouped.get(group, [])
         if not items:
             continue
@@ -299,7 +434,7 @@ def fitting_copy_text(fitting: CharacterFitting) -> str:
         for item in sorted(items, key=lambda row: (row.flag, row.item_type.name if row.item_type else str(row.type_id))):
             item_name = item.item_type.name if item.item_type else f"Type {item.type_id}"
             charge_name = item.charge_type.name if item.charge_type else None
-            if group in {"DroneBay", "FighterBay", "Cargo", "Other"} or item.quantity > 1:
+            if group in {*BAY_FLAGS, "Other"} or item.quantity > 1:
                 lines.append(f"{item_name} x{item.quantity}")
             elif charge_name:
                 lines.append(f"{item_name}, {charge_name}")
@@ -309,10 +444,10 @@ def fitting_copy_text(fitting: CharacterFitting) -> str:
 
 
 def fitting_summary(fitting: CharacterFitting) -> dict[str, int]:
-    summary = {label: 0 for label in FLAG_LABELS.values()}
+    summary = {label: 0 for label in [*FLAG_LABELS.values(), *BAY_FLAG_LABELS.values()]}
     summary["Other"] = 0
     for item in fitting.items:
-        label = FLAG_LABELS.get(slot_prefix(item.flag), "Other")
+        label = BAY_FLAG_LABELS.get(slot_prefix(item.flag), FLAG_LABELS.get(slot_prefix(item.flag), "Other"))
         summary[label] = summary.get(label, 0) + item.quantity
     return {key: value for key, value in summary.items() if value > 0}
 
@@ -330,6 +465,7 @@ def serialize_fitting(fitting: CharacterFitting, current_user: User, db: Session
         "description": fitting.description,
         "ship_type_id": fitting.ship_type_id,
         "ship_type_name": ship_type.name if ship_type else f"Type {fitting.ship_type_id}",
+        "ship_capacity": resolved_ship_capacity(fitting.ship_type_id, ship_type.name if ship_type else None, ship_type.capacity if ship_type else None),
         "character_id": character.id if character else None,
         "character_eve_id": character.character_id if character else None,
         "character_name": character.name if character else "Unknown character",
@@ -352,7 +488,8 @@ def serialize_fitting(fitting: CharacterFitting, current_user: User, db: Session
                 "flag": item.flag,
                 "quantity": item.quantity,
                 "simulation_state": item.simulation_state or "online",
-                "slot_group": FLAG_LABELS.get(slot_prefix(item.flag), "Other"),
+                "slot_group": BAY_FLAG_LABELS.get(slot_prefix(item.flag), FLAG_LABELS.get(slot_prefix(item.flag), "Other")),
+                "volume": item.item_type.volume if item.item_type else None,
             }
             for item in items
         ],
@@ -378,6 +515,9 @@ def list_fittings(current_user: User = Depends(get_current_user), db: Session = 
             or_(EveCharacter.owner_user_id == current_user.id, CharacterFitting.is_shared.is_(True))
         )
     fittings = db.scalars(query).all()
+    normalized_any = any(normalize_draft_fitting_items(db, fitting) for fitting in fittings)
+    if normalized_any:
+        db.commit()
 
     token_query = (
         select(EsiToken, EveCharacter)
@@ -459,7 +599,7 @@ def fitting_item_catalog(bucket: str = Query("Modules"), limit: int = 8000, curr
 
 
 @router.post("/import-text")
-def import_fitting_text(payload: dict[str, Any], current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+async def import_fitting_text(payload: dict[str, Any], current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
     require_fittings_view(current_user, db)
     character_id = int(payload.get("character_id") or 0)
     character = db.get(EveCharacter, character_id)
@@ -468,6 +608,10 @@ def import_fitting_text(payload: dict[str, Any], current_user: User = Depends(ge
     if not can_view_all_characters(current_user, db) and character.owner_user_id != current_user.id:
         raise HTTPException(status_code=403, detail="You can only import fittings for your own characters")
     ship_type, fitting_name, parsed_items, warnings = parse_eft_fit(db, str(payload.get("text") or ""))
+    refreshed_types = await refresh_public_type_metadata(db, {ship_type.type_id, *(int(item["type_id"]) for item in parsed_items), *(int(item["charge_type_id"]) for item in parsed_items if item.get("charge_type_id") is not None)})
+    if refreshed_types:
+        db.flush()
+        ship_type = db.get(EveType, ship_type.type_id) or ship_type
     now = datetime.now(timezone.utc)
     draft = CharacterFitting(
         character_id=character.id,
@@ -546,10 +690,13 @@ def add_fitting_item(fitting_id: int, payload: dict[str, Any], current_user: Use
     fitting = load_fitting_or_404(db, fitting_id)
     require_manageable_draft(current_user, fitting, db)
     type_id = int(payload.get("type_id") or 0)
-    if db.get(EveType, type_id) is None:
+    item_type = get_type_with_group(db, type_id)
+    if item_type is None:
         raise HTTPException(status_code=400, detail="Item type was not found in the SDE")
     quantity = max(1, int(payload.get("quantity") or 1))
-    flag = normalize_flag(str(payload.get("flag") or "Cargo"))
+    flag = normalize_item_flag_for_type(item_type, str(payload.get("flag") or "Cargo"))
+    flag = next_free_fitting_flag(fitting, flag)
+    quantity = fitting_item_quantity_for_flag(flag, quantity)
     charge_type_id = payload.get("charge_type_id")
     if charge_type_id in {"", 0, "0"}:
         charge_type_id = None
@@ -580,13 +727,18 @@ def update_fitting_item(fitting_id: int, item_id: int, payload: dict[str, Any], 
         raise HTTPException(status_code=400, detail="Create an editable draft before changing fitting items")
     if "type_id" in payload:
         type_id = int(payload.get("type_id") or 0)
-        if db.get(EveType, type_id) is None:
+        if get_type_with_group(db, type_id) is None:
             raise HTTPException(status_code=400, detail="Item type was not found in the SDE")
         item.type_id = type_id
-    if "flag" in payload:
-        item.flag = normalize_flag(str(payload.get("flag") or item.flag))
     if "quantity" in payload:
         item.quantity = max(1, int(payload.get("quantity") or 1))
+    item_type = get_type_with_group(db, item.type_id)
+    if item_type is None:
+        raise HTTPException(status_code=400, detail="Item type was not found in the SDE")
+    if "flag" in payload or "type_id" in payload:
+        requested_flag = str(payload.get("flag") or item.flag)
+        item.flag = next_free_fitting_flag(fitting, normalize_item_flag_for_type(item_type, requested_flag), item.id)
+    item.quantity = fitting_item_quantity_for_flag(item.flag, item.quantity)
     if "charge_type_id" in payload:
         charge_type_id = payload.get("charge_type_id")
         if charge_type_id in {None, "", 0, "0"}:
@@ -620,18 +772,74 @@ def delete_fitting_item(fitting_id: int, item_id: int, current_user: User = Depe
     return serialize_fitting(load_fitting_or_404(db, fitting.id), current_user, db)
 
 
+
+def serialize_sim_implant(type_id: int, item_type: EveType | None, slot: int | None = None) -> dict[str, Any]:
+    return {
+        "type_id": type_id,
+        "name": item_type.name if item_type else f"Type {type_id}",
+        "slot": slot,
+    }
+
+
+def simulation_implant_context(db: Session, current_user: User, target_character: EveCharacter, implant_set_id: int | None = None, jump_clone_id: int | None = None) -> tuple[set[int], dict[str, Any] | None]:
+    if implant_set_id and jump_clone_id:
+        raise HTTPException(status_code=400, detail="Choose either a custom implant set or a synced jump clone, not both")
+    if implant_set_id:
+        row = db.scalar(
+            select(ImplantSet)
+            .where(ImplantSet.id == implant_set_id)
+            .options(selectinload(ImplantSet.implants).selectinload(ImplantSetImplant.implant_type))
+        )
+        if row is None:
+            raise HTTPException(status_code=404, detail="Implant set was not found")
+        if row.owner_user_id != current_user.id and not row.is_shared and not can_view_all_characters(current_user, db):
+            raise HTTPException(status_code=403, detail="You cannot use that implant set")
+        implants = sorted(row.implants, key=lambda item: (item.slot is None, item.slot or 99, item.implant_type.name if item.implant_type else str(item.type_id)))
+        return {implant.type_id for implant in implants}, {
+            "source": "custom_set",
+            "id": row.id,
+            "name": row.name,
+            "implant_count": len(implants),
+            "implants": [serialize_sim_implant(implant.type_id, implant.implant_type, implant.slot) for implant in implants],
+        }
+    if jump_clone_id:
+        clone = db.scalar(
+            select(CharacterJumpClone)
+            .where(CharacterJumpClone.id == jump_clone_id)
+            .options(selectinload(CharacterJumpClone.implants).selectinload(JumpCloneImplant.implant_type))
+        )
+        if clone is None:
+            raise HTTPException(status_code=404, detail="Jump clone was not found")
+        if clone.character_id != target_character.id:
+            raise HTTPException(status_code=400, detail="That jump clone belongs to a different character")
+        implants = sorted(clone.implants, key=lambda item: (item.slot is None, item.slot or 99, item.implant_type.name if item.implant_type else str(item.type_id)))
+        return {implant.type_id for implant in implants}, {
+            "source": clone.clone_kind,
+            "id": clone.id,
+            "name": clone.name or ("Active clone" if clone.clone_kind == "active_clone" else f"Jump clone {clone.jump_clone_id}"),
+            "implant_count": len(implants),
+            "implants": [serialize_sim_implant(implant.type_id, implant.implant_type, implant.slot) for implant in implants],
+        }
+    return set(), None
+
 @router.get("/{fitting_id}/simulation")
-def simulate_saved_fitting(fitting_id: int, character_id: int | None = None, heat: bool = False, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+def simulate_saved_fitting(fitting_id: int, character_id: int | None = None, heat: bool = False, implant_set_id: int | None = None, jump_clone_id: int | None = None, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
     require_fittings_view(current_user, db)
     fitting = load_fitting_for_simulation(db, fitting_id)
     if fitting is None:
         raise HTTPException(status_code=404, detail="Fitting was not found")
     if not can_view_fitting(current_user, fitting, db):
         raise HTTPException(status_code=403, detail="You cannot view this fitting")
+    if normalize_draft_fitting_items(db, fitting):
+        db.commit()
+        fitting = load_fitting_for_simulation(db, fitting_id)
+        if fitting is None:
+            raise HTTPException(status_code=404, detail="Fitting was not found")
 
     target_character = fitting.character if character_id is None else db.get(EveCharacter, character_id)
     if target_character is None:
         raise HTTPException(status_code=404, detail="Character was not found")
     if not can_view_all_characters(current_user, db) and target_character.owner_user_id != current_user.id:
         raise HTTPException(status_code=403, detail="You can only simulate against your own characters")
-    return simulate_fitting(db, fitting, target_character, heat=heat)
+    implant_type_ids, implant_context = simulation_implant_context(db, current_user, target_character, implant_set_id=implant_set_id, jump_clone_id=jump_clone_id)
+    return simulate_fitting(db, fitting, target_character, heat=heat, implant_type_ids=implant_type_ids, implant_context=implant_context)

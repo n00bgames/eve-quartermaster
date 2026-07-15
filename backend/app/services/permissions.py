@@ -26,10 +26,12 @@ SECTION_DEFINITIONS: dict[str, dict[str, object]] = {
     "analytics": {"label": "Analytics", "default_roles": ["admin", "director", "officer"]},
     "skills": {"label": "Skills", "default_roles": ["admin", "director", "officer", "member"]},
     "fittings": {"label": "Fittings", "default_roles": ["admin", "director", "officer", "member"]},
+    "jump_clones": {"label": "Jump Clones", "default_roles": ["admin", "director", "officer", "member"]},
     "settings": {"label": "Settings", "default_roles": ["admin", "director", "officer", "member", "view_only"]},
     "corporations": {"label": "Corporations", "default_roles": ["admin", "director", "officer"]},
     "assets": {"label": "Assets", "default_roles": ["admin", "director", "officer", "member", "view_only"]},
     "industry": {"label": "Industry", "default_roles": ["admin", "director", "officer", "member"]},
+    "manufacturing": {"label": "Manufacturing", "default_roles": ["admin", "director", "officer", "member"]},
     "esi": {"label": "ESI Sync", "default_roles": ["admin", "director", "officer", "member"]},
     "profile": {"label": "Profile", "default_roles": ["admin", "director", "officer", "member", "view_only"]},
     "audit": {"label": "Audit Log", "default_roles": ["admin"]},
@@ -154,10 +156,3 @@ def can_view_section(user: User, section: str, db: Session) -> bool:
 
 def can_view_at_least(user: User, minimum_role: str, db: Session | None = None) -> bool:
     return role_rank(user, db) >= ROLE_RANK[minimum_role]
-
-
-
-
-
-
-

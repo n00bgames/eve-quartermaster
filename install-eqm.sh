@@ -194,6 +194,6 @@ echo
 echo "Next steps:"
 echo "1. Open the frontend and create the first admin account."
 echo "2. Add EVE Developer Client ID/Secret to .env for live ESI sync."
-echo "3. Download the latest YAML SDE to ./sde from developers.eveonline.com/static-data/."
+echo "3. Run ./sde-fetch.sh to download the latest SDE to ./sde."
 echo "4. Import the SDE from Settings -> SDE Import; see README.md for scope and SDE details."
 echo

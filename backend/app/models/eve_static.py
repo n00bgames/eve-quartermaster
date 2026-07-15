@@ -37,6 +37,7 @@ class EveType(Base):
     description: Mapped[str | None] = mapped_column(Text)
     volume: Mapped[float | None] = mapped_column(Float)
     packaged_volume: Mapped[float | None] = mapped_column(Float)
+    capacity: Mapped[float | None] = mapped_column(Float)
     market_group_id: Mapped[int | None] = mapped_column(Integer, index=True)
     published: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 

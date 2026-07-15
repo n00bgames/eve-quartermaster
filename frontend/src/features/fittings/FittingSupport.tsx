@@ -6,6 +6,39 @@ import type { CharacterFittingRecord, FittingItem, FittingSearchType, FittingSim
 const numberFormatter = new Intl.NumberFormat();
 
 type FittingAsset = { type_id: number; quantity: number; owner_name: string; location_name?: string | null; location_flag?: string | null };
+type FittingAssetSummary = { type_id: number; quantity: number; stacks: number; locations: { owner: string; location: string; flag?: string | null; quantity: number }[] };
+const CARGO_BAY_LABELS: Record<string, string> = {
+  Cargo: "Cargo hold",
+  DroneBay: "Drone bay",
+  FighterBay: "Fighter hangar",
+  FuelBay: "Fuel bay",
+  FleetHangar: "Fleet hangar",
+  ShipMaintenanceBay: "Ship maintenance bay",
+  FleetMaintenanceBay: "Fleet maintenance bay",
+  InfrastructureBay: "Infrastructure bay",
+  OreHold: "Ore hold",
+  MineralHold: "Mineral hold",
+  GasHold: "Gas hold",
+  IceHold: "Ice hold",
+  AmmoHold: "Ammo hold",
+  PlanetaryCommoditiesHold: "PI hold",
+  CommandCenterHold: "Command center hold",
+  QuafeHold: "Quafe hold",
+};
+
+export function cargoBayLabel(key: string): string {
+  return CARGO_BAY_LABELS[key] ?? key.replace(/([a-z])([A-Z])/g, "$1 $2");
+}
+
+export function isCargoBayKey(key: string): boolean {
+  return Boolean(CARGO_BAY_LABELS[key]);
+}
+
+export function formatVolumeM3(value?: number | null, digits = 1): string {
+  if (value === null || value === undefined || Number.isNaN(value)) return "n/a";
+  return `${new Intl.NumberFormat(undefined, { maximumFractionDigits: digits }).format(value)} m3`;
+}
+
 export function fittingSlotKey(flag: string): string {
 
   const normalized = flag.toLowerCase();
@@ -22,11 +55,13 @@ export function fittingSlotKey(flag: string): string {
 
   if (flag.startsWith("ServiceSlot")) return "ServiceSlot";
 
-  if (flag.startsWith("DroneBay")) return "DroneBay";
+  for (const key of Object.keys(CARGO_BAY_LABELS)) {
 
-  if (flag.startsWith("FighterBay")) return "FighterBay";
+    if (flag.startsWith(key)) return key;
 
-  if (flag.startsWith("Cargo") || normalized.includes("cargo")) return "Cargo";
+  }
+
+  if (normalized.includes("cargo")) return "Cargo";
 
   return "Other";
 
@@ -400,6 +435,17 @@ export function FittingStatsPanel({ stats }: { stats?: FittingSimulationStats | 
 
     </article>
 
+    {(stats.cargo_bays?.length ?? 0) > 0 && <article>
+
+      <h4>Cargo</h4>
+
+      <strong>{formatVolumeM3(stats.cargo_bays?.reduce((sum, bay) => sum + Number(bay.used ?? 0), 0) ?? 0)}</strong>
+
+      <span>{stats.cargo_bays?.filter((bay) => bay.capacity != null).length ?? 0} capacity-backed bay{(stats.cargo_bays?.filter((bay) => bay.capacity != null).length ?? 0) === 1 ? "" : "s"}</span>
+
+      {stats.cargo_bays?.map((bay) => <div key={bay.key} className={bay.ok ? "fitting-stat-pair" : "fitting-stat-pair over-limit"}><span>{bay.label}</span><b>{formatVolumeM3(bay.used)} / {bay.capacity == null ? "?" : formatVolumeM3(bay.capacity)}</b></div>)}
+
+    </article>}
     <article>
 
       <h4>Capacitor</h4>
@@ -440,7 +486,7 @@ function fittingMarketList(needs: FittingContextNeed[], onlyMissing: boolean): s
 
 }
 
-function fittingContextNeeds(fitting: CharacterFittingRecord, assets: FittingAsset[]): FittingContextNeed[] {
+function fittingContextNeeds(fitting: CharacterFittingRecord, assets: FittingAsset[], assetSummaries: FittingAssetSummary[] = []): FittingContextNeed[] {
 
   const required = new Map<number, { name: string; quantity: number }>();
 
@@ -462,11 +508,15 @@ function fittingContextNeeds(fitting: CharacterFittingRecord, assets: FittingAss
 
   for (const asset of assets) assetsByType.set(asset.type_id, [...(assetsByType.get(asset.type_id) ?? []), asset]);
 
+  const summaryByType = new Map(assetSummaries.map((summary) => [summary.type_id, summary]));
+
   return [...required.entries()].map(([typeId, row]) => {
 
     const matchingAssets = assetsByType.get(typeId) ?? [];
 
-    const owned = matchingAssets.reduce((total, asset) => total + asset.quantity, 0);
+    const summary = summaryByType.get(typeId);
+
+    const owned = summary ? summary.quantity : matchingAssets.reduce((total, asset) => total + asset.quantity, 0);
 
     return {
 
@@ -480,7 +530,7 @@ function fittingContextNeeds(fitting: CharacterFittingRecord, assets: FittingAss
 
       missing: Math.max(0, row.quantity - owned),
 
-      locations: matchingAssets.slice(0, 4).map((asset) => ({ owner: asset.owner_name, location: asset.location_name ?? "Unknown location", flag: asset.location_flag, quantity: asset.quantity })),
+      locations: summary ? summary.locations.slice(0, 6) : matchingAssets.slice(0, 4).map((asset) => ({ owner: asset.owner_name, location: asset.location_name ?? "Unknown location", flag: asset.location_flag, quantity: asset.quantity })),
 
     };
 
@@ -488,9 +538,9 @@ function fittingContextNeeds(fitting: CharacterFittingRecord, assets: FittingAss
 
 }
 
-export function FittingContextPanel({ fitting, assets, onOpenAssets, onOpenMarket }: { fitting: CharacterFittingRecord; assets: FittingAsset[]; onOpenAssets: (itemName?: string) => void; onOpenMarket: (text: string) => void }) {
+export function FittingContextPanel({ fitting, assets, assetSummaries = [], contextLoading = false, onOpenAssets, onOpenMarket }: { fitting: CharacterFittingRecord; assets: FittingAsset[]; assetSummaries?: FittingAssetSummary[]; contextLoading?: boolean; onOpenAssets: (itemName?: string) => void; onOpenMarket: (text: string) => void }) {
 
-  const needs = useMemo(() => fittingContextNeeds(fitting, assets), [fitting, assets]);
+  const needs = useMemo(() => fittingContextNeeds(fitting, assets, assetSummaries), [fitting, assets, assetSummaries]);
 
   const missing = needs.filter((need) => need.missing > 0);
 
@@ -507,6 +557,8 @@ export function FittingContextPanel({ fitting, assets, onOpenAssets, onOpenMarke
   return <section className="fitting-context-panel">
 
     <div className="section-heading compact"><div><h4>Fit Context</h4><p>Inventory and market handoffs for this hull, modules, drones, and cargo.</p></div><div className="context-actions"><button type="button" onClick={() => onOpenAssets()}>Asset Ledger</button><button type="button" disabled={!missingText} onClick={() => onOpenMarket(missingText)}>Price missing</button><button type="button" disabled={!fullText} onClick={() => onOpenMarket(fullText)}>Price full fit</button></div></div>
+
+    {contextLoading && <p className="muted">Checking full visible inventory...</p>}
 
     <div className="fitting-context-grid"><article><span>Hull</span><strong className={(hullNeed?.owned ?? 0) > 0 ? "context-owned" : "context-missing"}>{(hullNeed?.owned ?? 0) > 0 ? "Owned" : "Missing"}</strong><small>{fitting.ship_type_name} x{numberFormatter.format(hullNeed?.owned ?? 0)}</small></article><article><span>Fit coverage</span><strong>{coveredCount}/{needs.length}</strong><small>{needs.length ? Math.round((coveredCount / needs.length) * 100) : 0}% covered by visible assets</small></article><article><span>Missing units</span><strong className={missingUnits > 0 ? "context-missing" : "context-owned"}>{numberFormatter.format(missingUnits)}</strong><small>{missing.length} item type{missing.length === 1 ? "" : "s"} short</small></article></div>
 

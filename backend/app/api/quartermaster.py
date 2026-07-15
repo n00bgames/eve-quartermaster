@@ -212,6 +212,7 @@ def create_type(payload: dict[str, Any], db: Session = Depends(get_db)) -> dict[
         group_id=payload.get("group_id"),
         volume=payload.get("volume"),
         packaged_volume=payload.get("packaged_volume"),
+        capacity=payload.get("capacity"),
         market_group_id=payload.get("market_group_id"),
         published=bool(payload.get("published", True)),
     )
@@ -246,8 +247,72 @@ def create_location(payload: dict[str, Any], db: Session = Depends(get_db)) -> d
     return row_dict(location)
 
 
-@router.get("/assets")
-def list_assets(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[dict[str, Any]]:
+def asset_location_name(asset: Asset) -> str | None:
+    parent_type_name = asset.parent_asset.item_type.name if asset.parent_asset and asset.parent_asset.item_type else None
+    if asset.location:
+        return asset.location.name
+    if asset.parent_asset:
+        return f"Inside {parent_type_name or 'item'} {asset.parent_asset.eve_item_id}"
+    return None
+
+
+def serialize_asset(asset: Asset) -> dict[str, Any]:
+    parent_type_name = asset.parent_asset.item_type.name if asset.parent_asset and asset.parent_asset.item_type else None
+    return row_dict(
+        asset,
+        {
+            "owner_name": asset.ownership_entity.display_name if asset.ownership_entity else None,
+            "owner_kind": asset.ownership_entity.owner_kind.value if asset.ownership_entity else None,
+            "type_name": asset.item_type.name if asset.item_type else None,
+            "location_name": asset_location_name(asset),
+            "location_id": asset.location.eve_location_id if asset.location else None,
+            "parent_asset_item_id": asset.parent_asset.eve_item_id if asset.parent_asset else None,
+            "parent_asset_type_name": parent_type_name,
+            "inventory_family": item_family(asset.item_type, asset.item_type.name if asset.item_type else None),
+            "inventory_subtype": inventory_subtype(asset.item_type, asset.item_type.name if asset.item_type else None),
+            **type_metadata("type", asset.item_type),
+        },
+    )
+
+
+def asset_sort_value(asset: Asset, key: str) -> Any:
+    if key == "owner":
+        return asset.ownership_entity.display_name if asset.ownership_entity else ""
+    if key == "quantity":
+        return asset.quantity or 0
+    if key == "location":
+        return asset_location_name(asset) or ""
+    if key == "flag":
+        return asset.location_flag or ""
+    return asset.item_type.name if asset.item_type else ""
+
+
+def asset_filter_value(asset: Asset, key: str) -> str:
+    return str(asset_sort_value(asset, key) or "-")
+
+
+def asset_matches_query(asset: Asset, owner_kind: str | None, category: str, subtype: str | None, filter_key: str | None, filter_value: str | None, filter_mode: str) -> bool:
+    if owner_kind and (not asset.ownership_entity or asset.ownership_entity.owner_kind.value != owner_kind):
+        return False
+    family = item_family(asset.item_type, asset.item_type.name if asset.item_type else None)
+    capital_related = is_capital_construction_type(asset.item_type)
+    if category and category != "all":
+        if category == "capital-construction":
+            if not capital_related:
+                return False
+        elif family != category:
+            return False
+    if subtype and inventory_subtype(asset.item_type, asset.item_type.name if asset.item_type else None) != subtype:
+        return False
+    if filter_key and filter_value:
+        value = asset_filter_value(asset, filter_key)
+        if filter_mode == "contains":
+            return filter_value.lower() in value.lower()
+        return value == filter_value
+    return True
+
+
+def visible_asset_rows(current_user: User, db: Session) -> list[Asset]:
     assets = db.scalars(
         select(Asset)
         .options(
@@ -258,35 +323,46 @@ def list_assets(current_user: User = Depends(get_current_user), db: Session = De
         )
         .order_by(Asset.updated_at.desc(), Asset.id.desc())
     ).all()
-    results = []
-    for asset in assets:
-        if not can_view_owner_records(asset.ownership_entity, current_user, db):
-            continue
-        parent_type_name = asset.parent_asset.item_type.name if asset.parent_asset and asset.parent_asset.item_type else None
-        if asset.location:
-            location_name = asset.location.name
-        elif asset.parent_asset:
-            location_name = f"Inside {parent_type_name or 'item'} {asset.parent_asset.eve_item_id}"
-        else:
-            location_name = None
-        results.append(
-            row_dict(
-                asset,
-                {
-                    "owner_name": asset.ownership_entity.display_name if asset.ownership_entity else None,
-                    "owner_kind": asset.ownership_entity.owner_kind.value if asset.ownership_entity else None,
-                    "type_name": asset.item_type.name if asset.item_type else None,
-                    "location_name": location_name,
-                    "location_id": asset.location.eve_location_id if asset.location else None,
-                    "parent_asset_item_id": asset.parent_asset.eve_item_id if asset.parent_asset else None,
-                    "parent_asset_type_name": parent_type_name,
-                    "inventory_family": item_family(asset.item_type, asset.item_type.name if asset.item_type else None),
-                    "inventory_subtype": inventory_subtype(asset.item_type, asset.item_type.name if asset.item_type else None),
-                    **type_metadata("type", asset.item_type),
-                },
-            )
-        )
-    return results
+    return [asset for asset in assets if can_view_owner_records(asset.ownership_entity, current_user, db)]
+
+
+@router.get("/assets")
+def list_assets(limit: int = Query(250, ge=1, le=1000), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[dict[str, Any]]:
+    return [serialize_asset(asset) for asset in visible_asset_rows(current_user, db)[:limit]]
+
+
+@router.get("/assets-page")
+def list_assets_page(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(100, ge=25, le=500),
+    sort_key: str = Query("item", pattern="^(item|owner|quantity|location|flag)$"),
+    sort_direction: str = Query("asc", pattern="^(asc|desc)$"),
+    owner_kind: str | None = Query(None, pattern="^(character|corporation|alliance|manual_group)$"),
+    category: str = Query("all"),
+    subtype: str | None = Query(None),
+    filter_key: str | None = Query(None, pattern="^(item|owner|location|flag)$"),
+    filter_value: str | None = Query(None),
+    filter_mode: str = Query("exact", pattern="^(exact|contains)$"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    rows = [
+        asset
+        for asset in visible_asset_rows(current_user, db)
+        if asset_matches_query(asset, owner_kind, category, subtype, filter_key, filter_value, filter_mode)
+    ]
+    rows.sort(
+        key=lambda asset: asset_sort_value(asset, sort_key),
+        reverse=sort_direction == "desc",
+    )
+    total = len(rows)
+    start = (page - 1) * page_size
+    return {
+        "items": [serialize_asset(asset) for asset in rows[start:start + page_size]],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+    }
 
 
 @router.post("/assets")
@@ -444,7 +520,10 @@ def missing_blueprints(
         if search_text and search_text not in search_haystack:
             continue
         family = item_family(product_type, blueprint_type.name)
-        if family == "reactions":
+        is_capital_chain = activity.blueprint_type_id in capital_blueprint_type_ids
+        if is_capital_chain:
+            category_name = "Capital construction"
+        elif family == "reactions":
             category_name = "Reactions"
         elif family == "ram":
             category_name = "RAM"
@@ -452,6 +531,7 @@ def missing_blueprints(
             category_name = "Drones/Fighters"
         else:
             category_name = product_type.group.category.name if product_type and product_type.group and product_type.group.category else "Uncategorized"
+        product_category_name = product_type.group.category.name if product_type and product_type.group and product_type.group.category else category_name
         group_name = inventory_subtype(product_type, blueprint_type.name) or "Uncategorized"
         bucket = buckets.setdefault(category_name, {"category_name": category_name, "total_count": 0, "items": []})
         bucket["total_count"] += 1
@@ -462,13 +542,13 @@ def missing_blueprints(
                 "product_type_id": activity.product_type_id,
                 "product_type_name": product_type.name if product_type else None,
                 "product_group_name": group_name,
-                "product_category_name": category_name,
-                "inventory_family": item_family(product_type, blueprint_type.name),
+                "product_category_name": product_category_name,
+                "inventory_family": family,
                 "inventory_subtype": inventory_subtype(product_type, blueprint_type.name) or group_name,
-                "capital_construction_related": activity.blueprint_type_id in capital_blueprint_type_ids and item_family(product_type, blueprint_type.name) not in {"reactions", "ram"},
+                "capital_construction_related": is_capital_chain,
             })
         seen_missing.add(activity.blueprint_type_id)
-    categories = sorted(buckets.values(), key=lambda row: (-row["total_count"], row["category_name"]))
+    categories = sorted(buckets.values(), key=lambda row: (0 if row["category_name"] == "Capital construction" else 1, -row["total_count"], row["category_name"]))
     return {
         "total_missing": sum(category["total_count"] for category in categories),
         "owned_bpos": len(owned_bpo_type_ids),

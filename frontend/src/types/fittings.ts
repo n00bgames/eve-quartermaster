@@ -2,7 +2,7 @@ export type FittingSeed = { text: string; nonce: number };
 
 export type FittingSimulationState = "offline" | "online" | "active" | "overheated";
 
-export type FittingItem = { id: number; type_id: number; type_name: string; charge_type_id?: number | null; charge_type_name?: string | null; flag: string; quantity: number; simulation_state?: FittingSimulationState; slot_group: string };
+export type FittingItem = { id: number; type_id: number; type_name: string; charge_type_id?: number | null; charge_type_name?: string | null; flag: string; quantity: number; simulation_state?: FittingSimulationState; slot_group: string; volume?: number | null };
 
 export type FittingSearchType = { type_id: number; name: string; group_id?: number | null; group_name?: string | null; category_name?: string | null; volume?: number | null; published?: boolean; bucket?: FittingPickerTab };
 
@@ -19,7 +19,7 @@ export function fittingPickerBucket(item: Pick<FittingSearchType, "name" | "grou
   return "Other";
 }
 
-export type CharacterFittingRecord = { id: number; eve_fitting_id?: number | null; source_fitting_id?: number | null; source_fitting_name?: string | null; name: string; description?: string | null; ship_type_id: number; ship_type_name: string; character_id?: number | null; character_eve_id?: number | null; character_name: string; owner_user_id?: number | null; owner_display_name?: string | null; is_shared: boolean; is_draft: boolean; can_manage: boolean; last_synced_at?: string | null; updated_at?: string | null; summary: Record<string, number>; copy_text: string; items: FittingItem[] };
+export type CharacterFittingRecord = { id: number; eve_fitting_id?: number | null; source_fitting_id?: number | null; source_fitting_name?: string | null; name: string; description?: string | null; ship_type_id: number; ship_type_name: string; ship_capacity?: number | null; character_id?: number | null; character_eve_id?: number | null; character_name: string; owner_user_id?: number | null; owner_display_name?: string | null; is_shared: boolean; is_draft: boolean; can_manage: boolean; last_synced_at?: string | null; updated_at?: string | null; summary: Record<string, number>; copy_text: string; items: FittingItem[] };
 
 export type FittingSyncToken = { token_id: number; character_id: number; character_name: string; has_fitting_scope: boolean; can_sync: boolean };
 
@@ -30,6 +30,8 @@ export type FittingImportResult = { fitting: CharacterFittingRecord; warnings: s
 export type FittingSimulationResource = { used: number; capacity?: number | null; ok: boolean; percent?: number | null };
 
 export type FittingSimulationSlot = { key: string; label: string; used: number; capacity?: number | null; ok: boolean };
+
+export type FittingCargoBay = { key: string; label: string; used: number; capacity?: number | null; ok: boolean; percent?: number | null };
 
 export type FittingSimulationRequirement = { source_type_id: number; source_name: string; source_kind: string; skill_type_id: number; skill_name: string; required_level: number; trained_level: number; met: boolean };
 
@@ -42,8 +44,11 @@ export type FittingSimulationStats = {
   defense: { shield_hp: number; armor_hp: number; structure_hp: number; ehp: number; shield_ehp: number; armor_ehp: number; structure_ehp: number; shield_resists: ResistanceProfile; armor_resists: ResistanceProfile; structure_resists: ResistanceProfile; shield_peak_recharge?: number | null; active_tank_hps?: number | null; shield_repair_hps?: number | null; armor_repair_hps?: number | null; structure_repair_hps?: number | null };
   mobility: { max_velocity?: number | null; warp_speed?: number | null; align_time?: number | null; signature_radius?: number | null; mass?: number | null };
   capacitor: { capacity?: number | null; recharge_time?: number | null; peak_recharge?: number | null; draw_per_second?: number | null; stable?: boolean; stable_percent?: number | null; depletion_seconds?: number | null; modules?: { name: string; gj_per_second: number; cycle_seconds: number; quantity: number }[] };
+  cargo_bays?: FittingCargoBay[];
   targeting: { max_targets?: number | null; targeting_range?: number | null; scan_resolution?: number | null; sensor_strength?: number | null; drone_control_range_m?: number | null };
   notes: string[];
 };
 
-export type FittingSimulation = { fitting_id: number; character_id: number; character_name: string; dogma_loaded: boolean; dogma_effects_loaded?: boolean; heat?: boolean; status: "pass" | "warning" | "unknown"; summary: { missing_skills: number; slot_issues: number; resource_issues: number }; resources: { cpu: FittingSimulationResource; powergrid: FittingSimulationResource; calibration: FittingSimulationResource }; slots: FittingSimulationSlot[]; requirements: FittingSimulationRequirement[]; stats?: FittingSimulationStats | null; notes: string[] };
+export type FittingSimulationImplantContext = { source: string; id: number; name: string; implant_count: number; implants: { type_id: number; name: string; slot?: number | null }[] };
+
+export type FittingSimulation = { fitting_id: number; character_id: number; character_name: string; dogma_loaded: boolean; dogma_effects_loaded?: boolean; heat?: boolean; implant_context?: FittingSimulationImplantContext | null; status: "pass" | "warning" | "unknown"; summary: { missing_skills: number; slot_issues: number; resource_issues: number }; resources: { cpu: FittingSimulationResource; powergrid: FittingSimulationResource; calibration: FittingSimulationResource }; slots: FittingSimulationSlot[]; requirements: FittingSimulationRequirement[]; stats?: FittingSimulationStats | null; notes: string[] };

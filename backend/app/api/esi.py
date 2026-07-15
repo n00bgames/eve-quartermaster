@@ -59,6 +59,8 @@ PUBLIC_SCOPES = [
     "esi-characters.write_contacts.v1",
     "esi-fittings.read_fittings.v1",
     "esi-fittings.write_fittings.v1",
+    "esi-clones.read_clones.v1",
+    "esi-clones.read_implants.v1",
     "esi-markets.structure_markets.v1",
     "esi-corporations.read_structures.v1",
     "esi-characters.read_loyalty.v1",
@@ -146,6 +148,8 @@ CORE_AUTH_SCOPES = [
     "esi-skills.read_skillqueue.v1",
     "esi-fittings.read_fittings.v1",
     "esi-fittings.write_fittings.v1",
+    "esi-clones.read_clones.v1",
+    "esi-clones.read_implants.v1",
 ]
 
 
@@ -272,7 +276,7 @@ async def apply_type_metadata(client: EsiClient, db: Session, type_ids: set[int]
         if max_fetch is not None and fetched >= max_fetch:
             break
         item_type = ensure_type(db, type_id)
-        if item_type.group_id is not None and item_type.group is not None:
+        if item_type.group_id is not None and item_type.group is not None and item_type.capacity is not None:
             continue
         try:
             payload = await client.get(f"/universe/types/{type_id}/", params={"language": "en"})
@@ -283,6 +287,7 @@ async def apply_type_metadata(client: EsiClient, db: Session, type_ids: set[int]
         item_type.group_id = payload.get("group_id")
         item_type.volume = payload.get("volume")
         item_type.packaged_volume = payload.get("packaged_volume")
+        item_type.capacity = payload.get("capacity")
         item_type.market_group_id = payload.get("market_group_id")
         item_type.published = bool(payload.get("published", True))
         if item_type.group_id is not None:
@@ -614,6 +619,7 @@ async def import_type(type_id: int, db: Session = Depends(get_db)) -> dict[str, 
     item_type.group_id = payload.get("group_id")
     item_type.volume = payload.get("volume")
     item_type.packaged_volume = payload.get("packaged_volume")
+    item_type.capacity = payload.get("capacity")
     item_type.market_group_id = payload.get("market_group_id")
     item_type.published = bool(payload.get("published", True))
     db.commit()
@@ -1106,6 +1112,7 @@ async def sync_character_fittings_for_token(token_id: int, current_user: User, d
         for row in fitting_rows:
             type_ids.update({int(item["type_id"]) for item in row.get("items", []) if item.get("type_id") is not None})
         type_names = await apply_type_names(client, db, type_ids)
+        type_metadata = await apply_type_metadata(client, db, type_ids, max_fetch=80)
         now = datetime.now(timezone.utc)
         seen_ids: set[int] = set()
 
@@ -1142,7 +1149,7 @@ async def sync_character_fittings_for_token(token_id: int, current_user: User, d
         character.last_synced_at = now
         job.status = SyncStatus.SUCCESS
         opt_out_note = " Admin override used for opted-out character." if character.sync_opt_out and current_user.role == "admin" and token.user_id != current_user.id else ""
-        job.message = f"Synced {len(fitting_rows)} saved fittings. Resolved {type_names} fitting item names.{opt_out_note}"
+        job.message = f"Synced {len(fitting_rows)} saved fittings. Resolved {type_names} fitting item names and {type_metadata} fitting type records.{opt_out_note}"
         notify_if_other_user_synced_character(db, sync_label="fittings", actor_user=current_user, character=character, detail=f"{len(fitting_rows)} saved fittings were refreshed.")
         job.finished_at = now
         db.commit()

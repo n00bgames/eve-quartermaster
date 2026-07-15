@@ -4,16 +4,64 @@ All notable changes to EVE Quartermaster are tracked here.
 
 This project is moving quickly during beta. Version sections are written as user-facing release notes first, with implementation detail included where it helps operators understand deployment or testing impact.
 
+## [0.1.9-beta] - 2026-07-15
+
+### Added
+
+- Added Manufacturing analytics widgets for realized output quantity, actual and current input costs, savings, kept/sold disposition, sales revenue, and realized profit.
+- Added a README feature-preview warning for the Fittings module while dogma, skill, implant, cargo, and module-derived simulation values remain under active rebuild.
+- Added Manufacturing final-product market lookup with highlighted best buy and lowest sell opportunities across major trade hubs.
+- Added Manufacturing output tracking for pending, sold, and kept products, including sale price, outcome notes, and sale-margin summary.
+- Added Manufacturing line-item price-paid tracking so operators can compare current market value against actual spend and see savings from on-hand materials.
+- Added Manufacturing ledger support for ME/TE research, copying, invention, and reaction job tracking with decryptor/datacore/reaction material inputs.
+
+### Changed
+
+- Recolored the "EVE is Excel in a flight suit." tagline with the muted red interface accent on sign-in, invitation, and in-app views.
+- Bumped the visible app, package, backend API, Android wrapper, and ESI user-agent versions to 0.1.9-beta.
+
+## [0.1.8-beta] - 2026-07-13
+
+### Added
+
+- Added dogma-backed fitting Cargo cards that display current/maximum volume for cargo hold, drone bay, fighter hangar, fuel bay, fleet/ship maintenance bays, infrastructure bay, and specialized holds when the SDE exposes those capacities.
+- Added item volume serialization for fitting cargo, drones, fighters, and bay contents so draft fits can estimate carried m3 before simulation.
+- Stored EVE type cargo capacity from SDE and ESI metadata so ship cargo holds appear correctly in fitting simulation.
+- Made pasted EFT fitting imports refresh public type metadata and return ship cargo capacity immediately to the draft workshop.
+- Added a freighter base cargo-capacity fallback so draft fits show known cargo holds even before refreshed SDE/ESI capacity metadata is available.
+
+### Changed
+
+- Recolored the "EVE is Excel in a flight suit." tagline with the muted red interface accent on sign-in, invitation, and in-app views.
+- Consolidated fitting cargo, drones, and fighters into one bay-aware draft workflow with utilization meters and over-limit highlighting.
+- Made fitting cargo-hold capacity skill/module-aware in simulation, including racial freighter skill bonuses and fitted cargo-capacity modifiers.
+- Corrected Fenrir fallback cargo capacity and kept over-slot fitted modules from contributing simulation effects.
+- Corrected cargo-expander math by treating SDE cargoCapacityMultiplier as a direct, unpenalized multiplier and cargoCapacityBonus as a percent bonus.
+- Applied imported passive structure HP and max-velocity multipliers so Expanded Cargohold penalties affect fitting tank and movement stats.
+- Restored fitting stat estimates for online modules so imported fittings apply module effects without requiring every item to be toggled active.
+- Added a red fitting simulator development warning badge because dogma coverage is still incomplete and values may be inaccurate.
+- Clamped fitted-slot quantities to one module per slot so draft quantity cannot create false slot overages.
+- Improved EFT import slot inference so obvious low-slot modules are not placed in mids just because of sparse section spacing.
+- Normalized fitting add/update requests so low-slot modules are not saved into mid slots unless deliberately carried as cargo.
+- Hid empty zero-capacity bays from fitting Cargo cards while keeping over-limit checks for bays with contents.
+- Bumped the visible app, package, backend API, Android wrapper, and ESI user-agent versions to 0.1.8-beta.
+
 ## [0.1.7-beta] - 2026-07-13
 
 ### Added
 
+- Added Windows and Linux/macOS SDE fetch scripts that download the latest Tranquility SDE into the mounted `sde/` folder with optional extraction.
+- Added a persistent red-alert Threat Analyzer header action that jumps from any page to the Local Threat panel.
 - Added a Characters-page Sync all eligible action that queues assets, skills, fittings, and contracts for every permitted non-opted-out character with matching ESI scopes and shows queue-badge progress.
 - Added corporation hiding and tightened character/corporation lists so metadata-only CEOs and affiliation-only corporations do not appear as managed EQM entries.
+- Added pagination and extra spacing to the Assets ledger so large filtered result sets render in manageable pages.
+- Reduced browser memory pressure on large asset ledgers by loading a small asset sample at startup and fetching Assets-page rows from a server-backed paged endpoint.
 - Expanded the README with detailed EVE developer application, ESI/SSO scope, SDE YAML download/import, and EQM section usage instructions.
 
 ### Changed
 
+- Recolored the "EVE is Excel in a flight suit." tagline with the muted red interface accent on sign-in, invitation, and in-app views.
+- Updated installer next-step guidance to use the new SDE fetch scripts.
 - Updated installer next-step guidance to point operators at EVE developer credentials, YAML SDE setup, and README setup details.
 - Bumped the visible app, package, backend API, Android wrapper, and ESI user-agent versions to 0.1.7-beta.
 
@@ -62,6 +110,7 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Changed
 
+- Recolored the "EVE is Excel in a flight suit." tagline with the muted red interface accent on sign-in, invitation, and in-app views.
 - Renamed Capital Jump Plotter to Jump Capable Ship Plotter and added Black Ops battleships to the jump-capable ship list.
 - Reorganized the sidebar navigation into overview/navigation, character functions, inventory and industry tools, and account/admin groups.
 - Tuned the frontend typography hierarchy to reduce over-bold repeated labels, table values, filter chips, badges, and utility buttons so dense operational pages are easier to scan.
@@ -77,11 +126,13 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Changed
 
+- Recolored the "EVE is Excel in a flight suit." tagline with the muted red interface accent on sign-in, invitation, and in-app views.
 - Route Checker and Gatechecker now pass safer-route and avoid-system preferences through the same backend route planner, keeping navigation behavior consistent across route tools.
 ## [0.1.4-beta] - 2026-07-06
 
 ### Changed
 
+- Recolored the "EVE is Excel in a flight suit." tagline with the muted red interface accent on sign-in, invitation, and in-app views.
 - Bumped the visible app, README, Android wrapper, backend API, and ESI client user-agent versions for the latest beta polish pass.
 ## [0.1.3-beta] - 2026-07-05
 
@@ -98,6 +149,7 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Changed
 
+- Recolored the "EVE is Excel in a flight suit." tagline with the muted red interface accent on sign-in, invitation, and in-app views.
 - Renamed the character standing sync area to Character Contacts Sync to match the actual writable ESI mechanic.
 - Kept market appraisal freight-cost estimates out of the first implementation because player hauling, Red Frog Freight, PushX, and private logistics pricing need a more explicit model.
 - Improved public-facing README documentation and screenshot ordering for tester onboarding.

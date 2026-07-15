@@ -8,12 +8,12 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
-from sqlalchemy import delete, func, select
+from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.auth import get_current_user, require_role
 from app.db.session import get_db
-from app.models import BlueprintSnapshot, CharacterSkillSnapshot, CorporationSnapshot, EveCharacter, OwnershipEntity, SnapshotMetric, SnapshotRun, User
+from app.models import BlueprintSnapshot, CharacterSkillSnapshot, CorporationSnapshot, EveCharacter, ManufacturingJob, OwnershipEntity, SnapshotMetric, SnapshotRun, User
 from app.services.analytics import create_snapshot
 from app.services.permissions import ROLE_RANK, can_view_section, role_rank
 
@@ -52,6 +52,86 @@ def iso(value: datetime | None) -> str | None:
 
 def start_cutoff(days: int) -> datetime:
     return datetime.now(timezone.utc) - timedelta(days=max(1, min(days, 3660)))
+
+
+def manufacturing_analytics(db: Session, days: int) -> dict[str, Any]:
+    cutoff = start_cutoff(days)
+    jobs = db.scalars(
+        select(ManufacturingJob)
+        .options(selectinload(ManufacturingJob.output_type), selectinload(ManufacturingJob.items))
+        .where(
+            or_(
+                ManufacturingJob.date_started >= cutoff.date(),
+                and_(ManufacturingJob.date_started.is_(None), ManufacturingJob.created_at >= cutoff),
+            )
+        )
+    ).all()
+    totals: dict[str, float | int] = {
+        "job_count": 0,
+        "items_built": 0,
+        "current_cost": 0.0,
+        "actual_cost": 0.0,
+        "savings": 0.0,
+        "kept_items": 0,
+        "sold_items": 0,
+        "sales_revenue": 0.0,
+        "realized_profit": 0.0,
+    }
+    by_item: dict[str, dict[str, float | int | str]] = {}
+
+    for job in jobs:
+        activity_flags = {flag.strip() for flag in str(job.activity_flags or "manufacturing").split(",") if flag.strip()}
+        is_realized = job.status == "completed" or job.output_disposition in {"kept", "sold"}
+        if "manufacturing" not in activity_flags or not is_realized:
+            continue
+
+        quantity = max(0, int(job.output_quantity or 0))
+        run_cost = as_float(job.cost_to_run)
+        current_cost = run_cost + sum(as_float(item.quantity) * as_float(item.unit_price) for item in job.items)
+        actual_cost = run_cost + sum(as_float(item.quantity) * as_float(item.price_paid) for item in job.items)
+        savings = current_cost - actual_cost
+        sale_revenue = as_float(job.output_sale_price) if job.output_disposition == "sold" else 0.0
+        profit = sale_revenue - actual_cost if job.output_disposition == "sold" else 0.0
+        item_name = job.output_type.name if job.output_type else job.name
+        item = by_item.setdefault(item_name, {
+            "name": item_name,
+            "quantity": 0,
+            "actual_cost": 0.0,
+            "savings": 0.0,
+            "kept_quantity": 0,
+            "sold_quantity": 0,
+            "sales_revenue": 0.0,
+            "realized_profit": 0.0,
+        })
+
+        totals["job_count"] += 1
+        totals["items_built"] += quantity
+        totals["current_cost"] += current_cost
+        totals["actual_cost"] += actual_cost
+        totals["savings"] += savings
+        item["quantity"] += quantity
+        item["actual_cost"] += actual_cost
+        item["savings"] += savings
+
+        if job.output_disposition == "kept":
+            totals["kept_items"] += quantity
+            item["kept_quantity"] += quantity
+        elif job.output_disposition == "sold":
+            totals["sold_items"] += quantity
+            totals["sales_revenue"] += sale_revenue
+            totals["realized_profit"] += profit
+            item["sold_quantity"] += quantity
+            item["sales_revenue"] += sale_revenue
+            item["realized_profit"] += profit
+
+    money_fields = ["current_cost", "actual_cost", "savings", "sales_revenue", "realized_profit"]
+    for field in money_fields:
+        totals[field] = round(float(totals[field]), 2)
+    top_items = sorted(by_item.values(), key=lambda row: (-int(row["quantity"]), str(row["name"]).lower()))[:8]
+    for item in top_items:
+        for field in ["actual_cost", "savings", "sales_revenue", "realized_profit"]:
+            item[field] = round(float(item[field]), 2)
+    return {**totals, "top_items": top_items}
 
 
 def can_view_character_analytics(viewer: User, character: EveCharacter, db: Session) -> bool:
@@ -315,6 +395,7 @@ def analytics_summary(days: int = Query(30, ge=1, le=3660), current_user: User =
         "member_growth": member_growth,
         "blueprint_growth": blueprint_growth,
         "duplicate_blueprints": duplicate_blueprints(db, ownership_entity_ids),
+        "manufacturing": manufacturing_analytics(db, days),
         "series": {
             "wallet_totals": corporation_series(db, days, "wallet_balance", corporation_ids),
             "member_counts": corporation_series(db, days, "member_count", corporation_ids),

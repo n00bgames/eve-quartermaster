@@ -37,7 +37,7 @@ def upgrade() -> None:
     op.create_index("ix_eve_categories_name", "eve_categories", ["name"])
     op.create_table("eve_groups", sa.Column("group_id", sa.Integer(), primary_key=True), sa.Column("category_id", sa.Integer(), sa.ForeignKey("eve_categories.category_id")), sa.Column("name", sa.String(255), nullable=False), sa.Column("published", sa.Boolean(), nullable=False, server_default=sa.text("true")))
     op.create_index("ix_eve_groups_name", "eve_groups", ["name"])
-    op.create_table("eve_types", sa.Column("type_id", sa.Integer(), primary_key=True), sa.Column("group_id", sa.Integer(), sa.ForeignKey("eve_groups.group_id")), sa.Column("name", sa.String(255), nullable=False), sa.Column("description", sa.Text()), sa.Column("volume", sa.Float()), sa.Column("packaged_volume", sa.Float()), sa.Column("market_group_id", sa.Integer()), sa.Column("published", sa.Boolean(), nullable=False, server_default=sa.text("true")))
+    op.create_table("eve_types", sa.Column("type_id", sa.Integer(), primary_key=True), sa.Column("group_id", sa.Integer(), sa.ForeignKey("eve_groups.group_id")), sa.Column("name", sa.String(255), nullable=False), sa.Column("description", sa.Text()), sa.Column("volume", sa.Float()), sa.Column("packaged_volume", sa.Float()), sa.Column("capacity", sa.Float()), sa.Column("market_group_id", sa.Integer()), sa.Column("published", sa.Boolean(), nullable=False, server_default=sa.text("true")))
     op.create_index("ix_eve_types_name", "eve_types", ["name"])
     op.create_index("ix_eve_types_market_group_id", "eve_types", ["market_group_id"])
 

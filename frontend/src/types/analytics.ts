@@ -6,6 +6,29 @@ export type DuplicateBlueprint = { owner_name: string; blueprint_type_name: stri
 
 export type MetricCatalogItem = { metric: string; version: number; label: string; unit: string; aggregation: string; category: string; supportsCharacter: boolean; supportsCorporation: boolean; chartTypes: string[]; deprecated: boolean; hasData?: boolean };
 
+export type ManufacturingAnalyticsItem = {
+  name: string;
+  quantity: number;
+  actual_cost: number;
+  savings: number;
+  kept_quantity: number;
+  sold_quantity: number;
+  sales_revenue: number;
+  realized_profit: number;
+};
+
+export type ManufacturingAnalytics = {
+  job_count: number;
+  items_built: number;
+  current_cost: number;
+  actual_cost: number;
+  savings: number;
+  kept_items: number;
+  sold_items: number;
+  sales_revenue: number;
+  realized_profit: number;
+  top_items: ManufacturingAnalyticsItem[];
+};
 export type AnalyticsSummary = {
   days: number;
   latest_snapshot_at?: string | null;
@@ -20,5 +43,6 @@ export type AnalyticsSummary = {
   member_growth: AnalyticsGrowth[];
   blueprint_growth: AnalyticsGrowth[];
   duplicate_blueprints: DuplicateBlueprint[];
+  manufacturing: ManufacturingAnalytics;
   series: { wallet_totals: AnalyticsPoint[]; member_counts: AnalyticsPoint[]; blueprint_counts: AnalyticsPoint[] };
 };

@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/n00bgames/eve-quartermaster"><img alt="Project" src="https://img.shields.io/badge/project-eve--quartermaster-e8b84d?style=for-the-badge"></a>
-  <img alt="Version" src="https://img.shields.io/badge/version-0.1.7--beta-4fb3c7?style=for-the-badge">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.1.9--beta-4fb3c7?style=for-the-badge">
   <img alt="License" src="https://img.shields.io/badge/license-AGPL--3.0--or--later-70c894?style=for-the-badge">
 </p>
 
@@ -24,6 +24,8 @@
 EVE Quartermaster is a containerized, database-first EVE Online quartermaster and alliance operations tool. It tracks characters, corporations, assets, blueprints, recipes, skills, standings/contact sync, wallet snapshots, permissions, audit events, and long-term analytics from EVE ESI plus imported SDE data.
 
 This is an early beta candidate for private/public testing. It is already useful, but the data model and API surface are still moving quickly.
+
+> **Fittings feature preview:** The Fittings module is currently under active development and should be treated as a preview. Dogma, implant, skill, cargo, and module-derived values are known to be incomplete or inaccurate while the simulator is being rebuilt.
 
 See [CHANGELOG.md](CHANGELOG.md) for version-by-version release notes.
 
@@ -46,59 +48,51 @@ See [CHANGELOG.md](CHANGELOG.md) for version-by-version release notes.
 
 ## Screenshots
 
-A quick tour of the current beta surface, ordered roughly the way a new Quartermaster operator would encounter the tool.
+A quick tour of the current beta surface, ordered roughly the way a new Quartermaster operator would encounter the tool. These screenshots use fictitious demo names, organizations, IDs, portraits, logos, and operational data.
 
 ### Command Center
 
-| Overview | Analytics Platform |
+| Overview | Navigation |
 | --- | --- |
-| ![Quartermaster overview](static/ss/overview.png) | ![Analytics platform](static/ss/analytics.png) |
+| ![Quartermaster overview](static/ss/eqm-overview.png) | ![Navigation and threat tools](static/ss/eqm-navigation.png) |
 
-### Assets, Industry, And Corporations
-
-| Asset Ledger | Blueprint And Recipe Library |
+| Analytics Platform | Audit Log |
 | --- | --- |
-| ![Asset ledger](static/ss/assets.png) | ![Blueprint and recipe library](static/ss/industry.png) |
+| ![Analytics platform](static/ss/eqm-analytics.png) | ![Audit log](static/ss/eqm-audit.png) |
 
-| Corporation Sync | ESI Sync And Character Contacts |
+### Character Functions
+
+| Characters | Skills |
 | --- | --- |
-| ![Corporation sync and wallet divisions](static/ss/corps.png) | ![ESI sync and character contacts](static/ss/esi.png) |
+| ![Characters](static/ss/eqm-characters.png) | ![Character skills](static/ss/eqm-skills.png) |
 
-| Character Skills |
+| Fittings | Alliance Roster |
+| --- | --- |
+| ![Fittings](static/ss/eqm-fittings.png) | ![Alliance roster](static/ss/eqm-roster.png) |
+
+| ESI Sync |
 | --- |
-| ![Character skills](static/ss/skills.png) |
+| ![ESI sync](static/ss/eqm-esi-sync.png) |
 
-### Navigation And Hauling Intel
+### Inventory And Industry
 
-| Navigation Hub | Route Checker |
+| Market | Corporations |
 | --- | --- |
-| ![Navigation hub](static/ss/navigation.png) | ![Route checker](static/ss/routecheck.png) |
+| ![Market appraisal](static/ss/eqm-market.png) | ![Corporations](static/ss/eqm-corporations.png) |
 
-| Industrial System Threat | PvP Intel Report |
+| Ownership | Assets |
 | --- | --- |
-| ![Industrial system threat](static/ss/indythreat.png) | ![PvP intel report](static/ss/pvpintel.png) |
+| ![Ownership](static/ss/eqm-ownership.png) | ![Asset ledger](static/ss/eqm-assets.png) |
 
-| Local Threat Analysis | Jump Freighter Plotter |
+| Industry | Contracts |
 | --- | --- |
-| ![Local threat analysis](static/ss/localthreat.png) | ![Jump Freighter plotter](static/ss/jfplotter.png) |
+| ![Blueprints and industry](static/ss/eqm-industry.png) | ![Contracts](static/ss/eqm-contracts.png) |
 
-| Operational Jump Freighter Map |
-| --- |
-| ![Operational Jump Freighter map](static/ss/jfpmap.png) |
+### Account And Settings
 
-### Account, Settings, And Audit
-
-| Profile And Messages | Audit Log |
+| Profile | Settings |
 | --- | --- |
-| ![Profile and private messages](static/ss/profile.png) | ![Audit log](static/ss/audit.png) |
-
-| Settings And SDE Import | Permissions And Privacy |
-| --- | --- |
-| ![Settings and SDE import](static/ss/settings1.png) | ![Permissions and privacy settings](static/ss/settings2.png) |
-
-| Additional Settings |
-| --- |
-| ![Additional settings](static/ss/settings3.png) |
+| ![Profile](static/ss/eqm-profile.png) | ![Settings](static/ss/eqm-settings.png) |
 
 | EVE Developer Application |
 | --- |
@@ -351,40 +345,58 @@ Use the **YAML** SDE for EQM. CCP also offers JSON Lines, but EQM's importer is 
 
 ### Download The Latest YAML SDE
 
-Windows PowerShell from the repository root:
+The repository includes helper scripts that download the latest Tranquility SDE zip into the local `sde/` folder mounted by Docker.
+
+Windows from the repository root:
 
 ```powershell
-New-Item -ItemType Directory -Force -Path .\sde
-Invoke-WebRequest -Uri "https://developers.eveonline.com/static-data/eve-online-static-data-latest-yaml.zip" -OutFile ".\sde\eve-online-static-data-latest-yaml.zip"
+.\sde-fetch.bat
 ```
 
 Linux/macOS shell from the repository root:
 
 ```bash
-mkdir -p sde
-curl -L "https://developers.eveonline.com/static-data/eve-online-static-data-latest-yaml.zip" -o "sde/eve-online-static-data-latest-yaml.zip"
+chmod +x sde-fetch.sh
+./sde-fetch.sh
 ```
 
 You may import directly from the zip by using this SDE path in EQM:
 
 ```text
-/sde/eve-online-static-data-latest-yaml.zip
+/sde/sde.zip
+```
+
+The scripts use CCP's stable Tranquility SDE zip endpoint by default:
+
+```text
+https://eve-static-data-export.s3-eu-west-1.amazonaws.com/tranquility/sde.zip
+```
+
+If CCP changes the endpoint or you want a test source, override it without editing the script:
+
+```powershell
+$env:SDE_URL="https://example.invalid/sde.zip"
+.\sde-fetch.bat
+```
+
+```bash
+SDE_URL="https://example.invalid/sde.zip" ./sde-fetch.sh
 ```
 
 ### Extracted Layout Option
 
-If you prefer extracting it first, extract the YAML zip into `./sde` so the files are visible to the Docker bind mount.
+If you prefer extracting it first, ask the helper script to extract the SDE into `./sde` after download.
 
-Windows PowerShell:
+Windows:
 
 ```powershell
-Expand-Archive -Path ".\sde\eve-online-static-data-latest-yaml.zip" -DestinationPath ".\sde" -Force
+.\sde-fetch.bat extract
 ```
 
 Linux/macOS shell:
 
 ```bash
-unzip -o sde/eve-online-static-data-latest-yaml.zip -d sde
+./sde-fetch.sh extract
 ```
 
 Then use this SDE path in EQM:
@@ -413,7 +425,7 @@ If you keep the SDE somewhere else, set `SDE_HOST_PATH` in `.env` to that host f
 
 1. Start EQM and sign in as an admin.
 2. Open **Settings -> SDE Import**.
-3. Use `/sde/eve-online-static-data-latest-yaml.zip` if importing the zip, or `/sde` if importing an extracted folder.
+3. Use `/sde/sde.zip` if importing the zip, or `/sde` if importing an extracted folder.
 4. Click **Import SDE**.
 5. Leave Settings open if you want to watch progress. The progress message updates while EQM keeps working.
 6. When the import completes, refresh the page or use **Refresh** in the SDE panel to confirm category, type, system, stargate, recipe, and dogma counts.
