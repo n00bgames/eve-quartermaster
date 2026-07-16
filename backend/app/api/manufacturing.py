@@ -170,6 +170,8 @@ def serialize_job(job: ManufacturingJob) -> dict[str, Any]:
         "date_started": job.date_started.isoformat() if job.date_started else None,
         "time_started": job.time_started.isoformat(timespec="minutes") if job.time_started else None,
         "notes": job.notes,
+        "created_by_user_id": job.created_by_user_id,
+        "created_by_display_name": job.created_by_user.display_name if job.created_by_user else None,
         "created_at": job.created_at.isoformat() if job.created_at else None,
         "updated_at": job.updated_at.isoformat() if job.updated_at else None,
         "items": items,
@@ -184,6 +186,7 @@ def serialize_job(job: ManufacturingJob) -> dict[str, Any]:
 def job_query():
     return select(ManufacturingJob).options(
         selectinload(ManufacturingJob.output_type),
+        selectinload(ManufacturingJob.created_by_user),
         selectinload(ManufacturingJob.items).selectinload(ManufacturingJobItem.item_type),
     )
 

@@ -318,7 +318,7 @@ function JobLedger({ jobs, selectedId, now, onSelect, onDelete, onSetStatus, for
       <button type="button" onClick={() => onSelect(job)}>
         <strong>{job.name}</strong>
         <span>{job.output_quantity.toLocaleString()} x {job.output_type_name ?? job.output_type_id ?? "output"}</span>
-        <small>{formatDateTime(job.created_at)} · {job.items.length} row{job.items.length === 1 ? "" : "s"}</small>
+        <small>Added by {job.created_by_display_name ?? "Unknown user"} · {formatDateTime(job.created_at)} · {job.items.length} row{job.items.length === 1 ? "" : "s"}</small>
         <small>{(job.activity_flags?.length ? job.activity_flags : ["manufacturing"]).map((flag) => activityLabel(flag as ManufacturingActivityFlag)).join(" · ")}</small>
         <small><span className={`manufacturing-status-badge status-${job.status}`}>{statusLabel(job.status)}</span> <span className={`manufacturing-status-badge output-${job.output_disposition}`}>{outputDispositionLabel(job.output_disposition)}</span></small>
         <small>{jobCountdownText(job, now)}</small>

@@ -209,6 +209,60 @@ def visible_ownership_entity_ids(current_user: User, db: Session) -> set[int]:
     }
 
 
+@router.get("/corporations")
+def analytics_corporations(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+    require_analytics(current_user, db)
+    snapshot_ids = set(db.scalars(select(CorporationSnapshot.corporation_id).distinct()).all())
+    affiliation_ids = set(
+        db.scalars(select(EveCharacter.corporation_id).where(EveCharacter.corporation_id.is_not(None)).distinct()).all()
+    )
+    managed_ids = set(
+        db.scalars(select(OwnershipEntity.corporation_id).where(OwnershipEntity.corporation_id.is_not(None)).distinct()).all()
+    )
+    candidate_ids = snapshot_ids | affiliation_ids | managed_ids
+    corporations = db.scalars(
+        select(EveCorporation).where(EveCorporation.id.in_(candidate_ids)).order_by(EveCorporation.name)
+    ).all() if candidate_ids else []
+    return {
+        "can_manage": role_rank(current_user, db) >= ROLE_RANK["director"],
+        "corporations": [
+            {
+                "id": corporation.id,
+                "name": corporation.name,
+                "ticker": corporation.ticker,
+                "hidden": corporation.hide_from_corporation_list,
+                "excluded": corporation.exclude_from_analytics or corporation.hide_from_corporation_list,
+                "managed": corporation.id in managed_ids,
+                "affiliation": corporation.id in affiliation_ids,
+                "historical": corporation.id in snapshot_ids,
+            }
+            for corporation in corporations
+        ],
+    }
+
+
+@router.patch("/corporations/{corporation_id}")
+def update_analytics_corporation(
+    corporation_id: int,
+    payload: dict[str, Any],
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    require_analytics(current_user, db)
+    if role_rank(current_user, db) < ROLE_RANK["director"]:
+        raise HTTPException(status_code=403, detail="director role is required")
+    corporation = db.get(EveCorporation, corporation_id)
+    if corporation is None:
+        raise HTTPException(status_code=404, detail="Corporation was not found")
+    if "excluded" not in payload:
+        raise HTTPException(status_code=400, detail="excluded is required")
+    excluded = bool(payload["excluded"])
+    if corporation.hide_from_corporation_list and not excluded:
+        raise HTTPException(status_code=400, detail="Hidden corporations remain excluded from analytics")
+    corporation.exclude_from_analytics = excluded
+    db.commit()
+    return {"id": corporation.id, "name": corporation.name, "excluded": corporation.exclude_from_analytics}
+
 @router.post("/snapshot")
 def manual_snapshot(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
     require_analytics(current_user, db)

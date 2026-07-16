@@ -45,6 +45,8 @@ export type ManufacturingJob = {
   date_started?: string | null;
   time_started?: string | null;
   notes?: string | null;
+  created_by_user_id?: number | null;
+  created_by_display_name?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
   items: ManufacturingLineItem[];

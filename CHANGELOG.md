@@ -15,6 +15,8 @@ This project is moving quickly during beta. Version sections are written as user
 - Added Manufacturing line-item price-paid tracking so operators can compare current market value against actual spend and see savings from on-hand materials.
 - Added Manufacturing ledger support for ME/TE research, copying, invention, and reaction job tracking with decryptor/datacore/reaction material inputs.
 - Added per-corporation analytics exclusion controls; hidden corporations are excluded automatically, while visible NPC or affiliation corporations can be excluded independently.
+- Added Analytics-page corporation scope controls so affiliation-only and historical corporations can be included or excluded without appearing as managed corporations.
+- Added submitting-user attribution to Manufacturing ledger cards.
 
 ### Fixed
 

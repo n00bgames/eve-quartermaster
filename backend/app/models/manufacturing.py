@@ -37,6 +37,7 @@ class ManufacturingJob(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     output_type = relationship("EveType")
+    created_by_user = relationship("User", foreign_keys=[created_by_user_id])
     items: Mapped[list["ManufacturingJobItem"]] = relationship(back_populates="job", cascade="all, delete-orphan")
 
 

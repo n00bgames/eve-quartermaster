@@ -6,6 +6,21 @@ export type DuplicateBlueprint = { owner_name: string; blueprint_type_name: stri
 
 export type MetricCatalogItem = { metric: string; version: number; label: string; unit: string; aggregation: string; category: string; supportsCharacter: boolean; supportsCorporation: boolean; chartTypes: string[]; deprecated: boolean; hasData?: boolean };
 
+export type AnalyticsCorporationScope = {
+  id: number;
+  name: string;
+  ticker?: string | null;
+  hidden: boolean;
+  excluded: boolean;
+  managed: boolean;
+  affiliation: boolean;
+  historical: boolean;
+};
+
+export type AnalyticsCorporationScopeResponse = {
+  can_manage: boolean;
+  corporations: AnalyticsCorporationScope[];
+};
 export type ManufacturingAnalyticsItem = {
   name: string;
   quantity: number;
