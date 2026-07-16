@@ -171,7 +171,7 @@ export function CharactersPage({
         setMessage(`Synced ${job.success_count.toLocaleString()} of ${job.total_count.toLocaleString()} queued character sync tasks. Skipped ${job.skipped_count.toLocaleString()} opted-out, hidden, duplicate, or missing-scope task${job.skipped_count === 1 ? "" : "s"}.`);
       } else {
         setMessage(null);
-        setCharacterError(job.errors[0] ?? "One or more character sync tasks failed.");
+        setCharacterError(job.errors.length > 0 ? job.errors.join("\n") : "One or more character sync tasks failed.");
       }
     } catch (err) {
       setMessage(null);

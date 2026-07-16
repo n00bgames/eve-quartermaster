@@ -29,6 +29,15 @@ This is an early beta candidate for private/public testing. It is already useful
 
 See [CHANGELOG.md](CHANGELOG.md) for version-by-version release notes.
 
+## Install Time
+
+**Typical first-time setup:**
+
+- About 5 minutes if Docker is already installed.
+- About 15-25 minutes from a clean Windows machine, excluding any required restart.
+- One helper script checks the environment and can install supported prerequisites.
+- The only account-side manual requirement is creating a CCP Developer application for ESI/SSO.
+
 ## Current Capabilities
 
 - Account login, first-admin bootstrap, role management, one-time invite links, and per-section permissions.
@@ -45,6 +54,16 @@ See [CHANGELOG.md](CHANGELOG.md) for version-by-version release notes.
 - Hauling intelligence widgets for industrial kill heat, PvP system intel, smartbomb indicators, and Local Threat analysis with background queue progress for large systems.
 - Jump Capable Ship Plotter with JDC/JFC fuel math, station/cyno guidance, nearby operational map context, and 24-hour industrial kill visibility per jump.
 - Sideloadable Android WebView wrapper build script that outputs `EQM.apk`.
+
+## Requirements
+
+- [x] 64-bit Windows 11 with WSL2, or a current 64-bit Linux distribution
+- [x] Docker Desktop, or Docker Engine with Docker Compose v2
+- [x] 4 CPU cores recommended for builds, SDE imports, and background sync work
+- [x] 8 GB of RAM available to Docker; 16 GB total system RAM recommended
+- [x] 20 GB of free disk space for images, SDE files, PostgreSQL data, and growth
+- [x] Git and reliable internet access for installation, ESI, image metadata, and SDE updates
+- [x] CCP Developer application for ESI/SSO (one-time account setup)
 
 ## Screenshots
 

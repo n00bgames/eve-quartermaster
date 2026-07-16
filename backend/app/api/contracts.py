@@ -95,8 +95,11 @@ async def sync_character_contracts(token_id: int, current_user: User = Depends(g
     job = EsiSyncJob(token_id=token.id, sync_type="character_contracts", status=SyncStatus.RUNNING, started_at=datetime.now(timezone.utc))
     db.add(job)
     db.flush()
+    job_id = job.id
+    db.commit()
     try:
         access_token = await refresh_access_token(token)
+        db.commit()
         client = EsiClient(access_token=access_token)
         rows = await fetch_contract_pages(client, f"/characters/{character.character_id}/contracts/")
         synced = upsert_contract_rows(db, rows, scope_type="character", owner_user=owner, character=character)
@@ -106,10 +109,13 @@ async def sync_character_contracts(token_id: int, current_user: User = Depends(g
         db.commit()
         return {"status": "synced", "character_name": character.name, "contracts": synced, "active_contracts": sum(1 for row in rows if row.get("status") in ACTIVE_CONTRACT_STATUSES), "job_id": job.id}
     except Exception as exc:
-        job.status = SyncStatus.FAILED
-        job.message = str(exc)
-        job.finished_at = datetime.now(timezone.utc)
-        db.commit()
+        db.rollback()
+        failed_job = db.get(EsiSyncJob, job_id)
+        if failed_job is not None:
+            failed_job.status = SyncStatus.FAILED
+            failed_job.message = str(exc)
+            failed_job.finished_at = datetime.now(timezone.utc)
+            db.commit()
         raise
 
 
@@ -131,8 +137,11 @@ async def sync_corporation_contracts(token_id: int, current_user: User = Depends
     job = EsiSyncJob(token_id=token.id, sync_type="corporation_contracts", status=SyncStatus.RUNNING, started_at=datetime.now(timezone.utc))
     db.add(job)
     db.flush()
+    job_id = job.id
+    db.commit()
     try:
         access_token = await refresh_access_token(token)
+        db.commit()
         client = EsiClient(access_token=access_token)
         rows = await fetch_contract_pages(client, f"/corporations/{corporation.corporation_id}/contracts/")
         synced = upsert_contract_rows(db, rows, scope_type="corporation", corporation=corporation)
@@ -142,9 +151,12 @@ async def sync_corporation_contracts(token_id: int, current_user: User = Depends
         db.commit()
         return {"status": "synced", "corporation_name": corporation.name, "contracts": synced, "active_contracts": sum(1 for row in rows if row.get("status") in ACTIVE_CONTRACT_STATUSES), "job_id": job.id}
     except Exception as exc:
-        job.status = SyncStatus.FAILED
-        job.message = str(exc)
-        job.finished_at = datetime.now(timezone.utc)
-        db.commit()
+        db.rollback()
+        failed_job = db.get(EsiSyncJob, job_id)
+        if failed_job is not None:
+            failed_job.status = SyncStatus.FAILED
+            failed_job.message = str(exc)
+            failed_job.finished_at = datetime.now(timezone.utc)
+            db.commit()
         raise
 

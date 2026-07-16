@@ -14,6 +14,14 @@ This project is moving quickly during beta. Version sections are written as user
 - Added Manufacturing output tracking for pending, sold, and kept products, including sale price, outcome notes, and sale-margin summary.
 - Added Manufacturing line-item price-paid tracking so operators can compare current market value against actual spend and see savings from on-hand materials.
 - Added Manufacturing ledger support for ME/TE research, copying, invention, and reaction job tracking with decryptor/datacore/reaction material inputs.
+- Added per-corporation analytics exclusion controls; hidden corporations are excluded automatically, while visible NPC or affiliation corporations can be excluded independently.
+
+### Fixed
+
+- Fixed character contract syncs for player-owned structure locations whose trillion-range EVE IDs do not fit the station table's integer key.
+- Preserved original contract-sync failures after database errors and displayed every failed Sync All task instead of only the first.
+- Stored shared EVE contracts independently per character or corporation so syncing one owner no longer reassigns another owner's contract rows.
+- Removed hidden and analytics-excluded corporations from existing analytics summaries, trends, duplicate-blueprint results, exports, and future snapshots.
 
 ### Changed
 
@@ -32,7 +40,6 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Changed
 
-- Recolored the "EVE is Excel in a flight suit." tagline with the muted red interface accent on sign-in, invitation, and in-app views.
 - Consolidated fitting cargo, drones, and fighters into one bay-aware draft workflow with utilization meters and over-limit highlighting.
 - Made fitting cargo-hold capacity skill/module-aware in simulation, including racial freighter skill bonuses and fitted cargo-capacity modifiers.
 - Corrected Fenrir fallback cargo capacity and kept over-slot fitted modules from contributing simulation effects.
@@ -60,7 +67,6 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Changed
 
-- Recolored the "EVE is Excel in a flight suit." tagline with the muted red interface accent on sign-in, invitation, and in-app views.
 - Updated installer next-step guidance to use the new SDE fetch scripts.
 - Updated installer next-step guidance to point operators at EVE developer credentials, YAML SDE setup, and README setup details.
 - Bumped the visible app, package, backend API, Android wrapper, and ESI user-agent versions to 0.1.7-beta.
@@ -110,7 +116,6 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Changed
 
-- Recolored the "EVE is Excel in a flight suit." tagline with the muted red interface accent on sign-in, invitation, and in-app views.
 - Renamed Capital Jump Plotter to Jump Capable Ship Plotter and added Black Ops battleships to the jump-capable ship list.
 - Reorganized the sidebar navigation into overview/navigation, character functions, inventory and industry tools, and account/admin groups.
 - Tuned the frontend typography hierarchy to reduce over-bold repeated labels, table values, filter chips, badges, and utility buttons so dense operational pages are easier to scan.
@@ -126,13 +131,11 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Changed
 
-- Recolored the "EVE is Excel in a flight suit." tagline with the muted red interface accent on sign-in, invitation, and in-app views.
 - Route Checker and Gatechecker now pass safer-route and avoid-system preferences through the same backend route planner, keeping navigation behavior consistent across route tools.
 ## [0.1.4-beta] - 2026-07-06
 
 ### Changed
 
-- Recolored the "EVE is Excel in a flight suit." tagline with the muted red interface accent on sign-in, invitation, and in-app views.
 - Bumped the visible app, README, Android wrapper, backend API, and ESI client user-agent versions for the latest beta polish pass.
 ## [0.1.3-beta] - 2026-07-05
 
@@ -149,7 +152,6 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Changed
 
-- Recolored the "EVE is Excel in a flight suit." tagline with the muted red interface accent on sign-in, invitation, and in-app views.
 - Renamed the character standing sync area to Character Contacts Sync to match the actual writable ESI mechanic.
 - Kept market appraisal freight-cost estimates out of the first implementation because player hauling, Red Frog Freight, PushX, and private logistics pricing need a more explicit model.
 - Improved public-facing README documentation and screenshot ordering for tester onboarding.

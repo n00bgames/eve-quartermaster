@@ -12,6 +12,7 @@ from app.models import EveCharacter, EveContract, EveCorporation, EveStation, Ev
 from app.services.esi_client import EsiClient
 
 ACTIVE_CONTRACT_STATUSES = {"outstanding", "in_progress"}
+MAX_POSTGRES_INTEGER = 2_147_483_647
 
 
 def parse_esi_datetime(value: str | None) -> datetime | None:
@@ -32,6 +33,8 @@ def contract_location_name(db: Session, location_id: int | None) -> str | None:
     local_location = db.scalar(select(Location).where(Location.eve_location_id == location_id).limit(1))
     if local_location:
         return local_location.name
+    if location_id > MAX_POSTGRES_INTEGER:
+        return f"Structure {location_id}"
     station = db.get(EveStation, location_id)
     if station:
         return station.name
@@ -73,7 +76,15 @@ def upsert_contract_rows(
     for row in rows:
         contract_id = int(row["contract_id"])
         seen_ids.add(contract_id)
-        contract = db.scalar(select(EveContract).where(EveContract.contract_id == contract_id))
+        contract_query = select(EveContract).where(
+            EveContract.contract_id == contract_id,
+            EveContract.scope_type == scope_type,
+        )
+        if character is not None:
+            contract_query = contract_query.where(EveContract.character_id == character.id)
+        if corporation is not None:
+            contract_query = contract_query.where(EveContract.corporation_id == corporation.id)
+        contract = db.scalar(contract_query)
         if contract is None:
             contract = EveContract(contract_id=contract_id, scope_type=scope_type)
             db.add(contract)

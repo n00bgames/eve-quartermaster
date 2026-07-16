@@ -121,6 +121,7 @@ def serialize_corporation(corp: EveCorporation, current_user: User, db: Session)
         "ceo_character_name": ceo.name if ceo else None,
         "member_count": corp.member_count,
         "hide_from_corporation_list": corp.hide_from_corporation_list,
+        "exclude_from_analytics": corp.exclude_from_analytics,
         "last_synced_at": corp.last_synced_at.isoformat() if corp.last_synced_at else None,
         "asset_rows": asset_rows,
         "blueprint_rows": blueprint_rows,
@@ -177,6 +178,10 @@ def update_corporation_visibility(corporation_id: int, payload: dict[str, Any], 
         raise HTTPException(status_code=404, detail="Corporation was not found")
     if "hide_from_corporation_list" in payload:
         corporation.hide_from_corporation_list = bool(payload["hide_from_corporation_list"])
+        if corporation.hide_from_corporation_list:
+            corporation.exclude_from_analytics = True
+    if "exclude_from_analytics" in payload:
+        corporation.exclude_from_analytics = bool(payload["exclude_from_analytics"])
     db.commit()
     db.refresh(corporation)
     return serialize_corporation(corporation, current_user, db)

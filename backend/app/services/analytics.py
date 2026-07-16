@@ -156,7 +156,14 @@ def snapshot_character_skills(db: Session, run: SnapshotRun) -> None:
 
 
 def snapshot_corporations(db: Session, run: SnapshotRun) -> None:
-    corporations = db.scalars(select(EveCorporation).order_by(EveCorporation.name)).all()
+    corporations = db.scalars(
+        select(EveCorporation)
+        .where(
+            EveCorporation.hide_from_corporation_list.is_(False),
+            EveCorporation.exclude_from_analytics.is_(False),
+        )
+        .order_by(EveCorporation.name)
+    ).all()
     for corporation in corporations:
         owner = db.scalar(
             select(OwnershipEntity).where(

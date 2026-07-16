@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -10,7 +10,22 @@ from app.models.base import Base
 
 class EveContract(Base):
     __tablename__ = "eve_contracts"
-    __table_args__ = (UniqueConstraint("contract_id", name="uq_eve_contracts_contract_id"),)
+    __table_args__ = (
+        Index(
+            "uq_eve_contracts_character_contract",
+            "contract_id",
+            "character_id",
+            unique=True,
+            postgresql_where=text("scope_type = 'character' AND character_id IS NOT NULL"),
+        ),
+        Index(
+            "uq_eve_contracts_corporation_contract",
+            "contract_id",
+            "corporation_id",
+            unique=True,
+            postgresql_where=text("scope_type = 'corporation' AND corporation_id IS NOT NULL"),
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     contract_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)

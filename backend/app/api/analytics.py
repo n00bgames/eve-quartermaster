@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.api.auth import get_current_user, require_role
 from app.db.session import get_db
-from app.models import BlueprintSnapshot, CharacterSkillSnapshot, CorporationSnapshot, EveCharacter, ManufacturingJob, OwnershipEntity, SnapshotMetric, SnapshotRun, User
+from app.models import BlueprintSnapshot, CharacterSkillSnapshot, CorporationSnapshot, EveCharacter, EveCorporation, ManufacturingJob, OwnershipEntity, SnapshotMetric, SnapshotRun, User
 from app.services.analytics import create_snapshot
 from app.services.permissions import ROLE_RANK, can_view_section, role_rank
 
@@ -152,12 +152,24 @@ def visible_character_ids(current_user: User, db: Session) -> set[int] | None:
     return {character.id for character in characters if can_view_character_analytics(current_user, character, db)}
 
 
-def visible_corporation_ids(current_user: User, db: Session, character_ids: set[int] | None) -> set[int] | None:
+def analytics_corporation_ids(db: Session) -> set[int]:
+    return set(
+        db.scalars(
+            select(EveCorporation.id).where(
+                EveCorporation.hide_from_corporation_list.is_(False),
+                EveCorporation.exclude_from_analytics.is_(False),
+            )
+        ).all()
+    )
+
+
+def visible_corporation_ids(current_user: User, db: Session, character_ids: set[int] | None) -> set[int]:
+    included_ids = analytics_corporation_ids(db)
     if role_rank(current_user, db) >= ROLE_RANK["officer"]:
-        return None
+        return included_ids
     if not character_ids:
         return set()
-    return {
+    affiliated_ids = {
         row[0]
         for row in db.execute(
             select(EveCharacter.corporation_id)
@@ -166,6 +178,7 @@ def visible_corporation_ids(current_user: User, db: Session, character_ids: set[
         ).all()
         if row[0] is not None
     }
+    return affiliated_ids & included_ids
 
 
 def can_view_owner_analytics(viewer: User, owner: OwnershipEntity, db: Session) -> bool:
@@ -178,16 +191,22 @@ def can_view_owner_analytics(viewer: User, owner: OwnershipEntity, db: Session) 
     return False
 
 
-def visible_ownership_entity_ids(current_user: User, db: Session) -> set[int] | None:
-    if role_rank(current_user, db) >= ROLE_RANK["officer"]:
-        return None
+def visible_ownership_entity_ids(current_user: User, db: Session) -> set[int]:
     owners = db.scalars(
         select(OwnershipEntity).options(
             selectinload(OwnershipEntity.character).selectinload(EveCharacter.owner_user),
             selectinload(OwnershipEntity.corporation),
         )
     ).all()
-    return {owner.id for owner in owners if can_view_owner_analytics(current_user, owner, db)}
+    return {
+        owner.id
+        for owner in owners
+        if can_view_owner_analytics(current_user, owner, db)
+        and not (
+            owner.corporation
+            and (owner.corporation.hide_from_corporation_list or owner.corporation.exclude_from_analytics)
+        )
+    }
 
 
 @router.post("/snapshot")
@@ -404,10 +423,31 @@ def analytics_summary(days: int = Query(30, ge=1, le=3660), current_user: User =
     }
 
 
+def analytics_metric_rows(db: Session, days: int) -> list[SnapshotMetric]:
+    query = select(SnapshotMetric).where(SnapshotMetric.recorded_at >= start_cutoff(days))
+    excluded_ids = set(
+        db.scalars(
+            select(EveCorporation.id).where(
+                or_(
+                    EveCorporation.hide_from_corporation_list.is_(True),
+                    EveCorporation.exclude_from_analytics.is_(True),
+                )
+            )
+        ).all()
+    )
+    if excluded_ids:
+        query = query.where(
+            or_(
+                SnapshotMetric.owner_type != "corporation",
+                SnapshotMetric.owner_id.not_in(excluded_ids),
+            )
+        )
+    return list(db.scalars(query.order_by(SnapshotMetric.recorded_at)).all())
+
 @router.get("/exports/metrics.csv")
 def export_metrics_csv(days: int = Query(365, ge=1, le=3660), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> StreamingResponse:
     require_analytics(current_user, db)
-    rows = db.scalars(select(SnapshotMetric).where(SnapshotMetric.recorded_at >= start_cutoff(days)).order_by(SnapshotMetric.recorded_at)).all()
+    rows = analytics_metric_rows(db, days)
     buffer = io.StringIO()
     writer = csv.writer(buffer)
     writer.writerow(["recorded_at", "snapshot_run_id", "owner_type", "owner_id", "owner_name", "metric_key", "metric_version", "metric_value", "dimensions_json"])
@@ -420,7 +460,7 @@ def export_metrics_csv(days: int = Query(365, ge=1, le=3660), current_user: User
 @router.get("/exports/metrics.json")
 def export_metrics_json(days: int = Query(365, ge=1, le=3660), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[dict[str, Any]]:
     require_analytics(current_user, db)
-    rows = db.scalars(select(SnapshotMetric).where(SnapshotMetric.recorded_at >= start_cutoff(days)).order_by(SnapshotMetric.recorded_at)).all()
+    rows = analytics_metric_rows(db, days)
     return [
         {
             "recorded_at": iso(row.recorded_at),

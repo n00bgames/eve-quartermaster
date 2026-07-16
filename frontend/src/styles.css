@@ -1318,3 +1318,7 @@
 .auth-tagline {
   color: var(--eqm-tagline-red);
 }
+
+.mini-alert {
+  white-space: pre-wrap;
+}
