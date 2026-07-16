@@ -672,6 +672,21 @@
   width: 16px;
 }
 
+.sidebar nav button.fittings-wip {
+  background: #3a0d12;
+  border-color: #ff3344;
+  color: #ff5a64;
+  font-weight: 800;
+  box-shadow: 0 0 0 1px rgba(255, 51, 68, 0.2), 0 0 14px rgba(255, 51, 68, 0.18);
+}
+
+.sidebar nav button.fittings-wip:hover,
+.sidebar nav button.fittings-wip.active {
+  background: #68121a;
+  border-color: #ff6570;
+  color: #ffffff;
+}
+
 .content {
   min-height: 0;
   overflow: auto;

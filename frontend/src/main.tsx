@@ -515,7 +515,7 @@ function App() {
 
           {canView("skills") && <button className={activeTab === "skills" ? "active" : ""} onClick={() => setActiveTab("skills")}><GraduationCap size={18} /> Skills</button>}
 
-          {canView("fittings") && <button className={activeTab === "fittings" ? "active" : ""} onClick={() => setActiveTab("fittings")}><ClipboardList size={18} /> Fittings</button>}
+          {canView("fittings") && <button className={`fittings-wip${activeTab === "fittings" ? " active" : ""}`} onClick={() => setActiveTab("fittings")}><ClipboardList size={18} /> Fittings - WIP</button>}
 
           {canView("jump_clones") && <button className={activeTab === "jump_clones" ? "active" : ""} onClick={() => setActiveTab("jump_clones")}><UserRoundCheck size={18} /> Jump Clones</button>}
 

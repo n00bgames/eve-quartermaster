@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/n00bgames/eve-quartermaster"><img alt="Project" src="https://img.shields.io/badge/project-eve--quartermaster-e8b84d?style=for-the-badge"></a>
-  <img alt="Version" src="https://img.shields.io/badge/version-0.1.9--beta-4fb3c7?style=for-the-badge">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.1.10--beta-4fb3c7?style=for-the-badge">
   <img alt="License" src="https://img.shields.io/badge/license-AGPL--3.0--or--later-70c894?style=for-the-badge">
 </p>
 

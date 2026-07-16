@@ -4,16 +4,10 @@ All notable changes to EVE Quartermaster are tracked here.
 
 This project is moving quickly during beta. Version sections are written as user-facing release notes first, with implementation detail included where it helps operators understand deployment or testing impact.
 
-## [0.1.9-beta] - 2026-07-15
+## [0.1.10-beta] - 2026-07-16
 
 ### Added
 
-- Added Manufacturing analytics widgets for realized output quantity, actual and current input costs, savings, kept/sold disposition, sales revenue, and realized profit.
-- Added a README feature-preview warning for the Fittings module while dogma, skill, implant, cargo, and module-derived simulation values remain under active rebuild.
-- Added Manufacturing final-product market lookup with highlighted best buy and lowest sell opportunities across major trade hubs.
-- Added Manufacturing output tracking for pending, sold, and kept products, including sale price, outcome notes, and sale-margin summary.
-- Added Manufacturing line-item price-paid tracking so operators can compare current market value against actual spend and see savings from on-hand materials.
-- Added Manufacturing ledger support for ME/TE research, copying, invention, and reaction job tracking with decryptor/datacore/reaction material inputs.
 - Added per-corporation analytics exclusion controls; hidden corporations are excluded automatically, while visible NPC or affiliation corporations can be excluded independently.
 - Added Analytics-page corporation scope controls so affiliation-only and historical corporations can be included or excluded without appearing as managed corporations.
 - Added submitting-user attribution to Manufacturing ledger cards.
@@ -24,6 +18,22 @@ This project is moving quickly during beta. Version sections are written as user
 - Preserved original contract-sync failures after database errors and displayed every failed Sync All task instead of only the first.
 - Stored shared EVE contracts independently per character or corporation so syncing one owner no longer reassigns another owner's contract rows.
 - Removed hidden and analytics-excluded corporations from existing analytics summaries, trends, duplicate-blueprint results, exports, and future snapshots.
+
+### Changed
+
+- Marked the Fittings navigation entry as a bright-red WIP warning while fitting calculations remain under development.
+- Bumped the visible app, package, backend API, Android wrapper, and ESI user-agent versions to 0.1.10-beta.
+
+## [0.1.9-beta] - 2026-07-15
+
+### Added
+
+- Added Manufacturing analytics widgets for realized output quantity, actual and current input costs, savings, kept/sold disposition, sales revenue, and realized profit.
+- Added a README feature-preview warning for the Fittings module while dogma, skill, implant, cargo, and module-derived simulation values remain under active rebuild.
+- Added Manufacturing final-product market lookup with highlighted best buy and lowest sell opportunities across major trade hubs.
+- Added Manufacturing output tracking for pending, sold, and kept products, including sale price, outcome notes, and sale-margin summary.
+- Added Manufacturing line-item price-paid tracking so operators can compare current market value against actual spend and see savings from on-hand materials.
+- Added Manufacturing ledger support for ME/TE research, copying, invention, and reaction job tracking with decryptor/datacore/reaction material inputs.
 
 ### Changed
 
