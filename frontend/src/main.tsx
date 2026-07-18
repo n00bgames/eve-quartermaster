@@ -1,4 +1,4 @@
-import { Activity, Boxes, Building2, ClipboardList, Database, Factory, GraduationCap, KeyRound, MapIcon, MessageCircle, PackagePlus, Plus, RefreshCw, ScrollText, Settings, ShoppingCart, Siren, Sparkles, UserRoundCheck } from "lucide-react";
+import { Activity, Boxes, Building2, ClipboardList, Database, Factory, FlaskConical, GraduationCap, KeyRound, MapIcon, MessageCircle, PackagePlus, Pickaxe, Plus, RefreshCw, ScrollText, Settings, ShoppingCart, Siren, Sparkles, UserRoundCheck } from "lucide-react";
 
 import React, { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
@@ -27,6 +27,8 @@ import { EsiSyncPage } from "./features/esi/EsiSyncPage";
 import { ContractsPage } from "./features/contracts/ContractsPage";
 import { CorporationsPage } from "./features/corporations/CorporationsPage";
 import { BlueprintPreview } from "./features/industry/BlueprintPreview";
+import { ResearchProjectsPage } from "./features/industry/ResearchProjectsPage";
+import { MiningLedgerPage } from "./features/mining/MiningLedgerPage";
 import { IndustrialSystemThreatWidget, LocalThreatWidget, PvpIntelWidget } from "./features/navigation/ThreatIntelWidgets";
 import { RouteChecker } from "./features/navigation/RouteChecker";
 import type { CharacterFocus } from "./types/characters";
@@ -523,11 +525,15 @@ function App() {
 
           {canView("esi") && <button className={activeTab === "esi" ? "active" : ""} onClick={() => setActiveTab("esi")}><KeyRound size={18} /> ESI Sync</button>}
 
-          {["market", "manufacturing", "corporations", "ownership", "assets", "industry", "contracts", "analytics"].some(canView) && <span className="nav-section-label">Inventory & Industry</span>}
+          {["market", "manufacturing", "mining", "corporations", "ownership", "assets", "industry", "contracts", "analytics"].some(canView) && <span className="nav-section-label">Inventory & Industry</span>}
 
           {canView("market") && <button className={activeTab === "market" ? "active" : ""} onClick={() => setActiveTab("market")}><ShoppingCart size={18} /> Market</button>}
 
           {canView("manufacturing") && <button className={activeTab === "manufacturing" ? "active" : ""} onClick={() => setActiveTab("manufacturing")}><Factory size={18} /> Manufacturing</button>}
+
+          {canView("industry") && <button className={activeTab === "research_projects" ? "active" : ""} onClick={() => setActiveTab("research_projects")}><FlaskConical size={18} /> Research Projects</button>}
+
+          {canView("mining") && <button className={activeTab === "mining" ? "active" : ""} onClick={() => setActiveTab("mining" )}><Pickaxe size={18} /> Mining Ledger</button>}
 
           {canView("corporations") && <button className={activeTab === "corporations" ? "active" : ""} onClick={() => setActiveTab("corporations")}><Building2 size={18} /> Corporations</button>}
 
@@ -613,6 +619,10 @@ function App() {
         {activeTab === "market" && canView("market") && <MarketAppraisalPage currentUser={user} seed={marketSeed} assets={data.assets} onOpenAssets={(itemName) => { setAssetSeed({ key: "item", value: itemName, mode: "exact", nonce: Date.now() }); setActiveTab("assets"); }} onOpenFittings={(itemName) => { setFittingSeed({ text: itemName, nonce: Date.now() }); setActiveTab("fittings"); }} api={api} sendDestinationToEve={sendDestinationToEve} ItemContextPanel={ItemContextPanel} numberFormatter={numberFormatter} />}
 
         {activeTab === "manufacturing" && canView("manufacturing") && <ManufacturingPage api={api} formatDateTime={(value) => formatDateTime(value, preferredTimeZone(user))} />}
+
+        {activeTab === "research_projects" && canView("industry") && <ResearchProjectsPage api={api} formatDateTime={(value) => formatDateTime(value, preferredTimeZone(user))} />}
+
+        {activeTab === "mining" && canView("mining") && <MiningLedgerPage api={api} />}
 
         {activeTab === "contracts" && canView("contracts") && <ContractsPage currentUser={user} api={api} CharacterHoverName={CharacterHoverName} />}
 
@@ -1934,7 +1944,7 @@ function ManagedForm({ children, onSubmit, submitLabel = "Save" }: { children: R
 
 function titleFor(tab: string) {
 
-  return ({ overview: "Quartermaster Overview", ownership: "Ownership and Locations", characters: "Characters", roster: "Alliance Roster", navigation: "Navigation", market: "Market Appraisal", manufacturing: "Manufacturing", contracts: "Contracts", analytics: "Analytics Platform", skills: "Character Skills", fittings: "Fittings", jump_clones: "Jump Clones", settings: "Settings", corporations: "Corporations", assets: "Asset Ledger", industry: "Blueprints and Recipes", esi: "ESI Sync", profile: "Profile", users: "User Administration", audit: "Audit Log" } as Record<string, string>)[tab];
+  return ({ overview: "Quartermaster Overview", ownership: "Ownership and Locations", characters: "Characters", roster: "Alliance Roster", navigation: "Navigation", market: "Market Appraisal", manufacturing: "Manufacturing", research_projects: "Research Projects", mining: "Mining Ledger", contracts: "Contracts", analytics: "Analytics Platform", skills: "Character Skills", fittings: "Fittings", jump_clones: "Jump Clones", settings: "Settings", corporations: "Corporations", assets: "Asset Ledger", industry: "Blueprints and Recipes", esi: "ESI Sync", profile: "Profile", users: "User Administration", audit: "Audit Log" } as Record<string, string>)[tab];
 
 }
 
@@ -1942,7 +1952,7 @@ function titleFor(tab: string) {
 
 function subtitleFor(tab: string) {
 
-  return ({ overview: "Live status and the first useful totals from the database.", ownership: "Define the characters, corporations, manual buckets, and places assets can belong to.", characters: "Assign EVE characters to Quartermaster accounts and control public asset visibility.", roster: "A corporation-grouped character roster suitable for diplomats and prospective members.", navigation: "Plan gate routes from imported SDE map data before layering on kill checks and local threat analysis.", market: "Paste item lists and compare buy, sell, and split prices across trade hubs.", manufacturing: "Track manufacturing jobs, costs, required inputs, hub prices, and production history.", contracts: "Sync and review current character and corporation contracts.", analytics: "Snapshot history, metric widgets, exports, and the foundation for custom dashboards.", skills: "Import trained skills, total skill points, and active skill queues from ESI.", fittings: "Sync saved EVE fittings, review modules, experiment in a scratchpad, and copy EFT-style text.", jump_clones: "Sync jump clones, inspect implants, and build custom implant sets for fitting experiments.", settings: "Control character visibility and sync privacy.", corporations: "Review enrolled corporations and sync corporation asset ledgers through authorized CEO or director tokens.", assets: "Track item stacks by owner, type, location, and EVE-style location flag.", industry: "Store blueprints, recipe activities, and material inputs before wiring in SDE imports.", esi: "A holding area for the upcoming SSO and sync work.", profile: "Manage your account and private messages.", users: "Manage Quartermaster accounts and role levels.", audit: "Review sync peeks, system events, and administrative activity." } as Record<string, string>)[tab];
+  return ({ overview: "Live status and the first useful totals from the database.", ownership: "Define the characters, corporations, manual buckets, and places assets can belong to.", characters: "Assign EVE characters to Quartermaster accounts and control public asset visibility.", roster: "A corporation-grouped character roster suitable for diplomats and prospective members.", navigation: "Plan gate routes from imported SDE map data before layering on kill checks and local threat analysis.", market: "Paste item lists and compare buy, sell, and split prices across trade hubs.", manufacturing: "Track manufacturing jobs, costs, required inputs, hub prices, and production history.", research_projects: "Monitor ESI research, copying, and invention queues while retaining project history for analytics.", mining: "Track persistent per-character mining yield, residue efficiency, and named fleet operations.", contracts: "Sync and review current character and corporation contracts.", analytics: "Snapshot history, metric widgets, exports, and the foundation for custom dashboards.", skills: "Import trained skills, total skill points, and active skill queues from ESI.", fittings: "Sync saved EVE fittings, review modules, experiment in a scratchpad, and copy EFT-style text.", jump_clones: "Sync jump clones, inspect implants, and build custom implant sets for fitting experiments.", settings: "Control character visibility and sync privacy.", corporations: "Review enrolled corporations and sync corporation asset ledgers through authorized CEO or director tokens.", assets: "Track item stacks by owner, type, location, and EVE-style location flag.", industry: "Store blueprints, recipe activities, and material inputs before wiring in SDE imports.", esi: "A holding area for the upcoming SSO and sync work.", profile: "Manage your account and private messages.", users: "Manage Quartermaster accounts and role levels.", audit: "Review sync peeks, system events, and administrative activity." } as Record<string, string>)[tab];
 
 }
 

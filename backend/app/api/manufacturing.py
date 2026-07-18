@@ -270,6 +270,29 @@ def create_manufacturing_job(payload: dict[str, Any], current_user: User = Depen
 
 
 
+@router.post("/jobs/{job_id}/start")
+def start_manufacturing_job(
+    job_id: int,
+    payload: dict[str, Any],
+    _: User = Depends(require_manufacturing),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    job = db.scalar(job_query().where(ManufacturingJob.id == job_id))
+    if job is None:
+        raise HTTPException(status_code=404, detail="Manufacturing job not found.")
+    if job.status != "draft":
+        raise HTTPException(status_code=409, detail="Only draft manufacturing jobs can be started.")
+    date_started = parse_date(payload.get("date_started"))
+    time_started = parse_time(payload.get("time_started"))
+    if date_started is None or time_started is None:
+        raise HTTPException(status_code=400, detail="Current start date and time are required.")
+    job.status = "running"
+    job.date_started = date_started
+    job.time_started = time_started
+    db.commit()
+    job = db.scalar(job_query().where(ManufacturingJob.id == job_id))
+    return serialize_job(job)
+
 @router.patch("/jobs/{job_id}")
 def update_manufacturing_job(job_id: int, payload: dict[str, Any], _: User = Depends(require_manufacturing), db: Session = Depends(get_db)) -> dict[str, Any]:
     job = db.scalar(job_query().where(ManufacturingJob.id == job_id))

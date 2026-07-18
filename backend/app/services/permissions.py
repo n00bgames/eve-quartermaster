@@ -32,6 +32,7 @@ SECTION_DEFINITIONS: dict[str, dict[str, object]] = {
     "assets": {"label": "Assets", "default_roles": ["admin", "director", "officer", "member", "view_only"]},
     "industry": {"label": "Industry", "default_roles": ["admin", "director", "officer", "member"]},
     "manufacturing": {"label": "Manufacturing", "default_roles": ["admin", "director", "officer", "member"]},
+    "mining": {"label": "Mining Ledger", "default_roles": ["admin", "director", "officer", "member"]},
     "esi": {"label": "ESI Sync", "default_roles": ["admin", "director", "officer", "member"]},
     "profile": {"label": "Profile", "default_roles": ["admin", "director", "officer", "member", "view_only"]},
     "audit": {"label": "Audit Log", "default_roles": ["admin"]},

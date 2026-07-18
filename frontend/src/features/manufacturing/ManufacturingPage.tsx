@@ -1,4 +1,4 @@
-import { CheckCircle2, ClipboardList, Plus, RefreshCw, Save, Trash2 } from "lucide-react";
+import { CheckCircle2, ClipboardList, Play, Plus, RefreshCw, Save, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { formatMarketIsk } from "../../lib/market";
@@ -310,7 +310,7 @@ function HubPriceMatrix({ result, lines }: { result: ManufacturingAppraisal | nu
   </div>;
 }
 
-function JobLedger({ jobs, selectedId, now, onSelect, onDelete, onSetStatus, formatDateTime }: { jobs: ManufacturingJob[]; selectedId?: number | null; now: number; onSelect: (job: ManufacturingJob) => void; onDelete: (job: ManufacturingJob) => void; onSetStatus: (job: ManufacturingJob, status: ManufacturingJobStatus) => void; formatDateTime: (value?: string | null) => string }) {
+function JobLedger({ jobs, selectedId, now, onSelect, onDelete, onStart, onSetStatus, formatDateTime }: { jobs: ManufacturingJob[]; selectedId?: number | null; now: number; onSelect: (job: ManufacturingJob) => void; onDelete: (job: ManufacturingJob) => void; onStart: (job: ManufacturingJob) => void; onSetStatus: (job: ManufacturingJob, status: ManufacturingJobStatus) => void; formatDateTime: (value?: string | null) => string }) {
   if (jobs.length === 0) return <p className="empty">No manufacturing jobs saved yet.</p>;
 
   return <div className="manufacturing-ledger-list">
@@ -324,7 +324,8 @@ function JobLedger({ jobs, selectedId, now, onSelect, onDelete, onSetStatus, for
         <small>{jobCountdownText(job, now)}</small>
       </button>
       <div className="manufacturing-ledger-actions">
-        {job.status !== "completed" && <button type="button" className="compact-icon-button" onClick={() => onSetStatus(job, "completed")} title="Mark completed"><CheckCircle2 size={15} /></button>}
+        {job.status === "draft" && <button type="button" className="manufacturing-start-button" onClick={() => onStart(job)} title="Start job now"><Play size={14} /> Start Job</button>}
+        {job.status === "running" && <button type="button" className="compact-icon-button" onClick={() => onSetStatus(job, "completed")} title="Mark completed"><CheckCircle2 size={15} /></button>}
         <button type="button" className="danger compact-icon-button" onClick={() => onDelete(job)} title="Delete job"><Trash2 size={15} /></button>
       </div>
     </article>)}
@@ -526,6 +527,23 @@ export function ManufacturingPage({ api, formatDateTime }: ManufacturingPageProp
       setError(err instanceof Error ? err.message : "Unable to update manufacturing job.");
     }
   }
+  async function startJob(job: ManufacturingJob) {
+    const startedAt = new Date();
+    setError(null);
+    try {
+      const updated = await api<ManufacturingJob>(`/manufacturing/jobs/${job.id}/start`, {
+        method: "POST",
+        body: JSON.stringify({ date_started: dateInputValue(startedAt), time_started: timeInputValue(startedAt) }),
+      });
+      setNow(startedAt.getTime());
+      setJobs((current) => current.map((row) => row.id === updated.id ? updated : row));
+      if (selectedJob?.id === updated.id) loadJob(updated);
+      setMessage(`${updated.name} started.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to start manufacturing job.");
+    }
+  }
+
   async function deleteJob(job: ManufacturingJob) {
     if (!window.confirm(`Delete manufacturing job ${job.name}?`)) return;
     setError(null);
@@ -563,7 +581,7 @@ export function ManufacturingPage({ api, formatDateTime }: ManufacturingPageProp
     <div className="manufacturing-layout">
       <aside className="panel manufacturing-ledger">
         <h4>Ledger</h4>
-        <JobLedger jobs={jobs} selectedId={selectedJob?.id} now={now} onSelect={loadJob} onDelete={(job) => void deleteJob(job)} onSetStatus={(job, status) => void setJobStatus(job, status)} formatDateTime={formatDateTime} />
+        <JobLedger jobs={jobs} selectedId={selectedJob?.id} now={now} onSelect={loadJob} onDelete={(job) => void deleteJob(job)} onStart={(job) => void startJob(job)} onSetStatus={(job, status) => void setJobStatus(job, status)} formatDateTime={formatDateTime} />
       </aside>
 
       <form className="manufacturing-workspace" onSubmit={(event) => void saveJob(event)}>

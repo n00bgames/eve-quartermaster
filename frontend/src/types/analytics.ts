@@ -44,7 +44,23 @@ export type ManufacturingAnalytics = {
   realized_profit: number;
   top_items: ManufacturingAnalyticsItem[];
 };
-export type AnalyticsSummary = {
+export type ResearchProjectAnalytics = {
+  project_count: number;
+  active_count: number;
+  completed_count: number;
+  by_activity: { name: string; count: number }[];
+  by_character: { name: string; count: number }[];
+};export type MiningAnalytics = {
+  entry_count: number;
+  recovered_volume: number;
+  residue_volume: number;
+  gross_volume: number;
+  net_value: number;
+  efficiency?: number | null;
+  measured_volume: number;
+  top_by_volume: { name: string; volume: number }[];
+  top_by_efficiency: { name: string; efficiency: number }[];
+};export type AnalyticsSummary = {
   days: number;
   latest_snapshot_at?: string | null;
   latest_snapshot_status?: string | null;
@@ -59,5 +75,7 @@ export type AnalyticsSummary = {
   blueprint_growth: AnalyticsGrowth[];
   duplicate_blueprints: DuplicateBlueprint[];
   manufacturing: ManufacturingAnalytics;
+  mining: MiningAnalytics;
+  research_projects: ResearchProjectAnalytics;
   series: { wallet_totals: AnalyticsPoint[]; member_counts: AnalyticsPoint[]; blueprint_counts: AnalyticsPoint[] };
 };

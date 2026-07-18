@@ -50,6 +50,8 @@ See [CHANGELOG.md](CHANGELOG.md) for version-by-version release notes.
 - Contact/standing propagation tools using writable ESI character contacts.
 - Notifications, private messages, and admin audit log for sync transparency.
 - Historical analytics foundation with snapshot runs, metric metadata/versioning, baseline-aware deltas, exports, and composable widgets.
+- ESI-backed Research Projects queue for material/time efficiency, copying, and invention work, with retained researcher history and Analytics attribution.
+- Persistent Mining Ledger with per-character ESI history, detailed residue-aware imports, named mining operations, production/value graphs, and honest residue-measured efficiency rankings.
 - Navigation suite with SDE-backed route planning, gatecheck summaries, operational starmap rendering, and security-status color coding.
 - Hauling intelligence widgets for industrial kill heat, PvP system intel, smartbomb indicators, and Local Threat analysis with background queue progress for large systems.
 - Jump Capable Ship Plotter with JDC/JFC fuel math, station/cyno guidance, nearby operational map context, and 24-hour industrial kill visibility per jump.
@@ -94,6 +96,10 @@ A quick tour of the current beta surface, ordered roughly the way a new Quarterm
 | ![ESI sync](static/ss/eqm-esi-sync.png) |
 
 ### Inventory And Industry
+
+| Mining Ledger | Mining Yield Analytics |
+| --- | --- |
+| ![Mining Ledger controls and extraction totals](static/ss/eqm-mining-ledger.png) | ![Mining yield, residue, value, and efficiency analytics](static/ss/eqm-mining-analytics.png) |
 
 | Market | Corporations |
 | --- | --- |
@@ -477,6 +483,8 @@ Privacy controls live under **Settings -> Character Privacy**. A character can b
 - **Market:** paste item lists, compare trade hubs, inspect order depth signals, and jump from market rows into visible assets or fittings.
 - **Assets:** filter inventory by owner kind, item, owner, location, flag, category, and subtype; export CSV; copy Janice-friendly lists; open item context and market/fitting handoffs.
 - **Industry:** use the full Blueprint Library, BPO/BPC filters, SDE-backed category/subtype filters, Missing BPO pane, blueprint output context, recipes, and material input views.
+- **Research Projects:** sync eligible character industry queues, monitor active ME/TE, copying, and invention projects, inspect facilities and timers, and retain completed work for Analytics.
+- **Mining Ledger:** queue personal mining-history syncs, import the detailed EVE ledger export for residue/value fields, filter by character/system/date/operation, create named operations with selected miners and boosters, and compare recovered volume, gross extraction, residue loss, estimated value, and measured efficiency. ESI rows remain stored after they age out of CCP's rolling response window.
 - **Corporations:** refresh corporation links, sync corporation assets/blueprints/wallet divisions through eligible tokens, and inspect sync stale/error messages.
 - **Contracts:** sync current character and eligible corporation contracts, then sort/filter active contract data.
 - **Analytics:** capture and inspect snapshots, metric widgets, baseline-aware deltas, and exports.

@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.api.auth import get_current_user, require_role
 from app.db.session import get_db
-from app.models import BlueprintSnapshot, CharacterSkillSnapshot, CorporationSnapshot, EveCharacter, EveCorporation, ManufacturingJob, OwnershipEntity, SnapshotMetric, SnapshotRun, User
+from app.models import BlueprintSnapshot, CharacterSkillSnapshot, CorporationSnapshot, EveCharacter, EveCorporation, ManufacturingJob, MiningLedgerEntry, OwnershipEntity, ResearchProject, SnapshotMetric, SnapshotRun, User
 from app.services.analytics import create_snapshot
 from app.services.permissions import ROLE_RANK, can_view_section, role_rank
 
@@ -133,6 +133,82 @@ def manufacturing_analytics(db: Session, days: int) -> dict[str, Any]:
             item[field] = round(float(item[field]), 2)
     return {**totals, "top_items": top_items}
 
+
+def mining_analytics(db: Session, days: int, character_ids: set[int] | None) -> dict[str, Any]:
+    query = (
+        select(MiningLedgerEntry)
+        .options(selectinload(MiningLedgerEntry.character))
+        .where(MiningLedgerEntry.mined_date >= start_cutoff(days).date())
+    )
+    if character_ids is not None:
+        if not character_ids:
+            return {"entry_count": 0, "recovered_volume": 0, "residue_volume": 0, "gross_volume": 0, "net_value": 0, "efficiency": None, "measured_volume": 0, "top_by_volume": [], "top_by_efficiency": []}
+        query = query.where(MiningLedgerEntry.character_id.in_(character_ids))
+    entries = db.scalars(query).all()
+    by_character: dict[str, dict[str, float]] = {}
+    recovered = residue = net_value = measured_recovered = measured_residue = 0.0
+    for entry in entries:
+        volume = as_float(entry.volume)
+        residue_volume = as_float(entry.residue_volume)
+        recovered += volume
+        residue += residue_volume
+        net_value += as_float(entry.estimated_price)
+        row = by_character.setdefault(entry.character.name, {"volume": 0.0, "measured_recovered": 0.0, "measured_residue": 0.0})
+        row["volume"] += volume
+        if entry.has_residue_data:
+            measured_recovered += volume
+            measured_residue += residue_volume
+            row["measured_recovered"] += volume
+            row["measured_residue"] += residue_volume
+    measured_gross = measured_recovered + measured_residue
+    volume_rows = [{"name": name, "volume": round(values["volume"], 2)} for name, values in by_character.items()]
+    efficiency_rows = [
+        {"name": name, "efficiency": round(values["measured_recovered"] / (values["measured_recovered"] + values["measured_residue"]) * 100, 2)}
+        for name, values in by_character.items()
+        if values["measured_recovered"] + values["measured_residue"] > 0
+    ]
+    return {
+        "entry_count": len(entries), "recovered_volume": round(recovered, 2), "residue_volume": round(residue, 2),
+        "gross_volume": round(recovered + residue, 2), "net_value": round(net_value, 2),
+        "efficiency": round(measured_recovered / measured_gross * 100, 2) if measured_gross else None,
+        "measured_volume": round(measured_gross, 2),
+        "top_by_volume": sorted(volume_rows, key=lambda row: (-row["volume"], row["name"]))[:8],
+        "top_by_efficiency": sorted(efficiency_rows, key=lambda row: (-row["efficiency"], row["name"]))[:8],
+    }
+
+def research_project_analytics(db: Session, days: int, character_ids: set[int] | None) -> dict[str, Any]:
+    cutoff = start_cutoff(days)
+    query = select(ResearchProject).options(
+        selectinload(ResearchProject.character),
+        selectinload(ResearchProject.corporation),
+    ).where(
+        or_(ResearchProject.start_date >= cutoff, ResearchProject.status.in_({"active", "paused", "ready"}))
+    )
+    included_corporations = analytics_corporation_ids(db)
+    query = query.where(
+        or_(ResearchProject.corporation_id.is_(None), ResearchProject.corporation_id.in_(included_corporations))
+    )
+    if character_ids is not None:
+        if not character_ids:
+            return {"project_count": 0, "active_count": 0, "completed_count": 0, "by_activity": [], "by_character": []}
+        query = query.where(ResearchProject.character_id.in_(character_ids))
+    projects = db.scalars(query).all()
+    activity_names = {3: "Time Efficiency", 4: "Material Efficiency", 5: "Copying", 8: "Invention"}
+    active_statuses = {"active", "paused", "ready"}
+    by_activity: dict[str, int] = {}
+    by_character: dict[str, int] = {}
+    for project in projects:
+        activity = activity_names.get(project.activity_id, f"Activity {project.activity_id}")
+        character = project.character.name if project.character else project.installer_name or f"Character {project.installer_character_id or 'unknown'}"
+        by_activity[activity] = by_activity.get(activity, 0) + 1
+        by_character[character] = by_character.get(character, 0) + 1
+    return {
+        "project_count": len(projects),
+        "active_count": sum(project.status in active_statuses for project in projects),
+        "completed_count": sum(project.status == "delivered" for project in projects),
+        "by_activity": [{"name": name, "count": count} for name, count in sorted(by_activity.items(), key=lambda item: (-item[1], item[0]))],
+        "by_character": [{"name": name, "count": count} for name, count in sorted(by_character.items(), key=lambda item: (-item[1], item[0]))[:8]],
+    }
 
 def can_view_character_analytics(viewer: User, character: EveCharacter, db: Session) -> bool:
     viewer_rank = role_rank(viewer, db)
@@ -469,6 +545,8 @@ def analytics_summary(days: int = Query(30, ge=1, le=3660), current_user: User =
         "blueprint_growth": blueprint_growth,
         "duplicate_blueprints": duplicate_blueprints(db, ownership_entity_ids),
         "manufacturing": manufacturing_analytics(db, days),
+        "mining": mining_analytics(db, days, character_ids),
+        "research_projects": research_project_analytics(db, days, character_ids),
         "series": {
             "wallet_totals": corporation_series(db, days, "wallet_balance", corporation_ids),
             "member_counts": corporation_series(db, days, "member_count", corporation_ids),

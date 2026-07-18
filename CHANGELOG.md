@@ -8,19 +8,30 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Added
 
+- Added a persistent per-character Mining Ledger with paged ESI history sync, detailed residue-aware CSV/TSV imports, SDE ore/system metadata, and captured market estimates.
+- Added named mining operations grouped by solar system, selected participants, and configurable time windows, including miner/booster roles and optional ship/crystal notes.
+- Added mining analytics for recovered and gross extraction, residue loss, net value, ore composition, yield history, system output, highest-value miners, highest-volume miners, and residue-measured efficiency rankings.
+- Added a confirmation-protected, character-scoped Mining Ledger reset for correcting imports attributed to the wrong character.
 - Added per-corporation analytics exclusion controls; hidden corporations are excluded automatically, while visible NPC or affiliation corporations can be excluded independently.
 - Added Analytics-page corporation scope controls so affiliation-only and historical corporations can be included or excluded without appearing as managed corporations.
 - Added submitting-user attribution to Manufacturing ledger cards.
+- Added a Start Job action for Manufacturing drafts that begins the job timer from the current local timestamp.
+- Added a Research Projects page backed by character industry queues for ME, TE, copying, and invention work, with research-only background sync, retained project history, and researcher/activity analytics.
+- Added corporation-owned research projects with Director/Factory Manager role checks, installer attribution, and corporation ownership in project rows.
 
 ### Fixed
+
+- Fixed Sync All mining jobs failing before persistence because the ESI worker did not import the mining-ledger upsert service.
 
 - Fixed character contract syncs for player-owned structure locations whose trillion-range EVE IDs do not fit the station table's integer key.
 - Preserved original contract-sync failures after database errors and displayed every failed Sync All task instead of only the first.
 - Stored shared EVE contracts independently per character or corporation so syncing one owner no longer reassigns another owner's contract rows.
 - Removed hidden and analytics-excluded corporations from existing analytics summaries, trends, duplicate-blueprint results, exports, and future snapshots.
+- Fixed Jump Clone implant dogma cards painting beneath neighboring clone content and enforced an opaque tooltip surface.
 
 ### Changed
 
+- Replaced Research Project cards with a sortable table and prechecked corporation roles before queuing corporation research syncs.
 - Marked the Fittings navigation entry as a bright-red WIP warning while fitting calculations remain under development.
 - Bumped the visible app, package, backend API, Android wrapper, and ESI user-agent versions to 0.1.10-beta.
 

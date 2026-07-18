@@ -13,10 +13,12 @@ from app.api.jump_clones import router as jump_clones_router
 from app.api.mail import router as mail_router
 from app.api.market import router as market_router
 from app.api.manufacturing import router as manufacturing_router
+from app.api.mining_ledger import router as mining_ledger_router
 from app.api.metadata import router as metadata_router
 from app.api.navigation import router as navigation_router
 from app.api.notifications import router as notifications_router
 from app.api.quartermaster import router as quartermaster_router
+from app.api.research_projects import router as research_projects_router
 from app.api.sde import router as sde_router
 
 api_router = APIRouter()
@@ -32,9 +34,11 @@ api_router.include_router(jump_clones_router)
 api_router.include_router(mail_router)
 api_router.include_router(market_router)
 api_router.include_router(manufacturing_router)
+api_router.include_router(mining_ledger_router)
 api_router.include_router(metadata_router)
 api_router.include_router(navigation_router)
 api_router.include_router(notifications_router)
 api_router.include_router(quartermaster_router)
+api_router.include_router(research_projects_router)
 api_router.include_router(sde_router)
 api_router.include_router(esi_router)

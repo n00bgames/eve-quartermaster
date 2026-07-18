@@ -9,9 +9,11 @@ from app.models.fittings import CharacterFitting, CharacterFittingItem
 from app.models.identity import CorporationWalletDivision, EveAlliance, EveCharacter, EveCorporation, OwnershipEntity, RoleDefinition, RoleSectionPermission, User, UserInvite, UserSectionPermission
 from app.models.market import CustomMarketHub
 from app.models.manufacturing import ManufacturingJob, ManufacturingJobItem
+from app.models.mining import MiningLedgerEntry, MiningOperation, MiningOperationParticipant
 from app.models.industry import Blueprint, IndustryActivity, IndustryActivityInput, ProcurementSource, ProductionPlan, ProductionPlanInput
 from app.models.jump_clones import CharacterJumpClone, ImplantSet, ImplantSetImplant, JumpCloneImplant
 from app.models.navigation import SystemIndustrialKillObservation, SystemJumpObservation, SystemKillFetchCache, SystemPvpKillObservation
+from app.models.research_projects import ResearchProject
 from app.models.skills import CharacterSkill, CharacterSkillQueueEntry
 
 __all__ = [
@@ -58,11 +60,15 @@ __all__ = [
     "Location",
     "ManufacturingJob",
     "ManufacturingJobItem",
+    "MiningLedgerEntry",
+    "MiningOperation",
+    "MiningOperationParticipant",
     "OwnershipEntity",
     "PrivateMessage",
     "ProcurementSource",
     "ProductionPlan",
     "ProductionPlanInput",
+    "ResearchProject",
     "RoleDefinition",
     "RoleSectionPermission",
     "SnapshotMetric",
