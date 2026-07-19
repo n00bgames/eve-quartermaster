@@ -598,7 +598,7 @@ def list_roster(current_user: User = Depends(get_current_user), db: Session = De
 @router.get("/accounts")
 def list_character_accounts(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[dict[str, Any]]:
     require_role(current_user, "director", db)
-    users = db.scalars(select(User).order_by(User.display_name)).all()
+    users = db.scalars(select(User).where(User.deleted_at.is_(None)).order_by(User.display_name)).all()
     return [serialize_user(user) for user in users]
 
 
@@ -614,7 +614,7 @@ def update_character(character_id: int, payload: dict[str, Any], current_user: U
             character.owner_user_id = None
         else:
             owner = db.get(User, int(owner_user_id))
-            if owner is None:
+            if owner is None or owner.deleted_at is not None:
                 raise HTTPException(status_code=404, detail="Account was not found")
             character.owner_user_id = owner.id
     if "public_assets_visible" in payload:

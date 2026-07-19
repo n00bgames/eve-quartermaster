@@ -52,6 +52,7 @@ See [CHANGELOG.md](CHANGELOG.md) for version-by-version release notes.
 - Historical analytics foundation with snapshot runs, metric metadata/versioning, baseline-aware deltas, exports, and composable widgets.
 - ESI-backed Research Projects queue for material/time efficiency, copying, and invention work, with retained researcher history and Analytics attribution.
 - Persistent Mining Ledger with per-character ESI history, detailed residue-aware imports, named mining operations, production/value graphs, and honest residue-measured efficiency rankings.
+- Mining Op Settlement workflow with saved-operation or date-range sourcing, actual refined-output entry, hub price snapshots, operation reserves, expenses, support-role compensation, weighted shares, reconciled ISK payouts, editable drafts, and immutable finalized history.
 - Navigation suite with SDE-backed route planning, gatecheck summaries, operational starmap rendering, and security-status color coding.
 - Hauling intelligence widgets for industrial kill heat, PvP system intel, smartbomb indicators, and Local Threat analysis with background queue progress for large systems.
 - Jump Capable Ship Plotter with JDC/JFC fuel math, station/cyno guidance, nearby operational map context, and 24-hour industrial kill visibility per jump.
@@ -485,6 +486,7 @@ Privacy controls live under **Settings -> Character Privacy**. A character can b
 - **Industry:** use the full Blueprint Library, BPO/BPC filters, SDE-backed category/subtype filters, Missing BPO pane, blueprint output context, recipes, and material input views.
 - **Research Projects:** sync eligible character industry queues, monitor active ME/TE, copying, and invention projects, inspect facilities and timers, and retain completed work for Analytics.
 - **Mining Ledger:** queue personal mining-history syncs, import the detailed EVE ledger export for residue/value fields, filter by character/system/date/operation, create named operations with selected miners and boosters, and compare recovered volume, gross extraction, residue loss, estimated value, and measured efficiency. ESI rows remain stored after they age out of CCP's rolling response window.
+- **Mining Op Settlement:** open the calculator beneath Ledger History, choose a saved operation or date range, and select whether miner shares follow estimated raw value, recovered volume, raw quantity, or equal starting shares. Enter the actual refined minerals and quantities because recorded output is authoritative; optional hub pricing snapshots each unit price, while manual changes are flagged as overrides. Operation reserves and expenses are deducted before fixed-percentage support payouts and weighted shares. Enter percentages as either `10` or `0.10` for 10%; the preview shows the normalized result and must reconcile before saving. Drafts remain editable, while finalized settlements are immutable snapshots of ledger rows, prices, calculations, and payouts.
 - **Corporations:** refresh corporation links, sync corporation assets/blueprints/wallet divisions through eligible tokens, and inspect sync stale/error messages.
 - **Contracts:** sync current character and eligible corporation contracts, then sort/filter active contract data.
 - **Analytics:** capture and inspect snapshots, metric widgets, baseline-aware deltas, and exports.
@@ -494,6 +496,9 @@ Privacy controls live under **Settings -> Character Privacy**. A character can b
 - **User Administration:** invite users, manage local accounts, and assign roles.
 - **Audit Log:** review sync peeks, system events, admin activity, and operational history.
 
+## Mining Settlement Limitations
+
+Mining settlements currently pay in ISK and use manually entered actual refined output. EQM does not yet calculate theoretical refining from character skills, implants, structure bonuses, rigs, taxes, sovereignty, or SDE dogma. Physical mineral allocation, largest-remainder unit splitting, revisions, voiding, and payout exports are planned follow-up work; finalized Phase 1 settlements deliberately remain unchanged when prices, SDE data, characters, or ledger history later change.
 ## Android APK
 
 The repository includes a small Android wrapper in `android-eqm/`. It builds a sideloadable WebView APK named `EQM.apk`.

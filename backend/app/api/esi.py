@@ -2074,7 +2074,7 @@ async def character_contacts(token_id: int, current_user: User = Depends(get_cur
 async def preview_contact_sync(payload: dict[str, Any], current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
     source_token_id, target_token_ids, overwrite_existing = parse_contact_sync_payload(payload)
     source_token, source_character = get_linked_token(db, source_token_id)
-    require_token_access(source_token, current_user)
+    require_token_access(source_token, current_user, db)
     source_contacts = await fetch_character_contacts(db, source_token, source_character)
     access_token = await refresh_access_token(source_token)
     names = await resolve_contact_names(EsiClient(access_token=access_token), {int(contact["contact_id"]) for contact in source_contacts})
@@ -2083,7 +2083,7 @@ async def preview_contact_sync(payload: dict[str, Any], current_user: User = Dep
     totals = {"create": 0, "update": 0, "skip": 0}
     for target_token_id in target_token_ids:
         target_token, target_character = get_linked_token(db, target_token_id)
-        require_token_access(target_token, current_user)
+        require_token_access(target_token, current_user, db)
         require_scope(target_token, "esi-characters.write_contacts.v1", f"Writing contacts for {target_character.name}")
         target_contacts = await fetch_character_contacts(db, target_token, target_character)
         plan = build_contact_plan(source_contacts, target_contacts, overwrite_existing)
@@ -2116,7 +2116,7 @@ async def preview_contact_sync(payload: dict[str, Any], current_user: User = Dep
 async def apply_contact_sync(payload: dict[str, Any], current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
     source_token_id, target_token_ids, overwrite_existing = parse_contact_sync_payload(payload)
     source_token, source_character = get_linked_token(db, source_token_id)
-    require_token_access(source_token, current_user)
+    require_token_access(source_token, current_user, db)
     source_contacts = await fetch_character_contacts(db, source_token, source_character)
 
     targets = []
@@ -2124,7 +2124,7 @@ async def apply_contact_sync(payload: dict[str, Any], current_user: User = Depen
     total_updated = 0
     for target_token_id in target_token_ids:
         target_token, target_character = get_linked_token(db, target_token_id)
-        require_token_access(target_token, current_user)
+        require_token_access(target_token, current_user, db)
         require_scope(target_token, "esi-characters.write_contacts.v1", f"Writing contacts for {target_character.name}")
         target_contacts = await fetch_character_contacts(db, target_token, target_character)
         plan = build_contact_plan(source_contacts, target_contacts, overwrite_existing)

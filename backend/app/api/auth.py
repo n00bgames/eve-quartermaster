@@ -15,6 +15,7 @@ from app.core.config import get_settings
 from app.core.security import create_access_token, decode_token, hash_password, verify_password
 from app.db.session import get_db
 from app.services.permissions import BUILT_IN_ROLES, ROLE_RANK, SECTION_DEFINITIONS, disabled_sections, effective_permissions, role_exists, role_payload, role_rank, role_names, section_payload, set_disabled_sections
+from app.services.user_accounts import retire_user_account
 from app.models import EsiSyncJob, EsiToken, EveCharacter, RoleDefinition, RoleSectionPermission, User, UserInvite, UserSectionPermission
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -59,7 +60,14 @@ def serialize_invite(invite: UserInvite, include_status: bool = True) -> dict[st
 
 
 def admin_count(db: Session) -> int:
-    return db.scalar(select(func.count()).select_from(User).where(User.role == "admin", User.password_hash.is_not(None))) or 0
+    return db.scalar(
+        select(func.count()).select_from(User).where(
+            User.role == "admin",
+            User.password_hash.is_not(None),
+            User.deleted_at.is_(None),
+        )
+    ) or 0
+
 
 
 def get_current_user(authorization: str | None = Header(default=None), db: Session = Depends(get_db)) -> User:
@@ -72,7 +80,7 @@ def get_current_user(authorization: str | None = Header(default=None), db: Sessi
     except (ValueError, TypeError) as exc:
         raise HTTPException(status_code=401, detail="Invalid sign-in token") from exc
     user = db.get(User, user_id)
-    if user is None:
+    if user is None or user.deleted_at is not None:
         raise HTTPException(status_code=401, detail="User no longer exists")
     return user
 
@@ -202,7 +210,7 @@ def update_user_permission(user_id: int, payload: dict[str, Any], current_user: 
     section = str(payload.get("section") or "").strip()
     if section not in SECTION_DEFINITIONS:
         raise HTTPException(status_code=400, detail="Unknown section")
-    if db.get(User, user_id) is None:
+    if db.scalar(select(User.id).where(User.id == user_id, User.deleted_at.is_(None))) is None:
         raise HTTPException(status_code=404, detail="User was not found")
     existing = db.scalar(select(UserSectionPermission).where(UserSectionPermission.user_id == user_id, UserSectionPermission.section == section))
     if payload.get("can_view") is None:
@@ -233,8 +241,8 @@ def bootstrap_admin(payload: dict[str, Any], db: Session = Depends(get_db)) -> d
     display_name = str(payload.get("display_name") or email).strip()
     if not email or not password or len(password) < 8:
         raise HTTPException(status_code=400, detail="Email and an 8+ character password are required")
-    user = db.scalar(select(User).where(User.email == email))
-    if user is None:
+    user = db.scalar(select(User).where(User.email == email, User.deleted_at.is_(None)))
+    if user is None or user.deleted_at is not None:
         user = User(email=email, display_name=display_name, role="admin")
         db.add(user)
     user.display_name = display_name
@@ -250,7 +258,7 @@ def bootstrap_admin(payload: dict[str, Any], db: Session = Depends(get_db)) -> d
 def login(payload: dict[str, Any], db: Session = Depends(get_db)) -> dict[str, Any]:
     email = str(payload.get("email", "")).strip().lower()
     password = str(payload.get("password", ""))
-    user = db.scalar(select(User).where(User.email == email))
+    user = db.scalar(select(User).where(User.email == email, User.deleted_at.is_(None)))
     if user is None or not verify_password(password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     token = create_access_token(str(user.id), {"role": user.role})
@@ -302,7 +310,7 @@ def update_me(payload: dict[str, Any], current_user: User = Depends(get_current_
 @router.get("/users")
 def list_users(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[dict[str, Any]]:
     require_role(current_user, "admin")
-    users = db.scalars(select(User).order_by(User.display_name)).all()
+    users = db.scalars(select(User).where(User.deleted_at.is_(None)).order_by(User.display_name)).all()
     return [serialize_user(user) for user in users]
 
 
@@ -317,7 +325,7 @@ def create_user(payload: dict[str, Any], current_user: User = Depends(get_curren
         raise HTTPException(status_code=400, detail="Unknown role")
     if not email or not password or len(password) < 8:
         raise HTTPException(status_code=400, detail="Email and an 8+ character password are required")
-    if db.scalar(select(User).where(User.email == email)):
+    if db.scalar(select(User).where(User.email == email, User.deleted_at.is_(None))):
         raise HTTPException(status_code=400, detail="Email is already in use")
     user = User(email=email, display_name=display_name, role=role, password_hash=hash_password(password))
     db.add(user)
@@ -330,7 +338,7 @@ def create_user(payload: dict[str, Any], current_user: User = Depends(get_curren
 def update_user(user_id: int, payload: dict[str, Any], current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
     require_role(current_user, "admin")
     user = db.get(User, user_id)
-    if user is None:
+    if user is None or user.deleted_at is not None:
         raise HTTPException(status_code=404, detail="User was not found")
     if payload.get("display_name"):
         user.display_name = str(payload["display_name"]).strip()
@@ -357,7 +365,7 @@ def delete_user(user_id: int, current_user: User = Depends(get_current_user), db
     if user_id == current_user.id:
         raise HTTPException(status_code=400, detail="You cannot delete your own signed-in account")
     user = db.get(User, user_id)
-    if user is None:
+    if user is None or user.deleted_at is not None:
         raise HTTPException(status_code=404, detail="User was not found")
     if user.role == "admin" and admin_count(db) <= 1:
         raise HTTPException(status_code=400, detail="At least one admin account is required")
@@ -368,7 +376,7 @@ def delete_user(user_id: int, current_user: User = Depends(get_current_user), db
     db.execute(sa_delete(EsiToken).where(EsiToken.user_id == user_id))
     db.execute(sa_delete(UserSectionPermission).where(UserSectionPermission.user_id == user_id))
     db.execute(update(EveCharacter).where(EveCharacter.owner_user_id == user_id).values(owner_user_id=None))
-    db.delete(user)
+    retire_user_account(user)
     db.commit()
     return {"status": "deleted", "user_id": user_id}
 
@@ -442,7 +450,7 @@ def accept_invite(token: str, payload: dict[str, Any], db: Session = Depends(get
     user = db.scalar(select(User).where(User.email == invite.email))
     if user and user.password_hash:
         raise HTTPException(status_code=400, detail="An account already exists for this invite email")
-    if user is None:
+    if user is None or user.deleted_at is not None:
         user = User(email=invite.email, display_name=display_name, role=invite.role)
         db.add(user)
         db.flush()

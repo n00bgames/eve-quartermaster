@@ -86,7 +86,7 @@ def inbox(current_user: User = Depends(get_current_user), db: Session = Depends(
         .limit(50)
     ).all()
     unread_count = sum(1 for event in events if not event.is_read) + sum(1 for message in messages if not message.is_read)
-    users = db.scalars(select(User).order_by(User.display_name)).all()
+    users = db.scalars(select(User).where(User.deleted_at.is_(None)).order_by(User.display_name)).all()
     return {
         "unread_count": unread_count,
         "events": [serialize_event(event) for event in events],
@@ -118,7 +118,7 @@ def send_message(payload: dict[str, Any], current_user: User = Depends(get_curre
     if not recipient_id or not subject or not body:
         raise HTTPException(status_code=400, detail="Recipient, subject, and body are required")
     recipient = db.get(User, recipient_id)
-    if recipient is None:
+    if recipient is None or recipient.deleted_at is not None:
         raise HTTPException(status_code=404, detail="Recipient was not found")
     message = PrivateMessage(sender_user_id=current_user.id, recipient_user_id=recipient.id, subject=subject, body=body)
     db.add(message)

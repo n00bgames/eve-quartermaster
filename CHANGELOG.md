@@ -8,6 +8,11 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Added
 
+- Added a persistent Mining Op Settlement workflow beneath the Mining Ledger with saved-operation or date-range sourcing, contribution-based automatic miner shares, manual support pilots, and exact ISK payout reconciliation.
+- Added authoritative actual-refined-output entry using SDE mineral choices, captured hub or manual unit prices, refiner metadata, operation reserves, repeatable expenses, fixed-percentage payouts, and weighted-share compensation.
+- Added editable settlement drafts and immutable finalized snapshots that retain source ledger rows, prices, outputs, deductions, participant calculations, warnings, and payout results for future analytics.
+- Added backend settlement calculation tests covering percentage normalization, gross value, reserves, deductions, fixed and weighted payouts, manual pilots, missing and overridden prices, validation failures, and deterministic cent rounding.
+
 - Added a persistent per-character Mining Ledger with paged ESI history sync, detailed residue-aware CSV/TSV imports, SDE ore/system metadata, and captured market estimates.
 - Added named mining operations grouped by solar system, selected participants, and configurable time windows, including miner/booster roles and optional ship/crystal notes.
 - Added mining analytics for recovered and gross extraction, residue loss, net value, ore composition, yield history, system output, highest-value miners, highest-volume miners, and residue-measured efficiency rankings.
@@ -21,6 +26,8 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Fixed
 
+- Fixed Character Contacts Sync preview and apply requests failing before ESI access after the token permission guard became database-aware, and display contact-sync failures with error styling instead of a green success notice.
+- Fixed user deletion failing when invitation, audit, messaging, manufacturing, mining, or settlement history still referenced the account; deleted accounts are now anonymized, denied login, removed from active account lists, and retained only for historical attribution.
 - Fixed Sync All mining jobs failing before persistence because the ESI worker did not import the mining-ledger upsert service.
 
 - Fixed character contract syncs for player-owned structure locations whose trillion-range EVE IDs do not fit the station table's integer key.

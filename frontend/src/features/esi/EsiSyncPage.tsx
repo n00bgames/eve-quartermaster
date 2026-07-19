@@ -30,6 +30,8 @@ export function EsiSyncPage({ currentUser, load, api, ManagedForm, Metric, Chara
   const [overwriteContacts, setOverwriteContacts] = useState(false);
   const [contactPreview, setContactPreview] = useState<ContactSyncPreview | null>(null);
   const [contactBusy, setContactBusy] = useState(false);
+  const [contactError, setContactError] = useState<string | null>(null);
+  const [contactNotice, setContactNotice] = useState<string | null>(null);
 
   async function checkStatus() {
     const payload = await api<{ players?: number; server_version?: string }>("/esi/status");
@@ -74,6 +76,8 @@ export function EsiSyncPage({ currentUser, load, api, ManagedForm, Metric, Chara
     const result = await api<{ character_name: string }>(`/esi/linked-characters/${tokenId}`, { method: "DELETE" });
     setMessage(`${result.character_name} unlinked. Re-authorize to pull fresh ESI scopes.`);
     setContactPreview(null);
+    setContactError(null);
+    setContactNotice(null);
     setTargetTokenIds((current) => current.filter((id) => id !== tokenId));
     setSourceTokenId((current) => current === tokenId ? "" : current);
     await loadEsiState();
@@ -81,6 +85,8 @@ export function EsiSyncPage({ currentUser, load, api, ManagedForm, Metric, Chara
 
   function toggleTarget(tokenId: number) {
     setContactPreview(null);
+    setContactError(null);
+    setContactNotice(null);
     setTargetTokenIds((current) => current.includes(tokenId) ? current.filter((id) => id !== tokenId) : [...current, tokenId]);
   }
 
@@ -89,15 +95,17 @@ export function EsiSyncPage({ currentUser, load, api, ManagedForm, Metric, Chara
 
     setContactBusy(true);
     setMessage(null);
+    setContactError(null);
+    setContactNotice(null);
     try {
       const preview = await api<ContactSyncPreview>("/esi/standings/preview", {
         method: "POST",
         body: JSON.stringify({ source_token_id: sourceTokenId, target_token_ids: targetTokenIds, overwrite_existing: overwriteContacts }),
       });
       setContactPreview(preview);
-      setMessage(`Preview ready: ${preview.totals.create.toLocaleString()} create, ${preview.totals.update.toLocaleString()} update.`);
+      setContactNotice(`Preview ready: ${preview.totals.create.toLocaleString()} create, ${preview.totals.update.toLocaleString()} update.`);
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Standing sync preview failed.");
+      setContactError(err instanceof Error ? err.message : "Standing sync preview failed.");
     } finally {
       setContactBusy(false);
     }
@@ -107,16 +115,18 @@ export function EsiSyncPage({ currentUser, load, api, ManagedForm, Metric, Chara
     if (sourceTokenId === "") return;
 
     setContactBusy(true);
+    setContactError(null);
+    setContactNotice(null);
     try {
       const result = await api<ContactApplyResult>("/esi/standings/apply", {
         method: "POST",
         body: JSON.stringify({ source_token_id: sourceTokenId, target_token_ids: targetTokenIds, overwrite_existing: overwriteContacts }),
       });
-      setMessage(`Copied contacts from ${result.source_character_name}: ${result.created.toLocaleString()} created, ${result.updated.toLocaleString()} updated.`);
+      setContactNotice(`Copied contacts from ${result.source_character_name}: ${result.created.toLocaleString()} created, ${result.updated.toLocaleString()} updated.`);
       setContactPreview(null);
       await loadEsiState();
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Standing sync failed.");
+      setContactError(err instanceof Error ? err.message : "Standing sync failed.");
     } finally {
       setContactBusy(false);
     }
@@ -171,13 +181,15 @@ export function EsiSyncPage({ currentUser, load, api, ManagedForm, Metric, Chara
         <h3><UserRoundCheck size={20} /> Character Contacts Sync</h3>
         {standingAuthInfo?.ready ? <a className="auth-link secondary" href={standingAuthInfo.url}>Authorize contact sync</a> : <p className="muted">{standingAuthInfo?.message ?? "Checking contact sync setup..."}</p>}
         <div className="scope-list compact">{standingAuthInfo?.required_scopes.map((scope) => <code key={scope}>{scope}</code>)}</div>
-        <label>Copy contacts from<select value={sourceTokenId} onChange={(event) => { setSourceTokenId(Number(event.target.value)); setTargetTokenIds([]); setContactPreview(null); }}><option value="">Choose source</option>{linked.map((character) => <option key={character.token_id} value={character.token_id}>{character.character_name}</option>)}</select></label>
+        <label>Copy contacts from<select value={sourceTokenId} onChange={(event) => { setSourceTokenId(Number(event.target.value)); setTargetTokenIds([]); setContactPreview(null); setContactError(null); setContactNotice(null); }}><option value="">Choose source</option>{linked.map((character) => <option key={character.token_id} value={character.token_id}>{character.character_name}</option>)}</select></label>
         <div className="choice-list">
           <span>Copy to</span>
           {targetOptions.length > 0 ? targetOptions.map((character) => <label className="check" key={character.token_id}><input type="checkbox" checked={targetTokenIds.includes(character.token_id)} onChange={() => toggleTarget(character.token_id)} /> {character.character_name}</label>) : <p className="muted">Link at least one more character before syncing contacts.</p>}
         </div>
-        <label className="check"><input type="checkbox" checked={overwriteContacts} onChange={(event) => { setOverwriteContacts(event.target.checked); setContactPreview(null); }} /> Update existing target contacts when contact standings differ</label>
+        <label className="check"><input type="checkbox" checked={overwriteContacts} onChange={(event) => { setOverwriteContacts(event.target.checked); setContactPreview(null); setContactError(null); setContactNotice(null); }} /> Update existing target contacts when contact standings differ</label>
         <div className="button-row"><button type="button" disabled={sourceTokenId === "" || targetTokenIds.length === 0 || contactBusy} onClick={() => void previewContactSync()}>Preview</button><button type="button" disabled={!contactPreview || contactBusy} onClick={() => void applyContactSync()}>Apply sync</button></div>
+        {contactError && <div className="mini-alert">{contactError}</div>}
+        {contactNotice && <div className="notice inline">{contactNotice}</div>}
         {contactPreview && <ContactPreview preview={contactPreview} Metric={Metric} />}
       </section>
 

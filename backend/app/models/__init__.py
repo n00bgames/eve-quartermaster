@@ -9,7 +9,7 @@ from app.models.fittings import CharacterFitting, CharacterFittingItem
 from app.models.identity import CorporationWalletDivision, EveAlliance, EveCharacter, EveCorporation, OwnershipEntity, RoleDefinition, RoleSectionPermission, User, UserInvite, UserSectionPermission
 from app.models.market import CustomMarketHub
 from app.models.manufacturing import ManufacturingJob, ManufacturingJobItem
-from app.models.mining import MiningLedgerEntry, MiningOperation, MiningOperationParticipant
+from app.models.mining import MiningLedgerEntry, MiningOperation, MiningOperationParticipant, MiningSettlement, MiningSettlementDeduction, MiningSettlementLedgerEntry, MiningSettlementOutput, MiningSettlementParticipant
 from app.models.industry import Blueprint, IndustryActivity, IndustryActivityInput, ProcurementSource, ProductionPlan, ProductionPlanInput
 from app.models.jump_clones import CharacterJumpClone, ImplantSet, ImplantSetImplant, JumpCloneImplant
 from app.models.navigation import SystemIndustrialKillObservation, SystemJumpObservation, SystemKillFetchCache, SystemPvpKillObservation
@@ -63,6 +63,11 @@ __all__ = [
     "MiningLedgerEntry",
     "MiningOperation",
     "MiningOperationParticipant",
+    "MiningSettlement",
+    "MiningSettlementDeduction",
+    "MiningSettlementLedgerEntry",
+    "MiningSettlementOutput",
+    "MiningSettlementParticipant",
     "OwnershipEntity",
     "PrivateMessage",
     "ProcurementSource",

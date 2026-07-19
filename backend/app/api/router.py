@@ -14,6 +14,7 @@ from app.api.mail import router as mail_router
 from app.api.market import router as market_router
 from app.api.manufacturing import router as manufacturing_router
 from app.api.mining_ledger import router as mining_ledger_router
+from app.api.mining_settlements import router as mining_settlements_router
 from app.api.metadata import router as metadata_router
 from app.api.navigation import router as navigation_router
 from app.api.notifications import router as notifications_router
@@ -35,6 +36,7 @@ api_router.include_router(mail_router)
 api_router.include_router(market_router)
 api_router.include_router(manufacturing_router)
 api_router.include_router(mining_ledger_router)
+api_router.include_router(mining_settlements_router)
 api_router.include_router(metadata_router)
 api_router.include_router(navigation_router)
 api_router.include_router(notifications_router)

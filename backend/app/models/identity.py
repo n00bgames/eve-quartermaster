@@ -18,6 +18,7 @@ class User(Base):
     role: Mapped[str] = mapped_column(String(40), default="member", nullable=False)
     timezone: Mapped[str] = mapped_column(String(64), default="UTC", nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
 
 
 

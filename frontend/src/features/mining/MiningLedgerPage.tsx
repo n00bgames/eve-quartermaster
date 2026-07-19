@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { CharacterSyncJob, MiningLedgerEntry, MiningLedgerPayload } from "../../types/mining";
 import { MiningBarChart, MiningEfficiencyRanking, MiningTimeline } from "./MiningCharts";
 import { MiningOperations } from "./MiningOperations";
+import { MiningSettlements } from "./MiningSettlements";
 import "./mining.css";
 
 type ApiClient = <T>(path: string, options?: RequestInit) => Promise<T>;
@@ -137,5 +138,6 @@ export function MiningLedgerPage({ api }: { api: ApiClient }) {
     {data && <MiningOperations api={api} characters={data.characters} systems={data.systems} operations={data.operations} onChanged={() => load(1)} />}
     <div className="section-heading"><div><h4>Ledger history</h4><p>{whole.format(data?.entry_count ?? 0)} persistent rows match the current filters.</p></div><div className="button-row compact"><button type="button" disabled={page <= 1} onClick={() => void load(page - 1)}>Previous</button><span>Page {page} / {pageCount}</span><button type="button" disabled={page >= pageCount} onClick={() => void load(page + 1)}>Next</button></div></div>
     <div className="table-wrap mining-table-wrap"><table className="mining-table"><thead><tr><th>{sortHeader("date", "Date")}</th><th>{sortHeader("character", "Character")}</th><th>{sortHeader("ore", "Ore")}</th><th>{sortHeader("quantity", "Recovered")}</th><th>{sortHeader("residue", "Residue")}</th><th>{sortHeader("volume", "Volume")}</th><th>{sortHeader("value", "Net value")}</th><th>{sortHeader("system", "System")}</th><th>Operation</th></tr></thead><tbody>{entries.map((row) => <tr key={row.id}><td>{row.date}<span>{row.source.toUpperCase()}</span></td><td>{row.character_name}</td><td><strong>{row.ore_type}</strong><span>Type {row.ore_type_id}</span></td><td>{whole.format(row.quantity)}</td><td>{row.has_residue_data ? whole.format(row.residue_quantity) : <span className="unmeasured">Not reported</span>}</td><td>{number.format(row.volume)} m3<span>{row.has_residue_data && row.residue_volume > 0 ? `${number.format(row.residue_volume)} m3 lost` : ""}</span></td><td>{whole.format(row.estimated_price)} ISK<span>{row.estimated_residue_price > 0 ? `${whole.format(row.estimated_residue_price)} ISK lost` : ""}</span></td><td>{row.solar_system}<span>{row.solar_system_id}</span></td><td>{row.operation_name ?? "Unassigned"}</td></tr>)}{data && entries.length === 0 && <tr><td colSpan={9}>No mining ledger rows match these filters.</td></tr>}</tbody></table></div>
+    {data && <MiningSettlements api={api} characters={data.characters} operations={data.operations} />}
   </section>;
 }
