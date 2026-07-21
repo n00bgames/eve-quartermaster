@@ -1,6 +1,8 @@
 import { Beaker, Clock3, Copy, FlaskConical, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
+import { ResearchQueuePlanner } from "./ResearchQueuePlanner";
+
 type ApiClient = <T>(path: string, options?: RequestInit) => Promise<T>;
 type Project = {
   id: number; job_id: number; activity_id: number; activity_name: string; status: string;
@@ -50,6 +52,7 @@ export function ResearchProjectsPage({ api, formatDateTime }: { api: ApiClient; 
   const [busy, setBusy] = useState(false);
   const [syncJob, setSyncJob] = useState<SyncJob | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [hoveredProject, setHoveredProject] = useState<{ project: Project; x: number; y: number } | null>(null);
 
   async function load() {
     setError(null);
@@ -109,6 +112,15 @@ export function ResearchProjectsPage({ api, formatDateTime }: { api: ApiClient; 
     return <button className="sort-header" type="button" onClick={() => toggleSort(key)}>{label}<span>{mark}</span></button>;
   }
 
+  function showProjectPreview(project: Project, pointerX: number, pointerY: number) {
+    const previewWidth = Math.min(460, window.innerWidth - 32);
+    setHoveredProject({
+      project,
+      x: Math.max(16, Math.min(pointerX + 18, window.innerWidth - previewWidth - 16)),
+      y: Math.max(16, Math.min(pointerY + 18, window.innerHeight - 390)),
+    });
+  }
+
   return <section className="panel stacked research-projects-page">
     <div className="section-heading">
       <div><h3>Research Projects</h3><p>Current character and corporation blueprint research, copying, and invention queues with retained history for analytics.</p></div>
@@ -131,16 +143,18 @@ export function ResearchProjectsPage({ api, formatDateTime }: { api: ApiClient; 
       <table className="research-table">
         <thead><tr><th>{sortHeader("blueprint", "Blueprint")}</th><th>{sortHeader("activity", "Activity")}</th><th>{sortHeader("installer", "Installed by")}</th><th>{sortHeader("owner", "Owner")}</th><th>{sortHeader("status", "Status")}</th><th>{sortHeader("runs", "Runs")}</th><th>{sortHeader("facility", "Facility")}</th><th>{sortHeader("cost", "Cost")}</th><th>{sortHeader("timing", "Timeline")}</th></tr></thead>
         <tbody>
-          {projects.map((project) => <ResearchProjectRow key={project.id} project={project} formatDateTime={formatDateTime} />)}
+          {projects.map((project) => <ResearchProjectRow key={project.id} project={project} formatDateTime={formatDateTime} onHover={showProjectPreview} onLeave={() => setHoveredProject(null)} />)}
           {data && projects.length === 0 && <tr><td colSpan={9}>No {view === "active" ? "active" : "historical"} research projects match this filter.</td></tr>}
           {!data && !error && <tr><td colSpan={9}>Loading research projects...</td></tr>}
         </tbody>
       </table>
     </div>
+    <ResearchQueuePlanner api={api} formatDateTime={formatDateTime} />
+    {hoveredProject && <ResearchProjectPreview {...hoveredProject} formatDateTime={formatDateTime} />}
   </section>;
 }
 
-function ResearchProjectRow({ project, formatDateTime }: { project: Project; formatDateTime: (value?: string | null) => string }) {
+function ResearchProjectRow({ project, formatDateTime, onHover, onLeave }: { project: Project; formatDateTime: (value?: string | null) => string; onHover: (project: Project, x: number, y: number) => void; onLeave: () => void }) {
   const start = project.start_date ? new Date(project.start_date).getTime() : 0;
   const end = project.end_date ? new Date(project.end_date).getTime() : 0;
   const now = Date.now();
@@ -149,7 +163,7 @@ function ResearchProjectRow({ project, formatDateTime }: { project: Project; for
   const portraitId = project.character_id ?? project.installer_character_id;
   const portrait = project.character_portrait_url || (portraitId ? `https://images.evetech.net/characters/${portraitId}/portrait?size=64` : "");
 
-  return <tr>
+  return <tr className="research-project-row" onPointerEnter={(event) => onHover(project, event.clientX, event.clientY)} onPointerLeave={onLeave}>
     <td><strong>{project.blueprint_name}</strong>{project.product_name && <span>Output: {project.product_name}</span>}</td>
     <td><strong>{project.activity_name}</strong>{project.probability != null && <span>{Math.round(project.probability * 100)}% chance</span>}</td>
     <td><span className="research-installer">{portrait && <img src={portrait} alt="" />}<span>{project.character_name}</span></span></td>
@@ -162,6 +176,26 @@ function ResearchProjectRow({ project, formatDateTime }: { project: Project; for
   </tr>;
 }
 
+function ResearchProjectPreview({ project, x, y, formatDateTime }: { project: Project; x: number; y: number; formatDateTime: (value?: string | null) => string }) {
+  const start = project.start_date ? new Date(project.start_date).getTime() : 0;
+  const end = project.end_date ? new Date(project.end_date).getTime() : 0;
+  const progress = start && end > start ? Math.max(0, Math.min(100, (Date.now() - start) / (end - start) * 100)) : project.status === "delivered" ? 100 : 0;
+  const portraitId = project.character_id ?? project.installer_character_id;
+  const portrait = project.character_portrait_url || (portraitId ? `https://images.evetech.net/characters/${portraitId}/portrait?size=64` : "");
+  return <aside className="research-project-preview" style={{ left: x, top: y }} role="tooltip">
+    <header>{portrait && <img src={portrait} alt="" />}<div><strong>{project.blueprint_name}</strong><span>{project.activity_name}{project.product_name ? ` · ${project.product_name}` : ""}</span></div><span className="manufacturing-status-badge">{project.status}</span></header>
+    <div className="research-preview-grid">
+      <span><b>Installed by</b>{project.character_name}</span>
+      <span><b>Owner</b>{project.corporation_name ?? project.character_name}</span>
+      <span><b>Runs</b>{project.runs.toLocaleString()}</span>
+      <span><b>Cost</b>{project.cost != null ? `${isk.format(project.cost)} ISK` : "Not reported"}</span>
+      <span className="wide"><b>Facility</b>{project.facility_name ?? `Location ${project.facility_id ?? "unknown"}`}</span>
+      <span><b>Job ID</b>{project.job_id}</span>
+      {project.probability != null && <span><b>Success chance</b>{Math.round(project.probability * 100)}%</span>}
+    </div>
+    <div className="research-preview-timeline"><span>{formatDateTime(project.start_date)}</span><span>{formatDateTime(project.end_date)}</span><progress max={100} value={progress} /></div>
+  </aside>;
+}
 function durationLabel(milliseconds: number) {
   if (milliseconds <= 0) return "Ready for delivery";
   const minutes = Math.ceil(milliseconds / 60_000);

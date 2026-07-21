@@ -1,8 +1,10 @@
 import { Boxes, Database, Factory, KeyRound, MapIcon, PackagePlus, RefreshCw, ScrollText } from "lucide-react";
 import { Fragment, useEffect, useState, type ReactElement, type ReactNode } from "react";
 
+import { isAdminRole, isHostRole } from "../../lib/roles";
 import type { EqmCharacter } from "../../types/characters";
 import type { PermissionMatrix, RoleDefinition, SectionSettings, SdeImportProgress, SdeStatus } from "../../types/settings";
+import { DatabaseAdministration } from "./DatabaseAdministration";
 
 type ApiClient = <T>(path: string, options?: RequestInit) => Promise<T>;
 type UserAccount = { id: number; email: string; display_name: string; role: string; timezone?: string; created_at?: string };
@@ -18,6 +20,8 @@ type SettingsPageProps = {
 };
 
 export function SettingsPage({ currentUser, api, Metric, ManagedForm, accountLabel }: SettingsPageProps) {
+  const adminAccess = isAdminRole(currentUser.role);
+  const hostAccess = isHostRole(currentUser.role);
   const [characters, setCharacters] = useState<EqmCharacter[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [settingsError, setSettingsError] = useState<string | null>(null);
@@ -32,7 +36,7 @@ export function SettingsPage({ currentUser, api, Metric, ManagedForm, accountLab
   }
 
   async function loadSdeStatus() {
-    if (currentUser.role !== "admin") return;
+    if (!adminAccess) return;
 
     const status = await api<SdeStatus>("/sde/status");
     setSdeStatus(status);
@@ -40,7 +44,7 @@ export function SettingsPage({ currentUser, api, Metric, ManagedForm, accountLab
   }
 
   async function loadSdeImportState() {
-    if (currentUser.role !== "admin") return;
+    if (!adminAccess) return;
 
     const previousCompletedAt = sdeImportState?.completed_at;
     const state = await api<SdeImportProgress>("/sde/import-status");
@@ -92,17 +96,17 @@ export function SettingsPage({ currentUser, api, Metric, ManagedForm, accountLab
 
   useEffect(() => {
     void loadCharacters().catch((err) => setSettingsError(err instanceof Error ? err.message : "Unable to load settings"));
-    void loadSdeStatus().catch((err) => currentUser.role === "admin" && setSettingsError(err instanceof Error ? err.message : "Unable to load SDE status"));
+    void loadSdeStatus().catch((err) => adminAccess && setSettingsError(err instanceof Error ? err.message : "Unable to load SDE status"));
     void loadSdeImportState().catch(() => undefined);
   }, []);
 
   useEffect(() => {
-    if (currentUser.role !== "admin") return;
+    if (!adminAccess) return;
     const timer = window.setInterval(() => { void loadSdeImportState().catch(() => undefined); }, sdeBusy ? 3000 : 15000);
     return () => window.clearInterval(timer);
-  }, [currentUser.role, sdeBusy]);
+  }, [adminAccess, sdeBusy]);
 
-  const manageable = characters.filter((character) => character.can_manage || currentUser.role === "admin");
+  const manageable = characters.filter((character) => character.can_manage || adminAccess);
   const sdeProgressStats = sdeImportState?.stats;
   const sdeProgressLabel = sdeImportState?.running
     ? `${sdeImportState.stage ?? "working"}${sdeProgressStats?.type_dogma_attributes ? ` · ${sdeProgressStats.type_dogma_attributes.toLocaleString()} type dogma attrs` : ""}${sdeProgressStats?.type_dogma_effects ? ` · ${sdeProgressStats.type_dogma_effects.toLocaleString()} type effects` : ""}${sdeProgressStats?.blueprint_activities ? ` · ${sdeProgressStats.blueprint_activities.toLocaleString()} recipes` : ""}`
@@ -118,7 +122,7 @@ export function SettingsPage({ currentUser, api, Metric, ManagedForm, accountLab
         <h3>Character Privacy</h3>
         {message && <div className="notice inline">{message}</div>}
         {settingsError && <div className="mini-alert">{settingsError}</div>}
-        {currentUser.role === "admin" && (
+        {adminAccess && (
           <div className="privacy-placard">
             <label className="check"><input type="checkbox" checked={suppressPeekNotifications} onChange={(event) => void patchNotificationSuppression(event.target.checked)} /> Suppress sync peek notifications for development or mandatory-public ESI corporations</label>
           </div>
@@ -136,7 +140,7 @@ export function SettingsPage({ currentUser, api, Metric, ManagedForm, accountLab
           {manageable.length === 0 && <p className="empty">No manageable characters found.</p>}
         </div>
       </section>
-      {currentUser.role === "admin" && (
+      {adminAccess && (
         <section className="panel stacked">
           <div className="section-heading">
             <div><h3>SDE Import</h3><p>Load EVE static data from a mounted SDE folder or zip inside the backend container.</p></div>
@@ -160,8 +164,9 @@ export function SettingsPage({ currentUser, api, Metric, ManagedForm, accountLab
           <button type="button" disabled={sdeBusy} onClick={() => void importSde()}><RefreshCw size={18} /> {sdeBusy ? "Importing" : "Import SDE"}</button>
         </section>
       )}
-      {currentUser.role === "admin" && <SectionModuleSettings api={api} />}
-      {currentUser.role === "admin" && <PermissionsAdmin api={api} ManagedForm={ManagedForm} accountLabel={accountLabel} />}
+      {hostAccess && <DatabaseAdministration api={api} />}
+      {adminAccess && <SectionModuleSettings api={api} />}
+      {adminAccess && <PermissionsAdmin api={api} ManagedForm={ManagedForm} accountLabel={accountLabel} />}
     </div>
   );
 }
@@ -224,7 +229,7 @@ function PermissionsAdmin({ api, ManagedForm, accountLabel }: { api: ApiClient; 
   const [users, setUsers] = useState<UserAccount[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const roles = matrix?.roles.filter((role) => role !== "admin") ?? [];
+  const roles = matrix?.roles.filter((role) => !["host", "admin"].includes(role)) ?? [];
 
   async function loadPermissions() {
     const [permissionPayload, userRows] = await Promise.all([
@@ -302,7 +307,7 @@ function PermissionsAdmin({ api, ManagedForm, accountLabel }: { api: ApiClient; 
       </div>
       <h4>User overrides</h4>
       <div className="card-list permission-user-list">
-        {users.filter((user) => user.role !== "admin").map((user) => (
+        {users.filter((user) => !["host", "admin"].includes(user.role)).map((user) => (
           <article key={user.id}>
             <strong>{accountLabel(user)} <span className="muted">({user.role})</span></strong>
             <div className="permission-user-grid">

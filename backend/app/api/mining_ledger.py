@@ -244,7 +244,7 @@ def remove_operation(operation_id: int, current_user: User = Depends(get_current
     operation = db.get(MiningOperation, operation_id)
     if operation is None:
         raise HTTPException(status_code=404, detail="Mining operation was not found.")
-    if operation.created_by_user_id != current_user.id and current_user.role != "admin":
+    if operation.created_by_user_id != current_user.id and current_user.role not in {"host", "admin"}:
         raise HTTPException(status_code=403, detail="Only the operation owner or an admin can delete it.")
     db.execute(delete(MiningOperation).where(MiningOperation.id == operation_id))
     db.commit()

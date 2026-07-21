@@ -26,7 +26,7 @@ from app.models import (
     User,
 )
 from app.models.enums import ActivityKind, AssetSource, LocationKind, OwnerKind, ProcurementKind
-from app.services.permissions import ROLE_RANK, role_rank
+from app.services.asset_visibility import can_view_owner_records, visible_asset_rows
 
 router = APIRouter(prefix="/quartermaster", tags=["quartermaster"], dependencies=[Depends(get_current_user)])
 
@@ -140,17 +140,6 @@ def blueprint_type_ids_for_capital_construction(db: Session) -> set[int]:
     if not related_product_ids:
         return set()
     return set(db.scalars(select(IndustryActivity.blueprint_type_id).where(IndustryActivity.product_type_id.in_(related_product_ids))).all())
-
-def can_view_owner_records(owner: OwnershipEntity | None, current_user: User, db: Session) -> bool:
-    if role_rank(current_user, db) >= ROLE_RANK["officer"]:
-        return True
-    if owner is None or owner.character is None:
-        return False
-    character = owner.character
-    if character.owner_user_id == current_user.id:
-        return True
-    return bool(character.public_assets_visible and not character.sync_opt_out)
-
 
 @router.get("/summary")
 def summary(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
@@ -310,20 +299,6 @@ def asset_matches_query(asset: Asset, owner_kind: str | None, category: str, sub
             return filter_value.lower() in value.lower()
         return value == filter_value
     return True
-
-
-def visible_asset_rows(current_user: User, db: Session) -> list[Asset]:
-    assets = db.scalars(
-        select(Asset)
-        .options(
-            selectinload(Asset.ownership_entity).selectinload(OwnershipEntity.character),
-            selectinload(Asset.item_type).selectinload(EveType.group).selectinload(EveGroup.category),
-            selectinload(Asset.location),
-            selectinload(Asset.parent_asset).selectinload(Asset.item_type).selectinload(EveType.group).selectinload(EveGroup.category),
-        )
-        .order_by(Asset.updated_at.desc(), Asset.id.desc())
-    ).all()
-    return [asset for asset in assets if can_view_owner_records(asset.ownership_entity, current_user, db)]
 
 
 @router.get("/assets")

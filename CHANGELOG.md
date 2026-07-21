@@ -8,6 +8,19 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Added
 
+- Added a Host account role above Admin for installation ownership and host-only database maintenance; existing installations promote the oldest active administrator during migration.
+- Added Settings controls to inspect and export portable database backups, transactionally restore matching EQM backups, and irreversibly clear all stored data while retaining the signed-in host account and schema.
+
+- Added a persistent Next Research Queue beneath Research Projects with visibility-aware owned BPO/BPC search, research activity and run planning, source location snapshots, and editable source-hangar tracking.
+- Added queue ordering, pending/completed views, completion and restoration controls, deletion, and retained completed entries for operational history.
+
+- Added plain-text shopping-list clipboard exports for either asset-aware remaining needs or every row's full requested quantity, omitting pricing, categories, headers, and totals.
+- Added a private Notes & Lists workspace for freeform notes and persistent resupply lists with tags, destination systems, station/structure targets, preferred market hubs, search, sorting, duplication, soft deletion, and undo.
+- Added SDE-backed item-line parsing and manual resolution for list imports, including explicit duplicate merging, editable quantities, six fulfillment statuses, bulk updates, reordering, and completed-item cleanup.
+- Added visibility-aware asset cross-reference summaries for requested, at-destination, elsewhere, and remaining quantities with owner filters, sync freshness, and expandable location details.
+- Added selected-item market pricing across configured trade hubs using requested or remaining quantities without changing item status or initiating purchases.
+- Added Notes & Lists persistence, migration, permissions, shared asset-visibility and item-parser services, and focused parser/validation/CRUD tests.
+
 - Added a persistent Mining Op Settlement workflow beneath the Mining Ledger with saved-operation or date-range sourcing, contribution-based automatic miner shares, manual support pilots, and exact ISK payout reconciliation.
 - Added authoritative actual-refined-output entry using SDE mineral choices, captured hub or manual unit prices, refiner metadata, operation reserves, repeatable expenses, fixed-percentage payouts, and weighted-share compensation.
 - Added editable settlement drafts and immutable finalized snapshots that retain source ledger rows, prices, outputs, deductions, participant calculations, warnings, and payout results for future analytics.
@@ -26,6 +39,7 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Fixed
 
+- Fixed a local development/publish environment mismatch that made every stored ESI refresh token appear to require reauthorization; the running backend now uses the database's original token-encryption key and configured EVE SSO client credentials.
 - Fixed Character Contacts Sync preview and apply requests failing before ESI access after the token permission guard became database-aware, and display contact-sync failures with error styling instead of a green success notice.
 - Fixed user deletion failing when invitation, audit, messaging, manufacturing, mining, or settlement history still referenced the account; deleted accounts are now anonymized, denied login, removed from active account lists, and retained only for historical attribution.
 - Fixed Sync All mining jobs failing before persistence because the ESI worker did not import the mining-ledger upsert service.
@@ -38,6 +52,7 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Changed
 
+- Added a hover glow and enlarged opaque job preview to Research Projects rows, and increased the results pane height by approximately 25% for easier queue scanning.
 - Replaced Research Project cards with a sortable table and prechecked corporation roles before queuing corporation research syncs.
 - Marked the Fittings navigation entry as a bright-red WIP warning while fitting calculations remain under development.
 - Bumped the visible app, package, backend API, Android wrapper, and ESI user-agent versions to 0.1.10-beta.
@@ -45,6 +60,9 @@ This project is moving quickly during beta. Version sections are written as user
 ## [0.1.9-beta] - 2026-07-15
 
 ### Added
+
+- Added a Host account role above Admin for installation ownership and host-only database maintenance; existing installations promote the oldest active administrator during migration.
+- Added Settings controls to inspect and export portable database backups, transactionally restore matching EQM backups, and irreversibly clear all stored data while retaining the signed-in host account and schema.
 
 - Added Manufacturing analytics widgets for realized output quantity, actual and current input costs, savings, kept/sold disposition, sales revenue, and realized profit.
 - Added a README feature-preview warning for the Fittings module while dogma, skill, implant, cargo, and module-derived simulation values remain under active rebuild.
@@ -61,6 +79,9 @@ This project is moving quickly during beta. Version sections are written as user
 ## [0.1.8-beta] - 2026-07-13
 
 ### Added
+
+- Added a Host account role above Admin for installation ownership and host-only database maintenance; existing installations promote the oldest active administrator during migration.
+- Added Settings controls to inspect and export portable database backups, transactionally restore matching EQM backups, and irreversibly clear all stored data while retaining the signed-in host account and schema.
 
 - Added dogma-backed fitting Cargo cards that display current/maximum volume for cargo hold, drone bay, fighter hangar, fuel bay, fleet/ship maintenance bays, infrastructure bay, and specialized holds when the SDE exposes those capacities.
 - Added item volume serialization for fitting cargo, drones, fighters, and bay contents so draft fits can estimate carried m3 before simulation.
@@ -87,6 +108,9 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Added
 
+- Added a Host account role above Admin for installation ownership and host-only database maintenance; existing installations promote the oldest active administrator during migration.
+- Added Settings controls to inspect and export portable database backups, transactionally restore matching EQM backups, and irreversibly clear all stored data while retaining the signed-in host account and schema.
+
 - Added Windows and Linux/macOS SDE fetch scripts that download the latest Tranquility SDE into the mounted `sde/` folder with optional extraction.
 - Added a persistent red-alert Threat Analyzer header action that jumps from any page to the Local Threat panel.
 - Added a Characters-page Sync all eligible action that queues assets, skills, fittings, and contracts for every permitted non-opted-out character with matching ESI scopes and shows queue-badge progress.
@@ -104,6 +128,9 @@ This project is moving quickly during beta. Version sections are written as user
 ## [0.1.6-beta] - 2026-07-10
 
 ### Added
+
+- Added a Host account role above Admin for installation ownership and host-only database maintenance; existing installations promote the oldest active administrator during migration.
+- Added Settings controls to inspect and export portable database backups, transactionally restore matching EQM backups, and irreversibly clear all stored data while retaining the signed-in host account and schema.
 
 - Added wardec indicators to route, capital jump, and character killmail displays so hostile intel can distinguish war-target losses from ordinary ganks.
 - Started frontend segmentation by moving the app version, killmail data shapes, and wardec badge into purpose-built modules.
@@ -156,6 +183,9 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Added
 
+- Added a Host account role above Admin for installation ownership and host-only database maintenance; existing installations promote the oldest active administrator during migration.
+- Added Settings controls to inspect and export portable database backups, transactionally restore matching EQM backups, and irreversibly clear all stored data while retaining the signed-in host account and schema.
+
 - Added a Prefer Safer Route option to Route Checker so gate routes can favor highsec travel even when the route becomes longer.
 - Added Route Checker avoid-list controls matching the Capital Jump Plotter flow, including per-system avoid buttons and a clearable avoid list.
 
@@ -170,6 +200,9 @@ This project is moving quickly during beta. Version sections are written as user
 ## [0.1.3-beta] - 2026-07-05
 
 ### Added
+
+- Added a Host account role above Admin for installation ownership and host-only database maintenance; existing installations promote the oldest active administrator during migration.
+- Added Settings controls to inspect and export portable database backups, transactionally restore matching EQM backups, and irreversibly clear all stored data while retaining the signed-in host account and schema.
 
 - Added cross-section context links: fittings now show owned hull/modules/cargo/drones and can price missing or full fits; market appraisal lines show owned quantities with asset/fitting jumps; assets can jump to pricing or fittings; recipes and blueprints show owned outputs/material coverage with market handoffs.
 - Added the Market Appraisal module for Janice-style pasted item lists with flexible quantity parsing, multi-hub buy/sell/split comparisons, Dudreda support, and unmatched-item warnings.

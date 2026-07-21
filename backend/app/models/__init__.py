@@ -13,7 +13,8 @@ from app.models.mining import MiningLedgerEntry, MiningOperation, MiningOperatio
 from app.models.industry import Blueprint, IndustryActivity, IndustryActivityInput, ProcurementSource, ProductionPlan, ProductionPlanInput
 from app.models.jump_clones import CharacterJumpClone, ImplantSet, ImplantSetImplant, JumpCloneImplant
 from app.models.navigation import SystemIndustrialKillObservation, SystemJumpObservation, SystemKillFetchCache, SystemPvpKillObservation
-from app.models.research_projects import ResearchProject
+from app.models.notes import Note, NoteItem
+from app.models.research_projects import ResearchProject, ResearchQueueItem
 from app.models.skills import CharacterSkill, CharacterSkillQueueEntry
 
 __all__ = [
@@ -68,12 +69,15 @@ __all__ = [
     "MiningSettlementLedgerEntry",
     "MiningSettlementOutput",
     "MiningSettlementParticipant",
+    "Note",
+    "NoteItem",
     "OwnershipEntity",
     "PrivateMessage",
     "ProcurementSource",
     "ProductionPlan",
     "ProductionPlanInput",
     "ResearchProject",
+    "ResearchQueueItem",
     "RoleDefinition",
     "RoleSectionPermission",
     "SnapshotMetric",

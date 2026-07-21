@@ -782,12 +782,12 @@ def linked_characters(current_user: User = Depends(get_current_user), db: Sessio
         .where(EsiToken.revoked_at.is_(None))
         .order_by(EveCharacter.name, EsiToken.created_at.desc())
     )
-    if current_user.role != "admin":
+    if current_user.role not in {"host", "admin"}:
         query = query.where(EsiToken.user_id == current_user.id)
     rows = db.execute(query).all()
     results = []
     for token, character, linked_user in rows:
-        can_manage_link = token.user_id == current_user.id or current_user.role == "admin"
+        can_manage_link = token.user_id == current_user.id or current_user.role in {"host", "admin"}
         latest_job = db.scalar(
             select(EsiSyncJob)
             .where(EsiSyncJob.token_id == token.id)
@@ -876,7 +876,7 @@ def list_character_skills(current_user: User = Depends(get_current_user), db: Se
                 "security_status": character.security_status,
                 "owner_user_id": token.user_id,
                 "sync_opt_out": character.sync_opt_out,
-                "admin_override_visible": character.sync_opt_out and current_user.role == "admin" and token.user_id != current_user.id,
+                "admin_override_visible": character.sync_opt_out and current_user.role in {"host", "admin"} and token.user_id != current_user.id,
                 "can_sync": can_force_sync_character_token(token, character, current_user, db),
                 "total_skill_points": character.total_skill_points,
                 "unallocated_skill_points": character.unallocated_skill_points,
@@ -896,7 +896,7 @@ async def sync_character_skills_for_token(token_id: int, current_user: User, db:
     token, character = get_linked_token(db, token_id)
     if not can_force_sync_character_token(token, character, current_user, db):
         raise HTTPException(status_code=403, detail="You can only sync characters you own or are permitted to administer")
-    if character.sync_opt_out and (not allow_opt_out_override or (token.user_id != current_user.id and current_user.role != "admin")):
+    if character.sync_opt_out and (not allow_opt_out_override or (token.user_id != current_user.id and current_user.role not in {"host", "admin"})):
         raise HTTPException(status_code=403, detail=f"{character.name} has opted out of Quartermaster sync")
     require_scope(token, "esi-skills.read_skills.v1", f"Reading skills for {character.name}")
     require_scope(token, "esi-skills.read_skillqueue.v1", f"Reading skill queue for {character.name}")
@@ -1108,7 +1108,7 @@ async def sync_character_fittings_for_token(token_id: int, current_user: User, d
     token, character = get_linked_token(db, token_id)
     if not can_force_sync_character_token(token, character, current_user, db):
         raise HTTPException(status_code=403, detail="You can only sync characters you own or are permitted to administer")
-    if character.sync_opt_out and (not allow_opt_out_override or (token.user_id != current_user.id and current_user.role != "admin")):
+    if character.sync_opt_out and (not allow_opt_out_override or (token.user_id != current_user.id and current_user.role not in {"host", "admin"})):
         raise HTTPException(status_code=403, detail=f"{character.name} has opted out of Quartermaster sync")
     require_scope(token, "esi-fittings.read_fittings.v1", f"Reading fittings for {character.name}")
 
@@ -1161,7 +1161,7 @@ async def sync_character_fittings_for_token(token_id: int, current_user: User, d
 
         character.last_synced_at = now
         job.status = SyncStatus.SUCCESS
-        opt_out_note = " Admin override used for opted-out character." if character.sync_opt_out and current_user.role == "admin" and token.user_id != current_user.id else ""
+        opt_out_note = " Admin override used for opted-out character." if character.sync_opt_out and current_user.role in {"host", "admin"} and token.user_id != current_user.id else ""
         job.message = f"Synced {len(fitting_rows)} saved fittings. Resolved {type_names} fitting item names and {type_metadata} fitting type records.{opt_out_note}"
         notify_if_other_user_synced_character(db, sync_label="fittings", actor_user=current_user, character=character, detail=f"{len(fitting_rows)} saved fittings were refreshed.")
         job.finished_at = now
@@ -1183,7 +1183,7 @@ async def sync_character_fittings(token_id: int, current_user: User = Depends(ge
 @router.delete("/linked-characters/{token_id}")
 def unlink_character(token_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
     token, character = get_linked_token(db, token_id)
-    if token.user_id != current_user.id and current_user.role != "admin":
+    if token.user_id != current_user.id and current_user.role not in {"host", "admin"}:
         raise HTTPException(status_code=403, detail="Only admins or the account that authorized SSO can unlink this character")
     token.revoked_at = datetime.now(timezone.utc)
     db.commit()
@@ -1198,7 +1198,7 @@ async def sync_character_assets_for_token(token_id: int, current_user: User, db:
         raise HTTPException(status_code=404, detail="Linked character was not found")
     if not can_force_sync_character_token(token, character, current_user, db):
         raise HTTPException(status_code=403, detail="You can only sync characters you own or are permitted to administer")
-    if character.sync_opt_out and (not allow_opt_out_override or (token.user_id != current_user.id and current_user.role != "admin")):
+    if character.sync_opt_out and (not allow_opt_out_override or (token.user_id != current_user.id and current_user.role not in {"host", "admin"})):
         raise HTTPException(status_code=403, detail=f"{character.name} has opted out of Quartermaster sync")
     require_scope(token, "esi-assets.read_assets.v1", f"Reading assets for {character.name}")
 
@@ -1281,7 +1281,7 @@ async def sync_character_contracts_for_token(token_id: int, current_user: User, 
         raise HTTPException(status_code=404, detail="Linked character was not found")
     if not can_force_sync_character_token(token, character, current_user, db):
         raise HTTPException(status_code=403, detail="You can only sync characters you own or are permitted to administer")
-    if character.sync_opt_out and (not allow_opt_out_override or (token.user_id != current_user.id and current_user.role != "admin")):
+    if character.sync_opt_out and (not allow_opt_out_override or (token.user_id != current_user.id and current_user.role not in {"host", "admin"})):
         raise HTTPException(status_code=403, detail=f"{character.name} has opted out of Quartermaster sync")
     require_scope(token, "esi-contracts.read_character_contracts.v1", f"Syncing contracts for {character.name}")
 
@@ -1321,7 +1321,7 @@ async def sync_character_research_for_token(token_id: int, current_user: User, d
         raise HTTPException(status_code=404, detail="Linked character was not found")
     if not can_force_sync_character_token(token, character, current_user, db):
         raise HTTPException(status_code=403, detail="You can only sync characters you own or are permitted to administer")
-    if character.sync_opt_out and (not allow_opt_out_override or (token.user_id != current_user.id and current_user.role != "admin")):
+    if character.sync_opt_out and (not allow_opt_out_override or (token.user_id != current_user.id and current_user.role not in {"host", "admin"})):
         raise HTTPException(status_code=403, detail=f"{character.name} has opted out of Quartermaster sync")
     require_scope(token, "esi-industry.read_character_jobs.v1", f"Syncing research projects for {character.name}")
 
@@ -1361,7 +1361,7 @@ async def sync_character_mining_for_token(token_id: int, current_user: User, db:
         raise HTTPException(status_code=404, detail="Linked character was not found")
     if not can_force_sync_character_token(token, character, current_user, db):
         raise HTTPException(status_code=403, detail="You can only sync characters you own or are permitted to administer")
-    if character.sync_opt_out and (not allow_opt_out_override or (token.user_id != current_user.id and current_user.role != "admin")):
+    if character.sync_opt_out and (not allow_opt_out_override or (token.user_id != current_user.id and current_user.role not in {"host", "admin"})):
         raise HTTPException(status_code=403, detail=f"{character.name} has opted out of Quartermaster sync")
     require_scope(token, "esi-industry.read_character_mining.v1", f"Syncing mining history for {character.name}")
 

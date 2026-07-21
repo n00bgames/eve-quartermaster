@@ -156,7 +156,7 @@ export function EsiSyncPage({ currentUser, load, api, ManagedForm, Metric, Chara
               <article key={character.token_id}>
                 <strong><CharacterHoverName characterId={character.character_id} name={character.character_name} /></strong>
                 <span>Character ID {character.character_id}</span>
-                {currentUser.role === "admin" && <span>SSO linked by {character.linked_user_display_name}</span>}
+                {["host", "admin"].includes(currentUser.role) && <span>SSO linked by {character.linked_user_display_name}</span>}
                 <span>Last sync {character.last_sync_at ? `${new Date(character.last_sync_at).toLocaleString()} (${character.last_sync_type ?? "sync"})` : "never"}</span>
                 <span>Linked {character.linked_at ? new Date(character.linked_at).toLocaleString() : "recently"}</span>
                 {scopeStatus(character, "public")}

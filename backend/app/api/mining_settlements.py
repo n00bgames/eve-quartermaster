@@ -345,7 +345,7 @@ def editable_settlement(settlement_id: int, current_user: User, db: Session) -> 
     settlement = db.scalar(settlement_query().where(MiningSettlement.id == settlement_id))
     if settlement is None:
         raise HTTPException(status_code=404, detail="Mining settlement was not found.")
-    if settlement.created_by_user_id != current_user.id and current_user.role != "admin":
+    if settlement.created_by_user_id != current_user.id and current_user.role not in {"host", "admin"}:
         raise HTTPException(status_code=403, detail="Only the settlement owner or an admin can edit it.")
     if settlement.status != "draft":
         raise HTTPException(status_code=409, detail="Finalized mining settlements are immutable.")

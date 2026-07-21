@@ -9,8 +9,10 @@ from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, selectinload
 
-from app.models import CustomMarketHub, EveConstellation, EveRegion, EveSystem, EveType
+from app.models import CustomMarketHub, EveConstellation, EveRegion, EveStation, EveSystem, EveType
 from app.services.esi_client import EsiClient
+from app.services.item_lines import parse_item_lines
+from app.services.jump_freighter import station_display_name
 
 QUANTITY_FIRST_RE = re.compile(r"^\s*(?P<qty>\d[\d,]*)\s*x?\s+(?P<name>.+?)\s*$", re.IGNORECASE)
 QUANTITY_LAST_RE = re.compile(r"^\s*(?P<name>.+?)\s+(?:x\s*)?(?P<qty>\d[\d,]*)\s*$", re.IGNORECASE)
@@ -48,25 +50,8 @@ STATIC_REGION_NAMES = {
 
 
 def parse_appraisal_lines(text: str) -> list[dict[str, Any]]:
-    parsed: dict[str, int] = {}
-    for raw_line in text.splitlines():
-        line = raw_line.strip()
-        if not line:
-            continue
-        qty = 1
-        name = line
-        first = QUANTITY_FIRST_RE.match(line)
-        last = QUANTITY_LAST_RE.match(line)
-        if first:
-            qty = int(first.group("qty").replace(",", ""))
-            name = first.group("name").strip()
-        elif last:
-            qty = int(last.group("qty").replace(",", ""))
-            name = last.group("name").strip()
-        key = re.sub(r"\s+", " ", name).casefold()
-        parsed[key] = parsed.get(key, 0) + qty
-    return [{"name": name, "quantity": quantity} for name, quantity in parsed.items()]
-
+    rows, _ = parse_item_lines(text, merge_duplicates=True)
+    return [{"name": row.name, "quantity": row.quantity} for row in rows]
 
 def slugify_hub_key(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", value.casefold()).strip("-") or "hub"
@@ -114,23 +99,95 @@ def hub_region_name(db: Session, region_id: int | None) -> str | None:
     return STATIC_REGION_NAMES.get(region_id)
 
 
+def system_market_stations(db: Session, system_id: int | None) -> list[EveStation]:
+    if system_id is None:
+        return []
+    return list(
+        db.scalars(
+            select(EveStation)
+            .options(selectinload(EveStation.station_type), selectinload(EveStation.system))
+            .where(EveStation.system_id == system_id)
+            .order_by(EveStation.name, EveStation.station_id)
+        ).all()
+    )
+
+
+def market_station_by_id(db: Session, station_id: int | None) -> EveStation | None:
+    if station_id is None:
+        return None
+    return db.scalar(
+        select(EveStation)
+        .options(
+            selectinload(EveStation.station_type),
+            selectinload(EveStation.system).selectinload(EveSystem.constellation).selectinload(EveConstellation.region),
+        )
+        .where(EveStation.station_id == station_id)
+        .limit(1)
+    )
+
+def serialize_market_station(station: EveStation) -> dict[str, Any]:
+    type_name = station.station_type.name if station.station_type else (f"Type {station.type_id}" if station.type_id else None)
+    return {
+        "station_id": station.station_id,
+        "name": station_display_name(station, type_name),
+        "type_id": station.type_id,
+        "type_name": type_name,
+        "operation_name": station.operation_name,
+    }
+
+
 def hub_payload(db: Session, hub: MarketHub) -> dict[str, Any]:
     region_id = hub.region_id
     region_name = hub_region_name(db, region_id)
     system_id = None
-    if hub.system_name:
+    system_name = hub.system_name
+    stations: list[EveStation] = []
+    location_ids = [hub.location_id] if hub.location_id else []
+    if hub.location_id:
+        station = market_station_by_id(db, hub.location_id)
+        if station:
+            stations = [station]
+            system_id = station.system_id
+            system_name = station.system.name if station.system else hub.system_name
+            region = station.system.constellation.region if station.system and station.system.constellation else None
+            if region:
+                region_id = region.region_id
+                region_name = region.name
+    elif hub.system_name:
         region_id, region_name, system_id = resolve_system_region(db, hub.system_name)
+        stations = system_market_stations(db, system_id)
+        location_ids = [station.station_id for station in stations]
+    destination_id = hub.location_id or system_id
+    destination_kind = "station" if hub.location_id else ("system" if system_id else None)
+    station_payloads = [serialize_market_station(station) for station in stations]
+    destination_name = station_payloads[0]["name"] if len(station_payloads) == 1 else (system_name or hub.label)
+    location_scope = "system_stations" if hub.system_name else ("station" if hub.location_id else "region")
+    has_region = region_id is not None
+    if hub.npc_group:
+        available = True
+    elif location_scope in {"station", "system_stations"}:
+        available = has_region and bool(location_ids)
+    else:
+        available = has_region
     return {
         "key": hub.key,
         "label": hub.label,
         "region_id": region_id,
         "region_name": region_name,
         "location_id": hub.location_id,
+        "location_ids": location_ids,
         "system_id": system_id,
-        "system_name": hub.system_name,
+        "system_name": system_name,
+        "stations": station_payloads,
+        "station_names": [station["name"] for station in station_payloads],
+        "station_count": len(station_payloads),
+        "destination_id": destination_id,
+        "destination_name": destination_name,
+        "destination_kind": destination_kind,
+        "location_scope": location_scope,
         "npc_group": hub.npc_group,
         "custom": hub.custom,
-        "available": hub.npc_group or region_id is not None,
+        "available": available,
     }
 
 
@@ -188,9 +245,9 @@ def delete_custom_market_hub(db: Session, key: str) -> dict[str, Any]:
 def best_prices_from_orders(orders: list[dict[str, Any]]) -> dict[str, Any]:
     buy_orders = [order for order in orders if order.get("is_buy_order")]
     sell_orders = [order for order in orders if not order.get("is_buy_order")]
-    best_buy = max((float(order.get("price") or 0) for order in buy_orders), default=0)
-    best_sell = min((float(order.get("price") or 0) for order in sell_orders), default=0)
-    split = (best_buy + best_sell) / 2 if best_buy and best_sell else best_buy or best_sell
+    best_buy = max((float(order.get("price") or 0) for order in buy_orders), default=0) or None
+    best_sell = min((float(order.get("price") or 0) for order in sell_orders), default=0) or None
+    split = (best_buy + best_sell) / 2 if best_buy is not None and best_sell is not None else None
     return {
         "buy": best_buy,
         "sell": best_sell,
@@ -200,21 +257,22 @@ def best_prices_from_orders(orders: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-EMPTY_MARKET_PRICES = {"buy": 0.0, "sell": 0.0, "split": 0.0, "buy_orders": 0, "sell_orders": 0}
+EMPTY_MARKET_PRICES = {"buy": None, "sell": None, "split": None, "buy_orders": 0, "sell_orders": 0}
 
 
 async def best_prices_for_market_item(
     client: EsiClient,
     region_id: int,
     type_id: int,
-    location_id: int | None = None,
+    location_ids: list[int] | None = None,
 ) -> dict[str, Any]:
     try:
         orders = await client.get_public_market_orders(region_id, type_id)
     except Exception:
         return dict(EMPTY_MARKET_PRICES)
-    if location_id:
-        orders = [order for order in orders if int(order.get("location_id") or 0) == location_id]
+    if location_ids is not None:
+        locations = {int(location_id) for location_id in location_ids}
+        orders = [order for order in orders if int(order.get("location_id") or 0) in locations]
     return best_prices_from_orders(orders)
 
 
@@ -251,7 +309,7 @@ async def appraise_market(db: Session, text: str, hub_keys: list[str] | None = N
             for item in items:
                 if not item["type_id"]:
                     continue
-                prices = await best_prices_for_market_item(client, int(payload["region_id"]), int(item["type_id"]), hub.location_id)
+                prices = await best_prices_for_market_item(client, int(payload["region_id"]), int(item["type_id"]), payload.get("location_ids"))
                 item_prices[int(item["type_id"])] = prices
             hub_payloads[hub.key] = {**payload, "items": item_prices}
 
@@ -265,9 +323,9 @@ async def appraise_market(db: Session, text: str, hub_keys: list[str] | None = N
                 if not candidates:
                     continue
                 npc_items[int(item["type_id"])] = {
-                    "buy": max((candidate["buy"] for candidate in candidates), default=0),
-                    "sell": min((candidate["sell"] for candidate in candidates if candidate["sell"]), default=0),
-                    "split": max((candidate["split"] for candidate in candidates), default=0),
+                    "buy": max((candidate["buy"] for candidate in candidates if candidate.get("buy") is not None), default=None),
+                    "sell": min((candidate["sell"] for candidate in candidates if candidate.get("sell") is not None), default=None),
+                    "split": max((candidate["split"] for candidate in candidates if candidate.get("split") is not None), default=None),
                     "buy_orders": sum(candidate["buy_orders"] for candidate in candidates),
                     "sell_orders": sum(candidate["sell_orders"] for candidate in candidates),
                 }
@@ -282,9 +340,9 @@ async def appraise_market(db: Session, text: str, hub_keys: list[str] | None = N
                 if not prices:
                     continue
                 quantity = int(item["quantity"])
-                totals["buy"] += prices["buy"] * quantity
-                totals["sell"] += prices["sell"] * quantity
-                totals["split"] += prices["split"] * quantity
+                totals["buy"] += (prices.get("buy") or 0) * quantity
+                totals["sell"] += (prices.get("sell") or 0) * quantity
+                totals["split"] += (prices.get("split") or 0) * quantity
             payload["totals"] = totals
 
         appraisal_items: list[dict[str, Any]] = []
@@ -335,4 +393,3 @@ async def appraise_market(db: Session, text: str, hub_keys: list[str] | None = N
         }
     finally:
         await client.close()
-

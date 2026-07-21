@@ -9,17 +9,29 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.api.auth import can_view_all_characters, get_current_user
 from app.db.session import get_db
-from app.models import EsiToken, EveCharacter, ResearchProject, User
+from app.models import Blueprint, EsiToken, EveCharacter, OwnershipEntity, ResearchProject, ResearchQueueItem, User
+from app.services.asset_visibility import can_view_owner_records
 from app.services.permissions import can_view_section
 from app.services.research_projects import ACTIVE_RESEARCH_STATUSES, RESEARCH_ACTIVITY_NAMES
+from app.services.research_queue import (
+    clean_queue_activity,
+    clean_queue_runs,
+    clean_queue_status,
+    clean_source_hangar,
+    serialize_queue_item,
+)
 
 router = APIRouter(prefix="/research-projects", tags=["research-projects"])
 RESEARCH_SCOPE = "esi-industry.read_character_jobs.v1"
 
 
-def require_research_access(current_user: User, db: Session) -> None:
+def require_research_access(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> User:
     if not can_view_section(current_user, "industry", db):
         raise HTTPException(status_code=403, detail="industry section access is required")
+    return current_user
 
 
 def number(value: Any) -> float | None:
@@ -121,3 +133,165 @@ def list_research_projects(
         "sync_tokens": token_rows,
         "projects": [serialize_project(project) for project in projects],
     }
+
+def owned_blueprint_query():
+    return select(Blueprint).options(
+        selectinload(Blueprint.ownership_entity).selectinload(OwnershipEntity.character),
+        selectinload(Blueprint.blueprint_type),
+        selectinload(Blueprint.location),
+        selectinload(Blueprint.asset),
+    )
+
+
+def blueprint_option(blueprint: Blueprint) -> dict[str, Any]:
+    return {
+        "id": blueprint.id,
+        "blueprint_type_id": blueprint.blueprint_type_id,
+        "name": blueprint.blueprint_type.name if blueprint.blueprint_type else f"Blueprint type {blueprint.blueprint_type_id}",
+        "kind": "BPC" if blueprint.is_copy else "BPO",
+        "is_copy": blueprint.is_copy,
+        "owner_name": blueprint.ownership_entity.display_name if blueprint.ownership_entity else "Unknown owner",
+        "material_efficiency": blueprint.material_efficiency,
+        "time_efficiency": blueprint.time_efficiency,
+        "runs_remaining": blueprint.runs_remaining,
+        "source_location_name": blueprint.location.name if blueprint.location else None,
+        "source_hangar": blueprint.asset.location_flag if blueprint.asset else None,
+    }
+
+
+@router.get("/queue")
+def list_research_queue(
+    _: User = Depends(require_research_access),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    items = list(db.scalars(select(ResearchQueueItem).order_by(ResearchQueueItem.sort_order, ResearchQueueItem.id)).all())
+    items.sort(key=lambda item: (item.status == "completed", item.sort_order, item.id))
+    return {
+        "summary": {
+            "pending": sum(item.status == "pending" for item in items),
+            "completed": sum(item.status == "completed" for item in items),
+        },
+        "items": [serialize_queue_item(item) for item in items],
+    }
+
+
+@router.get("/queue/blueprints")
+def search_research_queue_blueprints(
+    q: str = Query("", max_length=255),
+    limit: int = Query(30, ge=1, le=100),
+    current_user: User = Depends(require_research_access),
+    db: Session = Depends(get_db),
+) -> list[dict[str, Any]]:
+    rows = list(db.scalars(owned_blueprint_query().order_by(Blueprint.id.desc())).all())
+    visible = [row for row in rows if can_view_owner_records(row.ownership_entity, current_user, db)]
+    needle = q.strip().casefold()
+    if needle:
+        visible = [
+            row for row in visible
+            if needle in (row.blueprint_type.name if row.blueprint_type else "").casefold()
+            or needle in (row.ownership_entity.display_name if row.ownership_entity else "").casefold()
+            or needle in (row.location.name if row.location else "").casefold()
+        ]
+    visible.sort(key=lambda row: (
+        (row.blueprint_type.name if row.blueprint_type else "").casefold(),
+        row.is_copy,
+        (row.ownership_entity.display_name if row.ownership_entity else "").casefold(),
+        row.id,
+    ))
+    return [blueprint_option(row) for row in visible[:limit]]
+
+
+@router.post("/queue")
+def create_research_queue_item(
+    payload: dict[str, Any],
+    current_user: User = Depends(require_research_access),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    try:
+        blueprint_id = int(payload.get("blueprint_id"))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="An owned BPO or BPC is required") from None
+    blueprint = db.scalar(owned_blueprint_query().where(Blueprint.id == blueprint_id))
+    if blueprint is None or not can_view_owner_records(blueprint.ownership_entity, current_user, db):
+        raise HTTPException(status_code=404, detail="That owned blueprint was not found")
+    current_items = list(db.scalars(select(ResearchQueueItem).where(ResearchQueueItem.status == "pending")).all())
+    item = ResearchQueueItem(
+        blueprint_id=blueprint.id,
+        blueprint_type_id=blueprint.blueprint_type_id,
+        blueprint_name=blueprint.blueprint_type.name if blueprint.blueprint_type else f"Blueprint type {blueprint.blueprint_type_id}",
+        blueprint_kind="BPC" if blueprint.is_copy else "BPO",
+        owner_name=blueprint.ownership_entity.display_name if blueprint.ownership_entity else None,
+        material_efficiency=blueprint.material_efficiency,
+        time_efficiency=blueprint.time_efficiency,
+        runs_remaining=blueprint.runs_remaining,
+        source_location_name=blueprint.location.name if blueprint.location else None,
+        source_hangar=clean_source_hangar(payload.get("source_hangar") or (blueprint.asset.location_flag if blueprint.asset else None)),
+        activity_id=clean_queue_activity(payload.get("activity_id"), blueprint.is_copy),
+        runs=clean_queue_runs(payload.get("runs", 1)),
+        status="pending",
+        sort_order=max((row.sort_order for row in current_items), default=-1) + 1,
+    )
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return serialize_queue_item(item)
+
+
+@router.post("/queue/reorder")
+def reorder_research_queue(
+    payload: dict[str, Any],
+    _: User = Depends(require_research_access),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    try:
+        item_ids = [int(value) for value in payload.get("item_ids", [])]
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="item_ids must contain integers") from None
+    if len(item_ids) != len(set(item_ids)):
+        raise HTTPException(status_code=400, detail="Queue order contains duplicate entries")
+    items = list(db.scalars(select(ResearchQueueItem).where(ResearchQueueItem.id.in_(item_ids))).all()) if item_ids else []
+    if len(items) != len(item_ids) or any(item.status != "pending" for item in items):
+        raise HTTPException(status_code=400, detail="Only existing pending entries can be reordered")
+    by_id = {item.id: item for item in items}
+    for index, item_id in enumerate(item_ids):
+        by_id[item_id].sort_order = index
+    db.commit()
+    return {"status": "reordered", "item_ids": item_ids}
+
+
+@router.patch("/queue/{queue_id}")
+def update_research_queue_item(
+    queue_id: int,
+    payload: dict[str, Any],
+    _: User = Depends(require_research_access),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    item = db.get(ResearchQueueItem, queue_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Research queue entry not found")
+    if "activity_id" in payload:
+        item.activity_id = clean_queue_activity(payload.get("activity_id"), item.blueprint_kind == "BPC")
+    if "runs" in payload:
+        item.runs = clean_queue_runs(payload.get("runs"))
+    if "source_hangar" in payload:
+        item.source_hangar = clean_source_hangar(payload.get("source_hangar"))
+    if "status" in payload:
+        item.status = clean_queue_status(payload.get("status"))
+        item.completed_at = datetime.now(timezone.utc) if item.status == "completed" else None
+    db.commit()
+    db.refresh(item)
+    return serialize_queue_item(item)
+
+
+@router.delete("/queue/{queue_id}")
+def delete_research_queue_item(
+    queue_id: int,
+    _: User = Depends(require_research_access),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    item = db.get(ResearchQueueItem, queue_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Research queue entry not found")
+    db.delete(item)
+    db.commit()
+    return {"status": "deleted", "id": queue_id}

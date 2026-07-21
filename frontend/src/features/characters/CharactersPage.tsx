@@ -65,7 +65,7 @@ export function CharactersPage({
   const [syncAllJob, setSyncAllJob] = useState<CharacterSyncAllJob | null>(null);
   const [jumpClonePayload, setJumpClonePayload] = useState<JumpClonePayload>({ characters: [], clones: [], custom_sets: [], sync_tokens: [] });
   const syncAllPollingRef = useRef(false);
-  const canLoadAccounts = ["admin", "director"].includes(currentUser.role);
+  const canLoadAccounts = ["host", "admin", "director"].includes(currentUser.role);
   const syncAllActive = syncAllJob?.status === "queued" || syncAllJob?.status === "running";
   const syncAllPercent = syncAllJob?.total_count ? Math.round((syncAllJob.processed_count / syncAllJob.total_count) * 100) : 0;
   const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));

@@ -72,7 +72,7 @@ export function MarketAppraisalPage({
   const [result, setResult] = useState<MarketAppraisal | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const isMarketAdmin = currentUser.role === "admin";
+  const isMarketAdmin = ["host", "admin"].includes(currentUser.role);
   const [customHubLabel, setCustomHubLabel] = useState("");
   const [customHubSystem, setCustomHubSystem] = useState("");
   const [customHubMessage, setCustomHubMessage] = useState<string | null>(null);

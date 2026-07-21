@@ -1389,9 +1389,19 @@
   opacity: 1;
   z-index: 1200;
 }
-.research-table-wrap{max-height:min(68vh,900px)}
+.research-table-wrap{max-height:min(85vh,1125px)}
 .research-table{min-width:1450px}
 .research-table td{vertical-align:top}
+.research-project-row{transition:filter .16s ease}
+.research-project-row:hover{filter:drop-shadow(0 0 9px #4fb3c766)}
+.research-project-row:hover td{background:#15303a;border-bottom-color:#4fb3c7}
+.research-project-row:hover td:first-child{box-shadow:inset 3px 0 #4fb3c7}
+.research-project-preview{position:fixed;z-index:2000;pointer-events:none;width:min(460px,calc(100vw - 32px));max-height:min(420px,calc(100vh - 32px));overflow:auto;background:#0b1017;border:1px solid #4fb3c7;border-radius:8px;box-shadow:0 16px 42px #000c,0 0 22px #4fb3c752;padding:16px;display:grid;gap:14px;color:#dce3ec}
+.research-project-preview>header{display:grid;grid-template-columns:52px minmax(0,1fr) auto;align-items:center;gap:11px}
+.research-project-preview>header img{width:52px;height:52px;object-fit:cover;border-radius:50%;border:1px solid #4fb3c7}
+.research-project-preview>header div{display:grid;gap:4px;min-width:0}.research-project-preview>header strong{color:#f5f7fa;font-size:1.08rem;overflow-wrap:anywhere}.research-project-preview>header div span{color:#aab4c2}
+.research-preview-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.research-preview-grid>span{background:#111821;border:1px solid #303741;border-radius:7px;padding:8px;display:grid;gap:3px;overflow-wrap:anywhere}.research-preview-grid>span.wide{grid-column:1/-1}.research-preview-grid b{color:#8b98a8;text-transform:uppercase;font-size:.72rem}
+.research-preview-timeline{display:grid;grid-template-columns:1fr 1fr;gap:6px;color:#aab4c2;font-size:.82rem}.research-preview-timeline span:last-of-type{text-align:right}.research-preview-timeline progress{grid-column:1/-1;width:100%;height:8px;accent-color:#4fb3c7}
 .research-table td>strong,.research-table td>span{display:block}
 .research-table td>span+span{margin-top:5px}
 .research-table td span,.research-table-timeline span{color:#aab4c2}

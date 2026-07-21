@@ -314,7 +314,7 @@ export function ProfilePage({ currentUser, onUserUpdated, focus, api, ManagedFor
           <label>Message<textarea name="body" required /></label>
         </ManagedForm>
       </section>
-      {currentUser.role === "admin" && <UsersAdmin currentUser={currentUser} api={api} ManagedForm={ManagedForm} accountLabel={accountLabel} />}
+      {["host", "admin"].includes(currentUser.role) && <UsersAdmin currentUser={currentUser} api={api} ManagedForm={ManagedForm} accountLabel={accountLabel} />}
     </div>
   );
 }

@@ -1,0 +1,74 @@
+.database-backup-panel,
+.database-danger-zone {
+  gap: 14px;
+}
+
+.database-backup-note {
+  background: #111820;
+  border: 1px solid #36424f;
+  border-radius: 6px;
+  color: #aeb9c7;
+  line-height: 1.45;
+  padding: 12px;
+}
+
+.database-danger-zone {
+  background: #1b0d0f;
+  border-color: #b84e4e;
+  box-shadow: inset 0 0 0 1px #4a1b20;
+}
+
+.database-danger-heading {
+  align-items: center;
+  color: #ff8b86;
+  display: flex;
+  gap: 10px;
+}
+
+.database-danger-heading h3,
+.database-danger-heading p,
+.database-restore-card h4,
+.database-clear-card h4,
+.database-restore-card p,
+.database-clear-card p {
+  margin: 0;
+}
+
+.database-danger-heading p {
+  color: #d5a9a9;
+  margin-top: 4px;
+}
+
+.database-restore-card,
+.database-clear-card {
+  background: #100c10;
+  border: 1px solid #6e3438;
+  border-radius: 7px;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.database-clear-card {
+  background: #250d10;
+  border-color: #e3605b;
+  box-shadow: 0 0 20px #b52e2e22;
+}
+
+.database-clear-card p {
+  color: #f0c3c0;
+}
+
+.database-danger-zone input[type="file"] {
+  padding: 9px;
+}
+
+.database-danger-zone button.danger {
+  justify-self: start;
+}
+
+@media (width <= 720px) {
+  .database-danger-zone button.danger {
+    justify-self: stretch;
+  }
+}

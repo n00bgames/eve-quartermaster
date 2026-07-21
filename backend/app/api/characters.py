@@ -73,7 +73,7 @@ def can_sync_character_data(viewer: User, character: EveCharacter, token: EsiTok
         return False
     if not can_view_character_detail(viewer, character, db):
         return False
-    if character.sync_opt_out and viewer.role != "admin":
+    if character.sync_opt_out and viewer.role not in {"host", "admin"}:
         return False
     return True
 
@@ -622,7 +622,7 @@ def update_character(character_id: int, payload: dict[str, Any], current_user: U
             raise HTTPException(status_code=403, detail="You can only change visibility for your own characters")
         character.public_assets_visible = bool(payload["public_assets_visible"])
     if "sync_opt_out" in payload:
-        if character.owner_user_id != current_user.id and current_user.role != "admin":
+        if character.owner_user_id != current_user.id and current_user.role not in {"host", "admin"}:
             raise HTTPException(status_code=403, detail="You can only change sync privacy for your own characters")
         character.sync_opt_out = bool(payload["sync_opt_out"])
     db.commit()

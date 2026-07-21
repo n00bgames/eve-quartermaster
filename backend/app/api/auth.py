@@ -62,12 +62,31 @@ def serialize_invite(invite: UserInvite, include_status: bool = True) -> dict[st
 def admin_count(db: Session) -> int:
     return db.scalar(
         select(func.count()).select_from(User).where(
-            User.role == "admin",
+            User.role.in_(("host", "admin")),
             User.password_hash.is_not(None),
             User.deleted_at.is_(None),
         )
     ) or 0
 
+
+def host_count(db: Session) -> int:
+    return db.scalar(
+        select(func.count()).select_from(User).where(
+            User.role == "host",
+            User.password_hash.is_not(None),
+            User.deleted_at.is_(None),
+        )
+    ) or 0
+
+
+def require_host(user: User) -> None:
+    if user.role != "host":
+        raise HTTPException(status_code=403, detail="host role is required")
+
+
+def protect_host_assignment(current_user: User, requested_role: str) -> None:
+    if requested_role == "host" and current_user.role != "host":
+        raise HTTPException(status_code=403, detail="Only a host can assign the host role")
 
 
 def get_current_user(authorization: str | None = Header(default=None), db: Session = Depends(get_db)) -> User:
@@ -127,7 +146,7 @@ def create_role(payload: dict[str, Any], current_user: User = Depends(get_curren
         raise HTTPException(status_code=400, detail="Role name is required")
     if name in BUILT_IN_ROLES or db.get(RoleDefinition, name):
         raise HTTPException(status_code=400, detail="Role already exists")
-    if base_role not in BUILT_IN_ROLES or base_role == "admin":
+    if base_role not in BUILT_IN_ROLES or base_role in {"host", "admin"}:
         raise HTTPException(status_code=400, detail="Choose a non-admin base role")
     role = RoleDefinition(name=name, display_name=display_name, base_role=base_role, sort_order=100)
     db.add(role)
@@ -235,7 +254,7 @@ def bootstrap_status(db: Session = Depends(get_db)) -> dict[str, Any]:
 @router.post("/bootstrap")
 def bootstrap_admin(payload: dict[str, Any], db: Session = Depends(get_db)) -> dict[str, Any]:
     if admin_count(db):
-        raise HTTPException(status_code=400, detail="Initial admin already exists")
+        raise HTTPException(status_code=400, detail="Initial host already exists")
     email = str(payload.get("email", "")).strip().lower()
     password = str(payload.get("password", ""))
     display_name = str(payload.get("display_name") or email).strip()
@@ -243,10 +262,10 @@ def bootstrap_admin(payload: dict[str, Any], db: Session = Depends(get_db)) -> d
         raise HTTPException(status_code=400, detail="Email and an 8+ character password are required")
     user = db.scalar(select(User).where(User.email == email, User.deleted_at.is_(None)))
     if user is None or user.deleted_at is not None:
-        user = User(email=email, display_name=display_name, role="admin")
+        user = User(email=email, display_name=display_name, role="host")
         db.add(user)
     user.display_name = display_name
-    user.role = "admin"
+    user.role = "host"
     user.password_hash = hash_password(password)
     db.commit()
     db.refresh(user)
@@ -344,10 +363,15 @@ def update_user(user_id: int, payload: dict[str, Any], current_user: User = Depe
         user.display_name = str(payload["display_name"]).strip()
     if payload.get("role"):
         role = str(payload["role"])
+        protect_host_assignment(current_user, role)
         if not role_exists(db, role):
             raise HTTPException(status_code=400, detail="Unknown role")
-        if user.role == "admin" and role != "admin" and admin_count(db) <= 1:
-            raise HTTPException(status_code=400, detail="At least one admin account is required")
+        if user.role == "host" and current_user.role != "host":
+            raise HTTPException(status_code=403, detail="Only a host can manage another host account")
+        if user.role == "host" and role != "host" and host_count(db) <= 1:
+            raise HTTPException(status_code=400, detail="At least one host account is required")
+        if user.role in {"host", "admin"} and role not in {"host", "admin"} and admin_count(db) <= 1:
+            raise HTTPException(status_code=400, detail="At least one host or admin account is required")
         user.role = role
     if payload.get("password"):
         password = str(payload["password"])
@@ -367,8 +391,12 @@ def delete_user(user_id: int, current_user: User = Depends(get_current_user), db
     user = db.get(User, user_id)
     if user is None or user.deleted_at is not None:
         raise HTTPException(status_code=404, detail="User was not found")
-    if user.role == "admin" and admin_count(db) <= 1:
-        raise HTTPException(status_code=400, detail="At least one admin account is required")
+    if user.role == "host" and current_user.role != "host":
+        raise HTTPException(status_code=403, detail="Only a host can delete another host account")
+    if user.role == "host" and host_count(db) <= 1:
+        raise HTTPException(status_code=400, detail="At least one host account is required")
+    if user.role in {"host", "admin"} and admin_count(db) <= 1:
+        raise HTTPException(status_code=400, detail="At least one host or admin account is required")
 
     token_ids = db.scalars(select(EsiToken.id).where(EsiToken.user_id == user_id)).all()
     if token_ids:

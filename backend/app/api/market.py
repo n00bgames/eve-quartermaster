@@ -21,7 +21,7 @@ def require_market(current_user: User = Depends(get_current_user), db: Session =
 
 
 def require_market_admin(current_user: User = Depends(require_market)) -> User:
-    if current_user.role != "admin":
+    if current_user.role not in {"host", "admin"}:
         raise HTTPException(status_code=403, detail="admin role is required")
     return current_user
 
