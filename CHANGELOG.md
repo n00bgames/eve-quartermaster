@@ -4,6 +4,21 @@ All notable changes to EVE Quartermaster are tracked here.
 
 This project is moving quickly during beta. Version sections are written as user-facing release notes first, with implementation detail included where it helps operators understand deployment or testing impact.
 
+## [0.1.11-beta] - 2026-07-20
+
+### Added
+
+- Added a Host account role above Admin for installation ownership and host-only database maintenance, including status inspection, portable `.eqmbackup` exports, transactional restores, and confirmation-protected database clearing that retains the signed-in host and schema.
+- Added EVE Online Multibuy-ready clipboard exports for either asset-aware remaining needs or complete shopping lists using plain item-name and quantity rows.
+
+### Fixed
+
+- Added PostgreSQL client compatibility handling for restores and excluded internal migration metadata from backup data to prevent restore conflicts.
+- Protected the final Host account from deletion or demotion and applied Host access consistently across existing administrative tools.
+
+### Changed
+
+- Bumped the visible app, package, backend API, Android wrapper, and ESI user-agent versions to 0.1.11-beta.
 ## [0.1.10-beta] - 2026-07-16
 
 ### Added
