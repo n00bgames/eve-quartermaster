@@ -2,6 +2,8 @@
 
 This is a minimal sideloadable Android WebView shell for EVE Quartermaster. It loads the hosted EQM site and keeps the mobile entry point branded as **EVE Quartermaster**.
 
+On first launch, enter the URL where the device can reach EQM. The app stores that URL locally. Use the settings button in the upper-right corner at any time to switch to another installation without rebuilding the APK.
+
 ## Build
 
 From the repository root on Windows:
@@ -24,6 +26,8 @@ Build against a different EQM URL:
 set EQM_URL=https://your-eqm-host.example/
 build-eqm-apk.bat
 ```
+
+The build-time URL is now the first-launch default, not a permanent lock. It is also available through **Build default** in Server Settings.
 
 Allow Gradle to download missing dependencies instead of using the local cache only:
 

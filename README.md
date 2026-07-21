@@ -503,6 +503,8 @@ Mining settlements currently pay in ISK and use manually entered actual refined 
 
 The repository includes a small Android wrapper in `android-eqm/`. It builds a sideloadable WebView APK named `EQM.apk`.
 
+On first launch, the app asks for the EQM server URL and stores it locally. Use the native settings button in the upper-right corner to change servers later without rebuilding or reinstalling the APK.
+
 From PowerShell in the repository root:
 
 ```powershell

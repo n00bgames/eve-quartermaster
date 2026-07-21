@@ -23,6 +23,8 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Added
 
+- Added first-launch Android server setup and persistent in-app Server Settings so sideloaded clients can switch EQM installations without rebuilding the APK.
+
 - Added a Host account role above Admin for installation ownership and host-only database maintenance; existing installations promote the oldest active administrator during migration.
 - Added Settings controls to inspect and export portable database backups, transactionally restore matching EQM backups, and irreversibly clear all stored data while retaining the signed-in host account and schema.
 
