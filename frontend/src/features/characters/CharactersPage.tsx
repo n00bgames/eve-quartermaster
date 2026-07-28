@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type ReactElement, type ReactNode } from "
 
 import { ImplantDogmaChip } from "./ImplantDogmaChip";
 import { PilotSecurityStatus } from "./PilotSecurityStatus";
+import { CharacterStandings } from "./CharacterStandings";
 import type { CharacterDossier, CharacterDossierToken, CharacterFocus, EqmCharacter } from "../../types/characters";
 import type { JumpClonePayload, JumpCloneRecord } from "../../types/jumpClones";
 
@@ -10,7 +11,7 @@ type ApiClient = <T>(path: string, options?: RequestInit) => Promise<T>;
 type UserAccount = { id: number; email: string; display_name: string; role: string };
 type EveEntityKind = "character" | "corporation" | "alliance";
 type EveIconSize = "tiny" | "sm" | "md" | "lg";
-type SyncKind = "assets" | "skills" | "fittings" | "contracts" | "implants";
+type SyncKind = "assets" | "skills" | "standings" | "fittings" | "contracts" | "implants";
 type CharacterSyncAllJob = { job_id: string; status: "queued" | "running" | "complete" | "failed" | "cancelled"; created_at: string; updated_at?: string | null; completed_at?: string | null; total_count: number; processed_count: number; success_count: number; failed_count: number; skipped_count: number; current_character_name?: string | null; current_sync_kind?: SyncKind | null; results: { character_name: string; sync_kind: SyncKind; status: string }[]; errors: string[] };
 
 type MetricComponent = (props: { icon: ReactNode; label: string; value: number | string; delta?: string }) => ReactElement;
@@ -125,6 +126,7 @@ export function CharactersPage({
     const endpoints: Record<SyncKind, string> = {
       assets: `/esi/sync/character-assets/${token.token_id}`,
       skills: `/esi/sync/character-skills/${token.token_id}`,
+      standings: `/esi/sync/character-standings/${token.token_id}`,
       fittings: `/esi/sync/character-fittings/${token.token_id}`,
       contracts: `/contracts/sync/character/${token.token_id}`,
       implants: `/jump-clones/sync/${token.token_id}`,
@@ -149,7 +151,7 @@ export function CharactersPage({
     if (syncAllPollingRef.current) return;
     syncAllPollingRef.current = true;
     setCharacterError(null);
-    setMessage("Queued assets, skills, fittings, and contracts for every eligible character...");
+    setMessage("Queued every available character data sync, including NPC standings...");
     try {
       let job = await api<CharacterSyncAllJob>("/esi/sync/characters/all", { method: "POST", body: "{}" });
       setSyncAllJob(job);
@@ -287,6 +289,7 @@ export function CharactersPage({
                     <div className="button-row compact">
                       {syncButton(token, "assets", "Sync assets", token.has_asset_scope)}
                       {syncButton(token, "skills", "Sync skills", token.has_skill_scope)}
+                      {syncButton(token, "standings", "Sync standings", token.has_standings_scope)}
                       {syncButton(token, "fittings", "Sync fittings", token.has_fitting_scope)}
                       {syncButton(token, "contracts", "Sync contracts", token.has_contract_scope)}
                       {syncButton(token, "implants", "Sync clones", token.has_clone_scope)}
@@ -301,6 +304,11 @@ export function CharactersPage({
                   {selectedJumpClones.length === 0 && <p className="empty">No clone implants synced for this character yet.</p>}
                 </div>
               </details>
+              <CharacterStandings
+                entries={dossier.standings.entries}
+                syncedAt={dossier.standings.synced_at}
+                formatDateTime={formatDateTime}
+              />
               <div className="two-column character-dossier-sections">
                 <section>
                   <h4>Skill Categories</h4>

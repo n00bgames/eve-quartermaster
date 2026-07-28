@@ -1,18 +1,19 @@
-import { AlertTriangle, Calculator, CheckCircle2, DollarSign, Edit3, Plus, RefreshCw, Save, Trash2 } from "lucide-react";
+import { AlertTriangle, Calculator, CheckCircle2, ClipboardCopy, DollarSign, Edit3, Plus, RefreshCw, Save, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import type { MiningCharacter, MiningOperation } from "../../types/mining";
 import type {
-  MiningCompensationMethod, MiningContributionBasis, MiningDeductionMethod, MiningReserveMethod,
+  MiningCompensationMethod, MiningContributionBasis, MiningDeductionMethod, MiningReserveMethod, MiningSettlementMode,
   MiningSettlement, SettlementAppraisal, SettlementDeduction, SettlementOptionsPayload,
   SettlementOutput, SettlementParticipant, SettlementPreview,
 } from "../../types/miningSettlement";
+import { miningSettlementDiscordReport } from "./miningSettlementReport";
 
 type ApiClient = <T>(path: string, options?: RequestInit) => Promise<T>;
 type Draft = {
   id?: number; name: string; sourceType: "operation" | "range"; operationId: string;
   rangeStart: string; rangeEnd: string; contributionBasis: MiningContributionBasis;
-  priceSource: string; outputs: SettlementOutput[]; refiningPilotName: string;
+  settlementMode: MiningSettlementMode; priceSource: string; outputs: SettlementOutput[]; refiningPilotName: string;
   refiningPilotCharacterId: string; refiningLocation: string; statedRefinePercent: string;
   reserveMethod: MiningReserveMethod; reserveValue: string; deductions: SettlementDeduction[];
   participants: SettlementParticipant[]; notes: string;
@@ -20,6 +21,7 @@ type Draft = {
 
 const isk = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 });
 const number = new Intl.NumberFormat(undefined, { maximumFractionDigits: 4 });
+const whole = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
 const roles = ["Miner", "Booster", "Security", "Scout", "Logistics", "Hauler", "Refiner", "Fleet Commander", "Coordinator", "Other"];
 const deductionTypes = ["refining_cost", "refining_tax", "hauling", "fuel", "compression", "broker_fee", "sales_fee", "other"];
 const basisLabels: Record<MiningContributionBasis, string> = {
@@ -41,7 +43,7 @@ function freshDraft(): Draft {
   const weekAgo = new Date(now.getTime() - 7 * 86400000);
   return {
     name: "", sourceType: "operation", operationId: "", rangeStart: weekAgo.toISOString().slice(0, 10),
-    rangeEnd: now.toISOString().slice(0, 10), contributionBasis: "estimated_raw_value",
+    rangeEnd: now.toISOString().slice(0, 10), contributionBasis: "estimated_raw_value", settlementMode: "isk",
     priceSource: "jita_split", outputs: [emptyOutput()], refiningPilotName: "",
     refiningPilotCharacterId: "", refiningLocation: "", statedRefinePercent: "",
     reserveMethod: "none", reserveValue: "0", deductions: [], participants: [], notes: "",
@@ -53,7 +55,7 @@ function fromSettlement(row: MiningSettlement): Draft {
     operationId: row.operation_id ? String(row.operation_id) : "",
     rangeStart: (row.range_start ?? row.source_filter.range_start ?? "").slice(0, 16),
     rangeEnd: (row.range_end ?? row.source_filter.range_end ?? "").slice(0, 16),
-    contributionBasis: row.contribution_basis, priceSource: row.price_source,
+    contributionBasis: row.contribution_basis, settlementMode: row.settlement_mode, priceSource: row.price_source,
     outputs: row.outputs.map((output) => ({
       ...output,
       stated_refine_percent:
@@ -78,7 +80,8 @@ function requestPayload(draft: Draft) {
     source: draft.sourceType === "operation"
       ? { type: "operation", operation_id: Number(draft.operationId) }
       : { type: "range", range_start: draft.rangeStart, range_end: draft.rangeEnd },
-    contribution_basis: draft.contributionBasis, price_source: draft.priceSource, outputs: draft.outputs,
+    contribution_basis: draft.contributionBasis, settlement_mode: draft.settlementMode,
+    price_source: draft.priceSource, outputs: draft.outputs,
     refining_pilot_name: draft.refiningPilotName,
     refining_pilot_character_id: draft.refiningPilotCharacterId ? Number(draft.refiningPilotCharacterId) : null,
     refining_location: draft.refiningLocation, stated_refine_percent: draft.statedRefinePercent,
@@ -204,12 +207,22 @@ export function MiningSettlements({ api, characters, operations }: {
     } finally { setBusy(false); }
   }
 
+  async function copyReport(row: MiningSettlement | SettlementPreview, name: string, status?: string) {
+    try {
+      await navigator.clipboard.writeText(miningSettlementDiscordReport(row, name, status));
+      setMessage("Copied a Discord-ready settlement report.");
+      setError(null);
+    } catch {
+      setError("Unable to copy the settlement report to the clipboard.");
+    }
+  }
+
   const outputTotal = useMemo(() => draft.outputs.reduce((total, row) => total + row.quantity * row.unit_price, 0), [draft.outputs]);
   const selectedTypes = new Set(draft.outputs.map((row) => row.type_id).filter(Boolean));
 
   return <section className="mining-settlements">
     <div className="section-heading">
-      <div><h4>Mining Op Settlement</h4><p>Turn actual refined output and ledger contributions into an auditable ISK split.</p></div>
+      <div><h4>Mining Op Settlement</h4><p>Turn actual refined output and ledger contributions into auditable ISK or mineral shares.</p></div>
       <button type="button" onClick={() => setOpen((value) => !value)}><Calculator size={16} />{open ? "Close calculator" : "Open split calculator"}</button>
     </div>
     {error && <div className="mini-alert">{error}</div>}{message && <div className="notice inline">{message}</div>}
@@ -242,10 +255,10 @@ export function MiningSettlements({ api, characters, operations }: {
         <StepHeader number="5" title="Preview and reconcile" description="The backend recalculates every value. Nothing is trusted from browser totals." />
         <label>Settlement notes<textarea rows={3} value={draft.notes} onChange={(event) => patch({ notes: event.target.value })} placeholder="Refining arrangement, hauling details, payout notes..." /></label>
         <div className="button-row"><button type="button" disabled={busy} onClick={() => void calculate()}><RefreshCw size={15} />Recalculate</button><button type="button" disabled={busy} onClick={() => void saveDraft()}><Save size={15} />{draft.id ? "Update draft" : "Save draft"}</button><button type="button" onClick={() => { setDraft(freshDraft()); setPreview(null); }}><Plus size={15} />New settlement</button></div>
-        {preview && <SettlementPreviewView preview={preview} />}
+        {preview && <SettlementPreviewView preview={preview} onCopy={() => void copyReport(preview, draft.name, "Preview")} />}
       </section>
     </div>}
-    <SettlementHistory rows={options?.settlements ?? []} busy={busy} onEdit={(row) => { setDraft(fromSettlement(row)); setPreview(null); setOpen(true); }} onFinalize={finalize} onDelete={removeDraft} />
+    <SettlementHistory rows={options?.settlements ?? []} busy={busy} onEdit={(row) => { setDraft(fromSettlement(row)); setPreview(null); setOpen(true); }} onFinalize={finalize} onDelete={removeDraft} onCopy={(row) => void copyReport(row, row.name, row.status)} />
   </section>;
 }
 
@@ -263,6 +276,7 @@ function SettlementSource({ draft, operations, patch }: { draft: Draft; operatio
         ? <label>Operation<select value={draft.operationId} onChange={(event) => patch({ operationId: event.target.value })}><option value="">Select operation</option>{operations.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
         : <><label>From<input type="datetime-local" value={draft.rangeStart} onChange={(event) => patch({ rangeStart: event.target.value })} /></label><label>To<input type="datetime-local" value={draft.rangeEnd} onChange={(event) => patch({ rangeEnd: event.target.value })} /></label></>}
       <label>Contribution basis<select value={draft.contributionBasis} onChange={(event) => patch({ contributionBasis: event.target.value as MiningContributionBasis })}>{Object.entries(basisLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
+      <label>Payout method<select value={draft.settlementMode} onChange={(event) => patch({ settlementMode: event.target.value as MiningSettlementMode })}><option value="isk">ISK shares</option><option value="minerals">Mineral shares</option></select></label>
     </div>
   </section>;
 }
@@ -320,8 +334,9 @@ function Participants({ draft, characters, patch, updateParticipant }: {
   </section>;
 }
 
-function SettlementPreviewView({ preview }: { preview: SettlementPreview }) {
+function SettlementPreviewView({ preview, onCopy }: { preview: SettlementPreview; onCopy: () => void }) {
   return <div className="settlement-preview">
+    <div className="settlement-preview-actions"><span>{preview.settlement_mode === "minerals" ? "Mineral-share settlement" : "ISK-share settlement"}</span><button type="button" onClick={onCopy}><ClipboardCopy size={14} />Copy Discord report</button></div>
     {preview.warnings.length > 0 && <div className="settlement-warnings"><AlertTriangle size={17} /><div>{preview.warnings.map((warning) => <span key={warning}>{warning}</span>)}</div></div>}
     <div className="settlement-reconciliation">
       <div><span>Gross refined value</span><strong>{isk.format(preview.gross_value)} ISK</strong></div>
@@ -333,18 +348,19 @@ function SettlementPreviewView({ preview }: { preview: SettlementPreview }) {
       <div><span>Participant payouts</span><strong>{isk.format(preview.participant_payout_total)} ISK</strong></div>
       <div className={Math.abs(preview.unallocated_remainder) > .01 ? "difference bad" : "difference"}><span>Reconciliation difference</span><strong>{isk.format(preview.unallocated_remainder)} ISK</strong></div>
     </div>
-    <div className="table-wrap"><table className="settlement-payout-table"><thead><tr><th>Pilot</th><th>Role / source</th><th>Contribution</th><th>Compensation</th><th>Payout ratio</th><th>Final payout</th></tr></thead><tbody>{preview.participants.map((row, index) => <tr key={row.display_name + "-" + index}><td>{row.display_name}</td><td>{row.role}<span>{row.source.replace("_", " ")}</span></td><td>{isk.format(row.contribution_value ?? 0)} ISK<span>{formatPercent(row.contribution_percentage)}</span></td><td>{row.compensation_method === "fixed_percentage" ? formatPercent(row.fixed_percentage) + " fixed" : number.format(row.share_weight ?? 0) + " shares"}</td><td>{formatPercent(row.payout_ratio)}</td><td><strong>{isk.format(row.payout_isk ?? 0)} ISK</strong></td></tr>)}</tbody></table></div>
+    <div className="table-wrap"><table className="settlement-payout-table"><thead><tr><th>Pilot</th><th>Role / source</th><th>Contribution</th><th>Compensation</th><th>Payout ratio</th><th>Final payout</th></tr></thead><tbody>{preview.participants.map((row, index) => <tr key={row.display_name + "-" + index}><td>{row.display_name}</td><td>{row.role}<span>{row.source.replace("_", " ")}</span></td><td>{isk.format(row.contribution_value ?? 0)} ISK<span>{formatPercent(row.contribution_percentage)}</span></td><td>{row.compensation_method === "fixed_percentage" ? formatPercent(row.fixed_percentage) + " fixed" : number.format(row.share_weight ?? 0) + " shares"}</td><td>{formatPercent(row.payout_ratio)}</td><td>{preview.settlement_mode === "minerals" ? <div className="settlement-mineral-basket">{(row.mineral_payouts ?? []).map((mineral) => <span key={mineral.type_id}>{mineral.type_name} <strong>{whole.format(mineral.quantity)}</strong></span>)}</div> : <strong>{isk.format(row.payout_isk ?? 0)} ISK</strong>}</td></tr>)}</tbody></table></div>
   </div>;
 }
 
-function SettlementHistory({ rows, busy, onEdit, onFinalize, onDelete }: {
+function SettlementHistory({ rows, busy, onEdit, onFinalize, onDelete, onCopy }: {
   rows: MiningSettlement[]; busy: boolean; onEdit: (row: MiningSettlement) => void;
   onFinalize: (row: MiningSettlement) => Promise<void>; onDelete: (row: MiningSettlement) => Promise<void>;
+  onCopy: (row: MiningSettlement) => void;
 }) {
   return <div className="settlement-history">
     <div className="section-heading"><div><h5>Settlement history</h5><p>Finalized rows are immutable snapshots; drafts remain editable.</p></div></div>
     <div className="table-wrap"><table><thead><tr><th>Settlement</th><th>Scope</th><th>Status</th><th>Gross</th><th>Distributed</th><th>Created by</th><th>Actions</th></tr></thead><tbody>
-      {rows.map((row) => <tr key={row.id}><td><strong>{row.name}</strong><span>{row.source_entry_count} ledger rows · {row.participants.length} pilots</span></td><td>{row.operation_name ?? (row.range_start && row.range_end ? new Date(row.range_start).toLocaleDateString() + " - " + new Date(row.range_end).toLocaleDateString() : row.source_type)}</td><td><span className={"settlement-status " + row.status}>{row.status === "finalized" ? <CheckCircle2 size={13} /> : <Edit3 size={13} />}{row.status}</span></td><td>{isk.format(row.gross_value)} ISK</td><td>{isk.format(row.participant_payout_total)} ISK</td><td>{row.created_by}<span>{row.created_at ? new Date(row.created_at).toLocaleString() : ""}</span></td><td><div className="button-row compact">{row.status === "draft" && <><button type="button" disabled={busy} onClick={() => onEdit(row)}><Edit3 size={14} />Edit</button><button type="button" disabled={busy} onClick={() => void onFinalize(row)}><CheckCircle2 size={14} />Finalize</button><button type="button" className="danger compact-icon-button" title="Delete draft" disabled={busy} onClick={() => void onDelete(row)}><Trash2 size={14} /></button></>}</div></td></tr>)}
+      {rows.map((row) => <tr key={row.id}><td><strong>{row.name}</strong><span>{row.source_entry_count} ledger rows · {row.participants.length} pilots</span></td><td>{row.operation_name ?? (row.range_start && row.range_end ? new Date(row.range_start).toLocaleDateString() + " - " + new Date(row.range_end).toLocaleDateString() : row.source_type)}</td><td><span className={"settlement-status " + row.status}>{row.status === "finalized" ? <CheckCircle2 size={13} /> : <Edit3 size={13} />}{row.status}</span><span>{row.settlement_mode === "minerals" ? "Minerals" : "ISK"}</span></td><td>{isk.format(row.gross_value)} ISK</td><td>{row.settlement_mode === "minerals" ? "Mineral shares" : isk.format(row.participant_payout_total) + " ISK"}</td><td>{row.created_by}<span>{row.created_at ? new Date(row.created_at).toLocaleString() : ""}</span></td><td><div className="button-row compact"><button type="button" disabled={busy} onClick={() => onCopy(row)}><ClipboardCopy size={14} />Report</button>{row.status === "draft" && <><button type="button" disabled={busy} onClick={() => onEdit(row)}><Edit3 size={14} />Edit</button><button type="button" disabled={busy} onClick={() => void onFinalize(row)}><CheckCircle2 size={14} />Finalize</button><button type="button" className="danger compact-icon-button" title="Delete draft" disabled={busy} onClick={() => void onDelete(row)}><Trash2 size={14} /></button></>}</div></td></tr>)}
       {rows.length === 0 && <tr><td colSpan={7}>No mining settlements saved yet.</td></tr>}
     </tbody></table></div>
   </div>;

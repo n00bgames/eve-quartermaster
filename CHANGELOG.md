@@ -4,15 +4,60 @@ All notable changes to EVE Quartermaster are tracked here.
 
 This project is moving quickly during beta. Version sections are written as user-facing release notes first, with implementation detail included where it helps operators understand deployment or testing impact.
 
+## [0.1.13-beta] - 2026-07-27
+
+### Added
+
+- Added per-character NPC standings sync and display for agents, NPC corporations, and factions, with resolved ESI names, source filters, search, sorting, relationship meters, sync freshness, and Sync All integration.
+
+### Changed
+
+- Bumped the visible app, package, backend API, Android wrapper, and ESI user-agent versions to 0.1.13-beta.
+
+## [0.1.12-beta] - 2026-07-22
+
+### Added
+
+- Added a configurable public recruiting subheading and safe structured description sections using plain Markdown-style headings without rendering raw HTML.
+- Added per-character categorized skill report exports with clipboard and plain-text download options for sharing trained levels, skill points, sync recency, and the current training queue.
+
+### Fixed
+
+- Filtered Research Projects corporation queues through EQM's approved corporation scope while preserving corporation-owned jobs whose ESI installer is an active SSO-linked character, including restricted linked-installer syncs for otherwise excluded corporations.
+- Fixed Analytics corporation scope so only corporations with current successful corporation-level ESI access contribute to snapshots, growth widgets, metric exports, and corporation-owned blueprint reporting.
+- Fixed applicant character linking so incomplete applications can be saved as drafts before EVE SSO opens in a forced separate tab, preventing in-progress answers from being lost.
+- Removed duplicated decorative markers from configured recruiting lists while retaining the original stored content.
+
+### Changed
+
+- Polished the public Recruiting page with clearer hierarchy, natural-height responsive cards, expandable long lists that retain core expectations, a concise privacy summary with an accessible full notice, improved form readability, and a DST-aware Typical member activity window.
+- Bumped the visible app, package, backend API, Android wrapper, and ESI user-agent versions to 0.1.12-beta.
+
 ## [0.1.11-beta] - 2026-07-20
 
 ### Added
 
+- Added a configurable Recruiting module with public corporation/alliance branding, applicant accounts and drafts, limited-scope EVE character verification, main-character selection, recruiter review queues, interview coordination, applicant messaging, audited decisions, privacy/retention controls, and capability-based Recruiter and Recruitment Administrator access.
+- Added Recruiting Initial Setup with ESI-resolved corporation, alliance, logos, and current CEO; manual CEO overrides are reserved for explicit audited edge cases.
+- Added selectable ISK-share or mineral-share Mining Op settlements, with deterministic whole-unit mineral allocation, proportional reserve and expense retention, and immutable per-pilot mineral payout snapshots.
+- Added one-click Discord-ready Mining Op reports for previews, drafts, and finalized settlements, including scope, refined output, deductions, payout mode, and itemized pilot shares.
 - Added a Host account role above Admin for installation ownership and host-only database maintenance, including status inspection, portable `.eqmbackup` exports, transactional restores, and confirmation-protected database clearing that retains the signed-in host and schema.
 - Added EVE Online Multibuy-ready clipboard exports for either asset-aware remaining needs or complete shopping lists using plain item-name and quantity rows.
 
 ### Fixed
 
+- Fixed the signed-out Apply / Recruiting link so hash-route changes immediately open the public recruiting page without requiring a manual reload.
+- Accepted CCP's current no-trailing-slash EVE SSO token issuer and returned recruitment-link failures to the applicant workspace instead of exposing a raw API error page.
+- Saved the current recruitment application draft before opening EVE SSO in a separate window, then refreshed the original application when character linking completes.
+
+- Hardened EVE SSO identity handling by validating access-token signatures, issuer, audience, expiry, signing key, and configured application client before trusting character claims.
+- Added the required ESI compatibility-date header through the shared ESI client and all containerized sync paths.
+- Fixed fitting simulations retaining stale or unchanged module values after an undefined multiplier helper crashed fresh calculations.
+- Corrected freighter cargo and velocity calculations to derive racial skill type IDs, per-level hull bonuses, and fitted module multipliers from imported SDE Dogma data, including cargo expanders, reinforced bulkheads, and inertial stabilizers.
+- Added SDE-backed ship mass and align-time calculations using hull agility, applicable piloting skills, fitted mobility modules, and selected implant or implant-set Dogma effects.
+- Corrected capacitor capacity, recharge time, and peak recharge calculations to apply imported Capacitor Management and Capacitor Systems Operation skill bonuses.
+- Updated the bundled SDE fetch helpers to use CCP's official always-latest YAML export and made the simulated pilot explicit in Character Readiness.
+- Added the first fitting regression-fleet sentries covering Fenrir cargo, structure, signature, velocity, role-based fitting cost, valid slot state, and exact SDE-derived reference output.
 - Added PostgreSQL client compatibility handling for restores and excluded internal migration metadata from backup data to prevent restore conflicts.
 - Protected the final Host account from deletion or demotion and applied Host access consistently across existing administrative tools.
 

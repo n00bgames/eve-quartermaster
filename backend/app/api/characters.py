@@ -15,6 +15,7 @@ from app.models import (
     CharacterFitting,
     CharacterSkill,
     CharacterSkillQueueEntry,
+    CharacterStanding,
     EsiToken,
     EveCharacter,
     EveContract,
@@ -29,6 +30,7 @@ from app.models.enums import ActivityKind, OwnerKind
 from app.models.navigation import SystemIndustrialKillObservation, SystemPvpKillObservation
 from app.services.contracts import serialize_contract
 from app.services.permissions import ROLE_RANK, can_view_section, role_rank
+from app.services.standings import serialize_character_standing
 
 router = APIRouter(prefix="/characters", tags=["characters"])
 
@@ -37,6 +39,7 @@ SKILL_SCOPES = ["esi-skills.read_skills.v1", "esi-skills.read_skillqueue.v1"]
 FITTING_SCOPE = "esi-fittings.read_fittings.v1"
 CONTRACT_SCOPE = "esi-contracts.read_character_contracts.v1"
 CLONE_SCOPES = ["esi-clones.read_clones.v1", "esi-clones.read_implants.v1"]
+STANDINGS_SCOPE = "esi-characters.read_standings.v1"
 
 
 def iso(value: Any) -> str | None:
@@ -421,7 +424,8 @@ def character_tokens_payload(db: Session, viewer: User, character: EveCharacter)
                 "has_fitting_scope": FITTING_SCOPE in scopes,
                 "has_contract_scope": CONTRACT_SCOPE in scopes,
                 "has_clone_scope": all(scope in scopes for scope in CLONE_SCOPES),
-                "missing_scopes": [scope for scope in [ASSET_SCOPE, *SKILL_SCOPES, FITTING_SCOPE, CONTRACT_SCOPE, *CLONE_SCOPES] if scope not in scopes],
+                "has_standings_scope": STANDINGS_SCOPE in scopes,
+                "missing_scopes": [scope for scope in [ASSET_SCOPE, *SKILL_SCOPES, FITTING_SCOPE, CONTRACT_SCOPE, *CLONE_SCOPES, STANDINGS_SCOPE] if scope not in scopes],
                 "linked_at": iso(token.created_at),
             }
         )
@@ -543,6 +547,17 @@ def get_character_dossier(character_id: int, current_user: User = Depends(get_cu
         "blueprints": [serialize_blueprint(blueprint, capital_blueprint_type_ids, blueprint_product_fallbacks.get(blueprint.blueprint_type_id)) for blueprint in blueprint_rows],
         "fittings": [serialize_fitting(fitting) for fitting in db.scalars(fittings_query).all()],
         "contracts": [serialize_contract(contract) for contract in db.scalars(contracts_query).all()],
+        "standings": {
+            "synced_at": iso(character.standings_synced_at),
+            "entries": [
+                serialize_character_standing(row)
+                for row in db.scalars(
+                    select(CharacterStanding)
+                    .where(CharacterStanding.character_id == character.id)
+                    .order_by(CharacterStanding.source_type, CharacterStanding.source_name)
+                ).all()
+            ],
+        },
         "kill_history": character_kill_history(db, character),
         "permissions": {
             "public_assets_visible": character.public_assets_visible,

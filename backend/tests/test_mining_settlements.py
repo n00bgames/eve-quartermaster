@@ -175,6 +175,50 @@ class SettlementCalculationTests(unittest.TestCase):
         self.assertEqual(sum(payouts), Decimal("1000.00"))
         self.assertEqual(result["unallocated_remainder"], Decimal("0.00"))
 
+    def test_mineral_mode_allocates_whole_units(self):
+        result = calculate_settlement(rows(), payload(settlement_mode="minerals"))
+        payouts = {
+            row["display_name"]: row["mineral_payouts"][0]["quantity"]
+            for row in result["participants"]
+        }
+        self.assertEqual(result["settlement_mode"], "minerals")
+        self.assertEqual(payouts, {"Miner 1": 60, "Miner 2": 40})
+        self.assertEqual(result["outputs"][0]["distributed_quantity"], 100)
+        self.assertEqual(result["outputs"][0]["retained_quantity"], 0)
+
+    def test_mineral_mode_retains_reserve_proportionally(self):
+        result = calculate_settlement(
+            rows(),
+            payload(settlement_mode="minerals", reserve={"method": "percentage", "value": 10}),
+        )
+        payouts = {
+            row["display_name"]: row["mineral_payouts"][0]["quantity"]
+            for row in result["participants"]
+        }
+        self.assertEqual(payouts, {"Miner 1": 54, "Miner 2": 36})
+        self.assertEqual(result["outputs"][0]["distributed_quantity"], 90)
+        self.assertEqual(result["outputs"][0]["retained_quantity"], 10)
+
+    def test_mineral_rounding_is_deterministic_and_reconciles(self):
+        output = [{**payload()["outputs"][0], "quantity": 10}]
+        result = calculate_settlement(
+            rows((1, 1, 1)),
+            payload(settlement_mode="minerals", outputs=output),
+        )
+        payouts = [row["mineral_payouts"][0]["quantity"] for row in result["participants"]]
+        self.assertEqual(payouts, [4, 3, 3])
+        self.assertEqual(sum(payouts), result["outputs"][0]["distributed_quantity"])
+
+    def test_unpriced_minerals_can_still_be_split(self):
+        output = [{**payload()["outputs"][0], "quantity": 11, "unit_price": 0}]
+        result = calculate_settlement(
+            rows((1, 1)),
+            payload(settlement_mode="minerals", outputs=output),
+        )
+        payouts = [row["mineral_payouts"][0]["quantity"] for row in result["participants"]]
+        self.assertEqual(payouts, [6, 5])
+        self.assertEqual([row["payout_ratio"] for row in result["participants"]], [Decimal("0.5000000000")] * 2)
+
     def test_duplicate_outputs_are_rejected(self):
         duplicate = payload()["outputs"] * 2
         with self.assertRaisesRegex(SettlementValidationError, "appears more than once"):

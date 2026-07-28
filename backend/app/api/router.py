@@ -8,6 +8,7 @@ from app.api.database_admin import router as database_admin_router
 from app.api.context import router as context_router
 from app.api.corporations import router as corporations_router
 from app.api.esi import router as esi_router
+from app.api.character_standings import router as character_standings_router
 from app.api.fittings import router as fittings_router
 from app.api.health import router as health_router
 from app.api.jump_clones import router as jump_clones_router
@@ -22,6 +23,7 @@ from app.api.notifications import router as notifications_router
 from app.api.notes import router as notes_router
 from app.api.quartermaster import router as quartermaster_router
 from app.api.research_projects import router as research_projects_router
+from app.api.recruiting import router as recruiting_router
 from app.api.sde import router as sde_router
 
 api_router = APIRouter()
@@ -46,5 +48,7 @@ api_router.include_router(notifications_router)
 api_router.include_router(notes_router)
 api_router.include_router(quartermaster_router)
 api_router.include_router(research_projects_router)
+api_router.include_router(recruiting_router)
 api_router.include_router(sde_router)
 api_router.include_router(esi_router)
+api_router.include_router(character_standings_router)

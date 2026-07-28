@@ -3,7 +3,7 @@ setlocal EnableExtensions
 
 cd /d "%~dp0"
 
-set "DEFAULT_SDE_URL=https://eve-static-data-export.s3-eu-west-1.amazonaws.com/tranquility/sde.zip"
+set "DEFAULT_SDE_URL=https://developers.eveonline.com/static-data/eve-online-static-data-latest-yaml.zip"
 if not defined SDE_URL set "SDE_URL=%DEFAULT_SDE_URL%"
 if not defined SDE_DIR set "SDE_DIR=sde"
 if not defined SDE_ZIP_NAME set "SDE_ZIP_NAME=sde.zip"

@@ -3,10 +3,10 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import AppSetting, RoleDefinition, RoleSectionPermission, User, UserSectionPermission
+from app.models import AppSetting, RecruitmentUserCapability, RoleDefinition, RoleSectionPermission, User, UserSectionPermission
 
-BUILT_IN_ROLES: list[str] = ["host", "admin", "director", "officer", "member", "view_only"]
-ROLE_RANK: dict[str, int] = {"view_only": 0, "rookie": 0, "member": 1, "officer": 2, "director": 3, "admin": 4, "host": 5}
+BUILT_IN_ROLES: list[str] = ["host", "admin", "director", "officer", "member", "view_only", "applicant"]
+ROLE_RANK: dict[str, int] = {"applicant": -1, "view_only": 0, "rookie": 0, "member": 1, "officer": 2, "director": 3, "admin": 4, "host": 5}
 ROLE_LABELS: dict[str, str] = {
     "host": "Host",
     "admin": "Admin",
@@ -14,6 +14,7 @@ ROLE_LABELS: dict[str, str] = {
     "officer": "Officer",
     "member": "Member",
     "view_only": "View Only",
+    "applicant": "Applicant",
 }
 
 SECTION_DEFINITIONS: dict[str, dict[str, object]] = {
@@ -38,6 +39,7 @@ SECTION_DEFINITIONS: dict[str, dict[str, object]] = {
     "esi": {"label": "ESI Sync", "default_roles": ["admin", "director", "officer", "member"]},
     "profile": {"label": "Profile", "default_roles": ["admin", "director", "officer", "member", "view_only"]},
     "audit": {"label": "Audit Log", "default_roles": ["admin"]},
+    "recruiting": {"label": "Recruiting", "default_roles": []},
 }
 ALWAYS_VISIBLE_SECTIONS = {"overview", "profile"}
 DISABLED_SECTIONS_KEY = "disabled_sections"
@@ -148,6 +150,11 @@ def effective_permissions(user: User, db: Session) -> dict[str, bool]:
         for override in user_overrides:
             if override.section in values and override.section not in ALWAYS_VISIBLE_SECTIONS:
                 values[override.section] = override.can_view
+
+    if user.role == "applicant":
+        values = {section: section in {"recruiting", "profile"} for section in SECTION_DEFINITIONS}
+    elif db.scalar(select(RecruitmentUserCapability.id).where(RecruitmentUserCapability.user_id == user.id).limit(1)):
+        values["recruiting"] = True
 
     for section in disabled_sections(db):
         if section not in ALWAYS_VISIBLE_SECTIONS and section != "settings":

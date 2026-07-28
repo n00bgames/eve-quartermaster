@@ -125,6 +125,7 @@ class EveCharacter(Base):
     unallocated_skill_points: Mapped[int | None] = mapped_column(Integer)
     skills_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     skill_queue_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    standings_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     corporation: Mapped[EveCorporation | None] = relationship()

@@ -15,7 +15,9 @@ from app.models.jump_clones import CharacterJumpClone, ImplantSet, ImplantSetImp
 from app.models.navigation import SystemIndustrialKillObservation, SystemJumpObservation, SystemKillFetchCache, SystemPvpKillObservation
 from app.models.notes import Note, NoteItem
 from app.models.research_projects import ResearchProject, ResearchQueueItem
+from app.models.recruiting import RecruitmentApplication, RecruitmentAuditLog, RecruitmentInterview, RecruitmentLinkedCharacter, RecruitmentMessage, RecruitmentNote, RecruitmentSettings, RecruitmentStatusHistory, RecruitmentUserCapability
 from app.models.skills import CharacterSkill, CharacterSkillQueueEntry
+from app.models.standings import CharacterStanding
 
 __all__ = [
     "AppSetting",
@@ -28,6 +30,7 @@ __all__ = [
     "CharacterFittingItem",
     "CharacterSkill",
     "CharacterSkillQueueEntry",
+    "CharacterStanding",
     "CharacterJumpClone",
     "CharacterSkillSnapshot",
     "CorporationSnapshot",
@@ -78,6 +81,15 @@ __all__ = [
     "ProductionPlanInput",
     "ResearchProject",
     "ResearchQueueItem",
+    "RecruitmentApplication",
+    "RecruitmentAuditLog",
+    "RecruitmentInterview",
+    "RecruitmentLinkedCharacter",
+    "RecruitmentMessage",
+    "RecruitmentNote",
+    "RecruitmentSettings",
+    "RecruitmentStatusHistory",
+    "RecruitmentUserCapability",
     "RoleDefinition",
     "RoleSectionPermission",
     "SnapshotMetric",

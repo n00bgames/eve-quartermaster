@@ -10,7 +10,7 @@ from decimal import Decimal
 from typing import Any
 
 import httpx
-from jose import jwt
+
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import RedirectResponse
@@ -18,23 +18,26 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.config import get_settings
-from app.core.security import create_sso_state, decode_sso_state, decrypt_secret, encrypt_secret
+from app.core.security import create_sso_state, decode_sso_state_payload, decrypt_secret, encrypt_secret
 from app.db.session import SessionLocal, get_db
-from app.models import Asset, Blueprint, CharacterFitting, CharacterFittingItem, CharacterSkill, CharacterSkillQueueEntry, CorporationWalletDivision, EsiSyncJob, EsiToken, EveAlliance, EveCategory, EveCharacter, EveCorporation, EveGroup, EveSystem, EveType, Location, OwnershipEntity, User
+from app.models import Asset, Blueprint, CharacterFitting, CharacterFittingItem, CharacterSkill, CharacterSkillQueueEntry, CorporationWalletDivision, EsiSyncJob, EsiToken, EveAlliance, EveCategory, EveCharacter, EveCorporation, EveGroup, EveSystem, EveType, Location, OwnershipEntity, RecruitmentLinkedCharacter, User
 from app.models.enums import AssetSource, LocationKind, OwnerKind, SyncStatus
 from app.services.esi_client import EsiClient, esi_status, resolve_names
+from app.services.eve_sso import validate_eve_access_token
 from app.services.contracts import ACTIVE_CONTRACT_STATUSES, fetch_contract_pages, upsert_contract_rows
 from app.services.mining_ledger import upsert_esi_ledger
 from app.services.research_projects import (
     fetch_character_industry_jobs,
     fetch_corporation_industry_jobs,
     resolve_installer_names,
+    scoped_corporation_research_rows,
     upsert_research_projects,
 )
 from app.services.audit import notify_if_other_user_synced_character
 from app.services.analytics import create_snapshot
 from app.api.auth import can_view_all_characters, get_current_user
 from app.services.permissions import ROLE_RANK, can_view_section, role_rank
+from app.services.recruiting import applicant_application, audit as recruitment_audit, sync_recruitment_character
 
 router = APIRouter(prefix="/esi", tags=["esi"])
 
@@ -118,6 +121,7 @@ SKILL_SYNC_SCOPES = [
     "esi-skills.read_skills.v1",
     "esi-skills.read_skillqueue.v1",
 ]
+CHARACTER_STANDINGS_SCOPES = ["esi-characters.read_standings.v1"]
 CORPORATION_RESEARCH_SCOPES = [
     "esi-industry.read_corporation_jobs.v1",
     "esi-characters.read_corporation_roles.v1",
@@ -133,6 +137,11 @@ MAIL_SYNC_SCOPES = [
     "esi-mail.read_mail.v1",
     "esi-mail.send_mail.v1",
     "esi-mail.organize_mail.v1",
+]
+
+RECRUITMENT_AUTH_SCOPES = [
+    "publicData",
+    "esi-skills.read_skills.v1",
 ]
 
 CORE_AUTH_SCOPES = [
@@ -159,6 +168,7 @@ CORE_AUTH_SCOPES = [
     "esi-contracts.read_corporation_contracts.v1",
     "esi-skills.read_skills.v1",
     "esi-skills.read_skillqueue.v1",
+    "esi-characters.read_standings.v1",
     "esi-fittings.read_fittings.v1",
     "esi-fittings.write_fittings.v1",
     "esi-clones.read_clones.v1",
@@ -172,6 +182,8 @@ def _unique_scopes(scopes: list[str]) -> list[str]:
 
 def auth_scopes_for_group(scope_group: str | None) -> list[str]:
     group = (scope_group or "core").strip().lower().replace("-", "_")
+    if group in {"recruitment", "recruiting", "applicant"}:
+        return _unique_scopes(RECRUITMENT_AUTH_SCOPES)
     if group in {"contact", "contacts", "standing", "standing_sync", "contact_sync"}:
         return _unique_scopes(CORE_AUTH_SCOPES + CONTACT_SYNC_SCOPES)
     if group == "mail":
@@ -1458,6 +1470,11 @@ async def sync_corporation_research_for_tokens(
             db.commit()
             try:
                 rows = await fetch_corporation_industry_jobs(client, corporation.corporation_id)
+                rows, linked_installers_only = scoped_corporation_research_rows(
+                    db,
+                    corporation.id,
+                    rows,
+                )
                 installer_names = await resolve_installer_names(client, rows)
                 synced, active = upsert_research_projects(
                     db,
@@ -1468,7 +1485,8 @@ async def sync_corporation_research_for_tokens(
                     installer_names=installer_names,
                 )
                 job.status = SyncStatus.SUCCESS
-                job.message = f"Synced {synced} corporation research projects for {corporation.name} using {character.name}."
+                scope_label = "linked-character corporation" if linked_installers_only else "corporation"
+                job.message = f"Synced {synced} {scope_label} research projects for {corporation.name} using {character.name}."
                 job.finished_at = datetime.now(timezone.utc)
                 db.commit()
                 return {
@@ -1574,6 +1592,7 @@ async def character_sync_all_work_items(
     required_scopes = {
         "assets": ["esi-assets.read_assets.v1"],
         "skills": SKILL_SYNC_SCOPES,
+        "standings": CHARACTER_STANDINGS_SCOPES,
         "fittings": ["esi-fittings.read_fittings.v1"],
         "contracts": ["esi-contracts.read_character_contracts.v1"],
         "research": ["esi-industry.read_character_jobs.v1"],
@@ -1626,12 +1645,15 @@ async def character_sync_all_work_items(
     return work_items, skipped
 
 async def run_character_sync_all_job(job_id: str, work_items: list[dict[str, Any]], user_id: int) -> None:
+    from app.api.character_standings import sync_character_standings_for_token
+
     job = CHARACTER_SYNC_ALL_JOBS[job_id]
     job["status"] = "running"
     job["updated_at"] = utc_job_iso()
     sync_handlers = {
         "assets": sync_character_assets_for_token,
         "skills": sync_character_skills_for_token,
+        "standings": sync_character_standings_for_token,
         "fittings": sync_character_fittings_for_token,
         "contracts": sync_character_contracts_for_token,
         "research": sync_character_research_for_token,
@@ -1705,7 +1727,7 @@ async def run_character_sync_all_job(job_id: str, work_items: list[dict[str, Any
 @router.post("/sync/characters/all")
 async def start_characters_sync_all(sync_kind: str | None = Query(None), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
     requested_kinds = {sync_kind} if sync_kind else None
-    if requested_kinds and not requested_kinds.issubset({"assets", "skills", "fittings", "contracts", "research", "mining"}):
+    if requested_kinds and not requested_kinds.issubset({"assets", "skills", "standings", "fittings", "contracts", "research", "mining"}):
         raise HTTPException(status_code=400, detail="Unsupported character sync kind")
     work_items, skipped = await character_sync_all_work_items(db, current_user, requested_kinds)
     if not work_items:
@@ -2242,6 +2264,14 @@ async def auth_callback(code: str | None = None, state: str | None = None, db: S
     settings = get_settings()
     if not settings.eve_sso_client_id or not settings.eve_sso_client_secret or not settings.token_encryption_key:
         raise HTTPException(status_code=400, detail="EVE SSO client ID, secret, and token encryption key must be configured")
+    state_payload = decode_sso_state_payload(state)
+    if state_payload is None:
+        raise HTTPException(status_code=400, detail="EVE SSO state did not match an active Quartermaster session. Start SSO from inside the app after signing in.")
+    try:
+        state_user_id = int(state_payload["sub"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail="EVE SSO state did not contain a valid Quartermaster account") from exc
+    state_mode = str(state_payload.get("mode") or "core").strip().lower()
 
     async with httpx.AsyncClient(timeout=30.0, follow_redirects=False) as client:
         response = await client.post(
@@ -2278,7 +2308,13 @@ async def auth_callback(code: str | None = None, state: str | None = None, db: S
     token_payload = response.json()
     access_token = token_payload["access_token"]
     refresh_token = token_payload.get("refresh_token")
-    claims = jwt.get_unverified_claims(access_token)
+    try:
+        claims = await validate_eve_access_token(access_token)
+    except HTTPException as exc:
+        if state_mode in {"recruitment", "recruiting", "applicant"}:
+            error_query = urllib.parse.urlencode({"esi_error": str(exc.detail), "esi_mode": state_mode})
+            return RedirectResponse(url=f"{settings.frontend_url}/?{error_query}#recruiting", status_code=303)
+        raise
     subject = claims.get("sub", "")
     try:
         character_eve_id = int(subject.split(":")[-1])
@@ -2294,9 +2330,6 @@ async def auth_callback(code: str | None = None, state: str | None = None, db: S
     # Corp asset sync depends on knowing which linked character belongs to which corporation.
     await apply_character_affiliation(EsiClient(access_token=access_token), db, character, character_payload)  # auth_callback_affiliation_marker
 
-    state_user_id = decode_sso_state(state)
-    if state_user_id is None:
-        raise HTTPException(status_code=400, detail="EVE SSO state did not match an active Quartermaster session. Start SSO from inside the app after signing in.")
     user = db.get(User, state_user_id)
     if user is None:
         raise HTTPException(status_code=400, detail="The Quartermaster account that started EVE SSO no longer exists")
@@ -2327,6 +2360,41 @@ async def auth_callback(code: str | None = None, state: str | None = None, db: S
         added_scopes = sorted(new_scopes - previous_scopes)
         removed_scopes = sorted(previous_scopes - new_scopes)
 
+        if state_mode in {"recruitment", "recruiting", "applicant"}:
+            if user.role != "applicant":
+                raise HTTPException(status_code=403, detail="Recruitment SSO is only available to applicant accounts")
+            application = applicant_application(db, user, create=True)
+            assert application is not None
+            linked = db.scalar(
+                select(RecruitmentLinkedCharacter).where(
+                    RecruitmentLinkedCharacter.application_id == application.id,
+                    RecruitmentLinkedCharacter.character_id == character.id,
+                )
+            )
+            if linked is None:
+                has_main = db.scalar(
+                    select(RecruitmentLinkedCharacter.id).where(
+                        RecruitmentLinkedCharacter.application_id == application.id,
+                        RecruitmentLinkedCharacter.is_main.is_(True),
+                    )
+                ) is not None
+                linked = RecruitmentLinkedCharacter(
+                    application_id=application.id,
+                    character_id=character.id,
+                    is_main=not has_main,
+                )
+                db.add(linked)
+                db.flush()
+            await sync_recruitment_character(db, linked, token)
+            recruitment_audit(
+                db,
+                user,
+                "character_linked",
+                f"Applicant linked {character.name} through EVE SSO",
+                application.id,
+                {"character_id": character_eve_id, "scopes": sorted(new_scopes)},
+            )
+
     db.commit()
     query = urllib.parse.urlencode(
         {
@@ -2337,6 +2405,8 @@ async def auth_callback(code: str | None = None, state: str | None = None, db: S
             "refresh_token_stored": str(bool(refresh_token)).lower(),
             "added_scopes": ",".join(added_scopes),
             "removed_scopes": ",".join(removed_scopes),
+            "esi_mode": state_mode,
         }
     )
-    return RedirectResponse(url=f"{settings.frontend_url}/?{query}#esi", status_code=303)
+    destination = "recruiting" if state_mode in {"recruitment", "recruiting", "applicant"} else "esi"
+    return RedirectResponse(url=f"{settings.frontend_url}/?{query}#{destination}", status_code=303)

@@ -134,6 +134,8 @@ def serialize_settlement(row: MiningSettlement) -> dict[str, Any]:
                 "type_id": output.type_id,
                 "type_name": output.type_name_snapshot,
                 "quantity": output.quantity,
+                "distributed_quantity": output.distributed_quantity,
+                "retained_quantity": output.retained_quantity,
                 "unit_price": as_float(output.unit_price),
                 "total_value": as_float(output.total_value),
                 "stated_refine_percent": as_float(output.stated_refine_percent) if output.stated_refine_percent is not None else None,
@@ -173,6 +175,7 @@ def serialize_settlement(row: MiningSettlement) -> dict[str, Any]:
                 "share_weight_overridden": participant.share_weight_overridden,
                 "payout_ratio": as_float(participant.payout_ratio),
                 "payout_isk": as_float(participant.payout_isk),
+                "mineral_payouts": participant.mineral_payouts_json or [],
                 "notes": participant.notes,
             }
             for participant in participants
@@ -279,7 +282,7 @@ def replace_snapshot(settlement: MiningSettlement, payload: dict[str, Any], calc
     settlement.range_start = range_start
     settlement.range_end = range_end
     settlement.contribution_basis = calculation["contribution_basis"]
-    settlement.settlement_mode = "isk"
+    settlement.settlement_mode = calculation["settlement_mode"]
     settlement.price_source = calculation["price_source"]
     settlement.reserve_method = calculation["reserve_method"]
     settlement.reserve_entered_value = calculation["reserve_entered_value"]
@@ -302,6 +305,7 @@ def replace_snapshot(settlement: MiningSettlement, payload: dict[str, Any], calc
     for output in calculation["outputs"]:
         settlement.outputs.append(MiningSettlementOutput(
             type_id=output["type_id"], type_name_snapshot=output["type_name"], quantity=int(output["quantity"]),
+            distributed_quantity=output["distributed_quantity"], retained_quantity=output["retained_quantity"],
             unit_price=output["unit_price"], total_value=output["total_value"], stated_refine_percent=output["stated_refine_percent"],
             price_source=output["price_source"], price_overridden=output["price_overridden"],
         ))
@@ -315,7 +319,8 @@ def replace_snapshot(settlement: MiningSettlement, payload: dict[str, Any], calc
             contribution_percentage=participant["contribution_percentage"], compensation_method=participant["compensation_method"],
             fixed_percentage=participant["fixed_percentage"], share_weight=participant["share_weight"],
             share_weight_overridden=participant["share_weight_overridden"], payout_ratio=participant["payout_ratio"],
-            payout_isk=participant["payout_isk"], notes=participant["notes"],
+            payout_isk=participant["payout_isk"], mineral_payouts_json=json_decimal(participant["mineral_payouts"]),
+            notes=participant["notes"],
         ))
     for deduction in calculation["deductions"]:
         settlement.deductions.append(MiningSettlementDeduction(

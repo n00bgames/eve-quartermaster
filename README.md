@@ -51,6 +51,7 @@ See [CHANGELOG.md](CHANGELOG.md) for version-by-version release notes.
 - Notifications, private messages, and admin audit log for sync transparency.
 - Historical analytics foundation with snapshot runs, metric metadata/versioning, baseline-aware deltas, exports, and composable widgets.
 - ESI-backed Research Projects queue for material/time efficiency, copying, and invention work, with retained researcher history and Analytics attribution.
+- Configurable Recruiting workspace with a public corporation page, applicant accounts, limited-scope EVE verification, recruiter review queues, interviews, audited decisions, and capability-based staff access.
 - Persistent Mining Ledger with per-character ESI history, detailed residue-aware imports, named mining operations, production/value graphs, and honest residue-measured efficiency rankings.
 - Mining Op Settlement workflow with saved-operation or date-range sourcing, actual refined-output entry, hub price snapshots, operation reserves, expenses, support-role compensation, weighted shares, reconciled ISK payouts, editable drafts, and immutable finalized history.
 - Navigation suite with SDE-backed route planning, gatecheck summaries, operational starmap rendering, and security-status color coding.
@@ -92,15 +93,23 @@ A quick tour of the current beta surface, ordered roughly the way a new Quarterm
 | --- | --- |
 | ![Fittings](static/ss/eqm-fittings.png) | ![Alliance roster](static/ss/eqm-roster.png) |
 
-| ESI Sync |
-| --- |
-| ![ESI sync](static/ss/eqm-esi-sync.png) |
+| ESI Sync | Jump Clones |
+| --- | --- |
+| ![ESI sync](static/ss/eqm-esi-sync.png) | ![Jump clones and implant loadouts](static/ss/eqm-jump-clones.png) |
 
 ### Inventory And Industry
+
+| Manufacturing | Research Projects |
+| --- | --- |
+| ![Manufacturing ledger and build inputs](static/ss/eqm-manufacturing.png) | ![Research projects and job history](static/ss/eqm-research-projects.png) |
 
 | Mining Ledger | Mining Yield Analytics |
 | --- | --- |
 | ![Mining Ledger controls and extraction totals](static/ss/eqm-mining-ledger.png) | ![Mining yield, residue, value, and efficiency analytics](static/ss/eqm-mining-analytics.png) |
+
+| Mining Op Settlement | Notes & Lists |
+| --- | --- |
+| ![Mining operation settlement calculator](static/ss/eqm-mining-settlement.png) | ![Private notes and item lists](static/ss/eqm-notes-lists.png) |
 
 | Market | Corporations |
 | --- | --- |
@@ -113,6 +122,12 @@ A quick tour of the current beta surface, ordered roughly the way a new Quarterm
 | Industry | Contracts |
 | --- | --- |
 | ![Blueprints and industry](static/ss/eqm-industry.png) | ![Contracts](static/ss/eqm-contracts.png) |
+
+### Community
+
+| Recruiting |
+| --- |
+| ![Recruiting setup and administration](static/ss/eqm-recruiting.png) |
 
 ### Account And Settings
 
@@ -392,10 +407,10 @@ You may import directly from the zip by using this SDE path in EQM:
 /sde/sde.zip
 ```
 
-The scripts use CCP's stable Tranquility SDE zip endpoint by default:
+The scripts use CCP's official always-latest YAML SDE endpoint by default:
 
 ```text
-https://eve-static-data-export.s3-eu-west-1.amazonaws.com/tranquility/sde.zip
+https://developers.eveonline.com/static-data/eve-online-static-data-latest-yaml.zip
 ```
 
 If CCP changes the endpoint or you want a test source, override it without editing the script:
@@ -481,6 +496,7 @@ Privacy controls live under **Settings -> Character Privacy**. A character can b
 - **Character Skills:** expand/collapse skill groups, refresh displayed skills, sync one character, or queue **Sync all skills** for every eligible non-opted-out character.
 - **Fittings:** sync saved fittings, import EFT-style fits, inspect readiness and dogma-derived resources, assign grouped ammo/scripts, price missing/full fits, and jump to assets or market.
 - **Alliance Roster:** review corporations and pilots grouped for diplomacy, recruiting, or operational awareness.
+- **Recruiting:** hosts and recruitment administrators complete Initial Setup by resolving the corporation from ESI; EQM automatically records its current CEO and associated alliance, while an audited manual CEO override remains available for edge cases. Customize public copy, timezone, activity window, application questions, tags, interview prompts, privacy and retention values, then assign Recruiter or Recruitment Administrator capabilities without changing a user's normal role. Applicants register from the public Recruiting link, save drafts, link characters through the restricted recruitment SSO scope group, choose a main character, acknowledge interviews, communicate with recruiters, submit, or withdraw. Recruiters review the searchable queue, assign applications, add private notes and ratings, schedule interviews, and record applicant-visible status changes; final decisions remain administrator-only.
 - **Market:** paste item lists, compare trade hubs, inspect order depth signals, and jump from market rows into visible assets or fittings.
 - **Assets:** filter inventory by owner kind, item, owner, location, flag, category, and subtype; export CSV; copy Janice-friendly lists; open item context and market/fitting handoffs.
 - **Industry:** use the full Blueprint Library, BPO/BPC filters, SDE-backed category/subtype filters, Missing BPO pane, blueprint output context, recipes, and material input views.

@@ -1,4 +1,5 @@
 export type MiningSettlementStatus = "draft" | "finalized";
+export type MiningSettlementMode = "isk" | "minerals";
 export type MiningContributionBasis = "estimated_raw_value" | "volume" | "quantity" | "manual";
 export type MiningCompensationMethod = "fixed_percentage" | "shares";
 export type MiningReserveMethod = "none" | "percentage" | "output_percentage" | "flat_isk";
@@ -20,11 +21,21 @@ export type SettlementOutput = {
   type_id: number;
   type_name: string;
   quantity: number;
+  distributed_quantity?: number;
+  retained_quantity?: number;
   unit_price: number;
   total_value?: number;
   stated_refine_percent?: number | null;
   price_source: string;
   price_overridden: boolean;
+};
+
+export type SettlementMineralPayout = {
+  type_id: number;
+  type_name: string;
+  quantity: number;
+  unit_price: number;
+  total_value: number;
 };
 
 export type SettlementDeduction = {
@@ -57,6 +68,7 @@ export type SettlementParticipant = {
   share_weight_overridden: boolean;
   payout_ratio?: number;
   payout_isk?: number;
+  mineral_payouts?: SettlementMineralPayout[];
   notes?: string | null;
 };
 
@@ -81,7 +93,7 @@ export type MiningSettlement = {
   range_end?: string | null;
   status: MiningSettlementStatus;
   contribution_basis: MiningContributionBasis;
-  settlement_mode: "isk";
+  settlement_mode: MiningSettlementMode;
   price_source: string;
   reserve: {
     method: MiningReserveMethod;
@@ -116,7 +128,7 @@ export type MiningSettlement = {
   participants: SettlementParticipant[];
 };
 
-export type SettlementPreview = Omit<MiningSettlement, "id" | "name" | "status" | "settlement_mode" | "reserve" | "created_by" | "created_at" | "updated_at" | "finalized_at"> & {
+export type SettlementPreview = Omit<MiningSettlement, "id" | "name" | "status" | "reserve" | "created_by" | "created_at" | "updated_at" | "finalized_at"> & {
   reserve_method: MiningReserveMethod;
   reserve_entered_value: number;
   reserve_normalized_percentage?: number | null;

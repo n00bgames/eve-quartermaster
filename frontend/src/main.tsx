@@ -30,6 +30,8 @@ import { CorporationsPage } from "./features/corporations/CorporationsPage";
 import { BlueprintPreview } from "./features/industry/BlueprintPreview";
 import { ResearchProjectsPage } from "./features/industry/ResearchProjectsPage";
 import { MiningLedgerPage } from "./features/mining/MiningLedgerPage";
+import { RecruitingPage } from "./features/recruiting/RecruitingPage";
+import { RecruitingPublicPage } from "./features/recruiting/RecruitingPublicPage";
 import { IndustrialSystemThreatWidget, LocalThreatWidget, PvpIntelWidget } from "./features/navigation/ThreatIntelWidgets";
 import { RouteChecker } from "./features/navigation/RouteChecker";
 import type { CharacterFocus } from "./types/characters";
@@ -247,11 +249,15 @@ function App() {
 
   const [authReady, setAuthReady] = useState(false);
 
+  const [locationHash, setLocationHash] = useState(window.location.hash);
+
   const [permissions, setPermissions] = useState<Record<string, boolean>>({ overview: true, profile: true });
 
 
 
   async function refreshAuth() {
+
+    let authenticatedUser: UserAccount | null = null;
 
     try {
 
@@ -266,6 +272,8 @@ function App() {
         const currentUser = await api<UserAccount>("/auth/me");
 
         setUser(currentUser);
+
+        authenticatedUser = currentUser;
 
         const permissionPayload = await api<EffectivePermissions>("/auth/permissions/effective");
 
@@ -282,6 +290,8 @@ function App() {
       setAuthReady(true);
 
     }
+
+    return authenticatedUser;
 
   }
 
@@ -303,7 +313,15 @@ function App() {
 
     if (new URLSearchParams(window.location.search).has("invite")) window.history.replaceState({}, "", window.location.pathname);
 
-    await load();
+    if (result.user.role === "applicant") {
+
+      setActiveTab("recruiting");
+
+      window.history.replaceState({}, "", "/#recruiting");
+
+    }
+
+    await load(result.user.role);
 
   }
 
@@ -325,7 +343,12 @@ function App() {
 
 
 
-  async function load() {
+  async function load(role = user?.role) {
+
+    if (role === "applicant") {
+      setData(emptyData);
+      return;
+    }
 
     if (!localStorage.getItem("eq_access_token")) return;
 
@@ -397,9 +420,37 @@ function App() {
 
   useEffect(() => {
 
+    function syncLocationHash() {
+
+      setLocationHash(window.location.hash);
+
+    }
+
+    window.addEventListener("hashchange", syncLocationHash);
+
+    return () => window.removeEventListener("hashchange", syncLocationHash);
+
+  }, []);
+
+  useEffect(() => {
+
     const params = new URLSearchParams(window.location.search);
 
-    if (window.location.hash === "#esi" || params.get("esi_status")) setActiveTab("esi");
+    const esiDestination = params.get("esi_mode") === "recruitment" || window.location.hash === "#recruiting" ? "recruiting" : "esi";
+
+    const esiError = params.get("esi_error");
+
+    if (window.location.hash === "#esi" || window.location.hash === "#recruiting" || params.get("esi_status") || esiError) setActiveTab(esiDestination);
+
+    if (esiError) {
+      if (esiDestination === "recruiting" && window.opener) {
+        window.opener.postMessage({ type: "eqm:recruitment-sso-complete", error: esiError }, window.location.origin);
+        window.close();
+      } else {
+        setError(esiError);
+      }
+      window.history.replaceState({}, "", "/#" + esiDestination);
+    }
 
     if (params.get("esi_status")) {
 
@@ -413,15 +464,20 @@ function App() {
 
       const scopeNote = addedScopes.length > 0 ? ` Added ${addedScopes.length} scope${addedScopes.length === 1 ? "" : "s"}.` : removedScopes.length > 0 ? ` Removed ${removedScopes.length} scope${removedScopes.length === 1 ? "" : "s"}.` : "";
 
-      setNotice(`${characterName} ${status} through EVE SSO.${scopeNote}`);
+      if (esiDestination === "recruiting" && window.opener) {
+        window.opener.postMessage({ type: "eqm:recruitment-sso-complete", characterName, status }, window.location.origin);
+        window.close();
+      } else {
+        setNotice(`${characterName} ${status} through EVE SSO.${scopeNote}`);
+      }
 
-      window.history.replaceState({}, "", "/#esi");
+      window.history.replaceState({}, "", "/#" + esiDestination);
 
     }
 
-    void refreshAuth().then(() => {
+    void refreshAuth().then((currentUser) => {
 
-      if (localStorage.getItem("eq_access_token")) void load();
+      if (localStorage.getItem("eq_access_token") && currentUser?.role !== "applicant") void load(currentUser?.role);
 
     });
 
@@ -482,9 +538,13 @@ function App() {
 
   const inviteToken = new URLSearchParams(window.location.search).get("invite");
 
+  const publicRecruiting = locationHash === "#recruiting" || locationHash === "#apply";
+
   if (!authReady) return <main className="auth-shell"><section className="panel"><img className="auth-logo" src="/eqm-logo.png" alt="EVE Quartermaster" /><p className="muted">Checking account session...</p></section></main>;
 
   if (!user && inviteToken) return <InviteScreen token={inviteToken} onAuth={completeAuth} />;
+
+  if (!user && publicRecruiting) return <RecruitingPublicPage api={api} onRegister={completeAuth} onBack={() => { window.location.hash = ""; window.location.reload(); }} />;
 
   if (!user) return <AuthScreen bootstrap={bootstrap} onAuth={completeAuth} />;
 
@@ -550,6 +610,10 @@ function App() {
 
           {canView("analytics") && <button className={activeTab === "analytics" ? "active" : ""} onClick={() => setActiveTab("analytics")}><Activity size={18} /> Analytics</button>}
 
+          {canView("recruiting") && <span className="nav-section-label">Community</span>}
+
+          {canView("recruiting") && <button className={activeTab === "recruiting" ? "active" : ""} onClick={() => setActiveTab("recruiting")}><UserRoundCheck size={18} /> Recruiting</button>}
+
           {["profile", "settings", "audit"].some(canView) && <span className="nav-section-label">Account & Admin</span>}
 
           {canView("profile") && <button className={activeTab === "profile" ? "active" : ""} onClick={() => setActiveTab("profile")}><UserRoundCheck size={18} /> Profile</button>}
@@ -589,7 +653,7 @@ function App() {
 
             <span className="status-badge rank-badge">{user.role}</span>
 
-            <button onClick={() => void seed()}><Sparkles size={18} /> Seed</button>
+            {["host", "admin"].includes(user.role) && <button onClick={() => void seed()}><Sparkles size={18} /> Seed</button>}
 
             <button onClick={() => void load()}><RefreshCw size={18} /> {loading ? "Refreshing" : "Refresh"}</button>
 
@@ -632,6 +696,8 @@ function App() {
         {activeTab === "contracts" && canView("contracts") && <ContractsPage currentUser={user} api={api} CharacterHoverName={CharacterHoverName} />}
 
         {activeTab === "analytics" && canView("analytics") && <AnalyticsPlatform currentUser={user} api={api} Metric={Metric} />}
+
+        {activeTab === "recruiting" && canView("recruiting") && <RecruitingPage api={api} />}
 
         {activeTab === "skills" && canView("skills") && <CharacterSkills currentUser={user} api={api} Metric={Metric} CharacterHoverName={CharacterHoverName} />}
 
@@ -811,6 +877,8 @@ function AuthScreen({ bootstrap, onAuth }: { bootstrap: BootstrapStatus | null; 
           <label>Password<input name="password" type="password" minLength={8} required /></label>
 
         </ManagedForm>
+
+        {!needsAdmin && <a className="auth-link auth-recruiting-link" href="/#recruiting"><UserRoundCheck size={18} /> Apply / Recruiting</a>}
 
       </section>
 
@@ -1949,7 +2017,7 @@ function ManagedForm({ children, onSubmit, submitLabel = "Save" }: { children: R
 
 function titleFor(tab: string) {
 
-  return ({ overview: "Quartermaster Overview", ownership: "Ownership and Locations", characters: "Characters", roster: "Alliance Roster", navigation: "Navigation", market: "Market Appraisal", notes: "Notes & Lists", manufacturing: "Manufacturing", research_projects: "Research Projects", mining: "Mining Ledger", contracts: "Contracts", analytics: "Analytics Platform", skills: "Character Skills", fittings: "Fittings", jump_clones: "Jump Clones", settings: "Settings", corporations: "Corporations", assets: "Asset Ledger", industry: "Blueprints and Recipes", esi: "ESI Sync", profile: "Profile", users: "User Administration", audit: "Audit Log" } as Record<string, string>)[tab];
+  return ({ overview: "Quartermaster Overview", ownership: "Ownership and Locations", characters: "Characters", roster: "Alliance Roster", navigation: "Navigation", market: "Market Appraisal", notes: "Notes & Lists", manufacturing: "Manufacturing", research_projects: "Research Projects", mining: "Mining Ledger", contracts: "Contracts", analytics: "Analytics Platform", recruiting: "Recruiting", skills: "Character Skills", fittings: "Fittings", jump_clones: "Jump Clones", settings: "Settings", corporations: "Corporations", assets: "Asset Ledger", industry: "Blueprints and Recipes", esi: "ESI Sync", profile: "Profile", users: "User Administration", audit: "Audit Log" } as Record<string, string>)[tab];
 
 }
 
@@ -1957,7 +2025,7 @@ function titleFor(tab: string) {
 
 function subtitleFor(tab: string) {
 
-  return ({ overview: "Live status and the first useful totals from the database.", ownership: "Define the characters, corporations, manual buckets, and places assets can belong to.", characters: "Assign EVE characters to Quartermaster accounts and control public asset visibility.", roster: "A corporation-grouped character roster suitable for diplomats and prospective members.", navigation: "Plan gate routes from imported SDE map data before layering on kill checks and local threat analysis.", market: "Paste item lists and compare buy, sell, and split prices across trade hubs.", notes: "Keep private working notes and destination-aware resupply lists with live asset context.", manufacturing: "Track manufacturing jobs, costs, required inputs, hub prices, and production history.", research_projects: "Monitor ESI research, copying, and invention queues while retaining project history for analytics.", mining: "Track persistent per-character mining yield, residue efficiency, and named fleet operations.", contracts: "Sync and review current character and corporation contracts.", analytics: "Snapshot history, metric widgets, exports, and the foundation for custom dashboards.", skills: "Import trained skills, total skill points, and active skill queues from ESI.", fittings: "Sync saved EVE fittings, review modules, experiment in a scratchpad, and copy EFT-style text.", jump_clones: "Sync jump clones, inspect implants, and build custom implant sets for fitting experiments.", settings: "Control character visibility and sync privacy.", corporations: "Review enrolled corporations and sync corporation asset ledgers through authorized CEO or director tokens.", assets: "Track item stacks by owner, type, location, and EVE-style location flag.", industry: "Store blueprints, recipe activities, and material inputs before wiring in SDE imports.", esi: "A holding area for the upcoming SSO and sync work.", profile: "Manage your account and private messages.", users: "Manage Quartermaster accounts and role levels.", audit: "Review sync peeks, system events, and administrative activity." } as Record<string, string>)[tab];
+  return ({ overview: "Live status and the first useful totals from the database.", ownership: "Define the characters, corporations, manual buckets, and places assets can belong to.", characters: "Assign EVE characters to Quartermaster accounts and control public asset visibility.", roster: "A corporation-grouped character roster suitable for diplomats and prospective members.", navigation: "Plan gate routes from imported SDE map data before layering on kill checks and local threat analysis.", market: "Paste item lists and compare buy, sell, and split prices across trade hubs.", notes: "Keep private working notes and destination-aware resupply lists with live asset context.", manufacturing: "Track manufacturing jobs, costs, required inputs, hub prices, and production history.", research_projects: "Monitor ESI research, copying, and invention queues while retaining project history for analytics.", mining: "Track persistent per-character mining yield, residue efficiency, and named fleet operations.", contracts: "Sync and review current character and corporation contracts.", analytics: "Snapshot history, metric widgets, exports, and the foundation for custom dashboards.", recruiting: "Configure public recruiting, review applicants, and coordinate interviews without exposing internal notes.", skills: "Import trained skills, total skill points, and active skill queues from ESI.", fittings: "Sync saved EVE fittings, review modules, experiment in a scratchpad, and copy EFT-style text.", jump_clones: "Sync jump clones, inspect implants, and build custom implant sets for fitting experiments.", settings: "Control character visibility and sync privacy.", corporations: "Review enrolled corporations and sync corporation asset ledgers through authorized CEO or director tokens.", assets: "Track item stacks by owner, type, location, and EVE-style location flag.", industry: "Store blueprints, recipe activities, and material inputs before wiring in SDE imports.", esi: "A holding area for the upcoming SSO and sync work.", profile: "Manage your account and private messages.", users: "Manage Quartermaster accounts and role levels.", audit: "Review sync peeks, system events, and administrative activity." } as Record<string, string>)[tab];
 
 }
 

@@ -96,6 +96,8 @@
 .settlement-participant-row { display: grid; grid-template-columns: repeat(6, minmax(125px, 1fr)) 38px; gap: 8px; align-items: end; padding: 9px; border: 1px solid #293640; background: #0b1218; }
 .settlement-participant-row label:first-child { min-width: 160px; }
 .settlement-preview { display: grid; gap: 12px; margin-top: 4px; }
+.settlement-preview-actions { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 10px 12px; border: 1px solid #31525c; background: #0c171d; }
+.settlement-preview-actions > span { color: #9fb1c3; font-size: .8rem; }
 .settlement-warnings { display: flex; gap: 9px; align-items: flex-start; padding: 11px; border: 1px solid #8b6b27; background: #231e12; color: #e6c873; }
 .settlement-warnings div { display: grid; gap: 3px; }
 .settlement-reconciliation { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid #2b3944; background: #0b1218; }
@@ -106,6 +108,9 @@
 .settlement-reconciliation .difference { color: #78d6a2; }
 .settlement-reconciliation .difference.bad { color: #f08c88; background: #261719; }
 .settlement-payout-table { min-width: 980px; }
+.settlement-mineral-basket { display: grid; gap: 4px; min-width: 220px; }
+.settlement-mineral-basket span { display: flex; justify-content: space-between; gap: 12px; color: #b7c5d3; font-size: .78rem; }
+.settlement-mineral-basket strong { color: #eef4f8; font-weight: 550; }
 .settlement-payout-table td > span, .settlement-history td > span { display: block; margin-top: 3px; color: #7f90a4; font-size: .73rem; }
 .settlement-history { display: grid; gap: 8px; }
 .settlement-history table { min-width: 1050px; }

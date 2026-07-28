@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     token_encryption_key: str = ""
     frontend_url: str = "http://localhost:5173"
     eve_sso_callback_url: str = "http://localhost:8000/api/esi/auth/callback"
+    esi_compatibility_date: str = "2026-07-22"
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173,https://eqm.easyduneadmin.app"
     auth_secret_key: str = "dev-change-me"
     access_token_minutes: int = 720

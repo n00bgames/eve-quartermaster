@@ -21,6 +21,20 @@ SHIELD_MANAGEMENT_TYPE_ID = 3416
 MECHANICS_TYPE_ID = 3392
 HULL_UPGRADES_TYPE_ID = 3394
 NAVIGATION_TYPE_ID = 3449
+CAPACITOR_SYSTEMS_OPERATION_TYPE_ID = 3417
+CAPACITOR_MANAGEMENT_TYPE_ID = 3418
+SPACESHIP_COMMAND_TYPE_ID = 3327
+EVASIVE_MANEUVERING_TYPE_ID = 3453
+ADVANCED_SPACESHIP_COMMAND_TYPE_ID = 20342
+MOBILITY_SKILL_TYPE_IDS = {
+    SPACESHIP_COMMAND_TYPE_ID,
+    EVASIVE_MANEUVERING_TYPE_ID,
+    ADVANCED_SPACESHIP_COMMAND_TYPE_ID,
+}
+CAPACITOR_SKILL_TYPE_IDS = {
+    CAPACITOR_SYSTEMS_OPERATION_TYPE_ID,
+    CAPACITOR_MANAGEMENT_TYPE_ID,
+}
 MISSILE_LAUNCHER_OPERATION_TYPE_ID = 3319
 TORPEDOES_TYPE_ID = 3325
 CRUISE_MISSILES_TYPE_ID = 3326
@@ -121,12 +135,8 @@ SUBSYSTEM_PERCENT_ATTRS = (
     ("cpuOutput", "cpuOutputBonus2"),
     ("powerOutput", "powerEngineeringOutputBonus"),
 )
-FREIGHTER_CARGO_SKILL_BONUSES = {
-    "providence": ("Amarr Freighter", ("shipBonusAF", "shipBonusAmarrFreighter")),
-    "charon": ("Caldari Freighter", ("shipBonusCF", "shipBonusCaldariFreighter")),
-    "obelisk": ("Gallente Freighter", ("shipBonusGF", "shipBonusGallenteFreighter")),
-    "fenrir": ("Minmatar Freighter", ("shipBonusMF", "shipBonusMinmatarFreighter")),
-}
+FREIGHTER_CARGO_BONUS_ATTRS = ("freighterBonusA2", "freighterBonusC2", "freighterBonusG2", "freighterBonusM2")
+FREIGHTER_VELOCITY_BONUS_ATTRS = ("freighterBonusA1", "freighterBonusC1", "freighterBonusG1", "freighterBonusM1")
 
 def normalize_attr(name: str) -> str:
     return re.sub(r"[^a-z0-9]", "", name.lower())
@@ -294,6 +304,20 @@ def type_capacities(db: Session, type_ids: set[int]) -> dict[int, float]:
         if resolved is not None:
             capacities[int(type_id)] = resolved
     return capacities
+
+
+def type_masses(db: Session, type_ids: set[int]) -> dict[int, float]:
+    if not type_ids:
+        return {}
+    rows = db.execute(select(EveType.type_id, EveType.mass).where(EveType.type_id.in_(type_ids))).all()
+    return {int(type_id): float(mass) for type_id, mass in rows if mass is not None}
+
+
+def type_group_ids(db: Session, type_ids: set[int]) -> dict[int, int]:
+    if not type_ids:
+        return {}
+    rows = db.execute(select(EveType.type_id, EveType.group_id).where(EveType.type_id.in_(type_ids))).all()
+    return {int(type_id): int(group_id) for type_id, group_id in rows if group_id is not None}
 
 
 def type_group_names(db: Session, type_ids: set[int]) -> dict[int, str]:
@@ -481,6 +505,10 @@ def item_resource_usage(item: CharacterFittingItem, attrs: dict[str, float], gro
         cloaking_cpu = attr_value(ship_attrs, "cloakingCpuNeedBonus")
         if cloaking_cpu is not None:
             cpu = max(0.0, float(cloaking_cpu))
+    if "reinforced bulkhead" in family:
+        bulkhead_cpu_bonus = attr_value(ship_attrs, "cpuNeedBonus")
+        if bulkhead_cpu_bonus is not None:
+            cpu *= max(0.0, 1 + float(bulkhead_cpu_bonus) / 100.0)
 
     hybrid_reduction = attr_value(ship_attrs, "subsystemMHTFittingReduction")
     if hybrid_reduction is not None and module_requires_skill(attrs, MEDIUM_HYBRID_TURRET_TYPE_ID):
@@ -521,6 +549,15 @@ def stacking_raw_multiplier(values: list[float]) -> float:
     for index, value in enumerate(useful):
         penalty = STACKING_PENALTIES[index] if index < len(STACKING_PENALTIES) else 0.0
         result *= 1 + (value - 1.0) * penalty
+    return result
+
+
+def unpenalized_multiplier(values: list[float]) -> float:
+    result = 1.0
+    for value in values:
+        number = float(value)
+        if number > 0:
+            result *= number
     return result
 
 
@@ -845,22 +882,90 @@ def ship_shield_boost_multiplier(ship_attrs: dict[str, float], skill_name_levels
     return multiplier
 
 
-def ship_cargo_skill_multiplier(ship_attrs: dict[str, float], ship_name: str, skill_name_levels: dict[str, int]) -> float:
-    skill_info = FREIGHTER_CARGO_SKILL_BONUSES.get(ship_name.strip().lower())
-    if not skill_info:
-        return 1.0
-    skill_name, bonus_attrs = skill_info
-    level = named_skill_level(skill_name_levels, skill_name)
+def ship_freighter_skill_multiplier(ship_attrs: dict[str, float], skill_levels: dict[int, int], bonus_attrs: tuple[str, ...]) -> float:
+    skill_type_id = attr_value(ship_attrs, "requiredSkill2")
     bonus = attr_value(ship_attrs, *bonus_attrs)
-    if bonus is None:
-        bonus = 5.0
-    return per_level_bonus_multiplier(bonus, level)
+    if skill_type_id is None or bonus is None:
+        return 1.0
+    return per_level_bonus_multiplier(bonus, skill_level(skill_levels, int(skill_type_id)))
+
+
+def character_agility_multiplier(
+    ship_attrs: dict[str, float],
+    dogma: dict[int, dict[str, float]],
+    skill_levels: dict[int, int],
+) -> float:
+    skill_ids = [SPACESHIP_COMMAND_TYPE_ID, EVASIVE_MANEUVERING_TYPE_ID]
+    if attr_value(ship_attrs, "advancedAgility") is not None:
+        skill_ids.append(ADVANCED_SPACESHIP_COMMAND_TYPE_ID)
+
+    multiplier = 1.0
+    for skill_type_id in skill_ids:
+        bonus = attr_value(dogma.get(skill_type_id, {}), "agilityBonus")
+        if bonus is not None:
+            multiplier *= per_level_bonus_multiplier(bonus, skill_level(skill_levels, skill_type_id))
+    return multiplier
+
+
+def selected_implant_mobility_multipliers(
+    implant_type_ids: set[int],
+    dogma: dict[int, dict[str, float]],
+    dogma_effects: dict[int, list[dict[str, Any]]],
+    type_group_ids: dict[int, int],
+) -> dict[str, Any]:
+    set_modifiers: dict[tuple[int, str], list[float]] = {}
+    for type_id in implant_type_ids:
+        attrs = dogma.get(type_id, {})
+        for effect in dogma_effects.get(type_id, []):
+            for modifier in effect.get("modifier_info", []):
+                if modifier.get("func") != "LocationGroupModifier" or modifier.get("domain") != "charID":
+                    continue
+                if int(modifier.get("operation", -1)) != 0 or modifier.get("groupID") is None:
+                    continue
+                target_name = modifier.get("modified_attribute_name")
+                source_name = modifier.get("modifying_attribute_name")
+                source_value = attr_value(attrs, source_name) if source_name else None
+                if target_name and source_value is not None and float(source_value) > 0:
+                    set_modifiers.setdefault((int(modifier["groupID"]), target_name), []).append(float(source_value))
+
+    result: dict[str, Any] = {"agility": [], "warp_speed": [], "applied": []}
+    target_keys = {"agility": "agility", "warpspeedmultiplier": "warp_speed"}
+    for type_id in implant_type_ids:
+        attrs = dogma.get(type_id, {})
+        group_id = type_group_ids.get(type_id)
+        for effect in dogma_effects.get(type_id, []):
+            for modifier in effect.get("modifier_info", []):
+                if modifier.get("func") != "ItemModifier" or modifier.get("domain") != "shipID":
+                    continue
+                target_key = target_keys.get(str(modifier.get("modified_attribute_name") or ""))
+                source_name = modifier.get("modifying_attribute_name")
+                source_value = attr_value(attrs, source_name) if source_name else None
+                if target_key is None or source_value is None:
+                    continue
+
+                value = float(source_value)
+                if group_id is not None and source_name:
+                    value *= unpenalized_multiplier(set_modifiers.get((group_id, source_name), []))
+                operation = int(modifier.get("operation", -1))
+                if operation == 6:
+                    multiplier = 1 + value / 100.0
+                elif operation in {0, 4}:
+                    multiplier = value
+                else:
+                    continue
+                if multiplier <= 0:
+                    continue
+                result[target_key].append(multiplier)
+                result["applied"].append({
+                    "type_id": type_id,
+                    "effect_id": effect.get("effect_id"),
+                    "attribute": target_key,
+                    "multiplier": multiplier,
+                })
+    return result
 
 
 def cargo_capacity_multiplier_from_item(attrs: dict[str, float], group_name: str, item_name: str) -> float | None:
-    family = f"{item_name} {group_name}".lower()
-    if not any(token in family for token in ("cargo", "cargohold", "expanded cargohold")):
-        return None
     multiplier = attr_value(attrs, "cargoCapacityMultiplier")
     if multiplier is not None and multiplier > 0:
         return float(multiplier)
@@ -872,8 +977,7 @@ def cargo_capacity_multiplier_from_item(attrs: dict[str, float], group_name: str
 
 def effective_cargo_capacity(
     ship_attrs: dict[str, float],
-    ship_name: str,
-    skill_name_levels: dict[str, int],
+    skill_levels: dict[int, int],
     cargo_capacity_multipliers: list[float],
     ship_capacity: float | None = None,
 ) -> float | None:
@@ -882,7 +986,7 @@ def effective_cargo_capacity(
         base_capacity = ship_capacity
     if base_capacity is None:
         return None
-    capacity = float(base_capacity) * ship_cargo_skill_multiplier(ship_attrs, ship_name, skill_name_levels)
+    capacity = float(base_capacity) * ship_freighter_skill_multiplier(ship_attrs, skill_levels, FREIGHTER_CARGO_BONUS_ATTRS)
     capacity *= unpenalized_multiplier(cargo_capacity_multipliers)
     return capacity
 
@@ -1097,9 +1201,19 @@ def compute_fitting_stats(
     skill_name_levels: dict[str, int],
     volumes: dict[int, float],
     ship_capacity: float | None = None,
+    ship_mass: float | None = None,
+    dogma_effects: dict[int, list[dict[str, Any]]] | None = None,
+    implant_type_ids: set[int] | None = None,
+    type_group_ids: dict[int, int] | None = None,
     heat: bool = False,
 ) -> dict[str, Any]:
     ship_attrs = effective_ship_attrs_with_subsystems(dogma.get(fitting.ship_type_id, {}), fitting.items, dogma)
+    implant_mobility = selected_implant_mobility_multipliers(
+        implant_type_ids or set(),
+        dogma,
+        dogma_effects or {},
+        type_group_ids or {},
+    )
     shield_hp = safe_number(attr_value(ship_attrs, "shieldCapacity")) * (1 + 0.05 * skill_level(skill_levels, SHIELD_MANAGEMENT_TYPE_ID))
     armor_hp = safe_number(attr_value(ship_attrs, "armorHP")) * (1 + 0.05 * skill_level(skill_levels, HULL_UPGRADES_TYPE_ID))
     structure_hp = safe_number(attr_value(ship_attrs, "hp", "structureHP")) * (1 + 0.05 * skill_level(skill_levels, MECHANICS_TYPE_ID))
@@ -1230,9 +1344,9 @@ def compute_fitting_stats(
             heated_speed_factor = float(speed_factor) + (float(attr_value(attrs, "overloadSpeedFactorBonus") or 0.0) if overheated else 0.0)
             velocity_multipliers.extend([1 + heated_speed_factor / 100.0] * qty)
         signature_bonus = attr_value(attrs, "signatureRadiusBonus")
-        if signature_bonus and is_prop_family:
+        if signature_bonus:
             signature_multipliers.extend([1 + float(signature_bonus) / 100.0] * qty)
-        mass_addition += safe_number(attr_value(attrs, "massAddition")) * qty if is_prop_family else 0.0
+        mass_addition += safe_number(attr_value(attrs, "massAddition")) * qty
         agility_multiplier = dogma_multiplier(attr_value(attrs, "agilityMultiplier"))
         if agility_multiplier:
             agility_multipliers.extend([agility_multiplier] * qty)
@@ -1433,22 +1547,41 @@ def compute_fitting_stats(
     max_velocity = attr_value(ship_attrs, "maxVelocity")
     if max_velocity is not None:
         max_velocity *= 1 + 0.05 * skill_level(skill_levels, NAVIGATION_TYPE_ID)
+        max_velocity *= ship_freighter_skill_multiplier(ship_attrs, skill_levels, FREIGHTER_VELOCITY_BONUS_ATTRS)
         max_velocity *= stacking_raw_multiplier(velocity_multipliers)
-    mass = attr_value(ship_attrs, "mass")
+    mass = ship_mass if ship_mass is not None else attr_value(ship_attrs, "mass")
     if mass is not None:
         mass = float(mass) + mass_addition
     inertia = attr_value(ship_attrs, "agility", "inertiaModifier")
     if inertia is not None:
-        inertia = float(inertia) * stacking_raw_multiplier(agility_multipliers)
+        inertia = float(inertia)
+        inertia *= character_agility_multiplier(ship_attrs, dogma, skill_levels)
+        inertia *= stacking_raw_multiplier(agility_multipliers)
+        inertia *= unpenalized_multiplier(implant_mobility["agility"])
     align_time = None
     if mass and inertia:
         align_time = 1.38629436112 * float(mass) * float(inertia) / 1_000_000.0
+    warp_speed = attr_value(ship_attrs, "warpSpeedMultiplier", "baseWarpSpeed")
+    if warp_speed is not None:
+        warp_speed = float(warp_speed) * unpenalized_multiplier(implant_mobility["warp_speed"])
     capacitor_capacity = attr_value(ship_attrs, "capacitorCapacity")
     if capacitor_capacity is not None:
         capacitor_capacity = float(capacitor_capacity) * stacking_raw_multiplier(capacitor_multipliers)
+        capacity_bonus = attr_value(dogma.get(CAPACITOR_MANAGEMENT_TYPE_ID, {}), "capacitorCapacityBonus")
+        if capacity_bonus is not None:
+            capacitor_capacity *= per_level_bonus_multiplier(
+                capacity_bonus,
+                skill_level(skill_levels, CAPACITOR_MANAGEMENT_TYPE_ID),
+            )
     capacitor_recharge_ms = attr_value(ship_attrs, "rechargeRate", "capacitorRechargeRate")
     capacitor_peak_recharge = None
     capacitor_recharge_seconds = float(capacitor_recharge_ms) / 1000.0 if capacitor_recharge_ms else None
+    recharge_bonus = attr_value(dogma.get(CAPACITOR_SYSTEMS_OPERATION_TYPE_ID, {}), "capRechargeBonus")
+    if capacitor_recharge_seconds is not None and recharge_bonus is not None:
+        capacitor_recharge_seconds *= per_level_bonus_multiplier(
+            recharge_bonus,
+            skill_level(skill_levels, CAPACITOR_SYSTEMS_OPERATION_TYPE_ID),
+        )
     if capacitor_capacity and capacitor_recharge_seconds:
         capacitor_peak_recharge = float(capacitor_capacity) / capacitor_recharge_seconds * 2.5
     capacitor_draw, capacitor_modules = active_capacitor_use_per_second(active_fitted_items, dogma, names)
@@ -1472,7 +1605,7 @@ def compute_fitting_stats(
         for item in active_fitted_items:
             signature_radius += safe_number(attr_value(dogma.get(item.type_id, {}), "signatureRadiusAdd")) * module_quantity(item)
 
-    cargo_capacity = effective_cargo_capacity(ship_attrs, names.get(fitting.ship_type_id, ""), skill_name_levels, cargo_capacity_multipliers, ship_capacity)
+    cargo_capacity = effective_cargo_capacity(ship_attrs, skill_levels, cargo_capacity_multipliers, ship_capacity)
 
     return {
         "offense": {
@@ -1505,10 +1638,11 @@ def compute_fitting_stats(
         },
         "mobility": {
             "max_velocity": max_velocity,
-            "warp_speed": attr_value(ship_attrs, "warpSpeedMultiplier", "baseWarpSpeed"),
+            "warp_speed": warp_speed,
             "align_time": align_time,
             "signature_radius": signature_radius,
             "mass": mass,
+            "implant_modifiers_applied": len(implant_mobility["applied"]),
         },
         "capacitor": {
             "capacity": capacitor_capacity,
@@ -1534,21 +1668,30 @@ def compute_fitting_stats(
             "drone_control_range_m": drone_control_range,
         },
         "notes": [
-            f"Combat stats are SDE-derived {'hot' if heat else 'cold'} estimates with common fitted module modifiers, missile character skills, selected hull role bonuses, capacitor draw, and stacking penalties. Implants, script effect modifiers, and full effect-graph coverage are still being refined.",
+            f"Combat stats are SDE-derived {'hot' if heat else 'cold'} estimates with common fitted module modifiers, character skills, selected hull role bonuses, supported implant mobility effects, capacitor draw, and stacking penalties. Script modifiers and remaining effect-graph coverage are still being refined.",
         ],
     }
 
 def simulate_fitting(db: Session, fitting: CharacterFitting, character: EveCharacter, heat: bool = False, implant_type_ids: set[int] | None = None, implant_context: dict[str, Any] | None = None) -> dict[str, Any]:
     implant_type_ids = implant_type_ids or set()
-    type_ids = {fitting.ship_type_id, *(item.type_id for item in fitting.items), *(item.charge_type_id for item in fitting.items if getattr(item, "charge_type_id", None)), *implant_type_ids}
+    skill_levels = character_skill_levels(db, character.id)
+    skill_name_levels = character_skill_levels_by_name(db, character.id)
+    type_ids = {
+        fitting.ship_type_id,
+        *(item.type_id for item in fitting.items),
+        *(item.charge_type_id for item in fitting.items if getattr(item, "charge_type_id", None)),
+        *implant_type_ids,
+        *MOBILITY_SKILL_TYPE_IDS,
+        *CAPACITOR_SKILL_TYPE_IDS,
+    }
     dogma = dogma_for_types(db, type_ids)
     dogma_effects = dogma_effects_for_types(db, type_ids)
     names = type_names(db, type_ids | required_skill_type_ids(dogma))
     volumes = type_volumes(db, type_ids)
     capacities = type_capacities(db, {fitting.ship_type_id})
+    masses = type_masses(db, {fitting.ship_type_id})
+    group_ids = type_group_ids(db, type_ids)
     group_names = type_group_names(db, type_ids)
-    skill_levels = character_skill_levels(db, character.id)
-    skill_name_levels = character_skill_levels_by_name(db, character.id)
     base_ship_attrs = dogma.get(fitting.ship_type_id, {})
     ship_attrs = effective_ship_attrs_with_subsystems(base_ship_attrs, fitting.items, dogma)
     dogma_loaded = bool(base_ship_attrs) or any(dogma.get(item.type_id) for item in fitting.items)
@@ -1632,10 +1775,24 @@ def simulate_fitting(db: Session, fitting: CharacterFitting, character: EveChara
 
     notes = [] if dogma_loaded else ["Dogma attributes are not imported yet. Import the SDE dogma section before relying on simulation checks."]
     if implant_context and implant_context.get("implant_count", 0) > 0:
-        notes.append(f"Implant set selected: {implant_context.get('name', 'Implants')} ({implant_context.get('implant_count', 0)} implant{'' if implant_context.get('implant_count', 0) == 1 else 's'}). Full implant dogma modifiers are still in development.")
+        notes.append(f"Implant set selected: {implant_context.get('name', 'Implants')} ({implant_context.get('implant_count', 0)} implant{'' if implant_context.get('implant_count', 0) == 1 else 's'}). Supported agility and warp-speed Dogma effects are applied.")
     if dogma_loaded and not dogma_effects_loaded:
         notes.append("Dogma effects are not imported yet. Re-import SDE dogma to unlock effect-graph based simulation passes.")
-    stats = compute_fitting_stats(fitting, dogma, names, group_names, skill_levels, skill_name_levels, volumes, capacities.get(fitting.ship_type_id), heat=heat) if dogma_loaded else None
+    stats = compute_fitting_stats(
+        fitting,
+        dogma,
+        names,
+        group_names,
+        skill_levels,
+        skill_name_levels,
+        volumes,
+        capacities.get(fitting.ship_type_id),
+        ship_mass=masses.get(fitting.ship_type_id),
+        dogma_effects=dogma_effects,
+        implant_type_ids=implant_type_ids,
+        type_group_ids=group_ids,
+        heat=heat,
+    ) if dogma_loaded else None
 
     return {
         "fitting_id": fitting.id,

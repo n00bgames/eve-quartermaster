@@ -31,6 +31,7 @@ services:
       EVE_SSO_CLIENT_ID: ${EVE_SSO_CLIENT_ID:-}
       EVE_SSO_CLIENT_SECRET: ${EVE_SSO_CLIENT_SECRET:-}
       EVE_SSO_CALLBACK_URL: ${EVE_SSO_CALLBACK_URL:-http://localhost:8000/api/esi/auth/callback}
+      ESI_COMPATIBILITY_DATE: ${ESI_COMPATIBILITY_DATE:-2026-07-22}
       TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:-}
       AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:-dev-change-me}
       ACCESS_TOKEN_MINUTES: ${ACCESS_TOKEN_MINUTES:-720}
@@ -54,6 +55,7 @@ services:
       APP_NAME: eve-quartermaster
       DATABASE_URL: postgresql+psycopg://eve:eve@postgres:5432/eve_quartermaster
       REDIS_URL: redis://redis:6379/0
+      ESI_COMPATIBILITY_DATE: ${ESI_COMPATIBILITY_DATE:-2026-07-22}
       SDE_SOURCE_PATH: ${SDE_SOURCE_PATH:-/sde}
     volumes:
       - ${SDE_HOST_PATH:-./sde}:/sde:ro

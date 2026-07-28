@@ -61,10 +61,21 @@ export type CharacterDossierToken = {
   has_fitting_scope: boolean;
   has_contract_scope: boolean;
   has_clone_scope: boolean;
+  has_standings_scope: boolean;
   missing_scopes: string[];
   linked_at?: string | null;
 };
 
+export type CharacterStandingSourceType = "agent" | "npc_corp" | "faction";
+
+export type CharacterStanding = {
+  id: number;
+  source_type: CharacterStandingSourceType;
+  source_eve_id: number;
+  source_name: string;
+  standing: number;
+  last_synced_at?: string | null;
+};
 export type CharacterDossierFitting = {
   id: number;
   name: string;
@@ -115,6 +126,10 @@ export type CharacterDossier = {
   blueprints: any[];
   fittings: CharacterDossierFitting[];
   contracts: CharacterDossierContract[];
+  standings: {
+    synced_at?: string | null;
+    entries: CharacterStanding[];
+  };
   kill_history: {
     kills_count: number;
     losses_count: number;

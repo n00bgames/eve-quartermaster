@@ -16,7 +16,7 @@ from app.core.security import create_access_token, decode_token, hash_password, 
 from app.db.session import get_db
 from app.services.permissions import BUILT_IN_ROLES, ROLE_RANK, SECTION_DEFINITIONS, disabled_sections, effective_permissions, role_exists, role_payload, role_rank, role_names, section_payload, set_disabled_sections
 from app.services.user_accounts import retire_user_account
-from app.models import EsiSyncJob, EsiToken, EveCharacter, RoleDefinition, RoleSectionPermission, User, UserInvite, UserSectionPermission
+from app.models import EsiSyncJob, EsiToken, EveCharacter, RecruitmentUserCapability, RoleDefinition, RoleSectionPermission, User, UserInvite, UserSectionPermission
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 ROLES = BUILT_IN_ROLES
@@ -403,6 +403,7 @@ def delete_user(user_id: int, current_user: User = Depends(get_current_user), db
         db.execute(update(EsiSyncJob).where(EsiSyncJob.token_id.in_(token_ids)).values(token_id=None))
     db.execute(sa_delete(EsiToken).where(EsiToken.user_id == user_id))
     db.execute(sa_delete(UserSectionPermission).where(UserSectionPermission.user_id == user_id))
+    db.execute(sa_delete(RecruitmentUserCapability).where(RecruitmentUserCapability.user_id == user_id))
     db.execute(update(EveCharacter).where(EveCharacter.owner_user_id == user_id).values(owner_user_id=None))
     retire_user_account(user)
     db.commit()

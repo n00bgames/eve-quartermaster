@@ -3,7 +3,7 @@ set -eu
 
 cd "$(dirname "$0")"
 
-DEFAULT_SDE_URL="https://eve-static-data-export.s3-eu-west-1.amazonaws.com/tranquility/sde.zip"
+DEFAULT_SDE_URL="https://developers.eveonline.com/static-data/eve-online-static-data-latest-yaml.zip"
 SDE_URL="${SDE_URL:-$DEFAULT_SDE_URL}"
 SDE_DIR="${SDE_DIR:-sde}"
 SDE_ZIP_NAME="${SDE_ZIP_NAME:-sde.zip}"

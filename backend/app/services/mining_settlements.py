@@ -12,6 +12,7 @@ CONTRIBUTION_BASES = {"estimated_raw_value", "volume", "quantity", "manual"}
 RESERVE_METHODS = {"none", "percentage", "output_percentage", "flat_isk"}
 COMPENSATION_METHODS = {"fixed_percentage", "shares"}
 DEDUCTION_METHODS = {"percentage", "flat_isk"}
+SETTLEMENT_MODES = {"isk", "minerals"}
 
 
 class SettlementValidationError(ValueError):
@@ -115,6 +116,53 @@ def allocate_money(total: Decimal, weighted_rows: list[tuple[int, Decimal]]) -> 
     for _, key in sorted(fractions, key=lambda item: (-item[0], item[1]))[:remainder]:
         floors[key] += 1
     return {key: Decimal(floors.get(key, 0)) / 100 for key, _ in weighted_rows}
+
+
+def allocate_units(total: int, weighted_rows: list[tuple[int, Decimal]]) -> dict[int, int]:
+    """Allocate indivisible units with deterministic largest-remainder rounding."""
+    if total <= 0:
+        return {key: 0 for key, _ in weighted_rows}
+    positive = [(key, value) for key, value in weighted_rows if value > 0]
+    weight_total = sum((value for _, value in positive), ZERO)
+    if not positive or weight_total <= 0:
+        raise SettlementValidationError("Mineral units remain, but total participant weight is zero.")
+
+    floors: dict[int, int] = {}
+    fractions: list[tuple[Decimal, int]] = []
+    for key, value in positive:
+        exact_units = Decimal(total) * value / weight_total
+        floor_units = int(exact_units.to_integral_value(rounding=ROUND_FLOOR))
+        floors[key] = floor_units
+        fractions.append((exact_units - floor_units, key))
+    remainder = total - sum(floors.values())
+    for _, key in sorted(fractions, key=lambda item: (-item[0], item[1]))[:remainder]:
+        floors[key] += 1
+    return {key: floors.get(key, 0) for key, _ in weighted_rows}
+
+
+def compensation_ratios(participants: list[dict[str, Any]]) -> dict[int, Decimal]:
+    fixed_total = sum(
+        (row["fixed_percentage"] or ZERO for row in participants if row["compensation_method"] == "fixed_percentage"),
+        ZERO,
+    )
+    remaining = Decimal("1") - fixed_total
+    share_rows = [
+        (index, row["share_weight"] or ZERO)
+        for index, row in enumerate(participants)
+        if row["compensation_method"] == "shares"
+    ]
+    share_total = sum((weight for _, weight in share_rows if weight > 0), ZERO)
+    if remaining > 0 and share_total <= 0:
+        raise SettlementValidationError("Share-based funds remain, but total share weight is zero.")
+
+    ratios = {
+        index: row["fixed_percentage"] or ZERO
+        for index, row in enumerate(participants)
+        if row["compensation_method"] == "fixed_percentage"
+    }
+    for index, weight in share_rows:
+        ratios[index] = remaining * weight / share_total if weight > 0 and share_total > 0 else ZERO
+    return ratios
 
 
 def _clean_outputs(raw_outputs: Any, default_price_source: str) -> tuple[list[dict[str, Any]], list[str]]:
@@ -262,6 +310,9 @@ def _participant_rows(contributions: list[dict[str, Any]], raw_participants: Any
 
 
 def calculate_settlement(contribution_rows: Iterable[dict[str, Any]], payload: dict[str, Any]) -> dict[str, Any]:
+    settlement_mode = str(payload.get("settlement_mode") or "isk").strip().lower()
+    if settlement_mode not in SETTLEMENT_MODES:
+        raise SettlementValidationError("Choose ISK shares or mineral shares for this settlement.")
     basis = str(payload.get("contribution_basis") or "estimated_raw_value")
     contributions = aggregate_contributions(contribution_rows, basis)
     if not contributions:
@@ -312,8 +363,39 @@ def calculate_settlement(contribution_rows: Iterable[dict[str, Any]], payload: d
     for row in participants:
         row["payout_isk"] = money(row["payout_isk"])
         row["payout_ratio"] = (row["payout_isk"] / distributable).quantize(RATE, rounding=ROUND_HALF_UP) if distributable > 0 else ZERO
+        row["mineral_payouts"] = []
         if row["payout_isk"] == 0:
             warnings.append(f"{row['display_name']} has no calculated payout.")
+
+    if settlement_mode == "minerals":
+        payout_ratios = compensation_ratios(participants)
+        for index, ratio in payout_ratios.items():
+            participants[index]["payout_ratio"] = ratio.quantize(RATE, rounding=ROUND_HALF_UP)
+        distributable_ratio = distributable / gross_value if gross_value > 0 else Decimal("1")
+        for output in outputs:
+            distributed_quantity = int((output["quantity"] * distributable_ratio).to_integral_value(rounding=ROUND_FLOOR))
+            output["distributed_quantity"] = distributed_quantity
+            output["retained_quantity"] = int(output["quantity"]) - distributed_quantity
+            unit_allocations = allocate_units(distributed_quantity, list(payout_ratios.items()))
+            for index, quantity in unit_allocations.items():
+                if quantity <= 0:
+                    continue
+                participants[index]["mineral_payouts"].append(
+                    {
+                        "type_id": output["type_id"],
+                        "type_name": output["type_name"],
+                        "quantity": quantity,
+                        "unit_price": output["unit_price"],
+                        "total_value": money(Decimal(quantity) * output["unit_price"]),
+                    }
+                )
+        warnings = [warning for warning in warnings if "has no calculated payout" not in warning]
+        if reserve_value + deduction_total > 0:
+            warnings.append("Reserved and expense value is retained proportionally from each refined mineral.")
+    else:
+        for output in outputs:
+            output["distributed_quantity"] = 0
+            output["retained_quantity"] = int(output["quantity"])
 
     source_value = money(sum((row["estimated_value"] for row in contributions), ZERO))
     source_volume = sum((row["volume"] for row in contributions), ZERO)
@@ -327,6 +409,7 @@ def calculate_settlement(contribution_rows: Iterable[dict[str, Any]], payload: d
 
     stated_refine = normalize_percentage(payload.get("stated_refine_percent"), "Stated refine percentage") if payload.get("stated_refine_percent") not in (None, "") else None
     return {
+        "settlement_mode": settlement_mode,
         "contribution_basis": basis,
         "price_source": price_source,
         "outputs": outputs,

@@ -128,6 +128,8 @@ class MiningSettlementOutput(Base):
     type_id: Mapped[int] = mapped_column(ForeignKey("eve_types.type_id"), nullable=False, index=True)
     type_name_snapshot: Mapped[str] = mapped_column(String(255), nullable=False)
     quantity: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    distributed_quantity: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
+    retained_quantity: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
     unit_price: Mapped[float] = mapped_column(Numeric(24, 4), default=0, nullable=False)
     total_value: Mapped[float] = mapped_column(Numeric(24, 2), default=0, nullable=False)
     stated_refine_percent: Mapped[float | None] = mapped_column(Numeric(12, 10))
@@ -159,6 +161,7 @@ class MiningSettlementParticipant(Base):
     share_weight_overridden: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     payout_ratio: Mapped[float] = mapped_column(Numeric(12, 10), default=0, nullable=False)
     payout_isk: Mapped[float] = mapped_column(Numeric(24, 2), default=0, nullable=False)
+    mineral_payouts_json: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
     notes: Mapped[str | None] = mapped_column(Text)
 
     settlement: Mapped[MiningSettlement] = relationship(back_populates="participants")

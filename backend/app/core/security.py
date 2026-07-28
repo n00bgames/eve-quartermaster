@@ -95,7 +95,7 @@ def create_sso_state(user_id: int, mode: str = "core") -> str:
     return create_access_token(str(user_id), {"kind": "eve_sso", "mode": mode})
 
 
-def decode_sso_state(state: str | None) -> int | None:
+def decode_sso_state_payload(state: str | None) -> dict[str, Any] | None:
     if not state:
         return None
     try:
@@ -103,6 +103,13 @@ def decode_sso_state(state: str | None) -> int | None:
     except ValueError:
         return None
     if payload.get("kind") != "eve_sso":
+        return None
+    return payload
+
+
+def decode_sso_state(state: str | None) -> int | None:
+    payload = decode_sso_state_payload(state)
+    if payload is None:
         return None
     try:
         return int(payload.get("sub"))

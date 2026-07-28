@@ -4,7 +4,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models import (
@@ -20,17 +20,70 @@ from app.models import (
     EveCategory,
     EveCharacter,
     EveCorporation,
+    EsiSyncJob,
+    EsiToken,
     EveGroup,
     EveType,
     OwnershipEntity,
     SnapshotMetric,
     SnapshotRun,
 )
-from app.models.enums import OwnerKind
+from app.models.enums import OwnerKind, SyncStatus
+
+
+CORPORATION_ANALYTICS_SYNC_TYPES = frozenset(
+    {
+        "corporation_assets",
+        "corporation_blueprints",
+        "corporation_wallets",
+    }
+)
 
 
 def decimal_value(value: int | float | Decimal | None) -> Decimal:
     return Decimal(str(value or 0))
+
+
+def privileged_analytics_corporation_ids(db: Session) -> set[int]:
+    """Corporations with current linked-token evidence of successful corporate access."""
+    return set(
+        db.scalars(
+            select(EveCorporation.id)
+            .join(
+                OwnershipEntity,
+                (OwnershipEntity.corporation_id == EveCorporation.id)
+                & (OwnershipEntity.owner_kind == OwnerKind.CORPORATION),
+            )
+            .join(EsiSyncJob, EsiSyncJob.ownership_entity_id == OwnershipEntity.id)
+            .join(EsiToken, EsiToken.id == EsiSyncJob.token_id)
+            .join(
+                EveCharacter,
+                (EveCharacter.id == EsiToken.character_id)
+                & (EveCharacter.corporation_id == EveCorporation.id),
+            )
+            .where(
+                EsiToken.revoked_at.is_(None),
+                EsiSyncJob.status == SyncStatus.SUCCESS,
+                EsiSyncJob.sync_type.in_(CORPORATION_ANALYTICS_SYNC_TYPES),
+            )
+            .distinct()
+        ).all()
+    )
+
+
+def analytics_corporation_ids(db: Session) -> set[int]:
+    privileged_ids = privileged_analytics_corporation_ids(db)
+    if not privileged_ids:
+        return set()
+    return set(
+        db.scalars(
+            select(EveCorporation.id).where(
+                EveCorporation.id.in_(privileged_ids),
+                EveCorporation.hide_from_corporation_list.is_(False),
+                EveCorporation.exclude_from_analytics.is_(False),
+            )
+        ).all()
+    )
 
 
 def create_snapshot(
@@ -156,12 +209,12 @@ def snapshot_character_skills(db: Session, run: SnapshotRun) -> None:
 
 
 def snapshot_corporations(db: Session, run: SnapshotRun) -> None:
+    corporation_ids = analytics_corporation_ids(db)
+    if not corporation_ids:
+        return
     corporations = db.scalars(
         select(EveCorporation)
-        .where(
-            EveCorporation.hide_from_corporation_list.is_(False),
-            EveCorporation.exclude_from_analytics.is_(False),
-        )
+        .where(EveCorporation.id.in_(corporation_ids))
         .order_by(EveCorporation.name)
     ).all()
     for corporation in corporations:
@@ -222,9 +275,18 @@ def snapshot_corporations(db: Session, run: SnapshotRun) -> None:
 
 
 def snapshot_blueprints(db: Session, run: SnapshotRun) -> None:
+    corporation_ids = analytics_corporation_ids(db)
+    corporation_filter = OwnershipEntity.owner_kind != OwnerKind.CORPORATION
+    if corporation_ids:
+        corporation_filter = or_(
+            corporation_filter,
+            OwnershipEntity.corporation_id.in_(corporation_ids),
+        )
     blueprints = db.scalars(
         select(Blueprint)
+        .join(OwnershipEntity, OwnershipEntity.id == Blueprint.ownership_entity_id)
         .options(selectinload(Blueprint.ownership_entity), selectinload(Blueprint.blueprint_type))
+        .where(corporation_filter)
         .order_by(Blueprint.blueprint_type_id)
     ).all()
     grouped: dict[tuple[int, int, int, int, bool, str, str], int] = defaultdict(int)

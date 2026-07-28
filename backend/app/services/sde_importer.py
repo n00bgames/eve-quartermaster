@@ -233,6 +233,7 @@ def upsert_type(db: Session, type_id: int, payload: dict[str, Any]) -> EveType:
     item_type.volume = optional_float(payload.get("volume"))
     item_type.packaged_volume = optional_float(payload.get("packagedVolume"))
     item_type.capacity = optional_float(payload.get("capacity"))
+    item_type.mass = optional_float(payload.get("mass"))
     item_type.market_group_id = int(payload["marketGroupID"]) if payload.get("marketGroupID") is not None else None
     item_type.published = bool(payload.get("published", True))
     return item_type

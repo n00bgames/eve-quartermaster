@@ -5,6 +5,8 @@ from typing import Any
 import httpx
 from fastapi import HTTPException
 
+from app.core.config import get_settings
+
 ESI_BASE_URL = "https://esi.evetech.net/latest"
 ESI_DATASOURCE = "tranquility"
 USER_AGENT = "eve-quartermaster/0.1 local development"
@@ -15,7 +17,10 @@ class EsiClient:
         self.access_token = access_token
 
     def headers(self) -> dict[str, str]:
-        headers = {"User-Agent": USER_AGENT}
+        headers = {
+            "User-Agent": USER_AGENT,
+            "X-Compatibility-Date": get_settings().esi_compatibility_date,
+        }
         if self.access_token:
             headers["Authorization"] = f"Bearer {self.access_token}"
         return headers

@@ -4,10 +4,11 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import exists, or_, select
 from sqlalchemy.orm import Session
 
-from app.models import EveCharacter, EveStation, EveSystem, Location, ResearchProject
+from app.models import EsiToken, EveCharacter, EveStation, EveSystem, Location, ResearchProject
+from app.services.analytics import analytics_corporation_ids
 from app.services.esi_client import EsiClient
 
 RESEARCH_ACTIVITY_NAMES = {
@@ -18,6 +19,60 @@ RESEARCH_ACTIVITY_NAMES = {
 }
 ACTIVE_RESEARCH_STATUSES = {"active", "paused", "ready"}
 MAX_POSTGRES_INTEGER = 2_147_483_647
+
+
+def visible_research_project_filter(db: Session):
+    """Keep linked-character jobs visible while limiting broader corporation queues."""
+    included_corporation_ids = analytics_corporation_ids(db)
+    linked_installer = exists(
+        select(EsiToken.id)
+        .join(EveCharacter, EveCharacter.id == EsiToken.character_id)
+        .where(
+            EsiToken.revoked_at.is_(None),
+            EveCharacter.sync_opt_out.is_(False),
+            or_(
+                EsiToken.character_id == ResearchProject.character_id,
+                EveCharacter.character_id == ResearchProject.installer_character_id,
+            ),
+        )
+    )
+    clauses = [
+        ResearchProject.source_type != "corporation",
+        linked_installer,
+    ]
+    if included_corporation_ids:
+        clauses.append(ResearchProject.corporation_id.in_(included_corporation_ids))
+    return or_(*clauses)
+
+
+def active_sso_character_eve_ids(db: Session) -> set[int]:
+    return set(
+        db.scalars(
+            select(EveCharacter.character_id)
+            .join(EsiToken, EsiToken.character_id == EveCharacter.id)
+            .where(
+                EsiToken.revoked_at.is_(None),
+                EveCharacter.sync_opt_out.is_(False),
+            )
+            .distinct()
+        ).all()
+    )
+
+
+def scoped_corporation_research_rows(
+    db: Session,
+    corporation_id: int,
+    rows: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], bool]:
+    """Limit excluded corporation feeds to jobs installed by linked characters."""
+    if corporation_id in analytics_corporation_ids(db):
+        return rows, False
+    linked_installer_ids = active_sso_character_eve_ids(db)
+    return [
+        row
+        for row in rows
+        if int(row.get("installer_id") or 0) in linked_installer_ids
+    ], True
 
 
 def parse_esi_datetime(value: str | None) -> datetime | None:

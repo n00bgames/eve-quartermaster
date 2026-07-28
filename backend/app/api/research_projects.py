@@ -12,7 +12,11 @@ from app.db.session import get_db
 from app.models import Blueprint, EsiToken, EveCharacter, OwnershipEntity, ResearchProject, ResearchQueueItem, User
 from app.services.asset_visibility import can_view_owner_records
 from app.services.permissions import can_view_section
-from app.services.research_projects import ACTIVE_RESEARCH_STATUSES, RESEARCH_ACTIVITY_NAMES
+from app.services.research_projects import (
+    ACTIVE_RESEARCH_STATUSES,
+    RESEARCH_ACTIVITY_NAMES,
+    visible_research_project_filter,
+)
 from app.services.research_queue import (
     clean_queue_activity,
     clean_queue_runs,
@@ -89,6 +93,7 @@ def list_research_projects(
             selectinload(ResearchProject.blueprint_type),
             selectinload(ResearchProject.product_type),
         )
+        .where(visible_research_project_filter(db))
         .order_by(ResearchProject.end_date.desc().nullslast(), ResearchProject.start_date.desc().nullslast())
     )
     if not include_history:
