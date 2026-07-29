@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.api.auth import get_current_user, require_role
 from app.core.config import get_settings
 from app.db.session import SessionLocal, get_db
-from app.models import EveCategory, EveConstellation, EveDogmaAttribute, EveDogmaEffect, EveGroup, EveRegion, EveStargate, EveStation, EveSystem, EveType, EveTypeDogmaAttribute, EveTypeDogmaEffect, IndustryActivity, IndustryActivityInput, User
+from app.models import EveCategory, EveConstellation, EveDogmaAttribute, EveDogmaEffect, EveGroup, EvePlanetSchematic, EvePlanetSchematicInput, EveRegion, EveStargate, EveStation, EveSystem, EveType, EveTypeDogmaAttribute, EveTypeDogmaEffect, IndustryActivity, IndustryActivityInput, User
 from app.services.sde_importer import import_sde
 
 router = APIRouter(prefix="/sde", tags=["sde"])
@@ -72,6 +72,8 @@ def sde_status(_: User = Depends(require_admin), db: Session = Depends(get_db)) 
         "dogma_effects": db.scalar(select(func.count()).select_from(EveDogmaEffect)) or 0,
         "type_dogma_attributes": db.scalar(select(func.count()).select_from(EveTypeDogmaAttribute)) or 0,
         "type_dogma_effects": db.scalar(select(func.count()).select_from(EveTypeDogmaEffect)) or 0,
+        "planet_schematics": db.scalar(select(func.count()).select_from(EvePlanetSchematic)) or 0,
+        "planet_schematic_inputs": db.scalar(select(func.count()).select_from(EvePlanetSchematicInput)) or 0,
         "blueprint_activities": db.scalar(select(func.count()).select_from(IndustryActivity)) or 0,
         "activity_inputs": db.scalar(select(func.count()).select_from(IndustryActivityInput)) or 0,
     }

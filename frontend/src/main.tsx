@@ -1,4 +1,4 @@
-import { Activity, Boxes, Building2, ClipboardList, Database, Factory, FlaskConical, GraduationCap, KeyRound, MapIcon, MessageCircle, NotebookTabs, PackagePlus, Pickaxe, Plus, RefreshCw, ScrollText, Settings, ShoppingCart, Siren, Sparkles, UserRoundCheck } from "lucide-react";
+import { Activity, Boxes, Building2, ClipboardList, Database, Factory, FlaskConical, GraduationCap, Globe2, KeyRound, MapIcon, MessageCircle, NotebookTabs, PackagePlus, Pickaxe, Plus, RefreshCw, ScrollText, Settings, ShoppingCart, Siren, Sparkles, Store, UserRoundCheck } from "lucide-react";
 
 import React, { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
@@ -12,6 +12,8 @@ import { BROWSER_TIMEZONE, formatDateTime, formatDurationMs, formatTimeOnly, loc
 import { assetFamily, assetSubtype, blueprintFamily, blueprintSubtype, inventoryFamilyLabels, looksCapitalRelated, matchesInventoryFamily, sortedUnique, visibleAssetLocations, visibleAssetQuantity } from "./lib/inventory";
 import { WardecBadge } from "./components/WardecBadge";
 import { MarketAppraisalPage } from "./features/market/MarketAppraisalPage";
+import { CorporateExchangePage } from "./features/exchange/CorporateExchangePage";
+import { PublicExchangeListingPage } from "./features/exchange/PublicExchangeListingPage";
 import { ManufacturingPage } from "./features/manufacturing/ManufacturingPage";
 import { NotesListsPage } from "./features/notes/NotesListsPage";
 import { FittingsPage } from "./features/fittings/FittingsPage";
@@ -29,6 +31,7 @@ import { ContractsPage } from "./features/contracts/ContractsPage";
 import { CorporationsPage } from "./features/corporations/CorporationsPage";
 import { BlueprintPreview } from "./features/industry/BlueprintPreview";
 import { ResearchProjectsPage } from "./features/industry/ResearchProjectsPage";
+import { PlanetaryIndustryPage } from "./features/industry/PlanetaryIndustryPage";
 import { MiningLedgerPage } from "./features/mining/MiningLedgerPage";
 import { RecruitingPage } from "./features/recruiting/RecruitingPage";
 import { RecruitingPublicPage } from "./features/recruiting/RecruitingPublicPage";
@@ -436,11 +439,17 @@ function App() {
 
     const params = new URLSearchParams(window.location.search);
 
-    const esiDestination = params.get("esi_mode") === "recruitment" || window.location.hash === "#recruiting" ? "recruiting" : "esi";
+    const esiMode = params.get("esi_mode");
+    const esiDestination = esiMode === "recruitment" || window.location.hash === "#recruiting"
+      ? "recruiting"
+      : ["planet", "planets", "planetary", "planetary_industry", "pi"].includes(esiMode ?? "") || window.location.hash === "#planetary_industry"
+        ? "planetary_industry"
+        : "esi";
 
     const esiError = params.get("esi_error");
 
-    if (window.location.hash === "#esi" || window.location.hash === "#recruiting" || params.get("esi_status") || esiError) setActiveTab(esiDestination);
+    if (window.location.hash.startsWith("#exchange")) setActiveTab("exchange");
+    else if (window.location.hash === "#esi" || window.location.hash === "#recruiting" || window.location.hash === "#planetary_industry" || params.get("esi_status") || esiError) setActiveTab(esiDestination);
 
     if (esiError) {
       if (esiDestination === "recruiting" && window.opener) {
@@ -539,12 +548,15 @@ function App() {
   const inviteToken = new URLSearchParams(window.location.search).get("invite");
 
   const publicRecruiting = locationHash === "#recruiting" || locationHash === "#apply";
+  const publicExchangeId = locationHash.startsWith("#exchange/") ? locationHash.slice("#exchange/".length) : null;
 
   if (!authReady) return <main className="auth-shell"><section className="panel"><img className="auth-logo" src="/eqm-logo.png" alt="EVE Quartermaster" /><p className="muted">Checking account session...</p></section></main>;
 
   if (!user && inviteToken) return <InviteScreen token={inviteToken} onAuth={completeAuth} />;
 
   if (!user && publicRecruiting) return <RecruitingPublicPage api={api} onRegister={completeAuth} onBack={() => { window.location.hash = ""; window.location.reload(); }} />;
+
+  if (!user && publicExchangeId) return <PublicExchangeListingPage api={api} publicId={publicExchangeId} onBack={() => { window.location.hash = ""; window.location.reload(); }} />;
 
   if (!user) return <AuthScreen bootstrap={bootstrap} onAuth={completeAuth} />;
 
@@ -586,9 +598,11 @@ function App() {
 
           {canView("esi") && <button className={activeTab === "esi" ? "active" : ""} onClick={() => setActiveTab("esi")}><KeyRound size={18} /> ESI Sync</button>}
 
-          {["market", "notes", "manufacturing", "mining", "corporations", "ownership", "assets", "industry", "contracts", "analytics"].some(canView) && <span className="nav-section-label">Inventory & Industry</span>}
+          {["market", "exchange", "notes", "manufacturing", "mining", "planetary_industry", "corporations", "ownership", "assets", "industry", "contracts", "analytics"].some(canView) && <span className="nav-section-label">Inventory & Industry</span>}
 
           {canView("market") && <button className={activeTab === "market" ? "active" : ""} onClick={() => setActiveTab("market")}><ShoppingCart size={18} /> Market</button>}
+
+          {canView("exchange") && <button className={activeTab === "exchange" ? "active" : ""} onClick={() => { window.location.hash = "exchange"; setActiveTab("exchange"); }}><Store size={18} /> Corporate Exchange</button>}
 
           {canView("notes") && <button className={activeTab === "notes" ? "active" : ""} onClick={() => setActiveTab("notes")}><NotebookTabs size={18} /> Notes & Lists</button>}
 
@@ -597,6 +611,8 @@ function App() {
           {canView("industry") && <button className={activeTab === "research_projects" ? "active" : ""} onClick={() => setActiveTab("research_projects")}><FlaskConical size={18} /> Research Projects</button>}
 
           {canView("mining") && <button className={activeTab === "mining" ? "active" : ""} onClick={() => setActiveTab("mining" )}><Pickaxe size={18} /> Mining Ledger</button>}
+
+          {canView("planetary_industry") && <button className={activeTab === "planetary_industry" ? "active" : ""} onClick={() => setActiveTab("planetary_industry")}><Globe2 size={18} /> Planetary Industry</button>}
 
           {canView("corporations") && <button className={activeTab === "corporations" ? "active" : ""} onClick={() => setActiveTab("corporations")}><Building2 size={18} /> Corporations</button>}
 
@@ -685,6 +701,8 @@ function App() {
 
         {activeTab === "market" && canView("market") && <MarketAppraisalPage currentUser={user} seed={marketSeed} assets={data.assets} onOpenAssets={(itemName) => { setAssetSeed({ key: "item", value: itemName, mode: "exact", nonce: Date.now() }); setActiveTab("assets"); }} onOpenFittings={(itemName) => { setFittingSeed({ text: itemName, nonce: Date.now() }); setActiveTab("fittings"); }} api={api} sendDestinationToEve={sendDestinationToEve} ItemContextPanel={ItemContextPanel} numberFormatter={numberFormatter} />}
 
+        {activeTab === "exchange" && canView("exchange") && <CorporateExchangePage api={api} currentUserId={user.id} />}
+
         {activeTab === "notes" && canView("notes") && <NotesListsPage api={api} />}
 
         {activeTab === "manufacturing" && canView("manufacturing") && <ManufacturingPage api={api} formatDateTime={(value) => formatDateTime(value, preferredTimeZone(user))} />}
@@ -692,6 +710,8 @@ function App() {
         {activeTab === "research_projects" && canView("industry") && <ResearchProjectsPage api={api} formatDateTime={(value) => formatDateTime(value, preferredTimeZone(user))} />}
 
         {activeTab === "mining" && canView("mining") && <MiningLedgerPage api={api} />}
+
+        {activeTab === "planetary_industry" && canView("planetary_industry") && <PlanetaryIndustryPage api={api} formatDateTime={(value) => formatDateTime(value, preferredTimeZone(user))} />}
 
         {activeTab === "contracts" && canView("contracts") && <ContractsPage currentUser={user} api={api} CharacterHoverName={CharacterHoverName} />}
 
@@ -1182,7 +1202,7 @@ function AssetTable({ assets, seed, api, serverMode = false, onOpenFittings, onO
 
       case "location": return asset.location_name ?? "";
 
-      case "flag": return asset.location_flag ?? "";
+      case "flag": return asset.location_flag_name ?? asset.location_flag ?? "";
 
     }
 
@@ -1431,7 +1451,7 @@ function AssetTable({ assets, seed, api, serverMode = false, onOpenFittings, onO
 
       asset.location_name ?? "",
 
-      asset.location_flag ?? "",
+      asset.location_flag_name ?? asset.location_flag ?? "",
 
     ])];
 
@@ -1567,7 +1587,7 @@ function AssetTable({ assets, seed, api, serverMode = false, onOpenFittings, onO
 
         <td><div className="cell-action-row">{filterButton("location", asset.location_name ?? "-")}{asset.location_id ? <button type="button" className="destination-link" onClick={() => void sendDestinationToEve(asset.location_id, asset.location_name ?? "asset location")}>Set dest</button> : null}</div></td>
 
-        <td>{filterButton("flag", asset.location_flag ?? "-")}</td>
+        <td title={asset.location_flag ?? undefined}>{filterButton("flag", asset.location_flag_name ?? asset.location_flag ?? "-")}</td>
 
         </tr>
 
@@ -2017,7 +2037,7 @@ function ManagedForm({ children, onSubmit, submitLabel = "Save" }: { children: R
 
 function titleFor(tab: string) {
 
-  return ({ overview: "Quartermaster Overview", ownership: "Ownership and Locations", characters: "Characters", roster: "Alliance Roster", navigation: "Navigation", market: "Market Appraisal", notes: "Notes & Lists", manufacturing: "Manufacturing", research_projects: "Research Projects", mining: "Mining Ledger", contracts: "Contracts", analytics: "Analytics Platform", recruiting: "Recruiting", skills: "Character Skills", fittings: "Fittings", jump_clones: "Jump Clones", settings: "Settings", corporations: "Corporations", assets: "Asset Ledger", industry: "Blueprints and Recipes", esi: "ESI Sync", profile: "Profile", users: "User Administration", audit: "Audit Log" } as Record<string, string>)[tab];
+  return ({ overview: "Quartermaster Overview", ownership: "Ownership and Locations", characters: "Characters", roster: "Alliance Roster", navigation: "Navigation", market: "Market Appraisal", exchange: "Corporate Exchange", notes: "Notes & Lists", manufacturing: "Manufacturing", research_projects: "Research Projects", mining: "Mining Ledger", planetary_industry: "Planetary Industry", contracts: "Contracts", analytics: "Analytics Platform", recruiting: "Recruiting", skills: "Character Skills", fittings: "Fittings", jump_clones: "Jump Clones", settings: "Settings", corporations: "Corporations", assets: "Asset Ledger", industry: "Blueprints and Recipes", esi: "ESI Sync", profile: "Profile", users: "User Administration", audit: "Audit Log" } as Record<string, string>)[tab];
 
 }
 
@@ -2025,7 +2045,7 @@ function titleFor(tab: string) {
 
 function subtitleFor(tab: string) {
 
-  return ({ overview: "Live status and the first useful totals from the database.", ownership: "Define the characters, corporations, manual buckets, and places assets can belong to.", characters: "Assign EVE characters to Quartermaster accounts and control public asset visibility.", roster: "A corporation-grouped character roster suitable for diplomats and prospective members.", navigation: "Plan gate routes from imported SDE map data before layering on kill checks and local threat analysis.", market: "Paste item lists and compare buy, sell, and split prices across trade hubs.", notes: "Keep private working notes and destination-aware resupply lists with live asset context.", manufacturing: "Track manufacturing jobs, costs, required inputs, hub prices, and production history.", research_projects: "Monitor ESI research, copying, and invention queues while retaining project history for analytics.", mining: "Track persistent per-character mining yield, residue efficiency, and named fleet operations.", contracts: "Sync and review current character and corporation contracts.", analytics: "Snapshot history, metric widgets, exports, and the foundation for custom dashboards.", recruiting: "Configure public recruiting, review applicants, and coordinate interviews without exposing internal notes.", skills: "Import trained skills, total skill points, and active skill queues from ESI.", fittings: "Sync saved EVE fittings, review modules, experiment in a scratchpad, and copy EFT-style text.", jump_clones: "Sync jump clones, inspect implants, and build custom implant sets for fitting experiments.", settings: "Control character visibility and sync privacy.", corporations: "Review enrolled corporations and sync corporation asset ledgers through authorized CEO or director tokens.", assets: "Track item stacks by owner, type, location, and EVE-style location flag.", industry: "Store blueprints, recipe activities, and material inputs before wiring in SDE imports.", esi: "A holding area for the upcoming SSO and sync work.", profile: "Manage your account and private messages.", users: "Manage Quartermaster accounts and role levels.", audit: "Review sync peeks, system events, and administrative activity." } as Record<string, string>)[tab];
+  return ({ overview: "Live status and the first useful totals from the database.", ownership: "Define the characters, corporations, manual buckets, and places assets can belong to.", characters: "Assign EVE characters to Quartermaster accounts and control public asset visibility.", roster: "A corporation-grouped character roster suitable for diplomats and prospective members.", navigation: "Plan gate routes from imported SDE map data before layering on kill checks and local threat analysis.", market: "Paste item lists and compare buy, sell, and split prices across trade hubs.", notes: "Keep private working notes and destination-aware resupply lists with live asset context.", manufacturing: "Track manufacturing jobs, costs, required inputs, hub prices, and production history.", research_projects: "Monitor ESI research, copying, and invention queues while retaining project history for analytics.", mining: "Track persistent per-character mining yield, residue efficiency, and named fleet operations.", planetary_industry: "Monitor synchronized colonies, extractor cycles, routed production, storage, and factory health.", contracts: "Sync and review current character and corporation contracts.", analytics: "Snapshot history, metric widgets, exports, and the foundation for custom dashboards.", recruiting: "Configure public recruiting, review applicants, and coordinate interviews without exposing internal notes.", skills: "Import trained skills, total skill points, and active skill queues from ESI.", fittings: "Sync saved EVE fittings, review modules, experiment in a scratchpad, and copy EFT-style text.", jump_clones: "Sync jump clones, inspect implants, and build custom implant sets for fitting experiments.", settings: "Control character visibility and sync privacy.", corporations: "Review enrolled corporations and sync corporation asset ledgers through authorized CEO or director tokens.", assets: "Track item stacks by owner, type, location, and EVE-style location flag.", industry: "Store blueprints, recipe activities, and material inputs before wiring in SDE imports.", esi: "A holding area for the upcoming SSO and sync work.", profile: "Manage your account and private messages.", users: "Manage Quartermaster accounts and role levels.", audit: "Review sync peeks, system events, and administrative activity." } as Record<string, string>)[tab];
 
 }
 

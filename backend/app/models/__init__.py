@@ -2,6 +2,8 @@ from app.models.analytics import BlueprintSnapshot, CharacterSkillSnapshot, Corp
 from app.models.assets import Asset, Location
 from app.models.audit import AppSetting, AuditEvent, PrivateMessage
 from app.models.contracts import EveContract
+from app.models.corporation_divisions import CorporationDivision
+from app.models.corporate_exchange import ExchangeAppraisal, ExchangeAuditLog, ExchangeBid, ExchangeClaim, ExchangeListing, ExchangeListingItem, ExchangeNotification, ExchangeTransaction
 from app.models.base import Base
 from app.models.esi import EsiApplication, EsiSyncJob, EsiToken
 from app.models.eve_static import EveCategory, EveConstellation, EveDogmaAttribute, EveDogmaEffect, EveGroup, EveRegion, EveStargate, EveStation, EveSystem, EveType, EveTypeDogmaAttribute, EveTypeDogmaEffect
@@ -14,6 +16,9 @@ from app.models.industry import Blueprint, IndustryActivity, IndustryActivityInp
 from app.models.jump_clones import CharacterJumpClone, ImplantSet, ImplantSetImplant, JumpCloneImplant
 from app.models.navigation import SystemIndustrialKillObservation, SystemJumpObservation, SystemKillFetchCache, SystemPvpKillObservation
 from app.models.notes import Note, NoteItem
+from app.models.planetary_industry import PlanetaryColony, PlanetaryLink, PlanetaryPin, PlanetaryRoute
+from app.models.planetary_schematics import EvePlanetSchematic, EvePlanetSchematicInput
+from app.models.planetary_analytics import PlanetaryProductionSnapshot
 from app.models.research_projects import ResearchProject, ResearchQueueItem
 from app.models.recruiting import RecruitmentApplication, RecruitmentAuditLog, RecruitmentInterview, RecruitmentLinkedCharacter, RecruitmentMessage, RecruitmentNote, RecruitmentSettings, RecruitmentStatusHistory, RecruitmentUserCapability
 from app.models.skills import CharacterSkill, CharacterSkillQueueEntry
@@ -34,9 +39,18 @@ __all__ = [
     "CharacterJumpClone",
     "CharacterSkillSnapshot",
     "CorporationSnapshot",
+    "CorporationDivision",
     "CorporationWalletDivision",
     "CorporationWalletSnapshot",
     "CustomMarketHub",
+    "ExchangeAppraisal",
+    "ExchangeAuditLog",
+    "ExchangeBid",
+    "ExchangeClaim",
+    "ExchangeListing",
+    "ExchangeListingItem",
+    "ExchangeNotification",
+    "ExchangeTransaction",
     "EsiApplication",
     "EsiSyncJob",
     "EsiToken",
@@ -49,6 +63,8 @@ __all__ = [
     "EveDogmaEffect",
     "EveCorporation",
     "EveGroup",
+    "EvePlanetSchematic",
+    "EvePlanetSchematicInput",
     "EveRegion",
     "EveStargate",
     "EveStation",
@@ -75,6 +91,11 @@ __all__ = [
     "Note",
     "NoteItem",
     "OwnershipEntity",
+    "PlanetaryColony",
+    "PlanetaryLink",
+    "PlanetaryPin",
+    "PlanetaryRoute",
+    "PlanetaryProductionSnapshot",
     "PrivateMessage",
     "ProcurementSource",
     "ProductionPlan",

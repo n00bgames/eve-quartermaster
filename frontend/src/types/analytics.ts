@@ -60,7 +60,44 @@ export type ResearchProjectAnalytics = {
   measured_volume: number;
   top_by_volume: { name: string; volume: number }[];
   top_by_efficiency: { name: string; efficiency: number }[];
-};export type AnalyticsSummary = {
+};export type PlanetaryAnalyticsTier = {
+  tier: string;
+  label: string;
+  estimated_units: number;
+  estimated_volume: number;
+  current_units_per_day: number;
+  current_volume_per_day: number;
+  product_count: number;
+  character_count: number;
+};
+export type PlanetaryAnalyticsProduct = {
+  product_type_id: number;
+  product_name: string;
+  tier: string;
+  estimated_units: number;
+  estimated_volume: number;
+  current_units_per_day: number;
+  current_volume_per_day: number;
+  top_character?: string | null;
+};
+export type PlanetaryCharacterProduct = PlanetaryAnalyticsProduct & {
+  character_id: number;
+  character_name: string;
+};
+export type PlanetaryAnalytics = {
+  days: number;
+  has_history: boolean;
+  cards: {
+    estimated_volume: number;
+    current_volume_per_day: number;
+    product_count: number;
+    character_count: number;
+  };
+  tiers: PlanetaryAnalyticsTier[];
+  products: PlanetaryAnalyticsProduct[];
+  character_products: PlanetaryCharacterProduct[];
+};
+export type AnalyticsSummary = {
   days: number;
   latest_snapshot_at?: string | null;
   latest_snapshot_status?: string | null;

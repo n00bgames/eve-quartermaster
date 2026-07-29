@@ -1412,3 +1412,31 @@
 .research-table-timeline progress{width:100%;height:7px;accent-color:#4fb3c7}
 .research-table-timeline span{font-size:.8rem}
 .auth-recruiting-link{width:100%;margin-top:12px;gap:8px}
+
+.planetary-reauth{align-items:center;display:grid;gap:10px;grid-template-columns:auto minmax(0,1fr) auto;margin-bottom:0}.planetary-reauth .mini-link{background:#332813;border:1px solid #e8b84d;border-radius:8px;color:#ffe8aa;font-weight:750;justify-content:center;min-height:36px;padding:8px 12px;text-decoration:none;white-space:nowrap}.planetary-reauth .mini-link:hover{filter:brightness(1.08);box-shadow:0 0 16px #e8b84d29}@media (width<=760px){.planetary-reauth{grid-template-columns:auto minmax(0,1fr)}.planetary-reauth .mini-link{grid-column:1/-1}}
+.planetary-page{gap:16px}.planetary-summary-grid{grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:0}.planetary-controls{display:grid;gap:10px;grid-template-columns:repeat(3,minmax(0,1fr))}.planetary-token-row{display:flex;flex-wrap:wrap;gap:8px}.planetary-token-row button{align-items:flex-start;display:grid;gap:2px;min-height:42px}.planetary-token-row small{color:#8b98a8;font-size:.7rem;font-weight:500}.planetary-colony-list{display:grid;gap:10px}.planetary-colony{background:#0c1118;border:1px solid #303741;border-radius:8px;overflow:hidden}.planetary-colony.needs-attention{border-color:#8b6c31}.planetary-colony-heading{align-items:center;background:transparent;border:0;color:#dce3ec;cursor:pointer;display:grid;gap:12px;grid-template-columns:48px minmax(190px,1.5fr) minmax(150px,1fr) minmax(130px,.8fr) minmax(170px,1fr) 22px;min-height:72px;padding:11px 13px;text-align:left;width:100%}.planetary-colony-heading img{border:1px solid #4fb3c78c;border-radius:50%;height:48px;object-fit:cover;width:48px}.planetary-colony-heading>span{display:grid;gap:3px;min-width:0}.planetary-colony-heading strong,.planetary-colony-heading b{color:#f5f7fa;overflow-wrap:anywhere}.planetary-colony-heading small{color:#8b98a8;overflow-wrap:anywhere}.planetary-colony-heading svg{transition:transform .16s ease}.planetary-colony-heading svg.rotated{transform:rotate(180deg)}.planetary-attention b,.text-danger{color:#ff9b94}.planetary-healthy b{color:#79e0a7}.planetary-colony-detail{border-top:1px solid #303741;display:grid;gap:12px;padding:12px}.planetary-detail-summary{display:flex;flex-wrap:wrap;gap:8px 18px}.planetary-detail-summary span{color:#aab4c2}.planetary-detail-summary b{color:#f5f7fa}.planetary-pin-table{min-width:980px}.planetary-pin-table td>strong,.planetary-pin-table td>span,.planetary-pin-table td>small{display:block}.planetary-pin-table td>span+small,.planetary-pin-table td>strong+span{margin-top:4px}.planetary-pin-table td span,.planetary-pin-table td small{color:#aab4c2}.planetary-pin-table tr.pin-warning td{background:#2a1b1d}.planetary-status{border:1px solid #3b4654;border-radius:999px;color:#dce3ec!important;padding:4px 8px;width:fit-content}.planetary-status.status-active,.planetary-status.status-online{background:#153226;border-color:#3a7f58}.planetary-status.status-expiring{background:#332813;border-color:#e8b84d;color:#ffe8aa!important}.planetary-status.status-expired{background:#351d1f;border-color:#ef776e;color:#ffd8d5!important}@media (width<=1050px){.planetary-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.planetary-colony-heading{grid-template-columns:48px minmax(0,1fr) minmax(150px,.7fr) 22px}.planetary-colony-heading>span:nth-of-type(3),.planetary-colony-heading>span:nth-of-type(4){display:none}}@media (width<=680px){.planetary-controls,.planetary-summary-grid{grid-template-columns:1fr}.planetary-colony-heading{align-items:start;grid-template-columns:42px minmax(0,1fr) 20px}.planetary-colony-heading img{height:42px;width:42px}.planetary-colony-heading>span:nth-of-type(2){display:none}}
+.planetary-analytics-widget{grid-column:1/-1;display:grid;gap:13px}
+.planetary-analytics-widget>header,.planetary-analytics-widget>header>div{display:flex;align-items:center;gap:8px}
+.planetary-analytics-widget>header{justify-content:space-between}
+.planetary-analytics-widget h4,.planetary-analytics-widget h5{margin:0}
+.planetary-analytics-widget header small,.planetary-analytics-widget header>span{color:#8b98a8}
+.planetary-analytics-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.planetary-analytics-kpis>span{background:#10151b;border:1px solid #303741;border-radius:7px;display:grid;grid-template-columns:auto 1fr;align-items:center;gap:3px 8px;padding:9px}
+.planetary-analytics-kpis svg{color:#4fb3c7;grid-row:1/3}
+.planetary-analytics-kpis small{color:#8b98a8}
+.planetary-analytics-kpis b{color:#f5f7fa;font-size:1.05rem}
+.planetary-tier-row button{cursor:pointer;text-align:left}
+.planetary-tier-row .metric-chip.active{background:#17323a;border-color:#4fb3c7;color:#dffaff}
+.planetary-tier-row small{color:#91a0b2;display:block;font-size:.72rem;margin-top:3px}
+.planetary-analytics-columns{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(320px,.75fr);gap:12px}
+.planetary-analytics-columns>section{background:#0c1118;border:1px solid #303741;border-radius:8px;display:grid;gap:10px;align-content:start;padding:11px;min-width:0}
+.planetary-analytics-columns .subsection-heading{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.planetary-analytics-columns .subsection-heading small{color:#8b98a8}
+.planetary-product-table{max-height:390px;overflow:auto}
+.planetary-product-table table{min-width:680px}
+.planetary-product-table tbody tr{cursor:pointer}
+.planetary-product-table tbody tr:hover,.planetary-product-table tbody tr.selected td{background:#17323a}
+.planetary-analytics-columns .widget-row span{display:grid;gap:2px}
+.planetary-analytics-columns .widget-row small{color:#8b98a8;font-size:.72rem}
+@media (width<=1050px){.planetary-analytics-columns{grid-template-columns:1fr}.planetary-analytics-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (width<=620px){.planetary-analytics-kpis{grid-template-columns:1fr}.planetary-analytics-widget>header{align-items:flex-start;flex-direction:column}}

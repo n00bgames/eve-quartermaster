@@ -25,6 +25,7 @@ from app.models.enums import AssetSource, LocationKind, OwnerKind, SyncStatus
 from app.services.esi_client import EsiClient, esi_status, resolve_names
 from app.services.eve_sso import validate_eve_access_token
 from app.services.contracts import ACTIVE_CONTRACT_STATUSES, fetch_contract_pages, upsert_contract_rows
+from app.services.corporation_metadata import sync_corporation_divisions, sync_corporation_structure_names
 from app.services.mining_ledger import upsert_esi_ledger
 from app.services.research_projects import (
     fetch_character_industry_jobs,
@@ -144,6 +145,10 @@ RECRUITMENT_AUTH_SCOPES = [
     "esi-skills.read_skills.v1",
 ]
 
+PLANETARY_AUTH_SCOPES = [
+    "esi-planets.manage_planets.v1",
+]
+
 CORE_AUTH_SCOPES = [
     "publicData",
     "esi-location.read_location.v1",
@@ -173,6 +178,7 @@ CORE_AUTH_SCOPES = [
     "esi-fittings.write_fittings.v1",
     "esi-clones.read_clones.v1",
     "esi-clones.read_implants.v1",
+    "esi-planets.manage_planets.v1",
 ]
 
 
@@ -188,6 +194,8 @@ def auth_scopes_for_group(scope_group: str | None) -> list[str]:
         return _unique_scopes(CORE_AUTH_SCOPES + CONTACT_SYNC_SCOPES)
     if group == "mail":
         return _unique_scopes(CORE_AUTH_SCOPES + MAIL_SYNC_SCOPES)
+    if group in {"planet", "planets", "planetary", "planetary_industry", "pi"}:
+        return _unique_scopes(CORE_AUTH_SCOPES + PLANETARY_AUTH_SCOPES)
     if group == "full":
         return _unique_scopes(PUBLIC_SCOPES)
     return _unique_scopes(CORE_AUTH_SCOPES)
@@ -468,15 +476,43 @@ async def fetch_all_blueprint_pages(client: EsiClient, path: str) -> list[dict[s
     return blueprints
 
 
+def asset_location_types(assets_payload: list[dict[str, Any]]) -> dict[int, str]:
+    """Return final ESI locations, including structures reported as item locations."""
+    asset_item_ids = {
+        int(row["item_id"])
+        for row in assets_payload
+        if row.get("item_id") is not None
+    }
+    locations: dict[int, str] = {}
+    for row in assets_payload:
+        raw_location_id = row.get("location_id")
+        if raw_location_id is None:
+            continue
+        location_id = int(raw_location_id)
+        location_type = row.get("location_type")
+        if location_type != "item":
+            locations[location_id] = location_type or "unknown"
+        elif location_id not in asset_item_ids:
+            # Corporation offices in an Upwell structure are commonly reported
+            # with location_type=item even though the structure is not an asset
+            # row in the corporation payload.
+            locations[location_id] = "structure"
+    return locations
+
+
 def upsert_blueprint_rows(db: Session, owner: OwnershipEntity, blueprints_payload: list[dict[str, Any]]) -> int:
     synced = 0
     for row in blueprints_payload:
         blueprint_type_id = int(row["type_id"])
         ensure_type(db, blueprint_type_id)
         location = None
+        parent_asset = None
         location_id = row.get("location_id")
         if location_id is not None:
-            location = ensure_location(db, int(location_id), "unknown")
+            location_id = int(location_id)
+            parent_asset = db.scalar(select(Asset).where(Asset.eve_item_id == location_id))
+            if parent_asset is None:
+                location = ensure_location(db, location_id, "unknown")
         item_id = int(row["item_id"])
         asset = db.scalar(select(Asset).where(Asset.eve_item_id == item_id))
         if asset is None:
@@ -487,6 +523,7 @@ def upsert_blueprint_rows(db: Session, owner: OwnershipEntity, blueprints_payloa
         asset.type_id = blueprint_type_id
         asset.quantity = 1
         asset.location_id = location.id if location else None
+        asset.parent_asset_id = parent_asset.id if parent_asset else None
         asset.location_flag = row.get("location_flag")
         asset.is_singleton = True
         asset.is_blueprint_copy = int(row.get("runs", -1)) != -1
@@ -505,7 +542,11 @@ def upsert_blueprint_rows(db: Session, owner: OwnershipEntity, blueprints_payloa
         runs = int(row.get("runs", -1))
         blueprint.runs_remaining = None if runs == -1 else runs
         blueprint.is_copy = runs != -1
-        blueprint.location_id = location.id if location else None
+        blueprint.location_id = (
+            parent_asset.location_id
+            if parent_asset and parent_asset.location_id
+            else (location.id if location else None)
+        )
         blueprint.source = AssetSource.ESI
         blueprint.last_synced_at = datetime.now(timezone.utc)
         synced += 1
@@ -566,10 +607,16 @@ async def apply_character_affiliation(client: EsiClient, db: Session, character:
 
 def upsert_asset_rows(db: Session, owner: OwnershipEntity, assets_payload: list[dict[str, Any]]) -> tuple[int, int]:
     synced = 0
+    final_location_types = asset_location_types(assets_payload)
     for row in assets_payload:
         type_id = int(row["type_id"])
-        location_type = row.get("location_type")
-        location = None if location_type == "item" else ensure_location(db, row.get("location_id"), location_type)
+        raw_location_id = row.get("location_id")
+        location_id = int(raw_location_id) if raw_location_id is not None else None
+        location = (
+            ensure_location(db, location_id, final_location_types[location_id])
+            if location_id in final_location_types
+            else None
+        )
         asset = db.scalar(select(Asset).where(Asset.eve_item_id == int(row["item_id"])))
         if asset is None:
             asset = Asset(ownership_entity_id=owner.id, eve_item_id=int(row["item_id"]), type_id=type_id)
@@ -1224,45 +1271,11 @@ async def sync_character_assets_for_token(token_id: int, current_user: User, db:
         client = EsiClient(access_token=access_token)
         assets_payload = await fetch_all_asset_pages(client, f"/characters/{character.character_id}/assets/")
         type_ids = {int(row["type_id"]) for row in assets_payload}
-        location_types = {
-            int(row["location_id"]): row.get("location_type")
-            for row in assets_payload
-            if row.get("location_id") is not None and row.get("location_type") != "item"
-        }
+        location_types = asset_location_types(assets_payload)
         type_names = await apply_type_names(client, db, type_ids)
         location_names = await apply_location_names(client, db, set(location_types.keys()), location_types)
 
-        synced = 0
-        for row in assets_payload:
-            type_id = int(row["type_id"])
-            location_type = row.get("location_type")
-            location = None if location_type == "item" else ensure_location(db, row.get("location_id"), location_type)
-            asset = db.scalar(select(Asset).where(Asset.eve_item_id == int(row["item_id"])))
-            if asset is None:
-                asset = Asset(ownership_entity_id=owner.id, eve_item_id=int(row["item_id"]), type_id=type_id)
-                db.add(asset)
-            asset.ownership_entity_id = owner.id
-            asset.type_id = type_id
-            asset.quantity = int(row.get("quantity", 1))
-            asset.location_id = location.id if location else None
-            asset.parent_asset_id = None
-            asset.location_flag = row.get("location_flag")
-            asset.is_singleton = bool(row.get("is_singleton", False))
-            asset.is_blueprint_copy = row.get("is_blueprint_copy")
-            asset.source = AssetSource.ESI
-            asset.last_synced_at = datetime.now(timezone.utc)
-            synced += 1
-        db.flush()
-
-        linked_parents = 0
-        for row in assets_payload:
-            if row.get("location_type") != "item" or row.get("location_id") is None:
-                continue
-            child = db.scalar(select(Asset).where(Asset.eve_item_id == int(row["item_id"])))
-            parent = db.scalar(select(Asset).where(Asset.eve_item_id == int(row["location_id"])))
-            if child is not None and parent is not None:
-                child.parent_asset_id = parent.id
-                linked_parents += 1
+        synced, linked_parents = await asyncio.to_thread(upsert_asset_rows, db, owner, assets_payload)
 
         job.status = SyncStatus.SUCCESS
         job.message = f"Synced {synced} character asset rows. Resolved {type_names} type names and {location_names} location names. Linked {linked_parents} contained assets."
@@ -1597,6 +1610,7 @@ async def character_sync_all_work_items(
         "contracts": ["esi-contracts.read_character_contracts.v1"],
         "research": ["esi-industry.read_character_jobs.v1"],
         "mining": ["esi-industry.read_character_mining.v1"],
+        "planets": ["esi-planets.manage_planets.v1"],
     }
     if requested_kinds is not None:
         required_scopes = {kind: scopes for kind, scopes in required_scopes.items() if kind in requested_kinds}
@@ -1646,6 +1660,7 @@ async def character_sync_all_work_items(
 
 async def run_character_sync_all_job(job_id: str, work_items: list[dict[str, Any]], user_id: int) -> None:
     from app.api.character_standings import sync_character_standings_for_token
+    from app.api.planetary_industry import sync_planetary_industry_for_token
 
     job = CHARACTER_SYNC_ALL_JOBS[job_id]
     job["status"] = "running"
@@ -1658,6 +1673,7 @@ async def run_character_sync_all_job(job_id: str, work_items: list[dict[str, Any
         "contracts": sync_character_contracts_for_token,
         "research": sync_character_research_for_token,
         "mining": sync_character_mining_for_token,
+        "planets": sync_planetary_industry_for_token,
     }
     try:
         for item in work_items:
@@ -1727,7 +1743,7 @@ async def run_character_sync_all_job(job_id: str, work_items: list[dict[str, Any
 @router.post("/sync/characters/all")
 async def start_characters_sync_all(sync_kind: str | None = Query(None), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
     requested_kinds = {sync_kind} if sync_kind else None
-    if requested_kinds and not requested_kinds.issubset({"assets", "skills", "standings", "fittings", "contracts", "research", "mining"}):
+    if requested_kinds and not requested_kinds.issubset({"assets", "skills", "standings", "fittings", "contracts", "research", "mining", "planets"}):
         raise HTTPException(status_code=400, detail="Unsupported character sync kind")
     work_items, skipped = await character_sync_all_work_items(db, current_user, requested_kinds)
     if not work_items:
@@ -1825,22 +1841,26 @@ async def sync_corporation_assets(token_id: int, current_user: User = Depends(ge
     try:
         assets_payload = await fetch_all_asset_pages(client, f"/corporations/{corporation.corporation_id}/assets/")
         type_ids = {int(row["type_id"]) for row in assets_payload}
-        location_types = {
-            int(row["location_id"]): row.get("location_type")
-            for row in assets_payload
-            if row.get("location_id") is not None and row.get("location_type") != "item"
-        }
+        location_types = asset_location_types(assets_payload)
         type_names = await apply_type_names(client, db, type_ids)
+        division_names, division_warning = await sync_corporation_divisions(client, db, corporation)
+        structure_names, structure_warning = await sync_corporation_structure_names(client, db, corporation)
         location_names = await apply_location_names(client, db, set(location_types.keys()), location_types)
         synced, linked_parents = await asyncio.to_thread(upsert_asset_rows, db, owner, assets_payload)
         corporation.last_synced_at = datetime.now(timezone.utc)
         job.status = SyncStatus.SUCCESS
-        job.message = f"Synced {synced} corporation asset rows. Resolved {type_names} type names and {location_names} location names. Linked {linked_parents} contained assets."
+        warnings = [warning for warning in (division_warning, structure_warning) if warning]
+        job.message = (
+            f"Synced {synced} corporation asset rows. Resolved {type_names} type names, "
+            f"{location_names + structure_names} location names, and {division_names} division names. "
+            f"Linked {linked_parents} contained assets."
+            + (f" Metadata warnings: {'; '.join(warnings)}" if warnings else "")
+        )
         notify_if_other_user_synced_character(db, sync_label="corporation assets", actor_user=current_user, character=character, detail=f"{synced} corporation asset rows for {corporation.name} were refreshed using this character token.")
         job.finished_at = datetime.now(timezone.utc)
         create_snapshot(db, scope_type="corporation", scope_id=corporation.id, source="corporation_assets", message=job.message)
         await asyncio.to_thread(db.commit)
-        return {"status": "synced", "corporation_name": corporation.name, "asset_rows": synced, "job_id": job.id}
+        return {"status": "synced", "corporation_name": corporation.name, "asset_rows": synced, "division_names": division_names, "structure_names": structure_names, "warnings": warnings, "job_id": job.id}
     except Exception as exc:
         job.status = SyncStatus.FAILED
         job.message = str(exc)
@@ -1930,10 +1950,11 @@ async def sync_corporation_wallets(token_id: int, current_user: User = Depends(g
 
     try:
         wallet_payload = await client.get(f"/corporations/{corporation.corporation_id}/wallets/")
+        division_names, division_warning = await sync_corporation_divisions(client, db, corporation)
         synced = await asyncio.to_thread(upsert_corporation_wallet_rows, db, corporation, wallet_payload or [])
         corporation.last_synced_at = datetime.now(timezone.utc)
         job.status = SyncStatus.SUCCESS
-        job.message = f"Synced {synced} corporation wallet division balances."
+        job.message = f"Synced {synced} corporation wallet division balances and {division_names} division names." + (f" Metadata warning: {division_warning}" if division_warning else "")
         notify_if_other_user_synced_character(db, sync_label="corporation wallets", actor_user=current_user, character=character, detail=f"{synced} wallet division balances for {corporation.name} were refreshed using this character token.")
         job.finished_at = datetime.now(timezone.utc)
         create_snapshot(db, scope_type="corporation", scope_id=corporation.id, source="corporation_wallets", message=job.message)
@@ -2408,5 +2429,10 @@ async def auth_callback(code: str | None = None, state: str | None = None, db: S
             "esi_mode": state_mode,
         }
     )
-    destination = "recruiting" if state_mode in {"recruitment", "recruiting", "applicant"} else "esi"
+    if state_mode in {"recruitment", "recruiting", "applicant"}:
+        destination = "recruiting"
+    elif state_mode in {"planet", "planets", "planetary", "planetary_industry", "pi"}:
+        destination = "planetary_industry"
+    else:
+        destination = "esi"
     return RedirectResponse(url=f"{settings.frontend_url}/?{query}#{destination}", status_code=303)

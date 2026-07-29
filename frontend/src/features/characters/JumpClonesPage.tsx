@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState, type ReactElement } from "react";
+import { Copy } from "lucide-react";
 
 import { ImplantDogmaChip } from "./ImplantDogmaChip";
-import type { ImplantSetRecord, JumpClonePayload, JumpCloneRecord, JumpCloneSyncToken } from "../../types/jumpClones";
+import { buildImplantShoppingList } from "./implantShoppingList";
+import type { ImplantSetRecord, JumpCloneImplant, JumpClonePayload, JumpCloneRecord, JumpCloneSyncToken } from "../../types/jumpClones";
 
 type ApiClient = <T>(path: string, options?: RequestInit) => Promise<T>;
 type EveEntityKind = "character" | "corporation" | "alliance";
@@ -36,7 +38,7 @@ function cloneLocationText(clone: JumpCloneRecord): string {
 }
 
 
-function CloneCard({ clone, formatDateTime }: { clone: JumpCloneRecord; formatDateTime: (value?: string | null) => string }) {
+function CloneCard({ clone, formatDateTime, onCopy }: { clone: JumpCloneRecord; formatDateTime: (value?: string | null) => string; onCopy: (label: string, implants: JumpCloneImplant[]) => void }) {
   return (
     <article className="jump-clone-card">
       <div className="jump-clone-card-heading">
@@ -48,6 +50,11 @@ function CloneCard({ clone, formatDateTime }: { clone: JumpCloneRecord; formatDa
       <div className="implant-chip-list">
         {clone.implants.map((implant) => <ImplantDogmaChip key={`${clone.id}-${implant.type_id}`} implant={implant} />)}
         {clone.implants.length === 0 && <span className="implant-empty">No implants</span>}
+      </div>
+      <div className="button-row compact">
+        <button type="button" disabled={clone.implants.length === 0} onClick={() => onCopy(clone.name, clone.implants)} title="Copy an item-and-quantity list for market appraisal or multibuy">
+          <Copy size={15} /> Copy shopping list
+        </button>
       </div>
     </article>
   );
@@ -150,6 +157,23 @@ export function JumpClonesPage({ api, EveEntityIcon, formatDateTime }: JumpClone
     }
   }
 
+  async function copyImplants(label: string, implants: JumpCloneImplant[]) {
+    const list = buildImplantShoppingList(implants);
+    if (!list.text) {
+      setMessage(null);
+      setError(`${label} has no implants to copy.`);
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(list.text);
+      setError(null);
+      setMessage(`Copied ${list.implantCount.toLocaleString()} implant${list.implantCount === 1 ? "" : "s"} across ${list.itemTypeCount.toLocaleString()} item type${list.itemTypeCount === 1 ? "" : "s"} from ${label}.`);
+    } catch {
+      setMessage(null);
+      setError("The browser blocked clipboard access. Check its clipboard permission and try again.");
+    }
+  }
+
   useEffect(() => { void load().catch((err) => setError(err instanceof Error ? err.message : "Unable to load jump clones")); }, []);
 
   const clonesByCharacter = useMemo(() => {
@@ -160,6 +184,7 @@ export function JumpClonesPage({ api, EveEntityIcon, formatDateTime }: JumpClone
 
   const selectedCharacter = payload.characters.find((character) => character.id === selectedCharacterId) ?? null;
   const selectedClones = selectedCharacterId === "" ? [] : clonesByCharacter.get(selectedCharacterId) ?? [];
+  const selectedImplants = selectedClones.flatMap((clone) => clone.implants);
 
   return (
     <section className="panel stacked jump-clones-page">
@@ -200,9 +225,14 @@ export function JumpClonesPage({ api, EveEntityIcon, formatDateTime }: JumpClone
           ))}
         </aside>
         <section className="jump-clone-detail">
-          <h4>{selectedCharacter ? selectedCharacter.name : "Select a character"}</h4>
+          <div className="section-heading compact">
+            <h4>{selectedCharacter ? selectedCharacter.name : "Select a character"}</h4>
+            <button type="button" disabled={!selectedCharacter || selectedImplants.length === 0} onClick={() => void copyImplants(`${selectedCharacter?.name ?? "selected character"} clones`, selectedImplants)} title="Copy all implants from this character's active clone and jump clones">
+              <Copy size={15} /> Copy all implants
+            </button>
+          </div>
           <div className="jump-clone-grid">
-            {selectedClones.map((clone) => <CloneCard key={clone.id} clone={clone} formatDateTime={formatDateTime} />)}
+            {selectedClones.map((clone) => <CloneCard key={clone.id} clone={clone} formatDateTime={formatDateTime} onCopy={(label, implants) => void copyImplants(label, implants)} />)}
             {selectedCharacter && selectedClones.length === 0 && <p className="empty">No jump clone data synced for this character yet.</p>}
           </div>
         </section>
@@ -226,7 +256,7 @@ export function JumpClonesPage({ api, EveEntityIcon, formatDateTime }: JumpClone
             <article key={set.id}>
               <div className="section-heading compact">
                 <div><strong>{set.name}</strong><span>{set.implants.length.toLocaleString()} implant{set.implants.length === 1 ? "" : "s"}{set.character_name ? ` · ${set.character_name}` : ""}{set.is_shared ? " · Shared" : ""}</span></div>
-                <div className="button-row compact">{set.can_manage && <button type="button" onClick={() => beginEdit(set)}>Edit</button>}{set.can_manage && <button type="button" className="danger-button" onClick={() => void deleteSet(set)}>Delete</button>}</div>
+                <div className="button-row compact"><button type="button" disabled={set.implants.length === 0} onClick={() => void copyImplants(set.name, set.implants)} title="Copy an item-and-quantity list for market appraisal or multibuy"><Copy size={15} /> Copy shopping list</button>{set.can_manage && <button type="button" onClick={() => beginEdit(set)}>Edit</button>}{set.can_manage && <button type="button" className="danger-button" onClick={() => void deleteSet(set)}>Delete</button>}</div>
               </div>
               <span>{implantSummary(set.implants)}</span>
               {set.description && <small>{set.description}</small>}

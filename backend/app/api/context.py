@@ -22,6 +22,11 @@ from app.models import (
     User,
 )
 from app.services.permissions import ROLE_RANK, role_rank
+from app.services.corporation_metadata import (
+    asset_flag_name,
+    asset_location_name,
+    corporation_hangar_names,
+)
 
 router = APIRouter(prefix="/context", tags=["context"])
 
@@ -52,16 +57,8 @@ def top_rows(rows: dict[str, dict[str, Any]], limit: int = 6) -> list[dict[str, 
     return sorted(rows.values(), key=lambda row: row["quantity"], reverse=True)[:limit]
 
 
-def asset_location_name(asset: Asset) -> str:
-    if asset.location:
-        return asset.location.name
-    if asset.parent_asset:
-        parent_type = asset.parent_asset.item_type.name if asset.parent_asset.item_type else None
-        return f"Inside {parent_type or 'item'} {asset.parent_asset.eve_item_id}"
-    return "Unknown location"
 
-
-def summarize_assets_by_type(assets: list[Asset]) -> dict[int, dict[str, Any]]:
+def summarize_assets_by_type(assets: list[Asset], hangar_names: dict[tuple[int, str], str]) -> dict[int, dict[str, Any]]:
     summaries: dict[int, dict[str, Any]] = {}
     for asset in assets:
         summary = summaries.setdefault(
@@ -76,14 +73,15 @@ def summarize_assets_by_type(assets: list[Asset]) -> dict[int, dict[str, Any]]:
         summary["quantity"] += asset.quantity
         summary["stacks"] += 1
         owner_name = owner_label(asset.ownership_entity)
-        location_name = asset_location_name(asset)
-        location_key = f"{owner_name.lower()}|{location_name.lower()}|{asset.location_flag or ''}"
+        location_name = asset_location_name(asset) or "Unknown location"
+        location_flag = asset_flag_name(asset, hangar_names)
+        location_key = f"{owner_name.lower()}|{location_name.lower()}|{location_flag or ''}"
         location = summary["locations"].setdefault(
             location_key,
             {
                 "owner": owner_name,
                 "location": location_name,
-                "flag": asset.location_flag,
+                "flag": location_flag,
                 "quantity": 0,
             },
         )
@@ -144,7 +142,8 @@ def assets_summary(payload: dict[str, Any], current_user: User = Depends(get_cur
         )
     ).all()
     visible_assets = [asset for asset in assets if can_view_owner_records(asset.ownership_entity, current_user, db)]
-    summaries = summarize_assets_by_type(visible_assets)
+    hangar_names = corporation_hangar_names(db, visible_assets)
+    summaries = summarize_assets_by_type(visible_assets, hangar_names)
     return {
         "items": [
             {
@@ -178,6 +177,7 @@ def item_context(type_id: int, current_user: User = Depends(get_current_user), d
     ).all()
     visible_assets = [asset for asset in assets if can_view_owner_records(asset.ownership_entity, current_user, db)]
 
+    hangar_names = corporation_hangar_names(db, visible_assets)
     owner_totals: dict[str, dict[str, Any]] = {}
     location_totals: dict[str, dict[str, Any]] = {}
     for asset in visible_assets:
@@ -195,14 +195,15 @@ def item_context(type_id: int, current_user: User = Depends(get_current_user), d
         owner_row["quantity"] += asset.quantity
         owner_row["stacks"] += 1
 
-        location_name = asset_location_name(asset)
-        location_key = f"{owner_name.lower()}|{location_name.lower()}|{asset.location_flag or ''}"
+        location_name = asset_location_name(asset) or "Unknown location"
+        location_flag = asset_flag_name(asset, hangar_names)
+        location_key = f"{owner_name.lower()}|{location_name.lower()}|{location_flag or ''}"
         location_row = location_totals.setdefault(
             location_key,
             {
                 "owner_name": owner_name,
                 "location_name": location_name,
-                "location_flag": asset.location_flag,
+                "location_flag": location_flag,
                 "quantity": 0,
                 "stacks": 0,
             },

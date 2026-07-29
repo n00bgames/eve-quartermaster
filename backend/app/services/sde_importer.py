@@ -16,6 +16,8 @@ from app.models import (
     EveDogmaAttribute,
     EveDogmaEffect,
     EveGroup,
+    EvePlanetSchematic,
+    EvePlanetSchematicInput,
     EveRegion,
     EveStargate,
     EveStation,
@@ -46,6 +48,7 @@ SDE_FILES = {
     "dogma_attributes": ("dogmaAttributes.yaml", "dgmAttributeTypes.yaml", "bsd/dgmAttributeTypes.yaml"),
     "dogma_effects": ("dogmaEffects.yaml", "dgmEffects.yaml", "bsd/dgmEffects.yaml"),
     "type_dogma": ("typeDogma.yaml",),
+    "planet_schematics": ("planetSchematics.yaml",),
 }
 
 ACTIVITY_MAP = {
@@ -78,6 +81,8 @@ class SdeImportStats:
     dogma_effects: int = 0
     type_dogma_attributes: int = 0
     type_dogma_effects: int = 0
+    planet_schematics: int = 0
+    planet_schematic_inputs: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -634,6 +639,53 @@ def ensure_placeholder_type(db: Session, type_id: int) -> None:
         db.add(EveType(type_id=type_id, name=f"Type {type_id}", published=True))
 
 
+def upsert_planet_schematic(
+    db: Session,
+    schematic_id: int,
+    payload: dict[str, Any],
+) -> tuple[int, int]:
+    type_rows = payload.get("types") or {}
+    inputs: list[tuple[int, int]] = []
+    outputs: list[tuple[int, int]] = []
+    for raw_type_id, row in type_rows.items():
+        if not isinstance(row, dict):
+            continue
+        type_id = int(raw_type_id)
+        quantity = int(row.get("quantity") or 0)
+        ensure_placeholder_type(db, type_id)
+        target = inputs if row.get("isInput") else outputs
+        target.append((type_id, quantity))
+    if not outputs:
+        return 0, 0
+
+    output_type_id, output_quantity = outputs[0]
+    output_type = db.get(EveType, output_type_id)
+    output_name = output_type.name if output_type is not None else f"Type {output_type_id}"
+    schematic = db.get(EvePlanetSchematic, schematic_id)
+    if schematic is None:
+        schematic = EvePlanetSchematic(schematic_id=schematic_id)
+        db.add(schematic)
+    schematic.name = localized_text(payload.get("name"), f"{output_name} Production")
+    schematic.cycle_time = int(payload.get("cycleTime") or 0)
+    schematic.output_type_id = output_type_id
+    schematic.output_quantity = output_quantity
+    db.flush()
+
+    db.execute(
+        delete(EvePlanetSchematicInput).where(
+            EvePlanetSchematicInput.schematic_id == schematic_id
+        )
+    )
+    for type_id, quantity in inputs:
+        db.add(
+            EvePlanetSchematicInput(
+                schematic_id=schematic_id,
+                type_id=type_id,
+                quantity=quantity,
+            )
+        )
+    return 1, len(inputs)
+
 def import_sde(
     source_path: str,
     db: Session,
@@ -642,7 +694,7 @@ def import_sde(
 ) -> dict[str, Any]:
     source = SdeSource(source_path)
     stats = SdeImportStats(source_path=source_path)
-    wanted = sections or {"categories", "groups", "types", "dogma", "blueprints", "regions", "constellations", "systems", "stargates", "stations"}
+    wanted = sections or {"categories", "groups", "types", "dogma", "blueprints", "planet_schematics", "regions", "constellations", "systems", "stargates", "stations"}
 
     def mark(stage: str) -> None:
         if progress is not None:
@@ -678,6 +730,21 @@ def import_sde(
                     mark(f"types imported: {stats.types}")
             db.commit()
             mark("types complete")
+
+        if "planet_schematics" in wanted:
+            mark("loading planetary schematics")
+            schematics = source.load_yaml("planet_schematics")
+            for raw_id, payload in schematics.items():
+                schematic_count, input_count = upsert_planet_schematic(
+                    db,
+                    int(raw_id),
+                    payload or {},
+                )
+                stats.planet_schematics += schematic_count
+                stats.planet_schematic_inputs += input_count
+            db.commit()
+            mark("planetary schematics complete")
+
         if "dogma" in wanted:
             mark("loading dogma attributes")
             dogma_attributes = load_optional_yaml(source, "dogma_attributes")

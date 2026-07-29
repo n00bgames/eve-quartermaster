@@ -25,6 +25,7 @@ from app.models import (
     EveGroup,
     EveType,
     OwnershipEntity,
+    ResearchProject,
     SnapshotMetric,
     SnapshotRun,
 )
@@ -208,6 +209,124 @@ def snapshot_character_skills(db: Session, run: SnapshotRun) -> None:
             )
 
 
+RESEARCH_BLUEPRINT_ACTIVITIES = frozenset({3, 4, 5})
+RESEARCH_BLUEPRINT_STATUSES = frozenset({"active", "paused", "ready"})
+
+
+def scoped_blueprint_records(db: Session) -> list[dict[str, object]]:
+    """Merge visible inventory and in-flight research by immutable ESI blueprint item ID."""
+    corporation_ids = analytics_corporation_ids(db)
+    corporation_filter = OwnershipEntity.owner_kind != OwnerKind.CORPORATION
+    if corporation_ids:
+        corporation_filter = or_(
+            corporation_filter,
+            OwnershipEntity.corporation_id.in_(corporation_ids),
+        )
+    blueprints = db.scalars(
+        select(Blueprint)
+        .join(OwnershipEntity, OwnershipEntity.id == Blueprint.ownership_entity_id)
+        .options(
+            selectinload(Blueprint.asset),
+            selectinload(Blueprint.ownership_entity),
+            selectinload(Blueprint.blueprint_type),
+        )
+        .where(corporation_filter)
+        .order_by(Blueprint.blueprint_type_id, Blueprint.id)
+    ).all()
+    records: dict[tuple[str, int], dict[str, object]] = {}
+    for blueprint in blueprints:
+        owner = blueprint.ownership_entity
+        item_id = blueprint.asset.eve_item_id if blueprint.asset else None
+        key = ("item", int(item_id)) if item_id is not None else ("blueprint", int(blueprint.id))
+        records[key] = {
+            "owner_id": int(blueprint.ownership_entity_id),
+            "owner_name": owner.display_name if owner else "Unknown owner",
+            "type_id": int(blueprint.blueprint_type_id),
+            "type_name": blueprint.blueprint_type.name if blueprint.blueprint_type else f"Type {blueprint.blueprint_type_id}",
+            "material_efficiency": int(blueprint.material_efficiency or 0),
+            "time_efficiency": int(blueprint.time_efficiency or 0),
+            "runs_remaining": blueprint.runs_remaining,
+            "is_copy": bool(blueprint.is_copy),
+            "item_id": int(item_id) if item_id is not None else None,
+            "inventory_state": "inventory",
+            "research_job_id": None,
+        }
+
+    owners = db.scalars(select(OwnershipEntity)).all()
+    character_owners = {
+        int(owner.character_id): owner
+        for owner in owners
+        if owner.owner_kind == OwnerKind.CHARACTER and owner.character_id is not None
+    }
+    corporation_owners = {
+        int(owner.corporation_id): owner
+        for owner in owners
+        if owner.owner_kind == OwnerKind.CORPORATION
+        and owner.corporation_id is not None
+        and owner.corporation_id in corporation_ids
+    }
+    projects = db.scalars(
+        select(ResearchProject)
+        .options(
+            selectinload(ResearchProject.blueprint_type),
+            selectinload(ResearchProject.character),
+            selectinload(ResearchProject.corporation),
+        )
+        .where(
+            ResearchProject.activity_id.in_(RESEARCH_BLUEPRINT_ACTIVITIES),
+            ResearchProject.status.in_(RESEARCH_BLUEPRINT_STATUSES),
+            ResearchProject.blueprint_id.is_not(None),
+            ResearchProject.blueprint_type_id.is_not(None),
+        )
+        .order_by(ResearchProject.job_id)
+    ).all()
+    for project in projects:
+        if project.source_type == "corporation":
+            owner = corporation_owners.get(int(project.corporation_id)) if project.corporation_id is not None else None
+        else:
+            owner = character_owners.get(int(project.character_id)) if project.character_id is not None else None
+        if owner is None or project.blueprint_id is None or project.blueprint_type_id is None:
+            continue
+        item_id = int(project.blueprint_id)
+        key = ("item", item_id)
+        existing = records.get(key)
+        if existing is not None:
+            existing["inventory_state"] = "in_production"
+            existing["research_job_id"] = int(project.job_id)
+            continue
+
+        prior = db.scalar(
+            select(BlueprintSnapshot)
+            .where(BlueprintSnapshot.blueprint_item_id == item_id)
+            .order_by(BlueprintSnapshot.snapshot_run_id.desc(), BlueprintSnapshot.id.desc())
+            .limit(1)
+        )
+        if prior is None:
+            prior = db.scalar(
+                select(BlueprintSnapshot)
+                .where(
+                    BlueprintSnapshot.ownership_entity_id == owner.id,
+                    BlueprintSnapshot.blueprint_type_id == project.blueprint_type_id,
+                    BlueprintSnapshot.is_copy.is_(False),
+                )
+                .order_by(BlueprintSnapshot.snapshot_run_id.desc(), BlueprintSnapshot.id.desc())
+                .limit(1)
+            )
+        records[key] = {
+            "owner_id": int(owner.id),
+            "owner_name": owner.display_name,
+            "type_id": int(project.blueprint_type_id),
+            "type_name": project.blueprint_type.name if project.blueprint_type else f"Type {project.blueprint_type_id}",
+            "material_efficiency": int(prior.material_efficiency or 0) if prior else 0,
+            "time_efficiency": int(prior.time_efficiency or 0) if prior else 0,
+            "runs_remaining": prior.runs_remaining if prior else None,
+            "is_copy": bool(prior.is_copy) if prior else False,
+            "item_id": item_id,
+            "inventory_state": "in_production",
+            "research_job_id": int(project.job_id),
+        }
+    return list(records.values())
+
 def snapshot_corporations(db: Session, run: SnapshotRun) -> None:
     corporation_ids = analytics_corporation_ids(db)
     if not corporation_ids:
@@ -217,6 +336,9 @@ def snapshot_corporations(db: Session, run: SnapshotRun) -> None:
         .where(EveCorporation.id.in_(corporation_ids))
         .order_by(EveCorporation.name)
     ).all()
+    blueprint_counts: dict[int, int] = defaultdict(int)
+    for record in scoped_blueprint_records(db):
+        blueprint_counts[int(record["owner_id"])] += 1
     for corporation in corporations:
         owner = db.scalar(
             select(OwnershipEntity).where(
@@ -230,7 +352,7 @@ def snapshot_corporations(db: Session, run: SnapshotRun) -> None:
         if owner is not None:
             asset_rows = db.scalar(select(func.count()).select_from(Asset).where(Asset.ownership_entity_id == owner.id)) or 0
             asset_units = db.scalar(select(func.coalesce(func.sum(Asset.quantity), 0)).where(Asset.ownership_entity_id == owner.id)) or 0
-            blueprint_count = db.scalar(select(func.count()).select_from(Blueprint).where(Blueprint.ownership_entity_id == owner.id)) or 0
+            blueprint_count = blueprint_counts.get(owner.id, 0)
         wallets = db.scalars(select(CorporationWalletDivision).where(CorporationWalletDivision.corporation_id == corporation.id)).all()
         wallet_total = sum(decimal_value(wallet.balance) for wallet in wallets)
         db.add(
@@ -275,48 +397,37 @@ def snapshot_corporations(db: Session, run: SnapshotRun) -> None:
 
 
 def snapshot_blueprints(db: Session, run: SnapshotRun) -> None:
-    corporation_ids = analytics_corporation_ids(db)
-    corporation_filter = OwnershipEntity.owner_kind != OwnerKind.CORPORATION
-    if corporation_ids:
-        corporation_filter = or_(
-            corporation_filter,
-            OwnershipEntity.corporation_id.in_(corporation_ids),
-        )
-    blueprints = db.scalars(
-        select(Blueprint)
-        .join(OwnershipEntity, OwnershipEntity.id == Blueprint.ownership_entity_id)
-        .options(selectinload(Blueprint.ownership_entity), selectinload(Blueprint.blueprint_type))
-        .where(corporation_filter)
-        .order_by(Blueprint.blueprint_type_id)
-    ).all()
-    grouped: dict[tuple[int, int, int, int, bool, str, str], int] = defaultdict(int)
-    for blueprint in blueprints:
-        owner_name = blueprint.ownership_entity.display_name if blueprint.ownership_entity else "Unknown owner"
-        blueprint_name = blueprint.blueprint_type.name if blueprint.blueprint_type else f"Type {blueprint.blueprint_type_id}"
-        key = (
-            blueprint.ownership_entity_id,
-            blueprint.blueprint_type_id,
-            int(blueprint.material_efficiency or 0),
-            int(blueprint.time_efficiency or 0),
-            bool(blueprint.is_copy),
-            owner_name,
-            blueprint_name,
-        )
-        grouped[key] += 1
-    for (owner_id, type_id, me, te, is_copy, owner_name, blueprint_name), quantity in grouped.items():
+    records = scoped_blueprint_records(db)
+    grouped: dict[tuple[int, int, int, int, bool, str, str, str], int] = defaultdict(int)
+    for record in records:
+        owner_id = int(record["owner_id"])
+        owner_name = str(record["owner_name"])
+        type_id = int(record["type_id"])
+        type_name = str(record["type_name"])
+        me = int(record["material_efficiency"])
+        te = int(record["time_efficiency"])
+        is_copy = bool(record["is_copy"])
+        inventory_state = str(record["inventory_state"])
         db.add(
             BlueprintSnapshot(
                 snapshot_run_id=run.id,
                 ownership_entity_id=owner_id,
                 owner_name=owner_name,
+                blueprint_item_id=record["item_id"],
                 blueprint_type_id=type_id,
-                blueprint_type_name=blueprint_name,
+                blueprint_type_name=type_name,
                 material_efficiency=me,
                 time_efficiency=te,
+                runs_remaining=record["runs_remaining"],
                 is_copy=is_copy,
-                quantity=quantity,
+                inventory_state=inventory_state,
+                research_job_id=record["research_job_id"],
+                quantity=1,
             )
         )
+        grouped[(owner_id, type_id, me, te, is_copy, owner_name, type_name, inventory_state)] += 1
+
+    for (owner_id, type_id, me, te, is_copy, owner_name, type_name, inventory_state), quantity in grouped.items():
         add_metric(
             db,
             run,
@@ -325,10 +436,12 @@ def snapshot_blueprints(db: Session, run: SnapshotRun) -> None:
             owner_name=owner_name,
             metric_key="blueprint.quantity",
             metric_value=quantity,
-            dimensions={"blueprint_type_id": type_id, "blueprint": blueprint_name, "me": me, "te": te, "is_copy": is_copy},
+            dimensions={
+                "blueprint_type_id": type_id,
+                "blueprint": type_name,
+                "me": me,
+                "te": te,
+                "is_copy": is_copy,
+                "inventory_state": inventory_state,
+            },
         )
-
-
-
-
-

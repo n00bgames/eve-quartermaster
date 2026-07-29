@@ -27,6 +27,11 @@ from app.models import (
 )
 from app.models.enums import ActivityKind, AssetSource, LocationKind, OwnerKind, ProcurementKind
 from app.services.asset_visibility import can_view_owner_records, visible_asset_rows
+from app.services.corporation_metadata import (
+    asset_flag_name,
+    asset_location_name,
+    corporation_hangar_names,
+)
 
 router = APIRouter(prefix="/quartermaster", tags=["quartermaster"], dependencies=[Depends(get_current_user)])
 
@@ -236,16 +241,8 @@ def create_location(payload: dict[str, Any], db: Session = Depends(get_db)) -> d
     return row_dict(location)
 
 
-def asset_location_name(asset: Asset) -> str | None:
-    parent_type_name = asset.parent_asset.item_type.name if asset.parent_asset and asset.parent_asset.item_type else None
-    if asset.location:
-        return asset.location.name
-    if asset.parent_asset:
-        return f"Inside {parent_type_name or 'item'} {asset.parent_asset.eve_item_id}"
-    return None
 
-
-def serialize_asset(asset: Asset) -> dict[str, Any]:
+def serialize_asset(asset: Asset, hangar_names: dict[tuple[int, str], str] | None = None) -> dict[str, Any]:
     parent_type_name = asset.parent_asset.item_type.name if asset.parent_asset and asset.parent_asset.item_type else None
     return row_dict(
         asset,
@@ -255,6 +252,7 @@ def serialize_asset(asset: Asset) -> dict[str, Any]:
             "type_name": asset.item_type.name if asset.item_type else None,
             "location_name": asset_location_name(asset),
             "location_id": asset.location.eve_location_id if asset.location else None,
+            "location_flag_name": asset_flag_name(asset, hangar_names or {}),
             "parent_asset_item_id": asset.parent_asset.eve_item_id if asset.parent_asset else None,
             "parent_asset_type_name": parent_type_name,
             "inventory_family": item_family(asset.item_type, asset.item_type.name if asset.item_type else None),
@@ -264,7 +262,7 @@ def serialize_asset(asset: Asset) -> dict[str, Any]:
     )
 
 
-def asset_sort_value(asset: Asset, key: str) -> Any:
+def asset_sort_value(asset: Asset, key: str, hangar_names: dict[tuple[int, str], str] | None = None) -> Any:
     if key == "owner":
         return asset.ownership_entity.display_name if asset.ownership_entity else ""
     if key == "quantity":
@@ -272,15 +270,15 @@ def asset_sort_value(asset: Asset, key: str) -> Any:
     if key == "location":
         return asset_location_name(asset) or ""
     if key == "flag":
-        return asset.location_flag or ""
+        return asset_flag_name(asset, hangar_names or {}) or ""
     return asset.item_type.name if asset.item_type else ""
 
 
-def asset_filter_value(asset: Asset, key: str) -> str:
-    return str(asset_sort_value(asset, key) or "-")
+def asset_filter_value(asset: Asset, key: str, hangar_names: dict[tuple[int, str], str] | None = None) -> str:
+    return str(asset_sort_value(asset, key, hangar_names) or "-")
 
 
-def asset_matches_query(asset: Asset, owner_kind: str | None, category: str, subtype: str | None, filter_key: str | None, filter_value: str | None, filter_mode: str) -> bool:
+def asset_matches_query(asset: Asset, owner_kind: str | None, category: str, subtype: str | None, filter_key: str | None, filter_value: str | None, filter_mode: str, hangar_names: dict[tuple[int, str], str] | None = None) -> bool:
     if owner_kind and (not asset.ownership_entity or asset.ownership_entity.owner_kind.value != owner_kind):
         return False
     family = item_family(asset.item_type, asset.item_type.name if asset.item_type else None)
@@ -294,7 +292,7 @@ def asset_matches_query(asset: Asset, owner_kind: str | None, category: str, sub
     if subtype and inventory_subtype(asset.item_type, asset.item_type.name if asset.item_type else None) != subtype:
         return False
     if filter_key and filter_value:
-        value = asset_filter_value(asset, filter_key)
+        value = asset_filter_value(asset, filter_key, hangar_names)
         if filter_mode == "contains":
             return filter_value.lower() in value.lower()
         return value == filter_value
@@ -303,7 +301,9 @@ def asset_matches_query(asset: Asset, owner_kind: str | None, category: str, sub
 
 @router.get("/assets")
 def list_assets(limit: int = Query(250, ge=1, le=1000), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[dict[str, Any]]:
-    return [serialize_asset(asset) for asset in visible_asset_rows(current_user, db)[:limit]]
+    rows = visible_asset_rows(current_user, db)[:limit]
+    hangar_names = corporation_hangar_names(db, rows)
+    return [serialize_asset(asset, hangar_names) for asset in rows]
 
 
 @router.get("/assets-page")
@@ -321,19 +321,21 @@ def list_assets_page(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
+    visible_rows = visible_asset_rows(current_user, db)
+    hangar_names = corporation_hangar_names(db, visible_rows)
     rows = [
         asset
-        for asset in visible_asset_rows(current_user, db)
-        if asset_matches_query(asset, owner_kind, category, subtype, filter_key, filter_value, filter_mode)
+        for asset in visible_rows
+        if asset_matches_query(asset, owner_kind, category, subtype, filter_key, filter_value, filter_mode, hangar_names)
     ]
     rows.sort(
-        key=lambda asset: asset_sort_value(asset, sort_key),
+        key=lambda asset: asset_sort_value(asset, sort_key, hangar_names),
         reverse=sort_direction == "desc",
     )
     total = len(rows)
     start = (page - 1) * page_size
     return {
-        "items": [serialize_asset(asset) for asset in rows[start:start + page_size]],
+        "items": [serialize_asset(asset, hangar_names) for asset in rows[start:start + page_size]],
         "total": total,
         "page": page,
         "page_size": page_size,

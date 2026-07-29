@@ -51,6 +51,7 @@ See [CHANGELOG.md](CHANGELOG.md) for version-by-version release notes.
 - Notifications, private messages, and admin audit log for sync transparency.
 - Historical analytics foundation with snapshot runs, metric metadata/versioning, baseline-aware deltas, exports, and composable widgets.
 - ESI-backed Research Projects queue for material/time efficiency, copying, and invention work, with retained researcher history and Analytics attribution.
+- Planetary Industry workspace with queued per-character ESI sync, colony layouts, extractor program projections, routed factory warnings, storage totals, character/system/planet filters, and historical P0-P4 production analytics with per-commodity pilot rankings.
 - Configurable Recruiting workspace with a public corporation page, applicant accounts, limited-scope EVE verification, recruiter review queues, interviews, audited decisions, and capability-based staff access.
 - Persistent Mining Ledger with per-character ESI history, detailed residue-aware imports, named mining operations, production/value graphs, and honest residue-measured efficiency rankings.
 - Mining Op Settlement workflow with saved-operation or date-range sourcing, actual refined-output entry, hub price snapshots, operation reserves, expenses, support-role compensation, weighted shares, reconciled ISK payouts, editable drafts, and immutable finalized history.
@@ -98,6 +99,12 @@ A quick tour of the current beta surface, ordered roughly the way a new Quarterm
 | ![ESI sync](static/ss/eqm-esi-sync.png) | ![Jump clones and implant loadouts](static/ss/eqm-jump-clones.png) |
 
 ### Inventory And Industry
+
+| Corporate Exchange | Listing Detail & Appraisal | Owner Listing Editor |
+| --- | --- | --- |
+| ![Corporate Exchange listing board](static/ss/eqm-corporate-exchange.jpg) | ![Corporate Exchange listing detail and five-hub appraisal](static/ss/eqm-corporate-exchange-detail.jpg) | ![Corporate Exchange owner listing editor](static/ss/eqm-corporate-exchange-editor.jpg) |
+
+**Built from user feedback:** The Corporate Exchange module was shaped directly by requests from EVE Quartermaster users, from shareable member listings through stock management, appraisals, auctions, and seller controls.
 
 | Manufacturing | Research Projects |
 | --- | --- |
@@ -480,7 +487,7 @@ Navigation, route maps, recipes, blueprint activity, fitting simulation, station
 3. Open **ESI Sync**.
 4. Use the main EVE SSO authorization link to connect a character. EVE will ask which character to authorize and which scopes to grant.
 5. After the callback returns to EQM, the linked character appears on the ESI Sync page and on character-aware pages.
-6. If a page shows missing scopes, return to **ESI Sync** and re-authorize that character after adding the missing scope to the EVE developer application.
+6. If a page shows missing scopes, return to **ESI Sync** and re-authorize that character after adding the missing scope to the EVE developer application. Existing linked characters must also reauthorize when a newly added feature, such as Planetary Industry, needs a scope their stored token predates.
 7. Use **Authorize contact sync** only for characters that should read/write EVE contacts for standing propagation.
 8. Use **Sync assets**, **Sync skills**, **Sync fittings**, and **Sync contracts** from character-aware pages when you want fresh data. The Skills page also has **Sync all skills** for every eligible character; characters marked as opted out are skipped.
 9. Use **Corporations** for corporation asset, blueprint, and wallet syncs. Corporation sync requires a linked CEO/director-style character with the relevant corporation scopes.
@@ -498,9 +505,10 @@ Privacy controls live under **Settings -> Character Privacy**. A character can b
 - **Alliance Roster:** review corporations and pilots grouped for diplomacy, recruiting, or operational awareness.
 - **Recruiting:** hosts and recruitment administrators complete Initial Setup by resolving the corporation from ESI; EQM automatically records its current CEO and associated alliance, while an audited manual CEO override remains available for edge cases. Customize public copy, timezone, activity window, application questions, tags, interview prompts, privacy and retention values, then assign Recruiter or Recruitment Administrator capabilities without changing a user's normal role. Applicants register from the public Recruiting link, save drafts, link characters through the restricted recruitment SSO scope group, choose a main character, acknowledge interviews, communicate with recruiters, submit, or withdraw. Recruiters review the searchable queue, assign applications, add private notes and ratings, schedule interviews, and record applicant-visible status changes; final decisions remain administrator-only.
 - **Market:** paste item lists, compare trade hubs, inspect order depth signals, and jump from market rows into visible assets or fittings.
-- **Assets:** filter inventory by owner kind, item, owner, location, flag, category, and subtype; export CSV; copy Janice-friendly lists; open item context and market/fitting handoffs.
+- **Assets:** filter inventory by owner kind, item, owner, location, named corporation hangar division, category, and subtype; resolve authorized Upwell structure names; export CSV; copy Janice-friendly lists; open item context and market/fitting handoffs. EQM retains the raw ESI flag or location ID when ESI cannot disclose a private structure.
 - **Industry:** use the full Blueprint Library, BPO/BPC filters, SDE-backed category/subtype filters, Missing BPO pane, blueprint output context, recipes, and material input views.
-- **Research Projects:** sync eligible character industry queues, monitor active ME/TE, copying, and invention projects, inspect facilities and timers, and retain completed work for Analytics.
+- **Research Projects:** sync eligible character industry queues, monitor active ME/TE, copying, and invention projects, inspect facilities and timers, and retain completed work for Analytics. Active, paused, and ready-for-delivery ME/TE and copying jobs also act as a shadow blueprint inventory in Analytics so temporarily installed blueprints are not reported as missing.
+- **Planetary Industry:** sync eligible colonies, inspect layouts and stored commodities, translate factory schematic IDs into SDE-backed product names and input recipes, monitor extractor expiry and projected program output, identify factories without inbound routes, and filter by character, system, or planet type. Extractor projections use imported SDE Dogma when available and CCP's documented decay/noise defaults otherwise; reauthorize older linked characters if EQM reports the PI scope is missing. Each successful sync also records a durable P0-P4 production observation: the first establishes current projected throughput, and later observations accrue estimated production for Analytics, tier totals, commodity leaders, and pilot rankings.
 - **Mining Ledger:** queue personal mining-history syncs, import the detailed EVE ledger export for residue/value fields, filter by character/system/date/operation, create named operations with selected miners and boosters, and compare recovered volume, gross extraction, residue loss, estimated value, and measured efficiency. ESI rows remain stored after they age out of CCP's rolling response window.
 - **Mining Op Settlement:** open the calculator beneath Ledger History, choose a saved operation or date range, and select whether miner shares follow estimated raw value, recovered volume, raw quantity, or equal starting shares. Enter the actual refined minerals and quantities because recorded output is authoritative; optional hub pricing snapshots each unit price, while manual changes are flagged as overrides. Operation reserves and expenses are deducted before fixed-percentage support payouts and weighted shares. Enter percentages as either `10` or `0.10` for 10%; the preview shows the normalized result and must reconcile before saving. Drafts remain editable, while finalized settlements are immutable snapshots of ledger rows, prices, calculations, and payouts.
 - **Corporations:** refresh corporation links, sync corporation assets/blueprints/wallet divisions through eligible tokens, and inspect sync stale/error messages.

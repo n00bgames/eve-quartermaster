@@ -4,10 +4,45 @@ All notable changes to EVE Quartermaster are tracked here.
 
 This project is moving quickly during beta. Version sections are written as user-facing release notes first, with implementation detail included where it helps operators understand deployment or testing impact.
 
+## [0.1.14-beta] - 2026-07-28
+
+### Added
+
+- Added owner editing for Corporate Exchange listings, including restocking, available-stock adjustments, per-package fixed pricing, pre-bid auction pricing, visibility, expiration, handoff details, and unlocked package contents.
+- Added viewer-triggered five-hub appraisals and an EVE Mail recipient-copy action to account-free public Exchange listing pages.
+- Added live five-hub appraisal previews to the Corporate Exchange listing editor, with one-click buy or sell price selection for fixed-price listings and auction opening bids.
+- Added auction listings to the Corporate Exchange with opening bids, optional hidden reserves, scheduled endings, complete-lot or partial-quantity bidding, and configurable public, highest-only, or seller-private bid displays.
+- Added account-free public Exchange links so alliance members can inspect shared fixed-price listings or auctions and submit contact-backed bids without receiving an EQM account.
+- Added seller bid review with accept or reject actions, automatic listing-stock reservation, transaction records, notifications, and audit history when a winning bid is accepted.
+
+- Added the first Corporate Exchange marketplace slice with ESI-linked seller identities, fixed-price personal listings, permanent shareable URLs, package manifests, five-hub appraisal snapshots, atomic partial or complete-lot reservations, transaction records, buyer/seller notification records, and audited listing activity.
+- Added an extensible marketplace schema for future bids, auctions, corporation-owned stock, counteroffers, storefronts, and moderated transaction workflows without presenting those unfinished paths as active features.
+- Added appraisal-ready implant shopping-list exports for individual jump clones, all clones on a selected character, and custom implant sets, with duplicate implant quantities combined automatically.
+- Added a Planetary Industry workspace with queued ESI sync, colony and layout storage, SDE Dogma-backed extractor program projections, routed factory warnings, storage totals, and character/system/planet filters.
+- Added historical Planetary Industry production observations and Analytics widgets for P0 extraction through P4 manufacturing, including tier totals, current projected throughput, per-commodity leaders, and filterable pilot rankings.
+- Added SDE-backed Planetary Industry schematic names, products, cycle outputs, and input recipes so factory rows describe what they manufacture instead of showing only schematic IDs.
+
+### Fixed
+
+- Protected committed Exchange claims and active auction bids from destructive stock, package-content, and auction-price edits while preserving each transaction's recorded price.
+- Corrected Exchange totals and appraisal comparisons to follow the stock still available after partial sales.
+- Unified draft and saved-listing appraisals through EQM's shared market calls and corrected multi-package listings to price the full offered quantity.
+- Fixed Planetary Industry reauthorization so the core and PI-specific SSO flows request `esi-planets.manage_planets.v1`, persist the granted scope, and return directly to the PI workspace.
+- Moved single-character Planetary Industry sync into a queued status job so colony imports no longer time out in the browser.
+- Kept active, paused, and ready-for-delivery ME, TE, and copying jobs in blueprint analytics as a deduplicated shadow inventory keyed by ESI blueprint item ID.
+- Resolved corporation asset flags to configured corporation hangar division names and expanded authorized Upwell structure-name refreshes, while retaining raw ESI identifiers when a private location cannot be disclosed.
+- Fixed corporation offices in third-party Upwell structures by preserving external structure IDs that ESI reports as item locations, resolving them through authenticated structure lookup, and propagating the structure name through nested asset containers.
+
+### Changed
+
+- Bumped the visible app, package, backend API, Android wrapper, and ESI user-agent versions to 0.1.14-beta for the next development cycle.
+
 ## [0.1.13-beta] - 2026-07-27
 
 ### Added
 
+- Added owner editing for Corporate Exchange listings, including restocking, available-stock adjustments, per-package fixed pricing, pre-bid auction pricing, visibility, expiration, handoff details, and unlocked package contents.
+- Added viewer-triggered five-hub appraisals and an EVE Mail recipient-copy action to account-free public Exchange listing pages.
 - Added per-character NPC standings sync and display for agents, NPC corporations, and factions, with resolved ESI names, source filters, search, sorting, relationship meters, sync freshness, and Sync All integration.
 
 ### Changed
@@ -18,11 +53,15 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Added
 
+- Added owner editing for Corporate Exchange listings, including restocking, available-stock adjustments, per-package fixed pricing, pre-bid auction pricing, visibility, expiration, handoff details, and unlocked package contents.
+- Added viewer-triggered five-hub appraisals and an EVE Mail recipient-copy action to account-free public Exchange listing pages.
 - Added a configurable public recruiting subheading and safe structured description sections using plain Markdown-style headings without rendering raw HTML.
 - Added per-character categorized skill report exports with clipboard and plain-text download options for sharing trained levels, skill points, sync recency, and the current training queue.
 
 ### Fixed
 
+- Protected committed Exchange claims and active auction bids from destructive stock, package-content, and auction-price edits while preserving each transaction's recorded price.
+- Corrected Exchange totals and appraisal comparisons to follow the stock still available after partial sales.
 - Filtered Research Projects corporation queues through EQM's approved corporation scope while preserving corporation-owned jobs whose ESI installer is an active SSO-linked character, including restricted linked-installer syncs for otherwise excluded corporations.
 - Fixed Analytics corporation scope so only corporations with current successful corporation-level ESI access contribute to snapshots, growth widgets, metric exports, and corporation-owned blueprint reporting.
 - Fixed applicant character linking so incomplete applications can be saved as drafts before EVE SSO opens in a forced separate tab, preventing in-progress answers from being lost.
@@ -37,6 +76,8 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Added
 
+- Added owner editing for Corporate Exchange listings, including restocking, available-stock adjustments, per-package fixed pricing, pre-bid auction pricing, visibility, expiration, handoff details, and unlocked package contents.
+- Added viewer-triggered five-hub appraisals and an EVE Mail recipient-copy action to account-free public Exchange listing pages.
 - Added a configurable Recruiting module with public corporation/alliance branding, applicant accounts and drafts, limited-scope EVE character verification, main-character selection, recruiter review queues, interview coordination, applicant messaging, audited decisions, privacy/retention controls, and capability-based Recruiter and Recruitment Administrator access.
 - Added Recruiting Initial Setup with ESI-resolved corporation, alliance, logos, and current CEO; manual CEO overrides are reserved for explicit audited edge cases.
 - Added selectable ISK-share or mineral-share Mining Op settlements, with deterministic whole-unit mineral allocation, proportional reserve and expense retention, and immutable per-pilot mineral payout snapshots.
@@ -46,6 +87,8 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Fixed
 
+- Protected committed Exchange claims and active auction bids from destructive stock, package-content, and auction-price edits while preserving each transaction's recorded price.
+- Corrected Exchange totals and appraisal comparisons to follow the stock still available after partial sales.
 - Fixed the signed-out Apply / Recruiting link so hash-route changes immediately open the public recruiting page without requiring a manual reload.
 - Accepted CCP's current no-trailing-slash EVE SSO token issuer and returned recruitment-link failures to the applicant workspace instead of exposing a raw API error page.
 - Saved the current recruitment application draft before opening EVE SSO in a separate window, then refreshed the original application when character linking completes.
@@ -68,6 +111,8 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Added
 
+- Added owner editing for Corporate Exchange listings, including restocking, available-stock adjustments, per-package fixed pricing, pre-bid auction pricing, visibility, expiration, handoff details, and unlocked package contents.
+- Added viewer-triggered five-hub appraisals and an EVE Mail recipient-copy action to account-free public Exchange listing pages.
 - Added first-launch Android server setup and persistent in-app Server Settings so sideloaded clients can switch EQM installations without rebuilding the APK.
 
 - Added a Host account role above Admin for installation ownership and host-only database maintenance; existing installations promote the oldest active administrator during migration.
@@ -101,6 +146,8 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Fixed
 
+- Protected committed Exchange claims and active auction bids from destructive stock, package-content, and auction-price edits while preserving each transaction's recorded price.
+- Corrected Exchange totals and appraisal comparisons to follow the stock still available after partial sales.
 - Fixed a local development/publish environment mismatch that made every stored ESI refresh token appear to require reauthorization; the running backend now uses the database's original token-encryption key and configured EVE SSO client credentials.
 - Fixed Character Contacts Sync preview and apply requests failing before ESI access after the token permission guard became database-aware, and display contact-sync failures with error styling instead of a green success notice.
 - Fixed user deletion failing when invitation, audit, messaging, manufacturing, mining, or settlement history still referenced the account; deleted accounts are now anonymized, denied login, removed from active account lists, and retained only for historical attribution.
@@ -123,6 +170,8 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Added
 
+- Added owner editing for Corporate Exchange listings, including restocking, available-stock adjustments, per-package fixed pricing, pre-bid auction pricing, visibility, expiration, handoff details, and unlocked package contents.
+- Added viewer-triggered five-hub appraisals and an EVE Mail recipient-copy action to account-free public Exchange listing pages.
 - Added a Host account role above Admin for installation ownership and host-only database maintenance; existing installations promote the oldest active administrator during migration.
 - Added Settings controls to inspect and export portable database backups, transactionally restore matching EQM backups, and irreversibly clear all stored data while retaining the signed-in host account and schema.
 
@@ -142,6 +191,8 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Added
 
+- Added owner editing for Corporate Exchange listings, including restocking, available-stock adjustments, per-package fixed pricing, pre-bid auction pricing, visibility, expiration, handoff details, and unlocked package contents.
+- Added viewer-triggered five-hub appraisals and an EVE Mail recipient-copy action to account-free public Exchange listing pages.
 - Added a Host account role above Admin for installation ownership and host-only database maintenance; existing installations promote the oldest active administrator during migration.
 - Added Settings controls to inspect and export portable database backups, transactionally restore matching EQM backups, and irreversibly clear all stored data while retaining the signed-in host account and schema.
 
@@ -170,6 +221,8 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Added
 
+- Added owner editing for Corporate Exchange listings, including restocking, available-stock adjustments, per-package fixed pricing, pre-bid auction pricing, visibility, expiration, handoff details, and unlocked package contents.
+- Added viewer-triggered five-hub appraisals and an EVE Mail recipient-copy action to account-free public Exchange listing pages.
 - Added a Host account role above Admin for installation ownership and host-only database maintenance; existing installations promote the oldest active administrator during migration.
 - Added Settings controls to inspect and export portable database backups, transactionally restore matching EQM backups, and irreversibly clear all stored data while retaining the signed-in host account and schema.
 
@@ -191,6 +244,8 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Added
 
+- Added owner editing for Corporate Exchange listings, including restocking, available-stock adjustments, per-package fixed pricing, pre-bid auction pricing, visibility, expiration, handoff details, and unlocked package contents.
+- Added viewer-triggered five-hub appraisals and an EVE Mail recipient-copy action to account-free public Exchange listing pages.
 - Added a Host account role above Admin for installation ownership and host-only database maintenance; existing installations promote the oldest active administrator during migration.
 - Added Settings controls to inspect and export portable database backups, transactionally restore matching EQM backups, and irreversibly clear all stored data while retaining the signed-in host account and schema.
 
@@ -221,6 +276,8 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Fixed
 
+- Protected committed Exchange claims and active auction bids from destructive stock, package-content, and auction-price edits while preserving each transaction's recorded price.
+- Corrected Exchange totals and appraisal comparisons to follow the stock still available after partial sales.
 - Made character hover cards persist until closed with the new X button or Escape so zKill links and card actions remain reachable.
 - Widened the character picker pane so persistent character hover cards show their close button without horizontal scrolling.
 - Raised Skills-page character hover cards above neighboring skill profile rows so persistent character summaries stay readable while open.
@@ -245,6 +302,8 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Added
 
+- Added owner editing for Corporate Exchange listings, including restocking, available-stock adjustments, per-package fixed pricing, pre-bid auction pricing, visibility, expiration, handoff details, and unlocked package contents.
+- Added viewer-triggered five-hub appraisals and an EVE Mail recipient-copy action to account-free public Exchange listing pages.
 - Added a Host account role above Admin for installation ownership and host-only database maintenance; existing installations promote the oldest active administrator during migration.
 - Added Settings controls to inspect and export portable database backups, transactionally restore matching EQM backups, and irreversibly clear all stored data while retaining the signed-in host account and schema.
 
@@ -263,6 +322,8 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Added
 
+- Added owner editing for Corporate Exchange listings, including restocking, available-stock adjustments, per-package fixed pricing, pre-bid auction pricing, visibility, expiration, handoff details, and unlocked package contents.
+- Added viewer-triggered five-hub appraisals and an EVE Mail recipient-copy action to account-free public Exchange listing pages.
 - Added a Host account role above Admin for installation ownership and host-only database maintenance; existing installations promote the oldest active administrator during migration.
 - Added Settings controls to inspect and export portable database backups, transactionally restore matching EQM backups, and irreversibly clear all stored data while retaining the signed-in host account and schema.
 
@@ -283,6 +344,8 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Fixed
 
+- Protected committed Exchange claims and active auction bids from destructive stock, package-content, and auction-price edits while preserving each transaction's recorded price.
+- Corrected Exchange totals and appraisal comparisons to follow the stock still available after partial sales.
 - Market appraisal opportunity cards now only show profitable station-to-station trades; no-profit appraisals show a neutral no-current-profit badge instead of a negative trade suggestion.
 - Corporation sync flows now continue past corporations where the linked character lacks the required corporation roles instead of stopping the whole batch.
 - Improved station display plumbing for jump planning so NPC station names can be shown separately from station type/cyno-risk guidance when SDE data is available.
