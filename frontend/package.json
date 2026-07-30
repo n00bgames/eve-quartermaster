@@ -1,6 +1,6 @@
 {
   "name": "eve-quartermaster-frontend",
-  "version": "0.1.15-beta",
+  "version": "0.1.16-beta",
   "private": true,
   "type": "module",
   "scripts": {

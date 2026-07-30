@@ -3,6 +3,17 @@
 All notable changes to EVE Quartermaster are tracked here.
 
 This project is moving quickly during beta. Version sections are written as user-facing release notes first, with implementation detail included where it helps operators understand deployment or testing impact.
+## [0.1.16-beta] - 2026-07-30
+
+### Changed
+
+- Bumped the visible app, package, backend API, Android wrapper, and ESI user-agent versions to 0.1.16-beta for the next development cycle.
+- Reworked corporation wallet and blueprint trends into daily closing series with a distinct color, line, and latest-value legend for each corporation.
+
+### Fixed
+
+- Stopped Analytics trend charts from interleaving every raw refresh into a repeating high/low bar pattern instead of displaying the selected historical range.
+
 ## [0.1.15-beta] - 2026-07-29
 
 ### Added

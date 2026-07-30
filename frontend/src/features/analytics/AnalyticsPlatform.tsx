@@ -19,6 +19,7 @@ type AnalyticsPlatformProps = {
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
 const numberFormatter = new Intl.NumberFormat();
+const trendColors = ["#55c7d8", "#e8b84d", "#79e0a7", "#e87575", "#9a8cff", "#ff9f68", "#d97ad9", "#7eb6ff"];
 
 export function AnalyticsPlatform({ currentUser, api, Metric }: AnalyticsPlatformProps) {
   const [days, setDays] = useState(30);
@@ -136,9 +137,38 @@ function DuplicateBlueprintWidget({ rows }: { rows: DuplicateBlueprint[] }) {
 }
 
 function TrendWidget({ title, points, isk = false }: { title: string; points: AnalyticsPoint[]; isk?: boolean }) {
-  const compact = points.slice(-24);
-  const max = Math.max(...compact.map((point) => point.value), 1);
-  return <article className="analytics-widget"><h4>{title}</h4><div className="trend-strip">{compact.map((point, index) => <i key={`${title}-${point.date}-${point.corporation_name}-${index}`} style={{ height: `${Math.max(6, point.value / max * 100)}%` }} title={`${point.corporation_name ?? "value"}: ${isk ? iskFormatter.format(point.value) : numberFormatter.format(point.value)}`} />)}</div>{compact.length === 0 && <p className="empty">No trend data yet.</p>}</article>;
+  const datedPoints = points
+    .filter((point): point is AnalyticsPoint & { date: string } => Boolean(point.date) && Number.isFinite(Date.parse(point.date as string)))
+    .sort((left, right) => Date.parse(left.date) - Date.parse(right.date));
+  const grouped = new Map<string, (AnalyticsPoint & { date: string })[]>();
+  for (const point of datedPoints) {
+    const key = point.corporation_id == null ? point.corporation_name ?? "Corporation" : String(point.corporation_id);
+    grouped.set(key, [...(grouped.get(key) ?? []), point]);
+  }
+  const series = Array.from(grouped.entries())
+    .map(([key, values]) => ({ key, name: values[0]?.corporation_name ?? "Corporation", values }))
+    .sort((left, right) => left.name.localeCompare(right.name));
+  if (series.length === 0) return <article className="analytics-widget"><h4>{title}</h4><p className="empty">No trend data yet.</p></article>;
+
+  const allValues = datedPoints.map((point) => point.value);
+  const minTime = Math.min(...datedPoints.map((point) => Date.parse(point.date)));
+  const maxTime = Math.max(...datedPoints.map((point) => Date.parse(point.date)));
+  const rawMin = Math.min(...allValues);
+  const rawMax = Math.max(...allValues);
+  const valuePadding = rawMin === rawMax ? Math.max(Math.abs(rawMax) * 0.02, 1) : (rawMax - rawMin) * 0.06;
+  const minValue = Math.max(0, rawMin - valuePadding);
+  const maxValue = rawMax + valuePadding;
+  const plotLeft = 24;
+  const plotRight = 976;
+  const plotTop = 18;
+  const plotBottom = 202;
+  const xFor = (date: string) => minTime === maxTime ? (plotLeft + plotRight) / 2 : plotLeft + ((Date.parse(date) - minTime) / (maxTime - minTime)) * (plotRight - plotLeft);
+  const yFor = (value: number) => plotBottom - ((value - minValue) / Math.max(maxValue - minValue, 1)) * (plotBottom - plotTop);
+  const formatValue = (value: number) => isk ? `${iskFormatter.format(value)} ISK` : numberFormatter.format(Math.round(value));
+  const formatDate = (value: number) => new Date(value).toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
+  const uniqueDays = new Set(datedPoints.map((point) => point.date.slice(0, 10))).size;
+
+  return <article className="analytics-widget trend-widget"><h4>{title}</h4><p className="trend-summary">Daily closing snapshots · {series.length} corporation{series.length === 1 ? "" : "s"} · {uniqueDays} day{uniqueDays === 1 ? "" : "s"}</p><div className="trend-chart-frame"><span className="trend-y-label trend-y-max">{formatValue(rawMax)}</span><span className="trend-y-label trend-y-min">{formatValue(rawMin)}</span><svg className="trend-chart" viewBox="0 0 1000 220" role="img" aria-label={`${title} by corporation`}><line className="trend-grid-line" x1={plotLeft} y1={plotTop} x2={plotRight} y2={plotTop} /><line className="trend-grid-line" x1={plotLeft} y1={(plotTop + plotBottom) / 2} x2={plotRight} y2={(plotTop + plotBottom) / 2} /><line className="trend-grid-line" x1={plotLeft} y1={plotBottom} x2={plotRight} y2={plotBottom} />{series.map((item, index) => { const color = trendColors[index % trendColors.length]; const coordinates = item.values.map((point) => `${xFor(point.date)},${yFor(point.value)}`).join(" "); return <g key={item.key}>{item.values.length > 1 && <polyline points={coordinates} fill="none" stroke={color} strokeWidth="4" strokeLinejoin="round" strokeLinecap="round" />}{item.values.map((point) => <circle key={`${item.key}-${point.date}`} cx={xFor(point.date)} cy={yFor(point.value)} r="5" fill={color} stroke="#0d1218" strokeWidth="2"><title>{item.name} · {formatDate(Date.parse(point.date))} · {formatValue(point.value)}</title></circle>)}</g>; })}</svg><div className="trend-x-axis"><span>{formatDate(minTime)}</span><span>{formatDate(maxTime)}</span></div></div><div className="trend-legend">{series.map((item, index) => { const latest = item.values[item.values.length - 1]; return <div key={item.key}><i style={{ backgroundColor: trendColors[index % trendColors.length] }} /><span>{item.name}</span><strong>{formatValue(latest.value)}</strong></div>; })}</div></article>;
 }
 
 function formatDelta(value: number, unit: string, isk = false) {

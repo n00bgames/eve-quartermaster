@@ -1,4 +1,4 @@
-export type AnalyticsPoint = { date?: string | null; corporation_name?: string; value: number };
+export type AnalyticsPoint = { date?: string | null; corporation_id?: number; corporation_name?: string; value: number };
 
 export type AnalyticsGrowth = { id?: number; name: string; value?: number; delta: number };
 

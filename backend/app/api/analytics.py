@@ -482,6 +482,31 @@ def duplicate_blueprints(db: Session, ownership_entity_ids: set[int] | None) -> 
     return sorted(duplicates, key=lambda item: item["quantity"], reverse=True)[:50]
 
 
+def daily_corporation_series(rows: list[CorporationSnapshot], value_attr: str) -> list[dict[str, Any]]:
+    """Return the latest observation for each corporation on each UTC day."""
+    latest_by_day: dict[tuple[int, str], CorporationSnapshot] = {}
+    for row in rows:
+        day = row.recorded_at.date().isoformat()
+        key = (int(row.corporation_id), day)
+        previous = latest_by_day.get(key)
+        if previous is None or row.recorded_at > previous.recorded_at:
+            latest_by_day[key] = row
+
+    daily_rows = sorted(
+        latest_by_day.values(),
+        key=lambda row: (row.recorded_at.date(), row.corporation_name, row.corporation_id),
+    )
+    return [
+        {
+            "date": row.recorded_at.date().isoformat(),
+            "corporation_id": int(row.corporation_id),
+            "corporation_name": row.corporation_name,
+            "value": as_float(getattr(row, value_attr) or 0),
+        }
+        for row in daily_rows
+    ]
+
+
 def corporation_series(db: Session, days: int, value_attr: str, corporation_ids: set[int] | None) -> list[dict[str, Any]]:
     cutoff = start_cutoff(days)
     if corporation_ids is not None and not corporation_ids:
@@ -490,10 +515,7 @@ def corporation_series(db: Session, days: int, value_attr: str, corporation_ids:
     if corporation_ids is not None:
         query = query.where(CorporationSnapshot.corporation_id.in_(corporation_ids))
     rows = db.scalars(query.order_by(CorporationSnapshot.recorded_at, CorporationSnapshot.corporation_name)).all()
-    return [
-        {"date": iso(row.recorded_at), "corporation_name": row.corporation_name, "value": as_float(getattr(row, value_attr) or 0)}
-        for row in rows
-    ]
+    return daily_corporation_series(rows, value_attr)
 
 
 @router.get("/summary")
