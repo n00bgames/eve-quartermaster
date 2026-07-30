@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import unittest
+import urllib.parse
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from types import SimpleNamespace
+from unittest.mock import AsyncMock, patch
 
 from fastapi import HTTPException
 
@@ -15,9 +17,12 @@ from app.api.corporate_exchange import (
     market_appraisal_payload,
     parse_datetime,
 )
-from app.api.corporate_exchange_bids import clean_external_identity
+from app.api.corporate_exchange_bids import clean_external_identity, public_exchange_mail_auth_url
+from app.api.esi import auth_callback
 from app.services.exchange_bids import auction_payload, next_bid_floor, validate_bid
+from app.services.exchange_mail import EXCHANGE_MAIL_SCOPE, exchange_mail_body, exchange_mail_subject
 from app.services.exchange_listing_updates import apply_listing_edits
+from app.core.security import create_access_token, decode_sso_state_payload
 
 
 def bid(amount: str, *, status: str = "pending", bidder: str = "Bidder") -> SimpleNamespace:
@@ -51,6 +56,58 @@ def auction(*, visibility: str = "public", bids: list[SimpleNamespace] | None = 
 
 
 class CorporateExchangeTests(unittest.TestCase):
+    def test_exchange_mail_template_targets_the_seller_and_package(self) -> None:
+        listing = SimpleNamespace(
+            public_id="PACKAGE42",
+            title="Capital Components Bundle",
+            seller_character=SimpleNamespace(name="Seller Prime"),
+            location_text="Amarr VIII (Oris) - Emperor Family Academy",
+            location=None,
+            division_name="Contracts",
+        )
+        self.assertEqual(EXCHANGE_MAIL_SCOPE, "esi-ui.open_window.v1")
+        self.assertEqual(exchange_mail_subject(listing), "EQM purchase request: Capital Components Bundle")
+        body = exchange_mail_body(listing)
+        self.assertIn("Greetings Seller Prime", body)
+        self.assertIn("Capital Components Bundle", body)
+        self.assertIn("Please issue a private item-exchange contract to this character", body)
+        self.assertIn("Amarr VIII (Oris) - Emperor Family Academy - Contracts", body)
+        self.assertIn("PACKAGE42", body)
+
+    def test_exchange_mail_body_escapes_listing_markup(self) -> None:
+        listing = SimpleNamespace(
+            public_id="SAFE42",
+            title="<b>Not markup</b>",
+            seller_character=SimpleNamespace(name="Seller <Prime>"),
+            location_text="Jita <Trade Hub>",
+            location=None,
+            division_name=None,
+        )
+        body = exchange_mail_body(listing)
+        self.assertNotIn("<b>Not markup</b>", body)
+        self.assertIn("&lt;b&gt;Not markup&lt;/b&gt;", body)
+        self.assertIn("Seller &lt;Prime&gt;", body)
+
+    def test_public_exchange_mail_auth_requests_open_window_scope(self) -> None:
+        listing = SimpleNamespace(public_id="PACKAGE42", seller_character=SimpleNamespace(name="Seller Prime"))
+        settings = SimpleNamespace(
+            eve_sso_client_id="client-id",
+            eve_sso_client_secret="client-secret",
+            eve_sso_callback_url="https://eqm.example/api/esi/auth/callback",
+        )
+        with patch("app.api.corporate_exchange_bids.load_public_listing", return_value=listing), patch(
+            "app.api.corporate_exchange_bids.get_settings", return_value=settings
+        ):
+            result = public_exchange_mail_auth_url("PACKAGE42", db=SimpleNamespace())
+        self.assertTrue(result["ready"])
+        self.assertEqual(result["required_scopes"], ["esi-ui.open_window.v1"])
+        query = urllib.parse.parse_qs(urllib.parse.urlparse(result["url"]).query)
+        self.assertEqual(query["scope"], ["esi-ui.open_window.v1"])
+        state = decode_sso_state_payload(query["state"][0])
+        self.assertIsNotNone(state)
+        self.assertEqual(state["mode"], "exchange_mail")
+        self.assertEqual(state["listing_id"], "PACKAGE42")
+
     def test_listing_location_includes_authorized_division(self) -> None:
         listing = SimpleNamespace(
             location_text=None,
@@ -191,6 +248,49 @@ class CorporateExchangeTests(unittest.TestCase):
             clean_external_identity({"bidder_name": "Pilot", "bidder_contact": "x"})
         with self.assertRaises(HTTPException):
             clean_external_identity({"bidder_name": "Pilot", "bidder_contact": "Contact", "website": "spam"})
+
+
+class PublicExchangeMailCallbackTests(unittest.IsolatedAsyncioTestCase):
+    async def test_callback_opens_prefilled_mail_in_selected_eve_client(self) -> None:
+        state = create_access_token(
+            "public-exchange",
+            {"kind": "eve_sso", "mode": "exchange_mail", "listing_id": "PACKAGE42"},
+        )
+        listing = SimpleNamespace(
+            public_id="PACKAGE42",
+            visibility="public",
+            status="active",
+            title="Capital Components Bundle",
+            seller_character=SimpleNamespace(character_id=123456, name="Seller Prime"),
+            location_text="Amarr VIII (Oris)",
+            location=None,
+            division_name=None,
+        )
+        settings = SimpleNamespace(
+            eve_sso_client_id="client-id",
+            eve_sso_client_secret="client-secret",
+            token_encryption_key="",
+            frontend_url="https://eqm.example",
+        )
+        token_response = SimpleNamespace(status_code=200, json=lambda: {"access_token": "buyer-token"})
+        sso_client = AsyncMock()
+        sso_client.__aenter__.return_value.post.return_value = token_response
+        mail_client = SimpleNamespace(post=AsyncMock(return_value=None))
+        db = SimpleNamespace(scalar=lambda _query: listing)
+        with patch("app.api.esi.get_settings", return_value=settings), patch(
+            "app.api.esi.httpx.AsyncClient", return_value=sso_client
+        ), patch("app.api.esi.validate_eve_access_token", AsyncMock(return_value={"sub": "CHARACTER:EVE:987654"})), patch(
+            "app.api.esi.EsiClient", return_value=mail_client
+        ):
+            response = await auth_callback(code="authorization-code", state=state, db=db)
+        self.assertEqual(response.status_code, 303)
+        self.assertEqual(response.headers["location"], "https://eqm.example/?eve_mail=opened#exchange/PACKAGE42")
+        mail_client.post.assert_awaited_once()
+        path, payload = mail_client.post.await_args.args
+        self.assertEqual(path, "/ui/openwindow/newmail/")
+        self.assertEqual(payload["recipients"], [123456])
+        self.assertIn("Capital Components Bundle", payload["body"])
+        self.assertIn("contract to this character", payload["body"])
 
 
 if __name__ == "__main__":

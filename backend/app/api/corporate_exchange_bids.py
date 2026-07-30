@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import urllib.parse
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -19,6 +20,8 @@ from app.api.corporate_exchange import (
     require_exchange,
     serialize_listing,
 )
+from app.core.config import get_settings
+from app.core.security import create_access_token
 from app.db.session import get_db
 from app.models import (
     ExchangeAppraisal,
@@ -29,6 +32,7 @@ from app.models import (
     ExchangeTransaction,
     User,
 )
+from app.services.exchange_mail import EXCHANGE_MAIL_SCOPE
 from app.services.market import DEFAULT_HUB_KEYS, appraise_market
 
 from app.services.exchange_bids import (
@@ -171,6 +175,51 @@ def add_bid(
 @router.get("/public/listings/{public_id}")
 def get_public_exchange_listing(public_id: str, db: Session = Depends(get_db)) -> dict[str, Any]:
     return public_listing_payload(load_public_listing(db, public_id))
+
+
+@router.get("/public/listings/{public_id}/mail-auth-url")
+def public_exchange_mail_auth_url(public_id: str, db: Session = Depends(get_db)) -> dict[str, Any]:
+    listing = load_public_listing(db, public_id)
+    if listing.seller_character is None:
+        raise HTTPException(status_code=409, detail="This listing does not have an EVE character recipient.")
+    settings = get_settings()
+    missing = [
+        name
+        for name, value in {
+            "EVE_SSO_CLIENT_ID": settings.eve_sso_client_id,
+            "EVE_SSO_CLIENT_SECRET": settings.eve_sso_client_secret,
+        }.items()
+        if not value
+    ]
+    if missing:
+        return {
+            "ready": False,
+            "message": f"Set {', '.join(missing)} before opening an EVE Mail draft.",
+            "missing": missing,
+            "required_scopes": [EXCHANGE_MAIL_SCOPE],
+        }
+    state = create_access_token(
+        "public-exchange",
+        {
+            "kind": "eve_sso",
+            "mode": "exchange_mail",
+            "listing_id": listing.public_id,
+        },
+    )
+    query = urllib.parse.urlencode(
+        {
+            "response_type": "code",
+            "redirect_uri": settings.eve_sso_callback_url,
+            "client_id": settings.eve_sso_client_id,
+            "scope": EXCHANGE_MAIL_SCOPE,
+            "state": state,
+        }
+    )
+    return {
+        "ready": True,
+        "url": f"https://login.eveonline.com/v2/oauth/authorize/?{query}",
+        "required_scopes": [EXCHANGE_MAIL_SCOPE],
+    }
 
 
 @router.post("/public/listings/{public_id}/appraise")

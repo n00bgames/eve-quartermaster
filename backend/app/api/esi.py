@@ -20,9 +20,10 @@ from sqlalchemy.orm import Session, selectinload
 from app.core.config import get_settings
 from app.core.security import create_sso_state, decode_sso_state_payload, decrypt_secret, encrypt_secret
 from app.db.session import SessionLocal, get_db
-from app.models import Asset, Blueprint, CharacterFitting, CharacterFittingItem, CharacterSkill, CharacterSkillQueueEntry, CorporationWalletDivision, EsiSyncJob, EsiToken, EveAlliance, EveCategory, EveCharacter, EveCorporation, EveGroup, EveSystem, EveType, Location, OwnershipEntity, RecruitmentLinkedCharacter, User
+from app.models import Asset, Blueprint, CharacterFitting, CharacterFittingItem, CharacterSkill, CharacterSkillQueueEntry, CorporationWalletDivision, EsiSyncJob, EsiToken, EveAlliance, EveCategory, EveCharacter, EveCorporation, EveGroup, EveSystem, EveType, ExchangeListing, Location, OwnershipEntity, RecruitmentLinkedCharacter, User
 from app.models.enums import AssetSource, LocationKind, OwnerKind, SyncStatus
 from app.services.esi_client import EsiClient, esi_status, resolve_names
+from app.services.exchange_mail import exchange_mail_body, exchange_mail_subject
 from app.services.eve_sso import validate_eve_access_token
 from app.services.contracts import ACTIVE_CONTRACT_STATUSES, fetch_contract_pages, upsert_contract_rows
 from app.services.corporation_metadata import sync_corporation_divisions, sync_corporation_structure_names
@@ -2278,21 +2279,34 @@ def auth_diagnostics() -> dict[str, Any]:
         "token_endpoint": "https://login.eveonline.com/v2/oauth/token",
     }
 
+def public_exchange_mail_redirect(frontend_url: str, public_id: str, *, opened: bool = False, error: str | None = None) -> RedirectResponse:
+    query = urllib.parse.urlencode(
+        {key: value for key, value in {"eve_mail": "opened" if opened else None, "eve_mail_error": error}.items() if value}
+    )
+    fragment = urllib.parse.quote(public_id, safe="")
+    return RedirectResponse(url=f"{frontend_url}/?{query}#exchange/{fragment}", status_code=303)
+
+
 @router.get("/auth/callback")
 async def auth_callback(code: str | None = None, state: str | None = None, db: Session = Depends(get_db)) -> dict[str, Any]:
     if not code:
         raise HTTPException(status_code=400, detail="Missing SSO authorization code")
     settings = get_settings()
-    if not settings.eve_sso_client_id or not settings.eve_sso_client_secret or not settings.token_encryption_key:
-        raise HTTPException(status_code=400, detail="EVE SSO client ID, secret, and token encryption key must be configured")
     state_payload = decode_sso_state_payload(state)
     if state_payload is None:
         raise HTTPException(status_code=400, detail="EVE SSO state did not match an active Quartermaster session. Start SSO from inside the app after signing in.")
-    try:
-        state_user_id = int(state_payload["sub"])
-    except (KeyError, TypeError, ValueError) as exc:
-        raise HTTPException(status_code=400, detail="EVE SSO state did not contain a valid Quartermaster account") from exc
     state_mode = str(state_payload.get("mode") or "core").strip().lower()
+    public_listing_id = str(state_payload.get("listing_id") or "").strip() if state_mode == "exchange_mail" else ""
+    if not settings.eve_sso_client_id or not settings.eve_sso_client_secret:
+        raise HTTPException(status_code=400, detail="EVE SSO client ID and secret must be configured")
+    if state_mode != "exchange_mail" and not settings.token_encryption_key:
+        raise HTTPException(status_code=400, detail="EVE SSO token encryption key must be configured")
+    state_user_id: int | None = None
+    if state_mode != "exchange_mail":
+        try:
+            state_user_id = int(state_payload["sub"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise HTTPException(status_code=400, detail="EVE SSO state did not contain a valid Quartermaster account") from exc
 
     async with httpx.AsyncClient(timeout=30.0, follow_redirects=False) as client:
         response = await client.post(
@@ -2306,6 +2320,12 @@ async def auth_callback(code: str | None = None, state: str | None = None, db: S
             },
         )
     if response.status_code >= 400:
+        if state_mode == "exchange_mail" and public_listing_id:
+            return public_exchange_mail_redirect(
+                settings.frontend_url,
+                public_listing_id,
+                error="EVE SSO could not authorize the selected character. Please try again.",
+            )
         content_type = response.headers.get("content-type", "")
         location = response.headers.get("location")
         if "application/json" in content_type:
@@ -2332,6 +2352,12 @@ async def auth_callback(code: str | None = None, state: str | None = None, db: S
     try:
         claims = await validate_eve_access_token(access_token)
     except HTTPException as exc:
+        if state_mode == "exchange_mail" and public_listing_id:
+            return public_exchange_mail_redirect(
+                settings.frontend_url,
+                public_listing_id,
+                error="EVE could not verify the selected character. Please try again.",
+            )
         if state_mode in {"recruitment", "recruiting", "applicant"}:
             error_query = urllib.parse.urlencode({"esi_error": str(exc.detail), "esi_mode": state_mode})
             return RedirectResponse(url=f"{settings.frontend_url}/?{error_query}#recruiting", status_code=303)
@@ -2340,7 +2366,53 @@ async def auth_callback(code: str | None = None, state: str | None = None, db: S
     try:
         character_eve_id = int(subject.split(":")[-1])
     except ValueError as exc:
+        if state_mode == "exchange_mail" and public_listing_id:
+            return public_exchange_mail_redirect(
+                settings.frontend_url,
+                public_listing_id,
+                error="EVE did not return a valid character for the mail draft.",
+            )
         raise HTTPException(status_code=400, detail=f"Could not parse character ID from SSO subject {subject}") from exc
+
+    if state_mode == "exchange_mail":
+        if not public_listing_id:
+            raise HTTPException(status_code=400, detail="The EVE Mail request did not identify an Exchange listing.")
+        listing = db.scalar(
+            select(ExchangeListing)
+            .options(
+                selectinload(ExchangeListing.seller_character),
+                selectinload(ExchangeListing.location),
+            )
+            .where(ExchangeListing.public_id == public_listing_id)
+        )
+        if listing is None or listing.visibility != "public" or listing.status == "draft":
+            return public_exchange_mail_redirect(
+                settings.frontend_url,
+                public_listing_id,
+                error="This Corporate Exchange listing is no longer publicly available.",
+            )
+        if listing.seller_character is None:
+            return public_exchange_mail_redirect(
+                settings.frontend_url,
+                public_listing_id,
+                error="This listing no longer has a seller character for EVE Mail.",
+            )
+        try:
+            await EsiClient(access_token=access_token).post(
+                "/ui/openwindow/newmail/",
+                {
+                    "body": exchange_mail_body(listing),
+                    "recipients": [listing.seller_character.character_id],
+                    "subject": exchange_mail_subject(listing),
+                },
+            )
+        except HTTPException:
+            return public_exchange_mail_redirect(
+                settings.frontend_url,
+                public_listing_id,
+                error="EVE could not open the mail draft. Make sure the selected character is logged into the EVE client, then try again.",
+            )
+        return public_exchange_mail_redirect(settings.frontend_url, public_listing_id, opened=True)
 
     character_payload = await EsiClient(access_token=access_token).get(f"/characters/{character_eve_id}/")
     character = db.scalar(select(EveCharacter).where(EveCharacter.character_id == character_eve_id))

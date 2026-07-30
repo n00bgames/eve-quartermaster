@@ -132,6 +132,10 @@ export function PlanetaryIndustryPage({
         <button type="button" disabled={busy} onClick={() => void load()}><RefreshCw size={16} />Refresh</button>
       </div>
     </div>
+    <div className="privacy-placard planetary-freshness">
+      <AlertTriangle size={18} />
+      <span><strong>PI data freshness:</strong> ESI may keep colony inventories unchanged until the character visits the planet in space and interacts with or submits a colony change. Allow about 10 minutes afterward, then use <b>Sync all eligible</b> or the character sync button. <b>Refresh</b> only reloads EQM's last saved snapshot.</span>
+    </div>
     {error && <div className="mini-alert">{error}</div>}
     {missingScope.length > 0 && <div className="notice warning planetary-reauth">
       <AlertTriangle size={17} />

@@ -6,6 +6,7 @@ import { auctionPriceLabel, formatExchangeDate, formatIsk } from "./exchangePres
 import "./exchange.css";
 
 type PublicBidResponse = { listing: ExchangeListing };
+type MailAuthResponse = { ready: boolean; url?: string; message?: string };
 
 type Props = {
   api: ApiClient;
@@ -38,11 +39,14 @@ function timeRemaining(value?: string | null): string {
 export function PublicExchangeListingPage({ api, publicId, onBack }: Props) {
   const [listing, setListing] = useState<ExchangeListing | null>(null);
   const [busy, setBusy] = useState(true);
+  const [mailBusy, setMailBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     setBusy(true);
+    setError(null);
+    setNotice(null);
     api<ExchangeListing>(`/corporate-exchange/public/listings/${encodeURIComponent(publicId)}`)
       .then((result) => {
         setListing(result);
@@ -60,6 +64,23 @@ export function PublicExchangeListingPage({ api, publicId, onBack }: Props) {
       .finally(() => setBusy(false));
     return () => { document.title = "EVE Quartermaster"; };
   }, [api, publicId]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const mailStatus = params.get("eve_mail");
+    const mailError = params.get("eve_mail_error");
+    if (mailStatus === "opened") {
+      setNotice("Your prefilled EVE Mail draft is open in the selected character's EVE client. Review it there, then click Send.");
+    } else if (mailError) {
+      setError(mailError);
+    }
+    if (mailStatus || mailError) {
+      params.delete("eve_mail");
+      params.delete("eve_mail_error");
+      const query = params.toString();
+      window.history.replaceState(null, "", `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`);
+    }
+  }, []);
 
   const totalUnits = useMemo(
     () => listing?.items.reduce((total, item) => total + item.quantity * listing.quantity_total, 0) ?? 0,
@@ -85,38 +106,20 @@ export function PublicExchangeListingPage({ api, publicId, onBack }: Props) {
     }
   }
 
-  async function copySellerForMail() {
-    const sellerName = listing?.seller_name || "";
-    const fallbackCopy = () => {
-      const input = document.createElement("textarea");
-      input.value = sellerName;
-      input.setAttribute("readonly", "");
-      input.style.position = "fixed";
-      input.style.opacity = "0";
-      document.body.appendChild(input);
-      input.select();
-      const copied = document.execCommand("copy");
-      input.remove();
-      if (!copied) throw new Error("Clipboard copy was rejected.");
-    };
+  async function openSellerMail() {
+    if (!listing?.seller_character_id) return;
+    setMailBusy(true);
+    setError(null);
+    setNotice(null);
     try {
-      if (navigator.clipboard?.writeText) {
-        await Promise.race([
-          navigator.clipboard.writeText(sellerName),
-          new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error("Clipboard permission timed out.")), 750)),
-        ]);
-      }
-      else fallbackCopy();
-      setNotice(`${sellerName} copied. Paste the name into the recipient field in EVE Mail.`);
-      setError(null);
-    } catch {
-      try {
-        fallbackCopy();
-        setNotice(`${sellerName} copied. Paste the name into the recipient field in EVE Mail.`);
-        setError(null);
-      } catch {
-        setError(`Copy failed. Enter ${sellerName || "the seller"} in the EVE Mail recipient field.`);
-      }
+      const result = await api<MailAuthResponse>(
+        `/corporate-exchange/public/listings/${encodeURIComponent(publicId)}/mail-auth-url`,
+      );
+      if (!result.ready || !result.url) throw new Error(result.message || "EVE SSO is not ready for mail drafts.");
+      window.location.assign(result.url);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "The EVE Mail draft could not be opened.");
+      setMailBusy(false);
     }
   }
 
@@ -218,7 +221,7 @@ export function PublicExchangeListingPage({ api, publicId, onBack }: Props) {
             <h2>{isAuction ? canBid ? "Make a bid" : "Auction closed" : "Contact the seller"}</h2>
             <p className="muted">{isAuction ? bidVisibilityCopy(listing) : "This is a fixed-price public listing. Contact the seller to arrange the in-game trade."}</p>
             <div className="exchange-public-trust"><ShieldCheck size={18} /><span>External bids are unverified. EQM records the offer; all item and ISK transfers still happen in EVE.</span></div>
-            {listing.seller_character_id && <><button type="button" onClick={() => void copySellerForMail()}><Mail size={18} /> EVE Mail the seller</button><small>Copies the seller character name for the recipient field in EVE Mail.</small></>}
+            {listing.seller_character_id && <><button type="button" disabled={busy || mailBusy} onClick={() => void openSellerMail()}><Mail size={18} /> {mailBusy ? "Opening EVE..." : "Open prefilled EVE Mail"}</button><small>Choose the character currently online. EVE will open a ready-to-send draft addressed to {listing.seller_name}.</small></>}
             {canBid ? (
               <form onSubmit={submitBid}>
                 <label>Character or alliance name<input name="bidder_name" required minLength={2} maxLength={255} autoComplete="name" /></label>

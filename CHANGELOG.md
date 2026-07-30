@@ -3,6 +3,15 @@
 All notable changes to EVE Quartermaster are tracked here.
 
 This project is moving quickly during beta. Version sections are written as user-facing release notes first, with implementation detail included where it helps operators understand deployment or testing impact.
+## [0.1.15-beta] - 2026-07-29
+
+### Added
+
+- Replaced the public Corporate Exchange seller-name clipboard action with one-time EVE SSO authorization that opens a polished, addressed purchase-request draft in the buyer's running EVE client for review and sending.
+
+### Changed
+
+- Bumped the visible app, package, backend API, Android wrapper, and ESI user-agent versions to 0.1.15-beta for the next development cycle.
 
 ## [0.1.14-beta] - 2026-07-28
 
