@@ -13,6 +13,7 @@ This project is moving quickly during beta. Version sections are written as user
 ### Fixed
 
 - Stopped Analytics trend charts from interleaving every raw refresh into a repeating high/low bar pattern instead of displaying the selected historical range.
+- Removed unlinked characters from the active Characters list as soon as their last ESI token is revoked, while retaining their stored historical data.
 
 ## [0.1.15-beta] - 2026-07-29
 

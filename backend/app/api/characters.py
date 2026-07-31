@@ -4,7 +4,7 @@ from decimal import Decimal
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import desc, exists, func, or_, select
+from sqlalchemy import desc, exists, func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.auth import get_current_user, require_role, serialize_user
@@ -85,14 +85,7 @@ def visible_characters(current_user: User, db: Session) -> list[EveCharacter]:
     query = (
         select(EveCharacter)
         .where(
-            or_(
-                EveCharacter.owner_user_id.is_not(None),
-                exists().where(EsiToken.character_id == EveCharacter.id, EsiToken.revoked_at.is_(None)),
-                exists().where(
-                    OwnershipEntity.owner_kind == OwnerKind.CHARACTER,
-                    OwnershipEntity.character_id == EveCharacter.id,
-                ),
-            )
+            exists().where(EsiToken.character_id == EveCharacter.id, EsiToken.revoked_at.is_(None))
         )
         .options(
             selectinload(EveCharacter.owner_user),
