@@ -1,0 +1,266 @@
+.skills-page,
+.skills-page > *,
+.skill-profiles,
+.skill-profile-card {
+  min-width: 0;
+}
+
+.skills-page-heading {
+  align-items: center;
+}
+
+.skills-page-actions {
+  justify-content: flex-end;
+}
+
+.skill-profiles {
+  container-type: inline-size;
+}
+
+.skill-profile-card {
+  container-name: skill-profile;
+  container-type: inline-size;
+  gap: 12px !important;
+}
+
+.skill-profile-heading {
+  align-items: center;
+  display: grid;
+  gap: 10px 12px;
+  grid-template-areas: "identity actions";
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.skill-profile-toggle {
+  justify-self: start;
+}
+
+.skill-profile-identity {
+  display: grid;
+  gap: 3px;
+  grid-area: identity;
+  min-width: 0;
+}
+
+.skill-profile-identity strong {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+}
+
+.skill-profile-identity > span {
+  font-size: .8rem;
+  overflow-wrap: anywhere;
+}
+
+.skill-profile-actions {
+  align-items: center;
+  grid-area: actions;
+  justify-content: flex-end;
+  max-width: 390px;
+}
+
+.skill-profile-overflow {
+  display: none;
+  position: relative;
+}
+
+.skill-profile-overflow > summary {
+  align-items: center;
+  background: #17313a;
+  border: 1px solid #4fb3c7;
+  border-radius: 8px;
+  color: #d9f8ff;
+  cursor: pointer;
+  display: inline-flex;
+  gap: 6px;
+  justify-content: center;
+  list-style: none;
+  min-height: 40px;
+  padding: 0 11px;
+  user-select: none;
+}
+
+.skill-profile-overflow > summary span {
+  color: inherit;
+}
+
+.skill-profile-overflow > summary::-webkit-details-marker {
+  display: none;
+}
+
+.skill-profile-overflow[open] > summary {
+  border-color: #e8b84d;
+}
+
+.skill-profile-overflow-menu {
+  background: #111820;
+  border: 1px solid #4fb3c7;
+  border-radius: 9px;
+  box-shadow: 0 14px 34px #000a;
+  display: grid;
+  gap: 6px;
+  min-width: 190px;
+  padding: 8px;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 7px);
+  z-index: 320;
+}
+
+.skill-profile-overflow-menu button {
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.status-grid.compact.skill-profile-stats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 0;
+}
+
+.skill-profile-stats article {
+  min-width: 0;
+  padding: 12px;
+}
+
+.skill-profile-stats strong {
+  font-size: clamp(.78rem, 3.5cqw, 1.3rem);
+  white-space: nowrap;
+}
+
+.skill-profile-timestamps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 14px;
+  min-width: 0;
+}
+
+.skill-profile-timestamps span {
+  overflow-wrap: anywhere;
+}
+
+@container skill-profile (width <= 760px) {
+  .skill-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .skill-group summary {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+}
+
+@container skill-profile (width <= 620px) {
+  .skill-profile-heading {
+    grid-template-columns: minmax(150px, 1fr) minmax(0, 320px);
+  }
+
+  .skill-profile-actions {
+    max-width: 320px;
+  }
+}
+
+@container skill-profile (width <= 480px) {
+  .skill-profile-heading {
+    align-items: start;
+    grid-template-areas:
+      "identity"
+      "actions";
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .skill-profile-actions {
+    justify-content: flex-start;
+    max-width: 100%;
+    width: 100%;
+  }
+}
+
+@container skill-profile (width <= 440px) {
+  .skill-report-action {
+    display: none !important;
+  }
+
+  .skill-profile-overflow {
+    display: block;
+  }
+}
+
+@container skill-profile (width <= 300px) {
+  .skill-profile-heading {
+    grid-template-areas:
+      "identity"
+      "actions";
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .skill-profile-actions {
+    align-items: stretch;
+  }
+
+  .status-grid.compact.skill-profile-stats {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .skill-profile-stats article {
+    align-items: center;
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .skill-profile-stats article strong {
+    justify-self: end;
+  }
+
+  .skill-profile-timestamps {
+    display: grid;
+    gap: 4px;
+  }
+}
+
+@media (width <= 900px) {
+  .skill-profiles {
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+  }
+}
+
+@media (width <= 720px) {
+  .skills-page {
+    gap: 12px !important;
+  }
+
+  .skills-page-heading {
+    align-items: stretch;
+    display: grid;
+    gap: 8px;
+  }
+
+  .skills-page-heading h3 {
+    margin-bottom: 0;
+  }
+
+  .skills-page-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .skills-page-actions button {
+    width: 100%;
+  }
+
+  .skill-profiles {
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+  }
+}
+
+@media (width <= 380px) {
+  .skills-page-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

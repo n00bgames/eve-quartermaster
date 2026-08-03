@@ -12,7 +12,7 @@ from typing import Any
 import httpx
 
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from fastapi.responses import RedirectResponse
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, selectinload
@@ -40,6 +40,7 @@ from app.services.analytics import create_snapshot
 from app.api.auth import can_view_all_characters, get_current_user
 from app.services.permissions import ROLE_RANK, can_view_section, role_rank
 from app.services.recruiting import applicant_application, audit as recruitment_audit, sync_recruitment_character
+from app.services.skill_dogma import build_skill_dogma
 
 router = APIRouter(prefix="/esi", tags=["esi"])
 
@@ -951,6 +952,19 @@ def list_character_skills(current_user: User = Depends(get_current_user), db: Se
         )
     return results
 
+
+@router.get("/skill-dogma/{skill_type_id}")
+def skill_dogma(
+    skill_type_id: int,
+    response: Response,
+    _: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    payload = build_skill_dogma(db, skill_type_id)
+    if payload is None:
+        raise HTTPException(status_code=404, detail="Skill dogma data was not found")
+    response.headers["Cache-Control"] = "private, max-age=604800"
+    return payload
 
 async def sync_character_skills_for_token(token_id: int, current_user: User, db: Session, *, allow_opt_out_override: bool = True) -> dict[str, Any]:
     token, character = get_linked_token(db, token_id)

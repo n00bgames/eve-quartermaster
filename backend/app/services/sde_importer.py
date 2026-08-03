@@ -48,6 +48,7 @@ SDE_FILES = {
     "dogma_attributes": ("dogmaAttributes.yaml", "dgmAttributeTypes.yaml", "bsd/dgmAttributeTypes.yaml"),
     "dogma_effects": ("dogmaEffects.yaml", "dgmEffects.yaml", "bsd/dgmEffects.yaml"),
     "type_dogma": ("typeDogma.yaml",),
+    "type_bonuses": ("typeBonus.yaml",),
     "planet_schematics": ("planetSchematics.yaml",),
 }
 

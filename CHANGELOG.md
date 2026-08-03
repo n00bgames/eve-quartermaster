@@ -3,6 +3,19 @@
 All notable changes to EVE Quartermaster are tracked here.
 
 This project is moving quickly during beta. Version sections are written as user-facing release notes first, with implementation detail included where it helps operators understand deployment or testing impact.
+## [0.1.17-beta] - 2026-08-03
+
+### Added
+
+- Added accessible Character Skills dogma popovers with lazy-loaded descriptions, rank, training attributes, prerequisites, per-level and current effective bonuses, affected categories, and EVE type/effect IDs.
+- Added week-long local dogma caching plus authoritative SDE type-bonus lookup so repeated hover, focus, and touch access is immediate while hull-specific bonuses remain accurate.
+- Added a compact Character Skills report-action menu on narrow cards so Expand and Sync Skills remain visible while Copy Report and Download Report stay available without crowding the layout.
+
+### Changed
+
+- Bumped the visible app, package, backend API, Android wrapper, README badge, and navigation-intel user-agent versions to 0.1.17-beta for the next development cycle.
+- Reworked shared mobile and foldable layout behavior with container-aware skill cards, wrapping toolbars and action groups, compact navigation, responsive statistics, reduced small-screen spacing, and removal of nested Skills-page scrolling.
+
 ## [0.1.16-beta] - 2026-07-30
 
 ### Added

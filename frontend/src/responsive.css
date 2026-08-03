@@ -1,0 +1,188 @@
+/* Shared mobile and foldable layout refinements. Loaded after the legacy stylesheet. */
+:where(.content, .panel, .card-list, .card-list article, .section-heading, .section-heading > *, .toolbar, .toolbar > *, .button-row, .two-column, .status-grid) {
+  min-width: 0;
+}
+
+:where(.toolbar, .button-row, .card-actions, .section-heading) {
+  flex-wrap: wrap;
+}
+
+.panel .button-row > button,
+.card-list .button-row > button,
+.panel .card-actions > button {
+  min-height: 40px;
+}
+
+:where(.toolbar button, .button-row button, .card-actions button, .section-heading button) {
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+@media (width <= 900px) {
+  .app-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sidebar {
+    align-items: center;
+    display: grid;
+    gap: 10px 12px;
+    grid-template-columns: 72px minmax(0, 1fr);
+    padding: 12px 16px;
+    position: sticky;
+    top: 0;
+    z-index: 60;
+  }
+
+  .brand-logo {
+    height: 72px;
+    margin: 0;
+    object-fit: contain;
+    width: 72px;
+  }
+
+  .sidebar > div {
+    min-width: 0;
+  }
+
+  .sidebar > div h1 {
+    margin-bottom: 4px;
+  }
+
+  .sidebar > div p {
+    font-size: .82rem;
+    line-height: 1.3;
+    margin-bottom: 3px;
+  }
+
+  .sidebar nav {
+    display: flex;
+    gap: 6px;
+    grid-column: 1 / -1;
+    margin-top: 0;
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    padding: 2px 0 5px;
+    scrollbar-width: thin;
+  }
+
+  .sidebar nav .nav-section-label {
+    display: none;
+  }
+
+  .sidebar nav button {
+    flex: 0 0 auto;
+    min-height: 42px;
+    padding: 0 11px;
+    width: auto;
+  }
+
+  .content {
+    overflow: visible;
+    padding: clamp(14px, 3vw, 20px);
+  }
+
+  .hero {
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .hero.compact h2 {
+    font-size: clamp(1.75rem, 6vw, 2.45rem);
+  }
+
+  .toolbar {
+    gap: 7px;
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .toolbar > .next-event-shell,
+  .toolbar .next-event-badge {
+    max-width: 100%;
+  }
+
+  .status-grid,
+  .status-grid.wide,
+  .status-grid.compact {
+    grid-template-columns: repeat(auto-fit, minmax(min(145px, 100%), 1fr));
+  }
+
+  .form-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  }
+
+  .section-heading {
+    align-items: flex-start;
+    gap: 10px;
+  }
+}
+
+@media (width <= 620px) {
+  .sidebar {
+    grid-template-columns: 58px minmax(0, 1fr);
+    padding: 9px 12px;
+  }
+
+  .brand-logo {
+    height: 58px;
+    width: 58px;
+  }
+
+  .sidebar > div p {
+    display: none;
+  }
+
+  .sidebar nav button {
+    min-height: 40px;
+  }
+
+  .content {
+    padding: 12px;
+  }
+
+  .panel,
+  .status-grid article {
+    padding: 12px;
+  }
+
+  .hero {
+    margin-bottom: 12px;
+  }
+
+  .hero p {
+    font-size: .9rem;
+  }
+
+  .toolbar,
+  .button-row,
+  .card-actions {
+    gap: 6px;
+  }
+
+  .toolbar button,
+  .button-row button,
+  .card-actions button,
+  .section-heading button {
+    min-height: 40px;
+    padding-inline: 11px;
+  }
+}
+
+@media (width <= 380px) {
+  .content {
+    padding: 9px;
+  }
+
+  .panel,
+  .status-grid article {
+    padding: 10px;
+  }
+
+  .sidebar {
+    padding-inline: 9px;
+  }
+}

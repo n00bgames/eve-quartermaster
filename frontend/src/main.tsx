@@ -5,6 +5,7 @@ import React, { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 
 import "./styles.css";
+import "./responsive.css";
 
 import { api } from "./lib/api";
 import { eveSecurityClass, eveSecurityLabel, isUedamaSystem } from "./lib/evePresentation";
