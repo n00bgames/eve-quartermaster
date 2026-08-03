@@ -1,4 +1,4 @@
-import { Activity, Boxes, Building2, ClipboardList, Database, Factory, FlaskConical, GraduationCap, Globe2, KeyRound, MapIcon, MessageCircle, NotebookTabs, PackagePlus, Pickaxe, Plus, RefreshCw, ScrollText, Settings, ShoppingCart, Siren, Sparkles, Store, UserRoundCheck } from "lucide-react";
+import { Activity, Boxes, Building2, CalendarDays, ClipboardList, Coins, Database, Factory, FlaskConical, GraduationCap, Globe2, KeyRound, MapIcon, MessageCircle, NotebookTabs, PackagePlus, Pickaxe, Plus, RefreshCw, ScrollText, Settings, ShoppingCart, Siren, Sparkles, Store, UserRoundCheck } from "lucide-react";
 
 import React, { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
@@ -14,6 +14,7 @@ import { WardecBadge } from "./components/WardecBadge";
 import { MarketAppraisalPage } from "./features/market/MarketAppraisalPage";
 import { CorporateExchangePage } from "./features/exchange/CorporateExchangePage";
 import { PublicExchangeListingPage } from "./features/exchange/PublicExchangeListingPage";
+import { HyperNetTrackerPage } from "./features/hypernet/HyperNetTrackerPage";
 import { ManufacturingPage } from "./features/manufacturing/ManufacturingPage";
 import { NotesListsPage } from "./features/notes/NotesListsPage";
 import { FittingsPage } from "./features/fittings/FittingsPage";
@@ -35,6 +36,9 @@ import { PlanetaryIndustryPage } from "./features/industry/PlanetaryIndustryPage
 import { MiningLedgerPage } from "./features/mining/MiningLedgerPage";
 import { RecruitingPage } from "./features/recruiting/RecruitingPage";
 import { RecruitingPublicPage } from "./features/recruiting/RecruitingPublicPage";
+import { EventsPage } from "./features/events/EventsPage";
+import { NextEventBadge } from "./features/events/NextEventBadge";
+import { UpcomingEventsWidget } from "./features/events/UpcomingEventsWidget";
 import { IndustrialSystemThreatWidget, LocalThreatWidget, PvpIntelWidget } from "./features/navigation/ThreatIntelWidgets";
 import { RouteChecker } from "./features/navigation/RouteChecker";
 import type { CharacterFocus } from "./types/characters";
@@ -448,7 +452,8 @@ function App() {
 
     const esiError = params.get("esi_error");
 
-    if (window.location.hash.startsWith("#exchange")) setActiveTab("exchange");
+    if (window.location.hash.startsWith("#events")) setActiveTab("calendar_events");
+    else if (window.location.hash.startsWith("#hypernet")) setActiveTab("hypernet");
     else if (window.location.hash === "#esi" || window.location.hash === "#recruiting" || window.location.hash === "#planetary_industry" || params.get("esi_status") || esiError) setActiveTab(esiDestination);
 
     if (esiError) {
@@ -491,6 +496,12 @@ function App() {
     });
 
   }, []);
+
+  useEffect(() => {
+    if (locationHash.startsWith("#events")) setActiveTab("calendar_events");
+    else if (locationHash.startsWith("#exchange")) setActiveTab("exchange");
+    else if (locationHash.startsWith("#hypernet")) setActiveTab("hypernet");
+  }, [locationHash]);
 
   useEffect(() => {
 
@@ -598,11 +609,15 @@ function App() {
 
           {canView("esi") && <button className={activeTab === "esi" ? "active" : ""} onClick={() => setActiveTab("esi")}><KeyRound size={18} /> ESI Sync</button>}
 
-          {["market", "exchange", "notes", "manufacturing", "mining", "planetary_industry", "corporations", "ownership", "assets", "industry", "contracts", "analytics"].some(canView) && <span className="nav-section-label">Inventory & Industry</span>}
+          {["market", "exchange", "hypernet"].some(canView) && <span className="nav-section-label">Finance & Trade</span>}
 
           {canView("market") && <button className={activeTab === "market" ? "active" : ""} onClick={() => setActiveTab("market")}><ShoppingCart size={18} /> Market</button>}
 
           {canView("exchange") && <button className={activeTab === "exchange" ? "active" : ""} onClick={() => { window.location.hash = "exchange"; setActiveTab("exchange"); }}><Store size={18} /> Corporate Exchange</button>}
+
+          {canView("hypernet") && <button className={activeTab === "hypernet" ? "active" : ""} onClick={() => { window.location.hash = "hypernet"; setActiveTab("hypernet"); }}><Coins size={18} /> HyperNet Tracker</button>}
+
+          {["notes", "manufacturing", "mining", "planetary_industry", "corporations", "ownership", "assets", "industry", "contracts", "analytics"].some(canView) && <span className="nav-section-label">Inventory & Industry</span>}
 
           {canView("notes") && <button className={activeTab === "notes" ? "active" : ""} onClick={() => setActiveTab("notes")}><NotebookTabs size={18} /> Notes & Lists</button>}
 
@@ -626,7 +641,9 @@ function App() {
 
           {canView("analytics") && <button className={activeTab === "analytics" ? "active" : ""} onClick={() => setActiveTab("analytics")}><Activity size={18} /> Analytics</button>}
 
-          {canView("recruiting") && <span className="nav-section-label">Community</span>}
+          {["calendar_events", "recruiting"].some(canView) && <span className="nav-section-label">Community</span>}
+
+          {canView("calendar_events") && <button className={activeTab === "calendar_events" ? "active" : ""} onClick={() => { window.location.hash = "events"; setActiveTab("calendar_events"); }}><CalendarDays size={18} /> Calendar & Events</button>}
 
           {canView("recruiting") && <button className={activeTab === "recruiting" ? "active" : ""} onClick={() => setActiveTab("recruiting")}><UserRoundCheck size={18} /> Recruiting</button>}
 
@@ -661,6 +678,8 @@ function App() {
 
             <span className="status-badge version-badge">v{APP_VERSION}</span>
 
+            {canView("calendar_events") && <NextEventBadge api={api} onOpen={(eventId) => { window.location.hash = `events/${eventId}`; setActiveTab("calendar_events"); }} />}
+
             {canView("navigation") && <button type="button" className="threat-analyzer-button" onClick={openThreatAnalyzer}><Siren size={18} /> Threat Analyzer</button>}
 
             <span className="status-badge">{user.display_name}</span>
@@ -689,7 +708,7 @@ function App() {
 
         {!canView(activeTab) && <section className="panel"><h3>Permission required</h3><p className="muted">This section is not enabled for your account.</p></section>}
 
-        {activeTab === "overview" && canView("overview") && <Overview data={data} onOpenIndustry={canView("industry") ? () => setActiveTab("industry") : undefined} />}
+        {activeTab === "overview" && canView("overview") && <Overview data={data} api={api} timeZone={preferredTimeZone(user)} onOpenIndustry={canView("industry") ? () => setActiveTab("industry") : undefined} onOpenEvents={(eventId) => { window.location.hash = eventId ? `events/${eventId}` : "events"; setActiveTab("calendar_events"); }} />}
 
         {activeTab === "ownership" && canView("ownership") && <Ownership data={data} submit={submit} />}
 
@@ -702,6 +721,10 @@ function App() {
         {activeTab === "market" && canView("market") && <MarketAppraisalPage currentUser={user} seed={marketSeed} assets={data.assets} onOpenAssets={(itemName) => { setAssetSeed({ key: "item", value: itemName, mode: "exact", nonce: Date.now() }); setActiveTab("assets"); }} onOpenFittings={(itemName) => { setFittingSeed({ text: itemName, nonce: Date.now() }); setActiveTab("fittings"); }} api={api} sendDestinationToEve={sendDestinationToEve} ItemContextPanel={ItemContextPanel} numberFormatter={numberFormatter} />}
 
         {activeTab === "exchange" && canView("exchange") && <CorporateExchangePage api={api} currentUserId={user.id} />}
+
+        {activeTab === "hypernet" && canView("hypernet") && <HyperNetTrackerPage api={api} />}
+
+        {activeTab === "calendar_events" && canView("calendar_events") && <EventsPage api={api} currentUser={user} />}
 
         {activeTab === "notes" && canView("notes") && <NotesListsPage api={api} />}
 
@@ -970,7 +993,7 @@ function InviteScreen({ token, onAuth }: { token: string; onAuth: (path: string,
 
 }
 
-function Overview({ data, onOpenIndustry }: { data: AppData; onOpenIndustry?: () => void }) {
+function Overview({ data, api, timeZone, onOpenIndustry, onOpenEvents }: { data: AppData; api: ApiClient; timeZone: string; onOpenIndustry?: () => void; onOpenEvents: (eventId?: number) => void }) {
 
   const summary = data.summary;
 
@@ -1005,6 +1028,8 @@ function Overview({ data, onOpenIndustry }: { data: AppData; onOpenIndustry?: ()
         <section className="panel"><h3>Blueprint Library</h3><BlueprintPreview blueprints={data.blueprints} onOpenIndustry={onOpenIndustry} /></section>
 
       </div>
+
+      <UpcomingEventsWidget api={api} timeZone={timeZone} onOpen={onOpenEvents} />
 
     </>
 
@@ -2037,7 +2062,7 @@ function ManagedForm({ children, onSubmit, submitLabel = "Save" }: { children: R
 
 function titleFor(tab: string) {
 
-  return ({ overview: "Quartermaster Overview", ownership: "Ownership and Locations", characters: "Characters", roster: "Alliance Roster", navigation: "Navigation", market: "Market Appraisal", exchange: "Corporate Exchange", notes: "Notes & Lists", manufacturing: "Manufacturing", research_projects: "Research Projects", mining: "Mining Ledger", planetary_industry: "Planetary Industry", contracts: "Contracts", analytics: "Analytics Platform", recruiting: "Recruiting", skills: "Character Skills", fittings: "Fittings", jump_clones: "Jump Clones", settings: "Settings", corporations: "Corporations", assets: "Asset Ledger", industry: "Blueprints and Recipes", esi: "ESI Sync", profile: "Profile", users: "User Administration", audit: "Audit Log" } as Record<string, string>)[tab];
+  return ({ overview: "Quartermaster Overview", ownership: "Ownership and Locations", characters: "Characters", roster: "Alliance Roster", navigation: "Navigation", market: "Market Appraisal", exchange: "Corporate Exchange", hypernet: "HyperNet Tracker", calendar_events: "Calendar & Events", notes: "Notes & Lists", manufacturing: "Manufacturing", research_projects: "Research Projects", mining: "Mining Ledger", planetary_industry: "Planetary Industry", contracts: "Contracts", analytics: "Analytics Platform", recruiting: "Recruiting", skills: "Character Skills", fittings: "Fittings", jump_clones: "Jump Clones", settings: "Settings", corporations: "Corporations", assets: "Asset Ledger", industry: "Blueprints and Recipes", esi: "ESI Sync", profile: "Profile", users: "User Administration", audit: "Audit Log" } as Record<string, string>)[tab];
 
 }
 
@@ -2045,7 +2070,7 @@ function titleFor(tab: string) {
 
 function subtitleFor(tab: string) {
 
-  return ({ overview: "Live status and the first useful totals from the database.", ownership: "Define the characters, corporations, manual buckets, and places assets can belong to.", characters: "Assign EVE characters to Quartermaster accounts and control public asset visibility.", roster: "A corporation-grouped character roster suitable for diplomats and prospective members.", navigation: "Plan gate routes from imported SDE map data before layering on kill checks and local threat analysis.", market: "Paste item lists and compare buy, sell, and split prices across trade hubs.", notes: "Keep private working notes and destination-aware resupply lists with live asset context.", manufacturing: "Track manufacturing jobs, costs, required inputs, hub prices, and production history.", research_projects: "Monitor ESI research, copying, and invention queues while retaining project history for analytics.", mining: "Track persistent per-character mining yield, residue efficiency, and named fleet operations.", planetary_industry: "Monitor synchronized colonies, extractor cycles, routed production, storage, and factory health.", contracts: "Sync and review current character and corporation contracts.", analytics: "Snapshot history, metric widgets, exports, and the foundation for custom dashboards.", recruiting: "Configure public recruiting, review applicants, and coordinate interviews without exposing internal notes.", skills: "Import trained skills, total skill points, and active skill queues from ESI.", fittings: "Sync saved EVE fittings, review modules, experiment in a scratchpad, and copy EFT-style text.", jump_clones: "Sync jump clones, inspect implants, and build custom implant sets for fitting experiments.", settings: "Control character visibility and sync privacy.", corporations: "Review enrolled corporations and sync corporation asset ledgers through authorized CEO or director tokens.", assets: "Track item stacks by owner, type, location, and EVE-style location flag.", industry: "Store blueprints, recipe activities, and material inputs before wiring in SDE imports.", esi: "A holding area for the upcoming SSO and sync work.", profile: "Manage your account and private messages.", users: "Manage Quartermaster accounts and role levels.", audit: "Review sync peeks, system events, and administrative activity." } as Record<string, string>)[tab];
+  return ({ overview: "Live status and the first useful totals from the database.", ownership: "Define the characters, corporations, manual buckets, and places assets can belong to.", characters: "Assign EVE characters to Quartermaster accounts and control public asset visibility.", roster: "A corporation-grouped character roster suitable for diplomats and prospective members.", navigation: "Plan gate routes from imported SDE map data before layering on kill checks and local threat analysis.", market: "Paste item lists and compare buy, sell, and split prices across trade hubs.", hypernet: "Plan, monitor, and reconcile HyperNet offers with seller-seeded nodes kept separate from organic participation.", calendar_events: "Plan fleets, register pilots, record attendance, and measure participation.", notes: "Keep private working notes and destination-aware resupply lists with live asset context.", manufacturing: "Track manufacturing jobs, costs, required inputs, hub prices, and production history.", research_projects: "Monitor ESI research, copying, and invention queues while retaining project history for analytics.", mining: "Track persistent per-character mining yield, residue efficiency, and named fleet operations.", planetary_industry: "Monitor synchronized colonies, extractor cycles, routed production, storage, and factory health.", contracts: "Sync and review current character and corporation contracts.", analytics: "Snapshot history, metric widgets, exports, and the foundation for custom dashboards.", recruiting: "Configure public recruiting, review applicants, and coordinate interviews without exposing internal notes.", skills: "Import trained skills, total skill points, and active skill queues from ESI.", fittings: "Sync saved EVE fittings, review modules, experiment in a scratchpad, and copy EFT-style text.", jump_clones: "Sync jump clones, inspect implants, and build custom implant sets for fitting experiments.", settings: "Control character visibility and sync privacy.", corporations: "Review enrolled corporations and sync corporation asset ledgers through authorized CEO or director tokens.", assets: "Track item stacks by owner, type, location, and EVE-style location flag.", industry: "Store blueprints, recipe activities, and material inputs before wiring in SDE imports.", esi: "A holding area for the upcoming SSO and sync work.", profile: "Manage your account and private messages.", users: "Manage Quartermaster accounts and role levels.", audit: "Review sync peeks, system events, and administrative activity." } as Record<string, string>)[tab];
 
 }
 

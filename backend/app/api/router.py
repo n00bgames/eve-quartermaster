@@ -10,9 +10,11 @@ from app.api.database_admin import router as database_admin_router
 from app.api.context import router as context_router
 from app.api.corporations import router as corporations_router
 from app.api.esi import router as esi_router
+from app.api.events import router as events_router
 from app.api.character_standings import router as character_standings_router
 from app.api.fittings import router as fittings_router
 from app.api.health import router as health_router
+from app.api.hypernet import router as hypernet_router
 from app.api.jump_clones import router as jump_clones_router
 from app.api.mail import router as mail_router
 from app.api.market import router as market_router
@@ -40,8 +42,10 @@ api_router.include_router(corporate_exchange_router)
 api_router.include_router(corporate_exchange_bids_router)
 api_router.include_router(database_admin_router)
 api_router.include_router(context_router)
+api_router.include_router(events_router)
 api_router.include_router(fittings_router)
 api_router.include_router(health_router)
+api_router.include_router(hypernet_router)
 api_router.include_router(jump_clones_router)
 api_router.include_router(mail_router)
 api_router.include_router(market_router)

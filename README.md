@@ -49,15 +49,17 @@ See [CHANGELOG.md](CHANGELOG.md) for version-by-version release notes.
 - Roster page for corporation-grouped character display.
 - Contact/standing propagation tools using writable ESI character contacts.
 - Notifications, private messages, and admin audit log for sync transparency.
-- Historical analytics foundation with snapshot runs, metric metadata/versioning, baseline-aware deltas, exports, and composable widgets.
+- Historical analytics foundation with scope-aware, hourly-coalesced snapshot runs, metric metadata/versioning, baseline-aware deltas, exports, composable widgets, and host-controlled legacy-history compaction.
 - ESI-backed Research Projects queue for material/time efficiency, copying, and invention work, with retained researcher history and Analytics attribution.
 - Planetary Industry workspace with queued per-character ESI sync, colony layouts, extractor program projections, routed factory warnings, storage totals, character/system/planet filters, and historical P0-P4 production analytics with per-commodity pilot rankings.
 - Configurable Recruiting workspace with a public corporation page, applicant accounts, limited-scope EVE verification, recruiter review queues, interviews, audited decisions, and capability-based staff access.
+- Calendar and Events workspace with month and upcoming views, local/EVE time presentation, RSVPs, multi-character fleet registration, doctrine and role planning, manager-only composition, post-event attendance, walk-in recording, and participation analytics.
+- Manual-first HyperNet Tracker with offer economics, seller-seeded node risk, organic progress history, participant observations, and completed/expired reconciliation.
 - Persistent Mining Ledger with per-character ESI history, detailed residue-aware imports, named mining operations, production/value graphs, and honest residue-measured efficiency rankings.
 - Mining Op Settlement workflow with saved-operation or date-range sourcing, actual refined-output entry, hub price snapshots, operation reserves, expenses, support-role compensation, weighted shares, reconciled ISK payouts, editable drafts, and immutable finalized history.
 - Navigation suite with SDE-backed route planning, gatecheck summaries, operational starmap rendering, and security-status color coding.
 - Hauling intelligence widgets for industrial kill heat, PvP system intel, smartbomb indicators, and Local Threat analysis with background queue progress for large systems.
-- Jump Capable Ship Plotter with JDC/JFC fuel math, station/cyno guidance, nearby operational map context, and 24-hour industrial kill visibility per jump.
+- Jump Capable Ship Plotter with automatic routing through ordered, required cyno waypoints, JDC/JFC fuel math, mapped alternate jump points, explicit station-risk warnings, nearby operational map context, and kill/activity intel per jump.
 - Sideloadable Android WebView wrapper build script that outputs `EQM.apk`.
 
 ## Requirements
@@ -72,7 +74,7 @@ See [CHANGELOG.md](CHANGELOG.md) for version-by-version release notes.
 
 ## Screenshots
 
-A quick tour of the current beta surface, ordered roughly the way a new Quartermaster operator would encounter the tool. These screenshots use fictitious demo names, organizations, IDs, portraits, logos, and operational data.
+A quick tour of the current beta surface, ordered roughly the way a new Quartermaster operator would encounter the tool. Screenshots are captured from a disposable documentation database and use fictitious demo identities, corporations, locations, and operations.
 
 ### Command Center
 
@@ -105,6 +107,9 @@ A quick tour of the current beta surface, ordered roughly the way a new Quarterm
 | ![Corporate Exchange listing board](static/ss/eqm-corporate-exchange.jpg) | ![Corporate Exchange listing detail and five-hub appraisal](static/ss/eqm-corporate-exchange-detail.jpg) | ![Corporate Exchange owner listing editor](static/ss/eqm-corporate-exchange-editor.jpg) |
 
 **Built from user feedback:** The Corporate Exchange module was shaped directly by requests from EVE Quartermaster users, from shareable member listings through stock management, appraisals, auctions, and seller controls.
+| HyperNet Tracker | Offer Detail & Economics |
+| --- | --- |
+| ![HyperNet Tracker dashboard with active offer summary](static/ss/eqm-hypernet-tracker.jpg) | ![HyperNet offer detail with financial and seeded-node risk calculations](static/ss/eqm-hypernet-offer-detail.jpg) |
 
 | Manufacturing | Research Projects |
 | --- | --- |
@@ -130,11 +135,15 @@ A quick tour of the current beta surface, ordered roughly the way a new Quarterm
 | --- | --- |
 | ![Blueprints and industry](static/ss/eqm-industry.png) | ![Contracts](static/ss/eqm-contracts.png) |
 
+| Planetary Industry |
+| --- |
+| ![Planetary Industry colony health and production](static/ss/eqm-planetary-industry.png) |
+
 ### Community
 
-| Recruiting |
-| --- |
-| ![Recruiting setup and administration](static/ss/eqm-recruiting.png) |
+| Calendar & Events | Recruiting |
+| --- | --- |
+| ![Calendar and upcoming operations](static/ss/eqm-calendar-events.png) | ![Recruiting setup and administration](static/ss/eqm-recruiting.png) |
 
 ### Account And Settings
 
@@ -498,14 +507,16 @@ Privacy controls live under **Settings -> Character Privacy**. A character can b
 ## Using EQM Sections
 
 - **Overview:** quick health, totals, recent assets, and a lightweight blueprint preview. Use this as the command-center landing page, not as the full industry workspace.
-- **Navigation:** route checker, operational maps, industrial system threat, PvP intel, local threat analysis, Uedama scout status, and the Jump Capable Ship Plotter.
+- **Navigation:** route checker, operational maps, industrial system threat, PvP intel, local threat analysis, Uedama scout status, and the Jump Capable Ship Plotter. The plotter can auto-route through ordered systems where the pilot already has cynos, filling valid station-backed jumps between each required waypoint; every leg also exposes reachable alternate systems on the map and identifies candidates with no station or only red-risk stations. Select an alternate and use **Replot via…** to rebuild the complete route through it while retaining the initial ship, skill, safety, avoidance, intel, and feasible required-cyno constraints. If a required cyno cannot be retained, the new plot remains visible with an explicit warning naming the omitted system.
 - **Characters:** assign EVE characters to EQM accounts, review character dossiers, inspect assets/skills/queues, control visibility, and use character hover cards for quick context.
 - **Character Skills:** expand/collapse skill groups, refresh displayed skills, sync one character, or queue **Sync all skills** for every eligible non-opted-out character.
 - **Fittings:** sync saved fittings, import EFT-style fits, inspect readiness and dogma-derived resources, assign grouped ammo/scripts, price missing/full fits, and jump to assets or market.
 - **Alliance Roster:** review corporations and pilots grouped for diplomacy, recruiting, or operational awareness.
 - **Recruiting:** hosts and recruitment administrators complete Initial Setup by resolving the corporation from ESI; EQM automatically records its current CEO and associated alliance, while an audited manual CEO override remains available for edge cases. Customize public copy, timezone, activity window, application questions, tags, interview prompts, privacy and retention values, then assign Recruiter or Recruitment Administrator capabilities without changing a user's normal role. Applicants register from the public Recruiting link, save drafts, link characters through the restricted recruitment SSO scope group, choose a main character, acknowledge interviews, communicate with recruiters, submit, or withdraw. Recruiters review the searchable queue, assign applications, add private notes and ratings, schedule interviews, and record applicant-visible status changes; final decisions remain administrator-only.
+- **Calendar & Events:** plan operations from the Community section; publish scheduled events with formup systems, local and EVE times, voice/doctrine details, participant limits, fleet roles, and requested hulls. Members can RSVP Going or Maybe for each linked character independently, add several pilots from one EQM account, and optionally record a separate overall account response. Authorized managers can inspect aggregate or identity-visible fleet composition, close or lock registration, reconcile actual attendance after the event, add linked-character or public walk-ins, and compare registrations with real participation in configurable analytics.
 - **Market:** paste item lists, compare trade hubs, inspect order depth signals, and jump from market rows into visible assets or fittings.
 - **Corporate Exchange:** create and manage fixed-price or auction packages, publish account-free listing links, refresh five-hub appraisals, record external bids, and review seller activity. On a public listing, **Open prefilled EVE Mail** asks the buyer to authorize the character currently online, then opens an addressed purchase-request draft in that character's EVE client for review and sending.
+- **HyperNet Tracker:** plan and manually record seller-side HyperNet offers from Finance and Trade. EQM calculates node price, the 5% completion fee, HyperCore cost, payout, net proceeds, profit, return, break-even and target offer values; seller-seeded nodes remain separate from organic sales and receive independent win-probability, retained-item, expected-result, maximum-loss, and tied-capital treatment. Add cumulative progress and participant observations, then reconcile completed or expired offers so realized results remain distinct from forecasts. ESI supplies character, item, location, and market context only—EQM does not claim that ESI exposes HyperNet offers, sales, participants, winners, or outcomes.
 - **Assets:** filter inventory by owner kind, item, owner, location, named corporation hangar division, category, and subtype; resolve authorized Upwell structure names; export CSV; copy Janice-friendly lists; open item context and market/fitting handoffs. EQM retains the raw ESI flag or location ID when ESI cannot disclose a private structure.
 - **Industry:** use the full Blueprint Library, BPO/BPC filters, SDE-backed category/subtype filters, Missing BPO pane, blueprint output context, recipes, and material input views.
 - **Research Projects:** sync eligible character industry queues, monitor active ME/TE, copying, and invention projects, inspect facilities and timers, and retain completed work for Analytics. Active, paused, and ready-for-delivery ME/TE and copying jobs also act as a shadow blueprint inventory in Analytics so temporarily installed blueprints are not reported as missing.
@@ -514,7 +525,7 @@ Privacy controls live under **Settings -> Character Privacy**. A character can b
 - **Mining Op Settlement:** open the calculator beneath Ledger History, choose a saved operation or date range, and select whether miner shares follow estimated raw value, recovered volume, raw quantity, or equal starting shares. Enter the actual refined minerals and quantities because recorded output is authoritative; optional hub pricing snapshots each unit price, while manual changes are flagged as overrides. Operation reserves and expenses are deducted before fixed-percentage support payouts and weighted shares. Enter percentages as either `10` or `0.10` for 10%; the preview shows the normalized result and must reconcile before saving. Drafts remain editable, while finalized settlements are immutable snapshots of ledger rows, prices, calculations, and payouts.
 - **Corporations:** refresh corporation links, sync corporation assets/blueprints/wallet divisions through eligible tokens, and inspect sync stale/error messages.
 - **Contracts:** sync current character and eligible corporation contracts, then sort/filter active contract data.
-- **Analytics:** capture and inspect snapshots, metric widgets, baseline-aware deltas, and exports.
+- **Analytics:** capture and inspect snapshots, metric widgets, baseline-aware deltas, and exports. Automatic ESI observations are limited to the character or corporation that changed and identical scope/source observations are coalesced for one hour, preventing unrelated syncs from duplicating the full blueprint and skill library. While a report is being assembled, EQM shows an explicit **Analytics loading** notice and asks the operator not to refresh. Hosts can use **Inspect storage** to preview redundant legacy automatic snapshots, then optionally compact them while preserving every manual snapshot and the latest complete automatic snapshot for each UTC day. Compaction makes freed PostgreSQL space reusable immediately; returning it to the host filesystem still requires a separately planned `VACUUM FULL` maintenance window.
 - **Profile:** manage account details, timezone, private messages, and EVE mail features when mail scopes are present.
 - **Settings:** configure character privacy, import SDE data, enable/disable major sections, and manage role/section permissions.
 - **ESI Sync:** link/re-link EVE characters, inspect server status, review missing scopes, authorize contact sync, unlink tokens, and import public ESI entities by ID.
@@ -524,6 +535,10 @@ Privacy controls live under **Settings -> Character Privacy**. A character can b
 ## Mining Settlement Limitations
 
 Mining settlements currently pay in ISK and use manually entered actual refined output. EQM does not yet calculate theoretical refining from character skills, implants, structure bonuses, rigs, taxes, sovereignty, or SDE dogma. Physical mineral allocation, largest-remainder unit splitting, revisions, voiding, and payout exports are planned follow-up work; finalized Phase 1 settlements deliberately remain unchanged when prices, SDE data, characters, or ledger history later change.
+
+## HyperNet Tracker Data Limits
+
+HyperNet offer activity is manual in this release. ESI does not provide EQM with offer creation, node sales, participants, winners, expirations, or outcomes, so users must enter progress snapshots and reconcile final results from the in-game offer. Character, item, location, and market context may still be resolved through existing EQM/ESI data. The internal provider abstraction is intended for a future sanctioned source without changing saved offer records.
 ## Android APK
 
 The repository includes a small Android wrapper in `android-eqm/`. It builds a sideloadable WebView APK named `EQM.apk`.
@@ -566,9 +581,10 @@ After `docker compose up --build`, confirm:
 8. SDE import completes and recipes are browsable.
 9. Analytics snapshots show totals immediately, but first-observation baselines do not inflate gain widgets.
 10. Navigation route planning works from SDE data, and gatecheck details open for route systems.
-11. Jump Freighter plotting calculates fuel, station cards, cyno guidance, and industrial kills per jump.
-12. Local Threat accepts a large paste, shows queue progress, and renders top threats as the background job runs.
-13. Notifications, private messages, audit log, and permissions behave according to the signed-in role.
+11. Jump Capable Ship plotting automatically routes through optional required cyno waypoints, calculates fuel, shows station/cyno guidance and kill/activity intel, and maps selectable alternate systems with explicit `NO STATION` and `ONLY RED STATIONS` warnings. Replot through a selected alternate and confirm the original constraints remain; when a required cyno is infeasible, confirm the replacement route renders with a warning naming it.
+12. HyperNet Tracker reproduces the eight-node Marshal calculation, keeps seeded nodes separate from organic sales, records 0/8 to 1/8 organic progress, and reconciles completed profit or expired HyperCore loss without claiming ESI HyperNet access.
+13. Local Threat accepts a large paste, shows queue progress, and renders top threats as the background job runs.
+14. Notifications, private messages, audit log, and permissions behave according to the signed-in role.
 
 ## Roadmap
 

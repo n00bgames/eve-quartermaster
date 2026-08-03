@@ -21,6 +21,16 @@ export type AnalyticsCorporationScopeResponse = {
   can_manage: boolean;
   corporations: AnalyticsCorporationScope[];
 };
+export type AnalyticsMaintenancePreview = {
+  strategy: string;
+  candidate_rows: {
+    snapshot_runs: number;
+    blueprint_rows: number;
+    skill_rows: number;
+    corporation_rows: number;
+    metric_rows: number;
+  };
+};
 export type ManufacturingAnalyticsItem = {
   name: string;
   quantity: number;

@@ -19,6 +19,7 @@ class SnapshotRun(Base):
     scope_id: Mapped[int | None] = mapped_column(Integer, index=True)
     source: Mapped[str] = mapped_column(String(60), default="manual", nullable=False, index=True)
     status: Mapped[str] = mapped_column(String(40), default="running", nullable=False, index=True)
+    schema_version: Mapped[int] = mapped_column(Integer, default=2, nullable=False, index=True)
     message: Mapped[str | None] = mapped_column(Text)
 
     metrics: Mapped[list["SnapshotMetric"]] = relationship(back_populates="snapshot_run", cascade="all, delete-orphan")

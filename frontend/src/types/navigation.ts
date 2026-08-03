@@ -14,7 +14,9 @@ export type JumpFreighterStation = { station_id: number; name: string; type_id?:
 
 export type JumpActivity = { hours: number; total_jumps: number; jumps_per_hour: number; observations: number; confidence: "none" | "low" | "medium" | "high" | string; activity_label: "quiet" | "moderate" | "active" | "very active" | string; latest_observed_at?: string | null };
 
-export type JumpFreighterJump = { jump_index: number; from_system: NavigationSystem; to_system: NavigationSystem; distance_ly: number; fuel_units: number; cyno_eligible: boolean; stations: JumpFreighterStation[]; industrial_kills_24h: JumpFreighterKillSummary; kills_24h?: JumpFreighterKillSummary; jump_activity?: JumpActivity };
+export type JumpFreighterAlternate = { system: NavigationSystem; distance_ly: number; fuel_units: number; distance_to_planned_ly: number; rejoin_distance_ly?: number | null; can_rejoin: boolean; station_status: "station_available" | "red_only" | "no_station"; station_count: number; kills_24h: JumpFreighterKillSummary; jump_activity?: JumpActivity };
+
+export type JumpFreighterJump = { jump_index: number; from_system: NavigationSystem; to_system: NavigationSystem; distance_ly: number; fuel_units: number; cyno_eligible: boolean; required_waypoint?: boolean; station_status?: "station_available" | "red_only" | "no_station"; station_count?: number; stations: JumpFreighterStation[]; industrial_kills_24h: JumpFreighterKillSummary; kills_24h?: JumpFreighterKillSummary; jump_activity?: JumpActivity; alternates: JumpFreighterAlternate[] };
 
 export type OperationalMapSystem = NavigationSystem & { on_route?: boolean };
 
@@ -24,7 +26,9 @@ export type OperationalMapContext = { gate_hops: number; truncated?: boolean; sy
 
 export type OperationalMapRouteNode = NavigationSystem & { map_index: number; label: string; meta?: string; selected_key?: string | null; segment_label?: string | null };
 
-export type JumpFreighterRoute = { origin: NavigationSystem; destination: NavigationSystem; ship: { name: string; fuel_type_name: string; base_fuel_per_light_year: number; base_range_ly?: number; ship_class?: string }; skills: { jump_drive_calibration: number; jump_fuel_conservation: number }; max_range_ly: number; jump_count: number; total_distance_ly: number; total_fuel_units: number; station_safety?: { mode: string; label: string }; kill_filter?: { mode: string; label: string }; jump_activity?: { hours: number; cache?: { refreshed?: boolean; observed_at?: string | null; system_count?: number } }; avoided_systems?: NavigationSystem[]; jumps: JumpFreighterJump[]; map_context?: OperationalMapContext; station_cyno_guide: { station_type: string; range_km?: number | null; risk: string; note: string }[]; notes: string[] };
+export type OperationalMapAlternateNode = NavigationSystem & { alternate_key: string; from_system_id: number; label: string; meta?: string; selected?: boolean; segment_label?: string | null };
+
+export type JumpFreighterRoute = { origin: NavigationSystem; destination: NavigationSystem; route_mode?: "automatic" | "waypoint_assisted"; requested_waypoints?: NavigationSystem[]; ship: { name: string; fuel_type_name: string; base_fuel_per_light_year: number; base_range_ly?: number; ship_class?: string }; skills: { jump_drive_calibration: number; jump_fuel_conservation: number }; max_range_ly: number; jump_count: number; total_distance_ly: number; total_fuel_units: number; station_safety?: { mode: string; label: string; applied?: boolean }; kill_filter?: { mode: string; label: string }; jump_activity?: { hours: number; cache?: { refreshed?: boolean; observed_at?: string | null; system_count?: number } }; avoided_systems?: NavigationSystem[]; jumps: JumpFreighterJump[]; map_context?: OperationalMapContext; station_cyno_guide: { station_type: string; range_km?: number | null; risk: string; note: string }[]; notes: string[] };
 
 export type UedamaScoutStatus = { channel: string; url: string; is_live: boolean; checked: boolean; error?: string | null; source?: string | null };
 

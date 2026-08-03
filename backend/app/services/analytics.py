@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 from sqlalchemy import func, or_, select
@@ -87,6 +87,36 @@ def analytics_corporation_ids(db: Session) -> set[int]:
     )
 
 
+AUTO_SNAPSHOT_COALESCE_MINUTES = 60
+SNAPSHOT_SCHEMA_VERSION = 2
+
+
+def recent_automatic_snapshot(
+    db: Session,
+    *,
+    scope_type: str,
+    scope_id: int | None,
+    source: str,
+    now: datetime,
+) -> SnapshotRun | None:
+    if source == "manual" or scope_id is None:
+        return None
+    cutoff = now - timedelta(minutes=AUTO_SNAPSHOT_COALESCE_MINUTES)
+    return db.scalar(
+        select(SnapshotRun)
+        .where(
+            SnapshotRun.scope_type == scope_type,
+            SnapshotRun.scope_id == scope_id,
+            SnapshotRun.source == source,
+            SnapshotRun.status == "success",
+            SnapshotRun.started_at >= cutoff,
+            SnapshotRun.schema_version >= SNAPSHOT_SCHEMA_VERSION,
+        )
+        .order_by(SnapshotRun.started_at.desc(), SnapshotRun.id.desc())
+        .limit(1)
+    )
+
+
 def create_snapshot(
     db: Session,
     *,
@@ -95,13 +125,46 @@ def create_snapshot(
     source: str = "manual",
     message: str | None = None,
 ) -> SnapshotRun:
-    run = SnapshotRun(scope_type=scope_type, scope_id=scope_id, source=source, status="running", message=message)
+    now = datetime.now(timezone.utc)
+    existing = recent_automatic_snapshot(
+        db,
+        scope_type=scope_type,
+        scope_id=scope_id,
+        source=source,
+        now=now,
+    )
+    if existing is not None:
+        return existing
+
+    run = SnapshotRun(
+        scope_type=scope_type,
+        scope_id=scope_id,
+        source=source,
+        status="running",
+        schema_version=SNAPSHOT_SCHEMA_VERSION,
+        message=message,
+    )
     db.add(run)
     db.flush()
     try:
-        snapshot_character_skills(db, run)
-        snapshot_corporations(db, run)
-        snapshot_blueprints(db, run)
+        if scope_type == "global":
+            snapshot_character_skills(db, run)
+            snapshot_corporations(db, run)
+            snapshot_blueprints(db, run)
+        elif scope_type == "character" and scope_id is not None:
+            if source == "character_assets":
+                snapshot_character_assets(db, run, scope_id)
+            else:
+                snapshot_character_skills(db, run, {scope_id})
+        elif scope_type == "corporation" and scope_id is not None:
+            snapshot_corporations(db, run, {scope_id})
+            if source == "corporation_blueprints":
+                # Detailed blueprint rows are captured only by blueprint syncs or manual global snapshots.
+                snapshot_blueprints(db, run)
+        else:
+            snapshot_character_skills(db, run)
+            snapshot_corporations(db, run)
+            snapshot_blueprints(db, run)
         run.status = "success"
         run.completed_at = datetime.now(timezone.utc)
         db.flush()
@@ -140,6 +203,26 @@ def add_metric(
     )
 
 
+def snapshot_character_assets(db: Session, run: SnapshotRun, character_id: int) -> None:
+    character = db.get(EveCharacter, character_id)
+    if character is None:
+        return
+    owner = db.scalar(
+        select(OwnershipEntity).where(
+            OwnershipEntity.owner_kind == OwnerKind.CHARACTER,
+            OwnershipEntity.character_id == character_id,
+        )
+    )
+    asset_rows = asset_units = blueprint_count = 0
+    if owner is not None:
+        asset_rows = int(db.scalar(select(func.count()).select_from(Asset).where(Asset.ownership_entity_id == owner.id)) or 0)
+        asset_units = int(db.scalar(select(func.coalesce(func.sum(Asset.quantity), 0)).where(Asset.ownership_entity_id == owner.id)) or 0)
+        blueprint_count = int(db.scalar(select(func.count()).select_from(Blueprint).where(Blueprint.ownership_entity_id == owner.id)) or 0)
+    add_metric(db, run, owner_type="character", owner_id=character.id, owner_name=character.name, metric_key="assets.rows", metric_value=asset_rows)
+    add_metric(db, run, owner_type="character", owner_id=character.id, owner_name=character.name, metric_key="assets.units", metric_value=asset_units)
+    add_metric(db, run, owner_type="character", owner_id=character.id, owner_name=character.name, metric_key="blueprints.count", metric_value=blueprint_count)
+
+
 def skill_category_name(skill: CharacterSkill) -> str:
     group = skill.skill_type.group if skill.skill_type else None
     category = group.category if group else None
@@ -150,12 +233,13 @@ def skill_category_name(skill: CharacterSkill) -> str:
     return "Uncategorized"
 
 
-def snapshot_character_skills(db: Session, run: SnapshotRun) -> None:
-    characters = db.scalars(
-        select(EveCharacter)
-        .where(EveCharacter.total_skill_points.is_not(None))
-        .order_by(EveCharacter.name)
-    ).all()
+def snapshot_character_skills(db: Session, run: SnapshotRun, character_ids: set[int] | None = None) -> None:
+    query = select(EveCharacter).where(EveCharacter.total_skill_points.is_not(None))
+    if character_ids is not None:
+        if not character_ids:
+            return
+        query = query.where(EveCharacter.id.in_(character_ids))
+    characters = db.scalars(query.order_by(EveCharacter.name)).all()
     for character in characters:
         skills = db.scalars(
             select(CharacterSkill)
@@ -327,8 +411,10 @@ def scoped_blueprint_records(db: Session) -> list[dict[str, object]]:
         }
     return list(records.values())
 
-def snapshot_corporations(db: Session, run: SnapshotRun) -> None:
+def snapshot_corporations(db: Session, run: SnapshotRun, requested_corporation_ids: set[int] | None = None) -> None:
     corporation_ids = analytics_corporation_ids(db)
+    if requested_corporation_ids is not None:
+        corporation_ids &= requested_corporation_ids
     if not corporation_ids:
         return
     corporations = db.scalars(

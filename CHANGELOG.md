@@ -5,10 +5,23 @@ All notable changes to EVE Quartermaster are tracked here.
 This project is moving quickly during beta. Version sections are written as user-facing release notes first, with implementation detail included where it helps operators understand deployment or testing impact.
 ## [0.1.16-beta] - 2026-07-30
 
+### Added
+
+- Added the manual-first HyperNet Tracker with offer planning, exact fee/core/profit calculations, seller-seeded node risk, progress snapshots, participant observations, reconciliation, and history. HyperNet offer data is never assumed to be available through ESI.
+- Added the Calendar & Events workspace with scheduling, multi-character registration, fleet composition, independent attendance, and participation analytics.
+- Added quick Going or Maybe RSVP controls for every linked character, allowing several pilots from one EQM account to join the same event.
+- Added ordered required-cyno waypoint input to the Jump Capable Ship Plotter. EQM automatically fills valid jumps between origin, each system where the pilot already has a cyno, and the destination while retaining fuel, kill, and activity intelligence.
+- Added selectable alternate jump systems to every plotted leg and rendered them on the operational map, with explicit `NO STATION` and `ONLY RED STATIONS` warnings.
+- Added one-click replanning through a selected alternate jump point. EQM retains the original ship, skills, destination, station safety, avoids, intel filters, and feasible required cynos; any required cyno that cannot be retained is named in a visible route-warning placard.
+- Added a persistent Analytics loading placard that warns long-running reports may take time and should not be interrupted by refreshing the page.
+- Added host-visible legacy Analytics storage inspection and confirmation-gated compaction that preserves every manual snapshot plus the latest complete automatic snapshot for each UTC day.
+
 ### Changed
 
 - Bumped the visible app, package, backend API, Android wrapper, and ESI user-agent versions to 0.1.16-beta for the next development cycle.
 - Reworked corporation wallet and blueprint trends into daily closing series with a distinct color, line, and latest-value legend for each corporation.
+- Made automatic Analytics snapshots scope-aware and coalesced identical character/corporation sync observations for one hour, eliminating full-library blueprint and skill duplication on unrelated ESI refreshes.
+- Reduced Analytics summary query duplication, added history-query indexes, and loaded each selected character/corporation history set once per report.
 
 ### Fixed
 

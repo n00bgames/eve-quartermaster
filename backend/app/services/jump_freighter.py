@@ -204,6 +204,7 @@ def cyno_eligible(system: EveSystem) -> bool:
 def _known_space_systems(db: Session) -> list[EveSystem]:
     return db.scalars(
         select(EveSystem)
+        .options(selectinload(EveSystem.constellation).selectinload(EveConstellation.region))
         .where(EveSystem.system_id < 31000000)
         .where(EveSystem.x.is_not(None), EveSystem.y.is_not(None), EveSystem.z.is_not(None))
     ).all()
@@ -213,6 +214,30 @@ def _npc_station_system_ids(db: Session) -> set[int]:
     return set(db.scalars(select(EveStation.system_id).where(EveStation.system_id.is_not(None)).distinct()).all())
 
 
+def _station_profiles(db: Session) -> dict[int, dict[str, Any]]:
+    stations = db.scalars(
+        select(EveStation)
+        .options(selectinload(EveStation.station_type))
+        .where(EveStation.system_id.is_not(None))
+    ).all()
+    profiles: dict[int, dict[str, Any]] = {}
+    for station in stations:
+        type_name = station.station_type.name if station.station_type else (f"Type {station.type_id}" if station.type_id else None)
+        profile = profiles.setdefault(station.system_id, {"station_count": 0, "risks": set()})
+        profile["station_count"] += 1
+        profile["risks"].add(str(station_cyno_guidance(type_name).get("risk", "unknown")))
+    return profiles
+
+
+def _alternate_station_status(profile: dict[str, Any] | None) -> str:
+    if not profile or not profile.get("station_count"):
+        return "no_station"
+    risks = set(profile.get("risks") or set())
+    if risks and risks <= {"dangerous"}:
+        return "red_only"
+    return "station_available"
+
+
 def _station_safety_system_ids(db: Session, station_safety: str) -> set[int]:
     mode = station_safety.strip().lower()
     if mode == "any":
@@ -220,17 +245,10 @@ def _station_safety_system_ids(db: Session, station_safety: str) -> set[int]:
     if mode not in {"avoid_red_only", "green"}:
         raise ValueError("Unknown station safety filter. Use any, avoid_red_only, or green.")
 
-    stations = db.scalars(
-        select(EveStation)
-        .options(selectinload(EveStation.station_type), selectinload(EveStation.system))
-        .where(EveStation.system_id.is_not(None))
-    ).all()
-    risks_by_system: dict[int, set[str]] = {}
-    for station in stations:
-        type_name = station.station_type.name if station.station_type else (f"Type {station.type_id}" if station.type_id else None)
-        risk = station_cyno_guidance(type_name).get("risk", "unknown")
-        risks_by_system.setdefault(station.system_id, set()).add(str(risk))
-
+    risks_by_system = {
+        system_id: set(profile["risks"])
+        for system_id, profile in _station_profiles(db).items()
+    }
     if mode == "green":
         return {system_id for system_id, risks in risks_by_system.items() if "safer" in risks}
     return {system_id for system_id, risks in risks_by_system.items() if risks - {"dangerous"}}
@@ -258,16 +276,16 @@ def _neighbor_systems(system: EveSystem, grid: dict[tuple[int, int, int], list[E
     return candidates
 
 
-def _jump_path(db: Session, origin: EveSystem, destination: EveSystem, max_range_ly: float, station_safety: str = "any", avoid_system_ids: set[int] | None = None) -> list[int]:
+def _jump_path(db: Session, origin: EveSystem, destination: EveSystem, max_range_ly: float, station_safety: str = "any", avoid_system_ids: set[int] | None = None, *, allow_unstationed_destination: bool = False) -> list[int]:
     if origin.system_id == destination.system_id:
         return [origin.system_id]
     if not cyno_eligible(destination):
         raise ValueError("Jump freighter destination must be lowsec/nullsec for a cyno. Use a nearby cyno system, then plan the gate leg separately.")
     station_system_ids = _npc_station_system_ids(db)
-    if destination.system_id not in station_system_ids:
+    if not allow_unstationed_destination and destination.system_id not in station_system_ids:
         raise ValueError(f"{destination.name} has no imported NPC stations. Jump freighter cyno targets must have an NPC station; choose a nearby station system and gate the final leg.")
     allowed_station_system_ids = _station_safety_system_ids(db, station_safety)
-    if destination.system_id not in allowed_station_system_ids:
+    if not allow_unstationed_destination and destination.system_id not in allowed_station_system_ids:
         raise ValueError(f"{destination.name} has NPC stations, but none match the station safety filter: {_station_safety_label(station_safety)}.")
     avoid_system_ids = set(avoid_system_ids or set())
     avoid_system_ids.discard(origin.system_id)
@@ -326,6 +344,86 @@ def _jump_path(db: Session, origin: EveSystem, destination: EveSystem, max_range
     return path
 
 
+def _waypoint_assisted_jump_path(
+    db: Session,
+    origin: EveSystem,
+    destination: EveSystem,
+    waypoints: list[EveSystem],
+    max_range_ly: float,
+    station_safety: str,
+    avoid_system_ids: set[int],
+) -> list[int]:
+    checkpoints = [*waypoints, destination]
+    required_ids = {system.system_id for system in checkpoints}
+    effective_avoid_ids = set(avoid_system_ids) - required_ids - {origin.system_id}
+    path_ids = [origin.system_id]
+    current = origin
+    for index, target in enumerate(checkpoints):
+        is_required_waypoint = index < len(waypoints)
+        if is_required_waypoint and not cyno_eligible(target):
+            raise ValueError(f"Required cyno waypoint {target.name} must be in lowsec or nullsec.")
+        try:
+            segment = _jump_path(
+                db,
+                current,
+                target,
+                max_range_ly,
+                station_safety,
+                effective_avoid_ids,
+                allow_unstationed_destination=is_required_waypoint,
+            )
+        except ValueError as exc:
+            role = "required cyno waypoint" if is_required_waypoint else "destination"
+            raise ValueError(f"Could not plot {current.name} to {role} {target.name}: {exc}") from exc
+        path_ids.extend(segment[1:])
+        current = target
+    return path_ids
+
+
+def _alternate_jump_candidates(
+    systems: list[EveSystem],
+    from_system: EveSystem,
+    planned_system: EveSystem,
+    following_system: EveSystem | None,
+    max_range_ly: float,
+    station_profiles: dict[int, dict[str, Any]],
+    excluded_system_ids: set[int],
+    *,
+    limit: int = 12,
+) -> list[dict[str, Any]]:
+    candidates: list[dict[str, Any]] = []
+    station_rank = {"station_available": 0, "red_only": 1, "no_station": 2}
+    for candidate in systems:
+        if candidate.system_id in excluded_system_ids or not cyno_eligible(candidate):
+            continue
+        outbound_distance = distance_ly(from_system, candidate)
+        if outbound_distance > max_range_ly:
+            continue
+        rejoin_distance = distance_ly(candidate, following_system) if following_system else None
+        if rejoin_distance is not None and rejoin_distance > max_range_ly:
+            continue
+        planned_offset = distance_ly(candidate, planned_system)
+        profile = station_profiles.get(candidate.system_id)
+        station_status = _alternate_station_status(profile)
+        candidates.append(
+            {
+                "system": candidate,
+                "distance_ly": round(outbound_distance, 3),
+                "distance_to_planned_ly": round(planned_offset, 3),
+                "rejoin_distance_ly": round(rejoin_distance, 3) if rejoin_distance is not None else None,
+                "can_rejoin": rejoin_distance is not None,
+                "station_status": station_status,
+                "station_count": int((profile or {}).get("station_count") or 0),
+                "sort_key": (
+                    planned_offset,
+                    station_rank[station_status],
+                    outbound_distance,
+                    candidate.name.lower(),
+                ),
+            }
+        )
+    candidates.sort(key=lambda row: row["sort_key"])
+    return [{key: value for key, value in row.items() if key != "sort_key"} for row in candidates[: max(1, limit)]]
 def station_cyno_guidance(station_type_name: str | None) -> dict[str, Any]:
     if not station_type_name:
         return {"risk": "unknown", "range_km": None, "note": "No station type imported yet.", "reference_links": []}
@@ -663,6 +761,7 @@ def plan_jump_freighter_route(
     kill_filter: str = "industrial",
     jump_activity_hours: int = 6,
     avoid_system_queries: list[str] | None = None,
+    waypoint_queries: list[str] | None = None,
 ) -> dict[str, Any]:
     ship = ship_config(ship_name)
     origin = resolve_system(db, origin_query)
@@ -673,6 +772,7 @@ def plan_jump_freighter_route(
     if kill_filter not in {"industrial", "all"}:
         raise ValueError("Unknown kill filter. Use industrial or all.")
     jump_activity_hours = _jump_activity_hours(jump_activity_hours)
+
     avoid_systems: list[EveSystem] = []
     for query in avoid_system_queries or []:
         cleaned = query.strip()
@@ -682,7 +782,33 @@ def plan_jump_freighter_route(
         if system.system_id not in {origin.system_id, destination.system_id} and all(existing.system_id != system.system_id for existing in avoid_systems):
             avoid_systems.append(system)
 
-    path_ids = _jump_path(db, origin, destination, max_range, station_safety, {system.system_id for system in avoid_systems})
+    manual_waypoints: list[EveSystem] = []
+    manual_ids = {origin.system_id, destination.system_id}
+    for query in waypoint_queries or []:
+        cleaned = query.strip()
+        if not cleaned:
+            continue
+        system = resolve_system(db, cleaned)
+        if system.system_id in manual_ids:
+            continue
+        manual_waypoints.append(system)
+        manual_ids.add(system.system_id)
+
+    route_mode = "waypoint_assisted" if manual_waypoints else "automatic"
+    required_waypoint_ids = {system.system_id for system in manual_waypoints}
+    if manual_waypoints:
+        path_ids = _waypoint_assisted_jump_path(
+            db,
+            origin,
+            destination,
+            manual_waypoints,
+            max_range,
+            station_safety,
+            {system.system_id for system in avoid_systems},
+        )
+    else:
+        path_ids = _jump_path(db, origin, destination, max_range, station_safety, {system.system_id for system in avoid_systems})
+
     systems = db.scalars(
         select(EveSystem)
         .options(selectinload(EveSystem.constellation).selectinload(EveConstellation.region))
@@ -691,8 +817,32 @@ def plan_jump_freighter_route(
     systems_by_id = {system.system_id: system for system in systems}
     ordered = [systems_by_id.get(system_id) or db.get(EveSystem, system_id) for system_id in path_ids]
     ordered = [system for system in ordered if system is not None]
+
+    station_profiles = _station_profiles(db)
+    known_systems = _known_space_systems(db)
+    excluded_ids = set(path_ids) | {system.system_id for system in avoid_systems}
+    alternatives_by_index: dict[int, list[dict[str, Any]]] = {}
+    for index in range(1, len(ordered)):
+        alternatives_by_index[index] = _alternate_jump_candidates(
+            known_systems,
+            ordered[index - 1],
+            ordered[index],
+            ordered[index + 1] if index + 1 < len(ordered) else None,
+            max_range,
+            station_profiles,
+            excluded_ids,
+        )
+
+    alternate_system_ids = {
+        row["system"].system_id
+        for rows in alternatives_by_index.values()
+        for row in rows
+    }
     station_map = stations_by_system(db, [system.system_id for system in ordered])
-    jump_activity_cache = refresh_system_jump_observations(db, [system.system_id for system in ordered])
+    jump_activity_cache = refresh_system_jump_observations(
+        db,
+        [system.system_id for system in ordered] + sorted(alternate_system_ids),
+    )
 
     jumps: list[dict[str, Any]] = []
     total_distance = 0.0
@@ -704,6 +854,24 @@ def plan_jump_freighter_route(
         fuel = fuel_for_jump(jump_distance, ship, jump_fuel_conservation)
         total_distance += jump_distance
         total_fuel += fuel
+        profile = station_profiles.get(end.system_id)
+        alternatives = []
+        for row in alternatives_by_index.get(index, []):
+            candidate = row["system"]
+            alternatives.append(
+                {
+                    "system": serialize_system(candidate),
+                    "distance_ly": row["distance_ly"],
+                    "fuel_units": fuel_for_jump(row["distance_ly"], ship, jump_fuel_conservation),
+                    "distance_to_planned_ly": row["distance_to_planned_ly"],
+                    "rejoin_distance_ly": row["rejoin_distance_ly"],
+                    "can_rejoin": row["can_rejoin"],
+                    "station_status": row["station_status"],
+                    "station_count": row["station_count"],
+                    "kills_24h": kill_summary(db, candidate.system_id, 24, kill_filter),
+                    "jump_activity": jump_activity_summary(db, candidate.system_id, jump_activity_hours),
+                }
+            )
         jumps.append(
             {
                 "jump_index": index,
@@ -712,16 +880,36 @@ def plan_jump_freighter_route(
                 "distance_ly": round(jump_distance, 3),
                 "fuel_units": fuel,
                 "cyno_eligible": cyno_eligible(end),
+                "required_waypoint": end.system_id in required_waypoint_ids,
+                "station_status": _alternate_station_status(profile),
+                "station_count": int((profile or {}).get("station_count") or 0),
                 "stations": station_map.get(end.system_id, []),
                 "industrial_kills_24h": industrial_kill_summary(db, end.system_id, 24),
                 "kills_24h": kill_summary(db, end.system_id, 24, kill_filter),
                 "jump_activity": jump_activity_summary(db, end.system_id, jump_activity_hours),
+                "alternates": alternatives,
             }
         )
+
+    notes = [
+        (
+            f"Required cyno routing active through {len(manual_waypoints)} supplied system{'' if len(manual_waypoints) == 1 else 's'}; EQM automatically fills valid jumps between them."
+            if route_mode == "waypoint_assisted"
+            else "Highsec origins are allowed; automatic jump targets are low/null systems with imported NPC stations."
+        ),
+        f"Station safety filter: {_station_safety_label(station_safety)}; supplied cyno waypoints are honored even without a station.",
+        f"Kill display: {_kill_filter_label(kill_filter)}.",
+        f"Observed activity window: {jump_activity_hours}h; confidence depends on hourly samples collected by EQM.",
+        f"Avoiding {len(avoid_systems)} system{'' if len(avoid_systems) == 1 else 's'}; required waypoints cannot be avoided.",
+        "Alternates are informational candidates and do not change the plotted route until you add one as a required waypoint or replot around it.",
+        "Station guidance is operational reference data. Verify bookmarks and station geometry before risking a live jump.",
+    ]
 
     return {
         "origin": serialize_system(ordered[0]),
         "destination": serialize_system(ordered[-1]),
+        "route_mode": route_mode,
+        "requested_waypoints": [serialize_system(system) for system in manual_waypoints],
         "ship": {
             "name": ship.name,
             "type_id": ship.type_id,
@@ -739,7 +927,7 @@ def plan_jump_freighter_route(
         "jump_count": len(jumps),
         "total_distance_ly": round(total_distance, 3),
         "total_fuel_units": total_fuel,
-        "station_safety": {"mode": station_safety, "label": _station_safety_label(station_safety)},
+        "station_safety": {"mode": station_safety, "label": _station_safety_label(station_safety), "applied": True},
         "kill_filter": {"mode": kill_filter, "label": _kill_filter_label(kill_filter)},
         "jump_activity": {"hours": jump_activity_hours, "cache": jump_activity_cache},
         "avoided_systems": [serialize_system(system) for system in avoid_systems],
@@ -748,12 +936,5 @@ def plan_jump_freighter_route(
         "station_cyno_guide": [
             {"station_type": name, **guide} for name, guide in sorted(STATION_CYNO_GUIDE.items(), key=lambda item: (item[1]["range_km"], item[0]))
         ],
-        "notes": [
-            "Highsec origins are allowed; every jump target must be low/null and have an imported NPC station.",
-            f"Station safety filter: {_station_safety_label(station_safety)}.",
-            f"Kill display: {_kill_filter_label(kill_filter)}.",
-            f"Observed activity window: {jump_activity_hours}h; confidence depends on hourly samples collected by EQM.",
-            f"Avoiding {len(avoid_systems)} system{'' if len(avoid_systems) == 1 else 's'}.",
-            "Station guidance is operational reference data. Verify bookmarks and station geometry before risking a live jump.",
-        ],
+        "notes": notes,
     }

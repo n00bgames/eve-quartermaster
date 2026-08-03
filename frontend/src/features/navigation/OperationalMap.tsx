@@ -2,7 +2,7 @@ import type { PointerEvent, WheelEvent } from "react";
 import { useRef, useState } from "react";
 
 import { eveSecurityLabel } from "../../lib/evePresentation";
-import type { NavigationSystem, OperationalMapContext, OperationalMapGate, OperationalMapRouteNode, OperationalMapSystem } from "../../types/navigation";
+import type { NavigationSystem, OperationalMapAlternateNode, OperationalMapContext, OperationalMapGate, OperationalMapRouteNode, OperationalMapSystem } from "../../types/navigation";
 type CoordinateAxis = "x" | "y" | "z";
 
 
@@ -35,7 +35,7 @@ function bestRouteMapAxes(systems: NavigationSystem[]): [CoordinateAxis, Coordin
 
 
 
-export function OperationalMap({ title, subtitle, badge, routeSystems, mapContext, selectedKey, onSelectRouteSystem }: { title: string; subtitle: string; badge?: string; routeSystems: OperationalMapRouteNode[]; mapContext?: OperationalMapContext; selectedKey?: string | null; onSelectRouteSystem?: (selectedKey: string | null) => void }) {
+export function OperationalMap({ title, subtitle, badge, routeSystems, alternateSystems = [], mapContext, selectedKey, onSelectRouteSystem, onSelectAlternateSystem }: { title: string; subtitle: string; badge?: string; routeSystems: OperationalMapRouteNode[]; alternateSystems?: OperationalMapAlternateNode[]; mapContext?: OperationalMapContext; selectedKey?: string | null; onSelectRouteSystem?: (selectedKey: string | null) => void; onSelectAlternateSystem?: (alternateKey: string) => void }) {
 
   const width = 1000;
 
@@ -65,6 +65,8 @@ export function OperationalMap({ title, subtitle, badge, routeSystems, mapContex
 
   const routeIds = new Set(routeSystems.map((system) => system.system_id));
 
+  const alternateIds = new Set(alternateSystems.map((system) => system.system_id));
+
   const systemById = new Map<number, OperationalMapSystem>();
 
   for (const system of mapContext?.systems ?? []) {
@@ -80,6 +82,16 @@ export function OperationalMap({ title, subtitle, badge, routeSystems, mapContex
   for (const system of routeSystems) {
 
     systemById.set(system.system_id, { ...system, on_route: true });
+
+  }
+
+  for (const system of alternateSystems) {
+
+    if (system.x != null && system.y != null && system.z != null && !routeIds.has(system.system_id)) {
+
+      systemById.set(system.system_id, system);
+
+    }
 
   }
 
@@ -131,7 +143,11 @@ export function OperationalMap({ title, subtitle, badge, routeSystems, mapContex
 
   const gateLines = (mapContext?.stargates ?? []).map((gate) => ({ gate, from: pointBySystemId.get(gate.from_system_id), to: pointBySystemId.get(gate.to_system_id) })).filter((entry): entry is { gate: OperationalMapGate; from: (typeof points)[number]; to: (typeof points)[number] } => Boolean(entry.from && entry.to));
 
-  const contextPoints = points.filter((point) => !routeIds.has(point.system.system_id));
+  const alternatePoints = alternateSystems.map((system) => ({ point: pointBySystemId.get(system.system_id), alternateSystem: system })).filter((entry): entry is { point: (typeof points)[number]; alternateSystem: OperationalMapAlternateNode } => Boolean(entry.point));
+
+  const alternateLines = alternatePoints.map((entry) => ({ ...entry, from: pointBySystemId.get(entry.alternateSystem.from_system_id) })).filter((entry): entry is (typeof alternatePoints)[number] & { from: (typeof points)[number] } => Boolean(entry.from));
+
+  const contextPoints = points.filter((point) => !routeIds.has(point.system.system_id) && !alternateIds.has(point.system.system_id));
 
   const hopCount = mapContext?.gate_hops ?? 0;
 
@@ -253,7 +269,7 @@ export function OperationalMap({ title, subtitle, badge, routeSystems, mapContex
 
 
 
-  return <section className="operational-map-panel"><div className="section-heading compact"><div><h4>{title}</h4><p>{subtitle} · {contextPoints.length.toLocaleString()} context systems · {hopLabel}{mapContext?.truncated ? " · clipped for performance" : ""}</p></div><div className="operational-map-actions"><span className="version-badge">{Math.round(zoom * 100)}%</span>{badge && <span className="version-badge">{badge}</span>}<button type="button" onClick={() => zoomTo(zoom * 0.8)}>-</button><button type="button" onClick={resetViewport}>Fit</button><button type="button" onClick={() => zoomTo(zoom * 1.25)}>+</button></div></div><svg ref={svgRef} className={`operational-route-map ${dragStart ? "dragging" : ""}`} viewBox={`0 0 ${width} ${height}`} role="img" aria-label={title} onWheel={handleWheel} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerEnd} onPointerCancel={handlePointerEnd}><defs><radialGradient id="operational-map-glow" cx="50%" cy="50%" r="50%"><stop offset="0%" stopColor="#4fb3c7" stopOpacity="0.45" /><stop offset="100%" stopColor="#4fb3c7" stopOpacity="0" /></radialGradient></defs><rect className="operational-map-bg" x="0" y="0" width={width} height={height} rx="12" /><g transform={`translate(${pan.x.toFixed(2)} ${pan.y.toFixed(2)}) scale(${zoom.toFixed(3)})`}>{gateLines.map(({ gate, from, to }) => <line key={`${gate.from_system_id}-${gate.to_system_id}`} className="operational-map-gate-line" x1={from.x} y1={from.y} x2={to.x} y2={to.y} />)}{contextPoints.map((point) => { const security = point.system.security_band ?? "unknown"; return <g key={point.system.system_id} className={`operational-map-context-node ${security}`}><circle cx={point.x} cy={point.y} r={zoom >= 1.8 ? 3.8 : 4.5} /><title>{point.system.name} · {eveSecurityLabel(point.system.security_status)}</title></g>; })}<path className="operational-route-line" d={pathData} />{routePoints.slice(1).map((entry, index) => { const previous = routePoints[index]; return <g key={`label-${entry.routeSystem.system_id}`} className="operational-map-segment-label"><line x1={previous.point.x} y1={previous.point.y} x2={entry.point.x} y2={entry.point.y} />{segmentLabels && entry.routeSystem.segment_label && <text x={(previous.point.x + entry.point.x) / 2} y={(previous.point.y + entry.point.y) / 2 - 8}>{entry.routeSystem.segment_label}</text>}</g>; })}{routePoints.map((entry) => { const selected = Boolean(entry.routeSystem.selected_key && selectedKey === entry.routeSystem.selected_key); const security = entry.point.system.security_band ?? "unknown"; const showLabel = selected || entry.index === 0 || entry.index === routePoints.length - 1 || entry.index % labelStride === 0; return <g key={entry.point.system.system_id} role="button" tabIndex={0} className={`operational-map-route-node ${selected ? "selected" : ""} ${showLabel ? "labeled" : "compact"} ${security}`} onClick={() => selectRouteNode(entry.routeSystem.selected_key)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); selectRouteNode(entry.routeSystem.selected_key); } }}><circle className="operational-map-node-glow" cx={entry.point.x} cy={entry.point.y} r={selected ? 22 : 15} /><circle cx={entry.point.x} cy={entry.point.y} r={selected ? 8 : 6.5} />{showLabel && <text x={entry.point.x + 12} y={entry.point.y - 10}>{entry.routeSystem.label}</text>}{showLabel && detailLabels && <text className="operational-map-node-meta" x={entry.point.x + 12} y={entry.point.y + 8}>{entry.routeSystem.meta ?? eveSecurityLabel(entry.point.system.security_status)}</text>}</g>; })}</g></svg><div className="operational-map-legend"><span><i className="security-dot security-10" /> Highsec</span><span><i className="security-dot security-03" /> Lowsec</span><span><i className="security-dot security-00" /> Nullsec</span><span><i className="operational-map-legend-line" /> Stargates</span><span>Wheel to zoom, drag to pan. Labels reveal as you zoom in.</span></div></section>;
+  return <section className="operational-map-panel"><div className="section-heading compact"><div><h4>{title}</h4><p>{subtitle} · {contextPoints.length.toLocaleString()} context systems · {alternatePoints.length.toLocaleString()} alternates · {hopLabel}{mapContext?.truncated ? " · clipped for performance" : ""}</p></div><div className="operational-map-actions"><span className="version-badge">{Math.round(zoom * 100)}%</span>{badge && <span className="version-badge">{badge}</span>}<button type="button" onClick={() => zoomTo(zoom * 0.8)}>-</button><button type="button" onClick={resetViewport}>Fit</button><button type="button" onClick={() => zoomTo(zoom * 1.25)}>+</button></div></div><svg ref={svgRef} className={`operational-route-map ${dragStart ? "dragging" : ""}`} viewBox={`0 0 ${width} ${height}`} role="img" aria-label={title} onWheel={handleWheel} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerEnd} onPointerCancel={handlePointerEnd}><defs><radialGradient id="operational-map-glow" cx="50%" cy="50%" r="50%"><stop offset="0%" stopColor="#4fb3c7" stopOpacity="0.45" /><stop offset="100%" stopColor="#4fb3c7" stopOpacity="0" /></radialGradient></defs><rect className="operational-map-bg" x="0" y="0" width={width} height={height} rx="12" /><g transform={`translate(${pan.x.toFixed(2)} ${pan.y.toFixed(2)}) scale(${zoom.toFixed(3)})`}>{gateLines.map(({ gate, from, to }) => <line key={`${gate.from_system_id}-${gate.to_system_id}`} className="operational-map-gate-line" x1={from.x} y1={from.y} x2={to.x} y2={to.y} />)}{contextPoints.map((point) => { const security = point.system.security_band ?? "unknown"; return <g key={point.system.system_id} className={`operational-map-context-node ${security}`}><circle cx={point.x} cy={point.y} r={zoom >= 1.8 ? 3.8 : 4.5} /><title>{point.system.name} · {eveSecurityLabel(point.system.security_status)}</title></g>; })}{alternateLines.map(({ alternateSystem, point, from }) => <line key={`alternate-line-${alternateSystem.alternate_key}`} className={`operational-map-alternate-line ${alternateSystem.selected ? "selected" : ""}`} x1={from.x} y1={from.y} x2={point.x} y2={point.y} />)}<path className="operational-route-line" d={pathData} />{alternatePoints.map(({ alternateSystem, point }) => { const security = point.system.security_band ?? "unknown"; return <g key={`alternate-${alternateSystem.alternate_key}`} role="button" tabIndex={0} className={`operational-map-alternate-node ${alternateSystem.selected ? "selected" : ""} ${security}`} onClick={() => onSelectAlternateSystem?.(alternateSystem.alternate_key)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelectAlternateSystem?.(alternateSystem.alternate_key); } }}><rect x={point.x - (alternateSystem.selected ? 7 : 5)} y={point.y - (alternateSystem.selected ? 7 : 5)} width={alternateSystem.selected ? 14 : 10} height={alternateSystem.selected ? 14 : 10} transform={`rotate(45 ${point.x} ${point.y})`} /><title>{alternateSystem.label} · {alternateSystem.meta ?? eveSecurityLabel(point.system.security_status)}</title>{(alternateSystem.selected || zoom >= 1.65) && <text x={point.x + 12} y={point.y - 8}>{alternateSystem.label}</text>}</g>; })}{routePoints.slice(1).map((entry, index) => { const previous = routePoints[index]; return <g key={`label-${entry.routeSystem.system_id}`} className="operational-map-segment-label"><line x1={previous.point.x} y1={previous.point.y} x2={entry.point.x} y2={entry.point.y} />{segmentLabels && entry.routeSystem.segment_label && <text x={(previous.point.x + entry.point.x) / 2} y={(previous.point.y + entry.point.y) / 2 - 8}>{entry.routeSystem.segment_label}</text>}</g>; })}{routePoints.map((entry) => { const selected = Boolean(entry.routeSystem.selected_key && selectedKey === entry.routeSystem.selected_key); const security = entry.point.system.security_band ?? "unknown"; const showLabel = selected || entry.index === 0 || entry.index === routePoints.length - 1 || entry.index % labelStride === 0; return <g key={entry.point.system.system_id} role="button" tabIndex={0} className={`operational-map-route-node ${selected ? "selected" : ""} ${showLabel ? "labeled" : "compact"} ${security}`} onClick={() => selectRouteNode(entry.routeSystem.selected_key)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); selectRouteNode(entry.routeSystem.selected_key); } }}><circle className="operational-map-node-glow" cx={entry.point.x} cy={entry.point.y} r={selected ? 22 : 15} /><circle cx={entry.point.x} cy={entry.point.y} r={selected ? 8 : 6.5} />{showLabel && <text x={entry.point.x + 12} y={entry.point.y - 10}>{entry.routeSystem.label}</text>}{showLabel && detailLabels && <text className="operational-map-node-meta" x={entry.point.x + 12} y={entry.point.y + 8}>{entry.routeSystem.meta ?? eveSecurityLabel(entry.point.system.security_status)}</text>}</g>; })}</g></svg><div className="operational-map-legend"><span><i className="security-dot security-10" /> Highsec</span><span><i className="security-dot security-03" /> Lowsec</span><span><i className="security-dot security-00" /> Nullsec</span><span><i className="operational-map-legend-line" /> Stargates</span><span><i className="operational-map-legend-alternate" /> Alternate cyno</span><span>Wheel to zoom, drag to pan. Labels reveal as you zoom in.</span></div></section>;
 
 }
 

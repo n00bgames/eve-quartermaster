@@ -6,6 +6,8 @@ from app.models.corporation_divisions import CorporationDivision
 from app.models.corporate_exchange import ExchangeAppraisal, ExchangeAuditLog, ExchangeBid, ExchangeClaim, ExchangeListing, ExchangeListingItem, ExchangeNotification, ExchangeTransaction
 from app.models.base import Base
 from app.models.esi import EsiApplication, EsiSyncJob, EsiToken
+from app.models.events import Doctrine, Event, EventAttendanceEntry, EventCharacterRegistration, EventDoctrineRequirement, EventDoctrineRequirementOption, EventLocation, EventRoleRequirement, EventUserResponse
+from app.models.hypernet import HyperNetOffer, HyperNetOfferSnapshot, HyperNetParticipant, HyperNetParticipation, HyperNetSetting
 from app.models.eve_static import EveCategory, EveConstellation, EveDogmaAttribute, EveDogmaEffect, EveGroup, EveRegion, EveStargate, EveStation, EveSystem, EveType, EveTypeDogmaAttribute, EveTypeDogmaEffect
 from app.models.fittings import CharacterFitting, CharacterFittingItem
 from app.models.identity import CorporationWalletDivision, EveAlliance, EveCharacter, EveCorporation, OwnershipEntity, RoleDefinition, RoleSectionPermission, User, UserInvite, UserSectionPermission
@@ -43,6 +45,7 @@ __all__ = [
     "CorporationWalletDivision",
     "CorporationWalletSnapshot",
     "CustomMarketHub",
+    "Doctrine",
     "ExchangeAppraisal",
     "ExchangeAuditLog",
     "ExchangeBid",
@@ -54,6 +57,19 @@ __all__ = [
     "EsiApplication",
     "EsiSyncJob",
     "EsiToken",
+    "Event",
+    "EventAttendanceEntry",
+    "EventCharacterRegistration",
+    "EventDoctrineRequirement",
+    "EventDoctrineRequirementOption",
+    "EventLocation",
+    "EventRoleRequirement",
+    "EventUserResponse",
+    "HyperNetOffer",
+    "HyperNetOfferSnapshot",
+    "HyperNetParticipant",
+    "HyperNetParticipation",
+    "HyperNetSetting",
     "EveContract",
     "EveAlliance",
     "EveCategory",

@@ -2,7 +2,7 @@ import { Activity, Building2, Database, GraduationCap, ScrollText } from "lucide
 import React, { useEffect, useState } from "react";
 
 import { iskFormatter } from "../../lib/market";
-import type { AnalyticsCorporationScopeResponse, AnalyticsPoint, AnalyticsSummary, DuplicateBlueprint, MetricCatalogItem, PlanetaryAnalytics } from "../../types/analytics";
+import type { AnalyticsCorporationScopeResponse, AnalyticsMaintenancePreview, AnalyticsPoint, AnalyticsSummary, DuplicateBlueprint, MetricCatalogItem, PlanetaryAnalytics } from "../../types/analytics";
 import { ManufacturingAnalyticsWidgets } from "./ManufacturingAnalyticsWidgets";
 import { MiningAnalyticsWidget } from "./MiningAnalyticsWidget";
 import { PlanetaryAnalyticsWidget } from "./PlanetaryAnalyticsWidget";
@@ -29,17 +29,24 @@ export function AnalyticsPlatform({ currentUser, api, Metric }: AnalyticsPlatfor
   const [analyticsError, setAnalyticsError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [maintenancePreview, setMaintenancePreview] = useState<AnalyticsMaintenancePreview | null>(null);
   const [corporationScope, setCorporationScope] = useState<AnalyticsCorporationScopeResponse>({ can_manage: false, corporations: [] });
   const [showCorporationScope, setShowCorporationScope] = useState(false);
   const [busyCorporationId, setBusyCorporationId] = useState<number | null>(null);
 
   async function loadAnalytics(selectedDays = days) {
     setAnalyticsError(null);
-    const [nextSummary, nextCatalog, nextCorporationScope, nextPlanetary] = await Promise.all([api<AnalyticsSummary>(`/analytics/summary?days=${selectedDays}`), api<MetricCatalogItem[]>("/analytics/metrics"), api<AnalyticsCorporationScopeResponse>("/analytics/corporations"), api<PlanetaryAnalytics>(`/analytics/planetary-industry?days=${selectedDays}`)]);
-    setSummary(nextSummary);
-    setCatalog(nextCatalog);
-    setCorporationScope(nextCorporationScope);
-    setPlanetary(nextPlanetary);
+    setLoading(true);
+    try {
+      const [nextSummary, nextCatalog, nextCorporationScope, nextPlanetary] = await Promise.all([api<AnalyticsSummary>(`/analytics/summary?days=${selectedDays}`), api<MetricCatalogItem[]>("/analytics/metrics"), api<AnalyticsCorporationScopeResponse>("/analytics/corporations"), api<PlanetaryAnalytics>(`/analytics/planetary-industry?days=${selectedDays}`)]);
+      setSummary(nextSummary);
+      setCatalog(nextCatalog);
+      setCorporationScope(nextCorporationScope);
+      setPlanetary(nextPlanetary);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function toggleCorporationScope(corporationId: number, excluded: boolean) {
@@ -68,6 +75,35 @@ export function AnalyticsPlatform({ currentUser, api, Metric }: AnalyticsPlatfor
     URL.revokeObjectURL(url);
   }
 
+  async function inspectLegacySnapshots() {
+    setBusy(true);
+    setAnalyticsError(null);
+    try {
+      setMaintenancePreview(await api<AnalyticsMaintenancePreview>("/analytics/maintenance/legacy-snapshots"));
+    } catch (err) {
+      setAnalyticsError(err instanceof Error ? err.message : "Unable to inspect legacy analytics history");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function compactLegacySnapshots() {
+    if (!maintenancePreview) return;
+    const rows = maintenancePreview.candidate_rows;
+    if (!window.confirm(`Compact ${rows.snapshot_runs.toLocaleString()} redundant legacy snapshot runs? Manual snapshots and the latest complete automatic snapshot for every UTC day will be preserved.`)) return;
+    setBusy(true);
+    setAnalyticsError(null);
+    try {
+      const result = await api<{ status: string; deleted: AnalyticsMaintenancePreview["candidate_rows"]; maintenance_note: string }>("/analytics/maintenance/legacy-snapshots/compact", { method: "POST", body: "{}" });
+      setMessage(`Compacted ${result.deleted.snapshot_runs.toLocaleString()} legacy runs and ${result.deleted.blueprint_rows.toLocaleString()} duplicate blueprint rows. ${result.maintenance_note}`);
+      setMaintenancePreview(null);
+      await loadAnalytics();
+    } catch (err) {
+      setAnalyticsError(err instanceof Error ? err.message : "Legacy analytics compaction failed");
+    } finally {
+      setBusy(false);
+    }
+  }
   async function clearSnapshots() {
     if (!window.confirm("Clear all analytics snapshot history? Current synced assets, skills, wallets, and corporation records will stay intact.")) return;
     setBusy(true);
@@ -99,7 +135,7 @@ export function AnalyticsPlatform({ currentUser, api, Metric }: AnalyticsPlatfor
 
   useEffect(() => { void loadAnalytics().catch((err) => setAnalyticsError(err instanceof Error ? err.message : "Unable to load analytics")); }, []);
 
-  return <section className="panel stacked analytics-platform"><div className="section-heading"><div><h3>Analytics Platform</h3><p>Historical snapshot engine, metric providers, report exports, and composable widgets. First observations establish baselines; deltas start after a later snapshot.</p></div><div className="button-row compact"><select value={days} onChange={(event) => { const next = Number(event.target.value); setDays(next); void loadAnalytics(next); }}><option value={7}>7 days</option><option value={30}>30 days</option><option value={90}>90 days</option><option value={365}>1 year</option></select><button type="button" onClick={() => setShowCorporationScope((value) => !value)}>{showCorporationScope ? "Hide corporation scope" : "Corporation scope"}</button><button type="button" disabled={busy} onClick={() => void captureSnapshot()}>{busy ? "Capturing" : "Capture snapshot"}</button>{["host", "admin"].includes(currentUser.role) && <button type="button" className="danger" disabled={busy} onClick={() => void clearSnapshots()}>Clear snapshots</button>}</div></div>{message && <div className="notice inline">{message}</div>}{analyticsError && <div className="mini-alert">{analyticsError}</div>}{showCorporationScope && <article className="analytics-widget metric-catalog"><h4>Corporation Scope</h4><p>Only corporations with a successful corporation-level ESI sync can contribute to analytics. Hidden and manually excluded corporations remain omitted.</p><div className="metric-chip-row">{corporationScope.corporations.map((corporation) => { const source = corporation.managed ? "Managed" : corporation.affiliation ? "Affiliation" : "Historical"; return <button key={corporation.id} type="button" className={corporation.excluded ? "metric-chip" : "metric-chip active"} disabled={!corporationScope.can_manage || busyCorporationId === corporation.id || corporation.hidden || !corporation.managed} title={!corporation.managed ? "Corporation-level ESI access is required" : corporation.hidden ? "Hidden corporations remain excluded" : corporation.excluded ? "Include this corporation in analytics" : "Exclude this corporation from analytics"} onClick={() => void toggleCorporationScope(corporation.id, !corporation.excluded)}>{corporation.name}{corporation.ticker ? ` [${corporation.ticker}]` : ""}<small>{!corporation.managed ? "Excluded · No corporate access" : corporation.hidden ? "Excluded while hidden" : corporation.excluded ? `Excluded · ${source}` : `Included · ${source}`}</small></button>; })}</div>{corporationScope.corporations.length === 0 && <p className="empty">No corporation analytics records yet.</p>}</article>}{summary ? <><div className="status-grid wide"><Metric icon={<Database size={18} />} label="Snapshots" value={summary.snapshot_count} delta={summary.latest_snapshot_at ? `latest ${new Date(summary.latest_snapshot_at).toLocaleString()}` : "none yet"} /><Metric icon={<GraduationCap size={18} />} label="Characters" value={summary.cards.character_count} /><Metric icon={<Building2 size={18} />} label="Members" value={summary.cards.member_total} /><Metric icon={<ScrollText size={18} />} label="Blueprints" value={summary.cards.blueprint_total} /><Metric icon={<Activity size={18} />} label="Corp wallets" value={`${iskFormatter.format(summary.cards.wallet_total)} ISK`} /></div><div className="analytics-export-row"><button type="button" onClick={() => void downloadExport("csv")}>Export metrics CSV</button><button type="button" onClick={() => void downloadExport("json")}>Export metrics JSON</button><button type="button" onClick={() => void navigator.clipboard.writeText(discordAnalyticsSummary(summary))}>Copy Discord summary</button></div><MetricCatalogWidget rows={catalog} /><div className="widget-grid"><ManufacturingAnalyticsWidgets summary={summary.manufacturing} days={summary.days} />{planetary && <PlanetaryAnalyticsWidget summary={planetary} />}<MiningAnalyticsWidget summary={summary.mining} days={summary.days} /><ResearchAnalyticsWidget summary={summary.research_projects} days={summary.days} /><AnalyticsWidget title="SP Gain" rows={summary.top_sp_gainers} unit="SP" /><AnalyticsWidget title="Skill Point History" rows={summary.top_sp_losses} unit="SP extracted" loss /><AnalyticsWidget title="Skill Category Gain" rows={summary.top_skill_category_gainers} unit="SP" /><AnalyticsWidget title="Category Extraction" rows={summary.top_skill_category_losses} unit="SP extracted" loss /><AnalyticsWidget title="Wallet Growth" rows={summary.wallet_growth} unit="ISK" isk /><AnalyticsWidget title="Corporation Growth" rows={summary.member_growth} unit="members" /><AnalyticsWidget title="Blueprint Growth" rows={summary.blueprint_growth} unit="BPs" /><DuplicateBlueprintWidget rows={summary.duplicate_blueprints} /><TrendWidget title="Wallet Trend" points={summary.series.wallet_totals} isk /><TrendWidget title="Blueprint Trend" points={summary.series.blueprint_counts} /></div></> : <p className="empty">No analytics snapshots yet. Capture one manually or run a sync to start building history.</p>}</section>;
+  return <section className="panel stacked analytics-platform"><div className="section-heading"><div><h3>Analytics Platform</h3><p>Historical snapshot engine, metric providers, report exports, and composable widgets. First observations establish baselines; deltas start after a later snapshot.</p></div><div className="button-row compact"><select value={days} onChange={(event) => { const next = Number(event.target.value); setDays(next); void loadAnalytics(next); }}><option value={7}>7 days</option><option value={30}>30 days</option><option value={90}>90 days</option><option value={365}>1 year</option></select><button type="button" onClick={() => setShowCorporationScope((value) => !value)}>{showCorporationScope ? "Hide corporation scope" : "Corporation scope"}</button><button type="button" disabled={busy} onClick={() => void captureSnapshot()}>{busy ? "Working" : "Capture snapshot"}</button>{currentUser.role === "host" && <button type="button" disabled={busy} onClick={() => void inspectLegacySnapshots()}>Inspect storage</button>}{["host", "admin"].includes(currentUser.role) && <button type="button" className="danger" disabled={busy} onClick={() => void clearSnapshots()}>Clear snapshots</button>}</div></div>{message && <div className="notice inline">{message}</div>}{analyticsError && <div className="mini-alert">{analyticsError}</div>}{loading && <div className="analytics-loading-placard" role="status" aria-live="polite"><Activity className="spin" size={22} /><div><strong>Analytics loading.</strong><span>This may take some time. Do not refresh the page.</span></div></div>}{maintenancePreview && <div className="analytics-maintenance-placard"><div><strong>Legacy analytics compaction available</strong><span>{maintenancePreview.strategy}</span><small>{maintenancePreview.candidate_rows.snapshot_runs.toLocaleString()} redundant runs · {maintenancePreview.candidate_rows.blueprint_rows.toLocaleString()} blueprint rows · {maintenancePreview.candidate_rows.metric_rows.toLocaleString()} metric rows</small></div><div className="button-row compact"><button type="button" disabled={busy || maintenancePreview.candidate_rows.snapshot_runs === 0} onClick={() => void compactLegacySnapshots()}>Compact legacy history</button><button type="button" disabled={busy} onClick={() => setMaintenancePreview(null)}>Dismiss</button></div></div>}{showCorporationScope && <article className="analytics-widget metric-catalog"><h4>Corporation Scope</h4><p>Only corporations with a successful corporation-level ESI sync can contribute to analytics. Hidden and manually excluded corporations remain omitted.</p><div className="metric-chip-row">{corporationScope.corporations.map((corporation) => { const source = corporation.managed ? "Managed" : corporation.affiliation ? "Affiliation" : "Historical"; return <button key={corporation.id} type="button" className={corporation.excluded ? "metric-chip" : "metric-chip active"} disabled={!corporationScope.can_manage || busyCorporationId === corporation.id || corporation.hidden || !corporation.managed} title={!corporation.managed ? "Corporation-level ESI access is required" : corporation.hidden ? "Hidden corporations remain excluded" : corporation.excluded ? "Include this corporation in analytics" : "Exclude this corporation from analytics"} onClick={() => void toggleCorporationScope(corporation.id, !corporation.excluded)}>{corporation.name}{corporation.ticker ? ` [${corporation.ticker}]` : ""}<small>{!corporation.managed ? "Excluded · No corporate access" : corporation.hidden ? "Excluded while hidden" : corporation.excluded ? `Excluded · ${source}` : `Included · ${source}`}</small></button>; })}</div>{corporationScope.corporations.length === 0 && <p className="empty">No corporation analytics records yet.</p>}</article>}{summary ? <><div className="status-grid wide"><Metric icon={<Database size={18} />} label="Snapshots" value={summary.snapshot_count} delta={summary.latest_snapshot_at ? `latest ${new Date(summary.latest_snapshot_at).toLocaleString()}` : "none yet"} /><Metric icon={<GraduationCap size={18} />} label="Characters" value={summary.cards.character_count} /><Metric icon={<Building2 size={18} />} label="Members" value={summary.cards.member_total} /><Metric icon={<ScrollText size={18} />} label="Blueprints" value={summary.cards.blueprint_total} /><Metric icon={<Activity size={18} />} label="Corp wallets" value={`${iskFormatter.format(summary.cards.wallet_total)} ISK`} /></div><div className="analytics-export-row"><button type="button" onClick={() => void downloadExport("csv")}>Export metrics CSV</button><button type="button" onClick={() => void downloadExport("json")}>Export metrics JSON</button><button type="button" onClick={() => void navigator.clipboard.writeText(discordAnalyticsSummary(summary))}>Copy Discord summary</button></div><MetricCatalogWidget rows={catalog} /><div className="widget-grid"><ManufacturingAnalyticsWidgets summary={summary.manufacturing} days={summary.days} />{planetary && <PlanetaryAnalyticsWidget summary={planetary} />}<MiningAnalyticsWidget summary={summary.mining} days={summary.days} /><ResearchAnalyticsWidget summary={summary.research_projects} days={summary.days} /><AnalyticsWidget title="SP Gain" rows={summary.top_sp_gainers} unit="SP" /><AnalyticsWidget title="Skill Point History" rows={summary.top_sp_losses} unit="SP extracted" loss /><AnalyticsWidget title="Skill Category Gain" rows={summary.top_skill_category_gainers} unit="SP" /><AnalyticsWidget title="Category Extraction" rows={summary.top_skill_category_losses} unit="SP extracted" loss /><AnalyticsWidget title="Wallet Growth" rows={summary.wallet_growth} unit="ISK" isk /><AnalyticsWidget title="Corporation Growth" rows={summary.member_growth} unit="members" /><AnalyticsWidget title="Blueprint Growth" rows={summary.blueprint_growth} unit="BPs" /><DuplicateBlueprintWidget rows={summary.duplicate_blueprints} /><TrendWidget title="Wallet Trend" points={summary.series.wallet_totals} isk /><TrendWidget title="Blueprint Trend" points={summary.series.blueprint_counts} /></div></> : !loading && <p className="empty">No analytics snapshots yet. Capture one manually or run a sync to start building history.</p>}</section>;
 }
 
 function discordAnalyticsSummary(summary: AnalyticsSummary): string {

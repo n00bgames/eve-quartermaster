@@ -346,14 +346,122 @@ def clear_snapshots(current_user: User = Depends(get_current_user), db: Session 
     return {"status": "cleared", "deleted_snapshot_runs": deleted_count}
 
 
-def latest_and_earliest_character_rows(db: Session, days: int, character_ids: set[int] | None) -> tuple[list[CharacterSkillSnapshot], list[CharacterSkillSnapshot]]:
-    cutoff = start_cutoff(days)
+def legacy_snapshot_candidate_ids():
+    daily_keepers = (
+        select(func.max(SnapshotRun.id).label("id"))
+        .where(
+            SnapshotRun.schema_version == 1,
+            SnapshotRun.source != "manual",
+            SnapshotRun.status == "success",
+        )
+        .group_by(func.date(SnapshotRun.started_at))
+        .subquery()
+    )
+    return select(SnapshotRun.id).where(
+        SnapshotRun.schema_version == 1,
+        SnapshotRun.source != "manual",
+        SnapshotRun.id.not_in(select(daily_keepers.c.id)),
+    )
+
+
+def legacy_snapshot_compaction_preview(db: Session) -> dict[str, int]:
+    candidate_ids = legacy_snapshot_candidate_ids()
+    return {
+        "snapshot_runs": int(db.scalar(select(func.count()).select_from(SnapshotRun).where(SnapshotRun.id.in_(candidate_ids))) or 0),
+        "blueprint_rows": int(db.scalar(select(func.count()).select_from(BlueprintSnapshot).where(BlueprintSnapshot.snapshot_run_id.in_(candidate_ids))) or 0),
+        "skill_rows": int(db.scalar(select(func.count()).select_from(CharacterSkillSnapshot).where(CharacterSkillSnapshot.snapshot_run_id.in_(candidate_ids))) or 0),
+        "corporation_rows": int(db.scalar(select(func.count()).select_from(CorporationSnapshot).where(CorporationSnapshot.snapshot_run_id.in_(candidate_ids))) or 0),
+        "metric_rows": int(db.scalar(select(func.count()).select_from(SnapshotMetric).where(SnapshotMetric.snapshot_run_id.in_(candidate_ids))) or 0),
+    }
+
+
+@router.get("/maintenance/legacy-snapshots")
+def legacy_snapshot_maintenance_preview(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    require_analytics(current_user, db)
+    require_role(current_user, "admin", db)
+    return {
+        "strategy": "Keep all manual snapshots and the latest complete legacy automatic snapshot for each UTC day.",
+        "candidate_rows": legacy_snapshot_compaction_preview(db),
+    }
+
+
+@router.post("/maintenance/legacy-snapshots/compact")
+def compact_legacy_snapshots(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    require_analytics(current_user, db)
+    require_role(current_user, "host", db)
+    preview = legacy_snapshot_compaction_preview(db)
+    if preview["snapshot_runs"]:
+        db.execute(delete(SnapshotRun).where(SnapshotRun.id.in_(legacy_snapshot_candidate_ids())))
+        db.commit()
+    return {
+        "status": "compacted",
+        "deleted": preview,
+        "maintenance_note": "PostgreSQL can reuse the freed space immediately. A later VACUUM FULL during planned downtime is required to return it to the host filesystem.",
+    }
+
+
+def character_history_rows(
+    db: Session,
+    days: int,
+    character_ids: set[int] | None,
+    *,
+    categorized: bool,
+) -> list[CharacterSkillSnapshot]:
     if character_ids is not None and not character_ids:
-        return [], []
-    query = select(CharacterSkillSnapshot).where(CharacterSkillSnapshot.recorded_at >= cutoff, CharacterSkillSnapshot.category_name.is_(None))
+        return []
+    category_filter = CharacterSkillSnapshot.category_name.is_not(None) if categorized else CharacterSkillSnapshot.category_name.is_(None)
+    query = select(CharacterSkillSnapshot).where(
+        CharacterSkillSnapshot.recorded_at >= start_cutoff(days),
+        category_filter,
+    )
     if character_ids is not None:
         query = query.where(CharacterSkillSnapshot.character_id.in_(character_ids))
-    rows = db.scalars(query.order_by(CharacterSkillSnapshot.character_id, CharacterSkillSnapshot.recorded_at, CharacterSkillSnapshot.id)).all()
+    return list(
+        db.scalars(
+            query.order_by(
+                CharacterSkillSnapshot.character_id,
+                CharacterSkillSnapshot.category_name,
+                CharacterSkillSnapshot.recorded_at,
+                CharacterSkillSnapshot.id,
+            )
+        ).all()
+    )
+
+
+def corporation_history_rows(
+    db: Session,
+    days: int,
+    corporation_ids: set[int] | None,
+) -> list[CorporationSnapshot]:
+    if corporation_ids is not None and not corporation_ids:
+        return []
+    query = select(CorporationSnapshot).where(CorporationSnapshot.recorded_at >= start_cutoff(days))
+    if corporation_ids is not None:
+        query = query.where(CorporationSnapshot.corporation_id.in_(corporation_ids))
+    return list(
+        db.scalars(
+            query.order_by(
+                CorporationSnapshot.corporation_id,
+                CorporationSnapshot.recorded_at,
+                CorporationSnapshot.id,
+            )
+        ).all()
+    )
+
+
+def latest_and_earliest_character_rows(
+    db: Session,
+    days: int,
+    character_ids: set[int] | None,
+    history_rows: list[CharacterSkillSnapshot] | None = None,
+) -> tuple[list[CharacterSkillSnapshot], list[CharacterSkillSnapshot]]:
+    rows = history_rows if history_rows is not None else character_history_rows(db, days, character_ids, categorized=False)
     grouped: dict[int, list[CharacterSkillSnapshot]] = {}
     for row in rows:
         grouped.setdefault(int(row.character_id), []).append(row)
@@ -361,22 +469,19 @@ def latest_and_earliest_character_rows(db: Session, days: int, character_ids: se
     earliest = [history[0] for history in grouped.values() if len(history) > 1]
     return latest, earliest
 
-
-def latest_and_earliest_corp_rows(db: Session, days: int, corporation_ids: set[int] | None) -> tuple[list[CorporationSnapshot], list[CorporationSnapshot]]:
-    cutoff = start_cutoff(days)
-    if corporation_ids is not None and not corporation_ids:
-        return [], []
-    query = select(CorporationSnapshot).where(CorporationSnapshot.recorded_at >= cutoff)
-    if corporation_ids is not None:
-        query = query.where(CorporationSnapshot.corporation_id.in_(corporation_ids))
-    rows = db.scalars(query.order_by(CorporationSnapshot.corporation_id, CorporationSnapshot.recorded_at, CorporationSnapshot.id)).all()
+def latest_and_earliest_corp_rows(
+    db: Session,
+    days: int,
+    corporation_ids: set[int] | None,
+    history_rows: list[CorporationSnapshot] | None = None,
+) -> tuple[list[CorporationSnapshot], list[CorporationSnapshot]]:
+    rows = history_rows if history_rows is not None else corporation_history_rows(db, days, corporation_ids)
     grouped: dict[int, list[CorporationSnapshot]] = {}
     for row in rows:
         grouped.setdefault(int(row.corporation_id), []).append(row)
     latest = [history[-1] for history in grouped.values()]
     earliest = [history[0] for history in grouped.values() if len(history) > 1]
     return latest, earliest
-
 
 def delta_rows(latest: list[Any], earliest: list[Any], key: str, value_attr: str, name_attr: str) -> list[dict[str, Any]]:
     first = {getattr(row, key): row for row in earliest}
@@ -392,14 +497,13 @@ def delta_rows(latest: list[Any], earliest: list[Any], key: str, value_attr: str
     return sorted(rows, key=lambda item: item["delta"], reverse=True)
 
 
-def category_deltas(db: Session, days: int, character_ids: set[int] | None) -> list[dict[str, Any]]:
-    cutoff = start_cutoff(days)
-    if character_ids is not None and not character_ids:
-        return []
-    query = select(CharacterSkillSnapshot).where(CharacterSkillSnapshot.recorded_at >= cutoff, CharacterSkillSnapshot.category_name.is_not(None))
-    if character_ids is not None:
-        query = query.where(CharacterSkillSnapshot.character_id.in_(character_ids))
-    rows = db.scalars(query.order_by(CharacterSkillSnapshot.character_id, CharacterSkillSnapshot.category_name, CharacterSkillSnapshot.recorded_at, CharacterSkillSnapshot.id)).all()
+def category_deltas(
+    db: Session,
+    days: int,
+    character_ids: set[int] | None,
+    history_rows: list[CharacterSkillSnapshot] | None = None,
+) -> list[dict[str, Any]]:
+    rows = history_rows if history_rows is not None else character_history_rows(db, days, character_ids, categorized=True)
     grouped: dict[tuple[int, str], list[CharacterSkillSnapshot]] = {}
     for row in rows:
         grouped.setdefault((int(row.character_id), row.category_name or "Uncategorized"), []).append(row)
@@ -411,14 +515,13 @@ def category_deltas(db: Session, days: int, character_ids: set[int] | None) -> l
         by_category[display_category] = by_category.get(display_category, 0) + int(history[-1].category_skill_points or 0) - int(history[0].category_skill_points or 0)
     return [{"name": category, "delta": delta} for category, delta in sorted(by_category.items(), key=lambda item: item[1], reverse=True)[:12]]
 
-
-def skill_point_losses(db: Session, days: int, character_ids: set[int] | None) -> list[dict[str, Any]]:
-    if character_ids is not None and not character_ids:
-        return []
-    query = select(CharacterSkillSnapshot).where(CharacterSkillSnapshot.recorded_at >= start_cutoff(days), CharacterSkillSnapshot.category_name.is_(None))
-    if character_ids is not None:
-        query = query.where(CharacterSkillSnapshot.character_id.in_(character_ids))
-    rows = db.scalars(query.order_by(CharacterSkillSnapshot.character_id, CharacterSkillSnapshot.recorded_at)).all()
+def skill_point_losses(
+    db: Session,
+    days: int,
+    character_ids: set[int] | None,
+    history_rows: list[CharacterSkillSnapshot] | None = None,
+) -> list[dict[str, Any]]:
+    rows = history_rows if history_rows is not None else character_history_rows(db, days, character_ids, categorized=False)
     previous: dict[int, int] = {}
     names: dict[int, str] = {}
     losses: dict[int, int] = {}
@@ -435,14 +538,13 @@ def skill_point_losses(db: Session, days: int, character_ids: set[int] | None) -
         if loss > 0
     ]
 
-
-def skill_category_losses(db: Session, days: int, character_ids: set[int] | None) -> list[dict[str, Any]]:
-    if character_ids is not None and not character_ids:
-        return []
-    query = select(CharacterSkillSnapshot).where(CharacterSkillSnapshot.recorded_at >= start_cutoff(days), CharacterSkillSnapshot.category_name.is_not(None))
-    if character_ids is not None:
-        query = query.where(CharacterSkillSnapshot.character_id.in_(character_ids))
-    rows = db.scalars(query.order_by(CharacterSkillSnapshot.character_id, CharacterSkillSnapshot.category_name, CharacterSkillSnapshot.recorded_at)).all()
+def skill_category_losses(
+    db: Session,
+    days: int,
+    character_ids: set[int] | None,
+    history_rows: list[CharacterSkillSnapshot] | None = None,
+) -> list[dict[str, Any]]:
+    rows = history_rows if history_rows is not None else character_history_rows(db, days, character_ids, categorized=True)
     previous: dict[tuple[int, str], int] = {}
     losses: dict[str, int] = {}
     for row in rows:
@@ -458,7 +560,6 @@ def skill_category_losses(db: Session, days: int, character_ids: set[int] | None
         for category, loss in sorted(losses.items(), key=lambda item: item[1], reverse=True)[:12]
         if loss > 0
     ]
-
 
 def duplicate_blueprints(db: Session, ownership_entity_ids: set[int] | None) -> list[dict[str, Any]]:
     if ownership_entity_ids is not None and not ownership_entity_ids:
@@ -507,16 +608,15 @@ def daily_corporation_series(rows: list[CorporationSnapshot], value_attr: str) -
     ]
 
 
-def corporation_series(db: Session, days: int, value_attr: str, corporation_ids: set[int] | None) -> list[dict[str, Any]]:
-    cutoff = start_cutoff(days)
-    if corporation_ids is not None and not corporation_ids:
-        return []
-    query = select(CorporationSnapshot).where(CorporationSnapshot.recorded_at >= cutoff)
-    if corporation_ids is not None:
-        query = query.where(CorporationSnapshot.corporation_id.in_(corporation_ids))
-    rows = db.scalars(query.order_by(CorporationSnapshot.recorded_at, CorporationSnapshot.corporation_name)).all()
+def corporation_series(
+    db: Session,
+    days: int,
+    value_attr: str,
+    corporation_ids: set[int] | None,
+    history_rows: list[CorporationSnapshot] | None = None,
+) -> list[dict[str, Any]]:
+    rows = history_rows if history_rows is not None else corporation_history_rows(db, days, corporation_ids)
     return daily_corporation_series(rows, value_attr)
-
 
 @router.get("/summary")
 def analytics_summary(days: int = Query(30, ge=1, le=3660), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
@@ -526,8 +626,11 @@ def analytics_summary(days: int = Query(30, ge=1, le=3660), current_user: User =
     character_ids = visible_character_ids(current_user, db)
     corporation_ids = visible_corporation_ids(current_user, db, character_ids)
     ownership_entity_ids = visible_ownership_entity_ids(current_user, db)
-    latest_characters, earliest_characters = latest_and_earliest_character_rows(db, days, character_ids)
-    latest_corps, earliest_corps = latest_and_earliest_corp_rows(db, days, corporation_ids)
+    character_rows = character_history_rows(db, days, character_ids, categorized=False)
+    character_category_rows = character_history_rows(db, days, character_ids, categorized=True)
+    corporation_rows = corporation_history_rows(db, days, corporation_ids)
+    latest_characters, earliest_characters = latest_and_earliest_character_rows(db, days, character_ids, character_rows)
+    latest_corps, earliest_corps = latest_and_earliest_corp_rows(db, days, corporation_ids, corporation_rows)
     sp_gainers = delta_rows(latest_characters, earliest_characters, "character_id", "total_skill_points", "character_name")[:12]
     wallet_growth = delta_rows(latest_corps, earliest_corps, "corporation_id", "wallet_balance", "corporation_name")[:12]
     member_growth = delta_rows(latest_corps, earliest_corps, "corporation_id", "member_count", "corporation_name")[:12]
@@ -547,9 +650,9 @@ def analytics_summary(days: int = Query(30, ge=1, le=3660), current_user: User =
             "character_count": len(latest_characters),
         },
         "top_sp_gainers": sp_gainers,
-        "top_sp_losses": skill_point_losses(db, days, character_ids),
-        "top_skill_category_gainers": category_deltas(db, days, character_ids),
-        "top_skill_category_losses": skill_category_losses(db, days, character_ids),
+        "top_sp_losses": skill_point_losses(db, days, character_ids, character_rows),
+        "top_skill_category_gainers": category_deltas(db, days, character_ids, character_category_rows),
+        "top_skill_category_losses": skill_category_losses(db, days, character_ids, character_category_rows),
         "wallet_growth": wallet_growth,
         "member_growth": member_growth,
         "blueprint_growth": blueprint_growth,
@@ -558,9 +661,9 @@ def analytics_summary(days: int = Query(30, ge=1, le=3660), current_user: User =
         "mining": mining_analytics(db, days, character_ids),
         "research_projects": research_project_analytics(db, days, character_ids),
         "series": {
-            "wallet_totals": corporation_series(db, days, "wallet_balance", corporation_ids),
-            "member_counts": corporation_series(db, days, "member_count", corporation_ids),
-            "blueprint_counts": corporation_series(db, days, "blueprint_count", corporation_ids),
+            "wallet_totals": corporation_series(db, days, "wallet_balance", corporation_ids, corporation_rows),
+            "member_counts": corporation_series(db, days, "member_count", corporation_ids, corporation_rows),
+            "blueprint_counts": corporation_series(db, days, "blueprint_count", corporation_ids, corporation_rows),
         },
     }
 

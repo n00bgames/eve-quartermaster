@@ -55,3 +55,33 @@ export function formatDurationMs(ms: number): string {
   const seconds = totalSeconds % 60;
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
+
+export function formatEveTime(value?: string | null): string {
+  if (!value) return "unknown";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "unknown";
+  const formatted = new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "UTC",
+  }).format(date);
+  return `${formatted} EVE`;
+}
+
+export function formatCountdown(value?: string | null, now = Date.now()): string {
+  if (!value) return "Time not set";
+  const target = new Date(value).getTime();
+  if (!Number.isFinite(target)) return "Time unknown";
+  const remaining = target - now;
+  if (remaining <= 0) return "Now";
+  const totalMinutes = Math.max(1, Math.ceil(remaining / 60000));
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+}

@@ -8,6 +8,7 @@
     "build": "tsc && vite build --app",
     "test:recruiting": "node --test --experimental-strip-types tests/recruitingPublicContent.test.ts tests/recruitingSso.test.ts",
     "test:skills": "node --test --experimental-strip-types tests/skillReport.test.ts",
+    "test:navigation": "node --test --experimental-strip-types tests/jumpReplot.test.ts",
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
