@@ -1,6 +1,8 @@
 import { BarChart3, Database, Download, Gauge, Pickaxe, RefreshCw, Trash2, Upload } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
+import { pollCharacterSyncJob } from "../../lib/characterSyncPolling";
+
 import type { CharacterSyncJob, MiningLedgerEntry, MiningLedgerPayload } from "../../types/mining";
 import { MiningBarChart, MiningEfficiencyRanking, MiningTimeline } from "./MiningCharts";
 import { MiningOperations } from "./MiningOperations";
@@ -51,13 +53,13 @@ export function MiningLedgerPage({ api }: { api: ApiClient }) {
     setError(null);
     setMessage(null);
     try {
-      let job = await api<CharacterSyncJob>("/esi/sync/characters/all?sync_kind=mining", { method: "POST", body: "{}" });
-      setSyncJob(job);
-      while (job.status === "queued" || job.status === "running") {
-        await new Promise((resolve) => window.setTimeout(resolve, 900));
-        job = await api<CharacterSyncJob>(`/esi/sync/characters/all/${job.job_id}`);
-        setSyncJob(job);
-      }
+      const initialJob = await api<CharacterSyncJob>("/esi/sync/characters/all?sync_kind=mining", { method: "POST", body: "{}" });
+      setSyncJob(initialJob);
+      const job = await pollCharacterSyncJob({
+        initialJob,
+        fetchLatest: (current) => api<CharacterSyncJob>(`/esi/sync/characters/all/${current.job_id}`),
+        onUpdate: setSyncJob,
+      });
       await load(1);
       if (job.failed_count) setError(job.errors.join(" · "));
       else setMessage(`Mining history synced for ${job.success_count} characters. Stored history outside ESI's rolling window was retained.`);

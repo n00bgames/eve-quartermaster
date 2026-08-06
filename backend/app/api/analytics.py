@@ -27,6 +27,7 @@ METRIC_CATALOG: list[dict[str, Any]] = [
     {"metric": "skill_points.category_lost", "version": 1, "label": "Skill Point History by Category", "unit": "SP", "aggregation": "sum", "category": "Skills", "supportsCharacter": True, "supportsCorporation": False, "chartTypes": ["bar", "pie"], "deprecated": False},
     {"metric": "members.count", "version": 1, "label": "Corporation Members", "unit": "members", "aggregation": "latest", "category": "Corporations", "supportsCharacter": False, "supportsCorporation": True, "chartTypes": ["line", "bar"], "deprecated": False},
     {"metric": "wallet.balance", "version": 1, "label": "Corporation Wallet Balance", "unit": "ISK", "aggregation": "sum", "category": "Finance", "supportsCharacter": False, "supportsCorporation": True, "chartTypes": ["line", "bar"], "deprecated": False},
+    {"metric": "character_wallet.balance", "version": 1, "label": "Character Wallet Balance", "unit": "ISK", "aggregation": "latest", "category": "Finance", "supportsCharacter": True, "supportsCorporation": True, "chartTypes": ["line", "bar", "distribution"], "deprecated": False},
     {"metric": "wallet.division_balance", "version": 1, "label": "Wallet Division Balance", "unit": "ISK", "aggregation": "sum", "category": "Finance", "supportsCharacter": False, "supportsCorporation": True, "chartTypes": ["line", "bar", "stacked_bar", "pie"], "deprecated": False},
     {"metric": "assets.rows", "version": 1, "label": "Asset Rows", "unit": "rows", "aggregation": "sum", "category": "Assets", "supportsCharacter": True, "supportsCorporation": True, "chartTypes": ["line", "bar", "histogram"], "deprecated": False},
     {"metric": "assets.units", "version": 1, "label": "Asset Units", "unit": "units", "aggregation": "sum", "category": "Assets", "supportsCharacter": True, "supportsCorporation": True, "chartTypes": ["line", "bar", "histogram"], "deprecated": False},
@@ -297,6 +298,7 @@ def analytics_corporations(current_user: User = Depends(get_current_user), db: S
                 "managed": corporation.id in managed_ids,
                 "affiliation": corporation.id in affiliation_ids,
                 "historical": corporation.id in snapshot_ids,
+                "wallet_totals_visible": corporation.character_wallet_totals_visible,
             }
             for corporation in corporations
         ],
@@ -316,16 +318,24 @@ def update_analytics_corporation(
     corporation = db.get(EveCorporation, corporation_id)
     if corporation is None:
         raise HTTPException(status_code=404, detail="Corporation was not found")
-    if "excluded" not in payload:
-        raise HTTPException(status_code=400, detail="excluded is required")
-    excluded = bool(payload["excluded"])
-    if corporation.hide_from_corporation_list and not excluded:
-        raise HTTPException(status_code=400, detail="Hidden corporations remain excluded from analytics")
-    if not excluded and corporation.id not in privileged_analytics_corporation_ids(db):
-        raise HTTPException(status_code=400, detail="A successful corporation-level ESI sync is required before this corporation can be included in analytics")
-    corporation.exclude_from_analytics = excluded
+    if "excluded" not in payload and "wallet_totals_visible" not in payload:
+        raise HTTPException(status_code=400, detail="excluded or wallet_totals_visible is required")
+    if "excluded" in payload:
+        excluded = bool(payload["excluded"])
+        if corporation.hide_from_corporation_list and not excluded:
+            raise HTTPException(status_code=400, detail="Hidden corporations remain excluded from analytics")
+        if not excluded and corporation.id not in privileged_analytics_corporation_ids(db):
+            raise HTTPException(status_code=400, detail="A successful corporation-level ESI sync is required before this corporation can be included in analytics")
+        corporation.exclude_from_analytics = excluded
+    if "wallet_totals_visible" in payload:
+        corporation.character_wallet_totals_visible = bool(payload["wallet_totals_visible"])
     db.commit()
-    return {"id": corporation.id, "name": corporation.name, "excluded": corporation.exclude_from_analytics}
+    return {
+        "id": corporation.id,
+        "name": corporation.name,
+        "excluded": corporation.exclude_from_analytics,
+        "wallet_totals_visible": corporation.character_wallet_totals_visible,
+    }
 
 @router.post("/snapshot")
 def manual_snapshot(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
@@ -571,16 +581,29 @@ def duplicate_blueprints(db: Session, ownership_entity_ids: set[int] | None) -> 
     if ownership_entity_ids is not None:
         query = query.where(BlueprintSnapshot.ownership_entity_id.in_(ownership_entity_ids))
     rows = db.scalars(query).all()
-    grouped: dict[tuple[str, str, bool], int] = {}
+    grouped: dict[tuple[str, str, bool], dict[str, Any]] = {}
     for row in rows:
         key = (row.owner_name, row.blueprint_type_name, row.is_copy)
-        grouped[key] = grouped.get(key, 0) + int(row.quantity or 0)
+        entry = grouped.setdefault(key, {"quantity": 0, "me": set(), "te": set(), "in_use": 0})
+        entry["quantity"] += int(row.quantity or 0)
+        entry["me"].add(int(row.material_efficiency or 0))
+        entry["te"].add(int(row.time_efficiency or 0))
+        if row.inventory_state == "in_production":
+            entry["in_use"] += int(row.quantity or 0)
     duplicates = [
-        {"owner_name": owner, "blueprint_type_name": name, "is_copy": is_copy, "quantity": quantity}
-        for (owner, name, is_copy), quantity in grouped.items()
-        if quantity > 1
+        {
+            "owner_name": owner,
+            "blueprint_type_name": name,
+            "is_copy": is_copy,
+            "quantity": entry["quantity"],
+            "material_efficiency_levels": sorted(entry["me"]),
+            "time_efficiency_levels": sorted(entry["te"]),
+            "in_use": entry["in_use"],
+        }
+        for (owner, name, is_copy), entry in grouped.items()
+        if entry["quantity"] > 1
     ]
-    return sorted(duplicates, key=lambda item: item["quantity"], reverse=True)[:50]
+    return sorted(duplicates, key=lambda item: int(item["quantity"]), reverse=True)[:50]
 
 
 def daily_corporation_series(rows: list[CorporationSnapshot], value_attr: str) -> list[dict[str, Any]]:

@@ -92,6 +92,7 @@ class EveCorporation(Base):
     member_count: Mapped[int | None] = mapped_column(Integer)
     hide_from_corporation_list: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     exclude_from_analytics: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    character_wallet_totals_visible: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
@@ -121,6 +122,10 @@ class EveCharacter(Base):
     security_status: Mapped[float | None] = mapped_column(Float)
     public_assets_visible: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     sync_opt_out: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    wallet_history_opt_out: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    wallet_corporation_analytics_opt_in: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    current_wallet_balance: Mapped[float | None] = mapped_column(Numeric(24, 2))
+    wallet_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     total_skill_points: Mapped[int | None] = mapped_column(Integer)
     unallocated_skill_points: Mapped[int | None] = mapped_column(Integer)
     skills_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

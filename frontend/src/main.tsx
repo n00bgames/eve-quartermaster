@@ -11,6 +11,7 @@ import { api } from "./lib/api";
 import { eveSecurityClass, eveSecurityLabel, isUedamaSystem } from "./lib/evePresentation";
 import { BROWSER_TIMEZONE, formatDateTime, formatDurationMs, formatTimeOnly, localizeUtcHourLabel, preferredTimeZone, timezoneChoices } from "./lib/time";
 import { assetFamily, assetSubtype, blueprintFamily, blueprintSubtype, inventoryFamilyLabels, looksCapitalRelated, matchesInventoryFamily, sortedUnique, visibleAssetLocations, visibleAssetQuantity } from "./lib/inventory";
+import { BlueprintHoverCard, blueprintHoverDetails } from "./components/BlueprintHoverCard";
 import { WardecBadge } from "./components/WardecBadge";
 import { MarketAppraisalPage } from "./features/market/MarketAppraisalPage";
 import { CorporateExchangePage } from "./features/exchange/CorporateExchangePage";
@@ -1045,7 +1046,7 @@ function Overview({ data, api, timeZone, onOpenIndustry, onOpenEvents }: { data:
 
       <div className="two-column">
 
-        <section className="panel"><h3>Recent Assets</h3><AssetTable assets={data.assets.slice(0, 6)} /></section>
+        <section className="panel"><h3>Recent Assets</h3><AssetTable assets={data.assets.slice(0, 6)} blueprints={data.blueprints} /></section>
 
         <section className="panel"><h3>Blueprint Library</h3><BlueprintPreview blueprints={data.blueprints} onOpenIndustry={onOpenIndustry} /></section>
 
@@ -1161,11 +1162,11 @@ function Industry({ data, submit, ownerOptions, typeOptions, locationOptions, ac
 
       <section className="panel"><h3>Add Blueprint</h3><BlueprintForm submit={submit} ownerOptions={ownerOptions} typeOptions={typeOptions} locationOptions={locationOptions} /></section>
 
-      <section className="panel"><h3>Recipes</h3><p className="muted">Showing {recipes.length.toLocaleString()} loaded recipes. Scroll the list to load more.</p>{recipeError && <div className="mini-alert">{recipeError}</div>}<RecipeList activities={recipes} onSelect={setSelectedRecipe} onLoadMore={() => void loadMoreRecipes()} loadingMore={recipeBusy} hasMore={hasMoreRecipes} /></section>
+      <section className="panel"><h3>Recipes</h3><p className="muted">Showing {recipes.length.toLocaleString()} loaded recipes. Scroll the list to load more.</p>{recipeError && <div className="mini-alert">{recipeError}</div>}<RecipeList activities={recipes} blueprints={data.blueprints} onSelect={setSelectedRecipe} onLoadMore={() => void loadMoreRecipes()} loadingMore={recipeBusy} hasMore={hasMoreRecipes} /></section>
 
       <section className="panel stacked"><h3>Add Recipe</h3><RecipeForm submit={submit} typeOptions={typeOptions} /><h3>Add Recipe Input</h3><RecipeInputForm submit={submit} typeOptions={typeOptions} activityOptions={activityOptions} /></section>
 
-      {selectedRecipe && <RecipeDetailModal activity={selectedRecipe} assets={data.assets} onOpenMarket={onOpenMarket} onOpenAssets={onOpenAssets} onClose={() => setSelectedRecipe(null)} />}
+      {selectedRecipe && <RecipeDetailModal activity={selectedRecipe} blueprints={data.blueprints} assets={data.assets} onOpenMarket={onOpenMarket} onOpenAssets={onOpenAssets} onClose={() => setSelectedRecipe(null)} />}
 
     </div>
 
@@ -1183,7 +1184,7 @@ function Metric({ icon, label, value, delta }: { icon: React.ReactNode; label: s
 
 
 
-function AssetTable({ assets, seed, api, serverMode = false, onOpenFittings, onOpenMarket }: { assets: Asset[]; seed?: AssetTableSeed | null; api?: ApiClient; serverMode?: boolean; onOpenFittings?: (itemName: string) => void; onOpenMarket?: (text: string) => void }) {
+function AssetTable({ assets, blueprints = [], seed, api, serverMode = false, onOpenFittings, onOpenMarket }: { assets: Asset[]; blueprints?: Blueprint[]; seed?: AssetTableSeed | null; api?: ApiClient; serverMode?: boolean; onOpenFittings?: (itemName: string) => void; onOpenMarket?: (text: string) => void }) {
 
   const [sortKey, setSortKey] = useState<AssetSortKey>("item");
 
@@ -1552,6 +1553,14 @@ function AssetTable({ assets, seed, api, serverMode = false, onOpenFittings, onO
 
   const sortMark = (key: AssetSortKey) => sortKey === key ? (sortDirection === "asc" ? "^" : "v") : "";
 
+  function overviewBlueprintDetails(asset: Asset) {
+    const looksLikeBlueprint = asset.inventory_family === "blueprints" || asset.type_category_name?.toLowerCase() === "blueprint" || asset.is_blueprint_copy != null;
+    if (!looksLikeBlueprint) return null;
+    const exact = blueprints.find((blueprint) => blueprint.asset_id === asset.id);
+    const fallback = exact ?? blueprints.find((blueprint) => blueprint.blueprint_type_id === asset.type_id && blueprint.owner_name === asset.owner_name && (!asset.location_name || blueprint.location_name === asset.location_name));
+    return fallback ? blueprintHoverDetails(fallback) : { name: asset.type_name, owner: asset.owner_name, kind: asset.is_blueprint_copy == null ? null : asset.is_blueprint_copy ? "BPC" as const : "BPO" as const, location: asset.location_name, definitionOnly: true, note: "Blueprint instance details are awaiting a matching blueprint sync." };
+  }
+
   const filterButton = (key: AssetFilterKey, value: string) => (
 
     <button className="cell-filter" type="button" onClick={() => applyFilter(key, value)}>{value || "-"}</button>
@@ -1626,7 +1635,7 @@ function AssetTable({ assets, seed, api, serverMode = false, onOpenFittings, onO
 
         <tr>
 
-        <td><div className="asset-item-context">{filterButton("item", asset.type_name)}<div className="context-actions">{onOpenMarket && <button type="button" onClick={() => onOpenMarket(`${asset.quantity} ${asset.type_name}`)}>Price</button>}{onOpenFittings && <button type="button" onClick={() => onOpenFittings(asset.type_name)}>Fits</button>}<button type="button" onClick={() => setContextTypeId((current) => current === asset.type_id ? null : asset.type_id)}>{contextTypeId === asset.type_id ? "Hide" : "Context"}</button></div></div></td>
+        <td><div className="asset-item-context">{overviewBlueprintDetails(asset) ? <BlueprintHoverCard details={overviewBlueprintDetails(asset)!}>{filterButton("item", asset.type_name)}</BlueprintHoverCard> : filterButton("item", asset.type_name)}<div className="context-actions">{onOpenMarket && <button type="button" onClick={() => onOpenMarket(`${asset.quantity} ${asset.type_name}`)}>Price</button>}{onOpenFittings && <button type="button" onClick={() => onOpenFittings(asset.type_name)}>Fits</button>}<button type="button" onClick={() => setContextTypeId((current) => current === asset.type_id ? null : asset.type_id)}>{contextTypeId === asset.type_id ? "Hide" : "Context"}</button></div></div></td>
 
         <td>{filterButton("owner", asset.owner_name)}</td>
 
@@ -1652,8 +1661,8 @@ function AssetTable({ assets, seed, api, serverMode = false, onOpenFittings, onO
 type ItemContextOwner = { owner_name: string; owner_kind?: string | null; quantity: number; stacks: number };
 type ItemContextLocation = { owner_name: string; location_name?: string | null; location_flag?: string | null; quantity: number; stacks: number };
 type ItemContextFitting = { id: number; name: string; ship_type_name?: string | null; character_name?: string | null; quantity?: number; flags?: string[]; is_shared?: boolean; is_draft?: boolean };
-type ItemContextBlueprint = { id: number; owner_name?: string | null; blueprint_type_name: string; product_type_name?: string | null; material_efficiency: number; time_efficiency: number; runs_remaining?: number | null; is_copy: boolean };
-type ItemContextRecipe = { id: number; activity_kind: string; blueprint_type_name?: string | null; product_type_name?: string | null; product_quantity?: number; required_quantity?: number };
+type ItemContextBlueprint = { id: number; owner_name?: string | null; blueprint_type_name: string; product_type_name?: string | null; material_efficiency: number; time_efficiency: number; runs_remaining?: number | null; is_copy: boolean; location_name?: string | null; active_use?: Blueprint["active_use"] };
+type ItemContextRecipe = { id: number; activity_kind: string; blueprint_type_id?: number | null; blueprint_type_name?: string | null; product_type_name?: string | null; product_quantity?: number; required_quantity?: number };
 type ItemContextSummary = {
   item: { type_id: number; name: string; group_name?: string | null; category_name?: string | null; volume?: number | null; packaged_volume?: number | null; market_group_id?: number | null };
   owned: { quantity: number; stacks: number; owners: ItemContextOwner[]; locations: ItemContextLocation[] };
@@ -1754,8 +1763,8 @@ function ItemContextPanel({ typeId, itemName, assets = [], compact = false, onOp
       {hasIndustryContext && context && <div>
         <h4>Industry context</h4>
         <div className="item-context-list">
-          {context.blueprints.product_blueprints.map((blueprint) => <div key={`product-bp-${blueprint.id}`}><strong>{blueprint.blueprint_type_name}</strong><span>{blueprint.owner_name ?? "Unknown owner"} · ME {blueprint.material_efficiency} · TE {blueprint.time_efficiency} · {blueprint.is_copy ? "BPC" : "BPO"}</span></div>)}
-          {context.industry.produced_by.map((recipe) => <div key={`produced-${recipe.id}`}><strong>{recipe.blueprint_type_name ?? "Blueprint"}</strong><span>Produces {numberFormatter.format(recipe.product_quantity ?? 1)} per run</span></div>)}
+          {context.blueprints.product_blueprints.map((blueprint) => <div key={`product-bp-${blueprint.id}`}><BlueprintHoverCard details={blueprintHoverDetails(blueprint)}><strong>{blueprint.blueprint_type_name}</strong></BlueprintHoverCard><span>{blueprint.owner_name ?? "Unknown owner"} · ME {blueprint.material_efficiency} · TE {blueprint.time_efficiency} · {blueprint.is_copy ? "BPC" : "BPO"}</span></div>)}
+          {context.industry.produced_by.map((recipe) => <div key={`produced-${recipe.id}`}><BlueprintHoverCard details={{ name: recipe.blueprint_type_name ?? "Blueprint", definitionOnly: true }}><strong>{recipe.blueprint_type_name ?? "Blueprint"}</strong></BlueprintHoverCard><span>Produces {numberFormatter.format(recipe.product_quantity ?? 1)} per run</span></div>)}
           {context.industry.used_by.map((recipe) => <div key={`input-${recipe.id}`}><strong>{recipe.product_type_name ?? recipe.blueprint_type_name ?? "Recipe"}</strong><span>Needs {numberFormatter.format(recipe.required_quantity ?? 0)} per run</span></div>)}
           {context.blueprints.owned_blueprints > 0 && <div><strong>{numberFormatter.format(context.blueprints.owned_blueprints)} owned blueprint{context.blueprints.owned_blueprints === 1 ? "" : "s"}</strong><span>{context.blueprints.bpos} BPO · {context.blueprints.bpcs} BPC</span></div>}
         </div>
@@ -1764,6 +1773,12 @@ function ItemContextPanel({ typeId, itemName, assets = [], compact = false, onOp
   </section>;
 
 }
+function blueprintReferenceDetails(blueprintTypeId: number | null | undefined, name: string, blueprints: Blueprint[]) {
+  const matches = blueprints.filter((blueprint) => blueprintTypeId != null ? blueprint.blueprint_type_id === blueprintTypeId : blueprint.blueprint_type_name === name);
+  if (matches.length === 0) return { name, definitionOnly: true };
+  return { ...blueprintHoverDetails(matches[0]), note: matches.length > 1 ? `${matches.length.toLocaleString()} owned instances match this blueprint reference; showing the most recently loaded instance.` : null };
+}
+
 function BlueprintList({ blueprints, assets = [], onOpenMarket, onOpenAssets }: { blueprints: Blueprint[]; assets?: Asset[]; onOpenMarket?: (text: string) => void; onOpenAssets?: (itemName: string) => void }) {
 
   const [kindFilter, setKindFilter] = useState<"all" | "bpo" | "bpc">("all");
@@ -1880,7 +1895,7 @@ function BlueprintList({ blueprints, assets = [], onOpenMarket, onOpenAssets }: 
       <label>Subtype<select value={subtypeFilter} onChange={(event) => setSubtypeFilter(event.target.value)}><option value="">All subtypes</option>{subtypeOptions.map((subtype) => <option key={subtype} value={subtype}>{subtype}</option>)}</select></label>
     </div>
     <div className="blueprint-filter owners"><button type="button" className={ownerFilter === null ? "active" : ""} onClick={() => setOwnerFilter(null)}>All owners <span>{blueprints.length.toLocaleString()}</span></button>{ownerOptions.map((owner) => <button type="button" key={owner} className={ownerFilter === owner ? "active" : ""} onClick={() => setOwnerFilter(owner)}>{owner} <span>{(ownerCounts.get(owner) ?? 0).toLocaleString()}</span></button>)}</div>
-    <div className="card-list">{visibleBlueprints.map((bp) => { const ownedOutput = visibleAssetQuantity(assets, bp.product_type_name); const outputLocations = visibleAssetLocations(assets, bp.product_type_name); return <article key={bp.id}><strong>{bp.blueprint_type_name}</strong><span><button type="button" className="inline-filter" onClick={() => setOwnerFilter(bp.owner_name)}>{bp.owner_name}</button> · {bp.product_type_name ?? "No product"}</span>{bp.product_group_name && <small>{bp.product_category_name ? `${bp.product_category_name} / ` : ""}{bp.product_group_name}</small>}{bp.product_type_name && <div className="blueprint-context"><span className={ownedOutput > 0 ? "context-owned" : "context-missing"}>Owned output: {numberFormatter.format(ownedOutput)}</span>{outputLocations.length > 0 && <small>{outputLocations.join(" | ")}</small>}<div className="context-actions">{onOpenAssets && <button type="button" onClick={() => onOpenAssets(bp.product_type_name!)}>Assets</button>}{onOpenMarket && <button type="button" onClick={() => onOpenMarket(`1 ${bp.product_type_name}`)}>Price output</button>}</div></div>}<div className="badge-row"><button type="button" className="bp-badge" onClick={() => chooseSort("me")}>ME {bp.material_efficiency}</button><button type="button" className="bp-badge" onClick={() => chooseSort("te")}>TE {bp.time_efficiency}</button><button type="button" className={bp.is_copy ? "bp-badge copy" : "bp-badge original"} onClick={() => setKindFilter(bp.is_copy ? "bpc" : "bpo")}>{bp.is_copy ? "BPC" : "BPO"}</button>{bp.product_group_name && <button type="button" className="bp-badge" onClick={() => applyBlueprintSubtypeFilter(bp)}>{bp.product_group_name}</button>}{bp.capital_construction_related && <button type="button" className="bp-badge original" onClick={() => { setCategoryFilter("capital-construction"); setSubtypeFilter(""); }}>Capital chain</button>}</div></article>; })}{blueprints.length === 0 && <p className="empty">No blueprints yet.</p>}{blueprints.length > 0 && visibleBlueprints.length === 0 && <p className="empty">{searchNeedle ? `No blueprints match "${searchText.trim()}".` : "No blueprints match this filter."}</p>}</div>
+    <div className="card-list">{visibleBlueprints.map((bp) => { const ownedOutput = visibleAssetQuantity(assets, bp.product_type_name); const outputLocations = visibleAssetLocations(assets, bp.product_type_name); return <article key={bp.id}><BlueprintHoverCard details={blueprintHoverDetails(bp)}><strong>{bp.blueprint_type_name}</strong></BlueprintHoverCard><span><button type="button" className="inline-filter" onClick={() => setOwnerFilter(bp.owner_name)}>{bp.owner_name}</button> · {bp.product_type_name ?? "No product"}</span>{bp.product_group_name && <small>{bp.product_category_name ? `${bp.product_category_name} / ` : ""}{bp.product_group_name}</small>}{bp.product_type_name && <div className="blueprint-context"><span className={ownedOutput > 0 ? "context-owned" : "context-missing"}>Owned output: {numberFormatter.format(ownedOutput)}</span>{outputLocations.length > 0 && <small>{outputLocations.join(" | ")}</small>}<div className="context-actions">{onOpenAssets && <button type="button" onClick={() => onOpenAssets(bp.product_type_name!)}>Assets</button>}{onOpenMarket && <button type="button" onClick={() => onOpenMarket(`1 ${bp.product_type_name}`)}>Price output</button>}</div></div>}<div className="badge-row"><button type="button" className="bp-badge" onClick={() => chooseSort("me")}>ME {bp.material_efficiency}</button><button type="button" className="bp-badge" onClick={() => chooseSort("te")}>TE {bp.time_efficiency}</button><button type="button" className={bp.is_copy ? "bp-badge copy" : "bp-badge original"} onClick={() => setKindFilter(bp.is_copy ? "bpc" : "bpo")}>{bp.is_copy ? "BPC" : "BPO"}</button>{bp.product_group_name && <button type="button" className="bp-badge" onClick={() => applyBlueprintSubtypeFilter(bp)}>{bp.product_group_name}</button>}{bp.capital_construction_related && <button type="button" className="bp-badge original" onClick={() => { setCategoryFilter("capital-construction"); setSubtypeFilter(""); }}>Capital chain</button>}</div></article>; })}{blueprints.length === 0 && <p className="empty">No blueprints yet.</p>}{blueprints.length > 0 && visibleBlueprints.length === 0 && <p className="empty">{searchNeedle ? `No blueprints match "${searchText.trim()}".` : "No blueprints match this filter."}</p>}</div>
     <MissingBlueprintPane onOpenMarket={onOpenMarket} onOpenAssets={onOpenAssets} />
   </div>;
 
@@ -1955,13 +1970,13 @@ function MissingBlueprintPane({ onOpenMarket, onOpenAssets }: { onOpenMarket?: (
     </div>
     {error && <div className="mini-alert">{error}</div>}
     {catalog && <div className="blueprint-filter owners"><button type="button" className={activeCategory === "all" ? "active" : ""} onClick={() => setActiveCategory("all")}>All categories <span>{catalog.total_missing.toLocaleString()}</span></button>{catalog.categories.map((category) => <button type="button" key={category.category_name} className={activeCategory === category.category_name ? "active" : ""} onClick={() => setActiveCategory(category.category_name)}>{category.category_name} <span>{category.total_count.toLocaleString()}</span></button>)}</div>}
-    <div className="missing-bpo-groups">{visibleCategories.map((category) => <article key={category.category_name}><div className="section-heading compact"><div><strong>{category.category_name}</strong><span>{category.total_count.toLocaleString()} missing BPO{category.total_count === 1 ? "" : "s"}</span></div></div><div className="mini-list">{category.items.map((item) => <div key={item.blueprint_type_id}><strong>{item.blueprint_type_name}</strong><span>{item.product_type_name ?? "No product"}{item.product_group_name ? ` · ${item.product_group_name}` : ""}{item.capital_construction_related ? " · Capital chain" : ""}</span><div className="context-actions">{onOpenMarket && <button type="button" onClick={() => onOpenMarket(`1 ${item.blueprint_type_name}`)}>Price BPO</button>}{onOpenAssets && item.product_type_name && <button type="button" onClick={() => onOpenAssets(item.product_type_name!)}>Assets</button>}</div></div>)}{category.items.length < category.total_count && <p className="muted">Showing {category.items.length.toLocaleString()} of {category.total_count.toLocaleString()} missing in this category. Search to narrow.</p>}</div></article>)}{catalog && catalog.total_missing === 0 && <p className="empty">No missing BPOs match this search.</p>}</div>
+    <div className="missing-bpo-groups">{visibleCategories.map((category) => <article key={category.category_name}><div className="section-heading compact"><div><strong>{category.category_name}</strong><span>{category.total_count.toLocaleString()} missing BPO{category.total_count === 1 ? "" : "s"}</span></div></div><div className="mini-list">{category.items.map((item) => <div key={item.blueprint_type_id}><BlueprintHoverCard details={{ name: item.blueprint_type_name, kind: "BPO", definitionOnly: true, note: "This BPO is currently missing from visible synced inventory." }}><strong>{item.blueprint_type_name}</strong></BlueprintHoverCard><span>{item.product_type_name ?? "No product"}{item.product_group_name ? ` · ${item.product_group_name}` : ""}{item.capital_construction_related ? " · Capital chain" : ""}</span><div className="context-actions">{onOpenMarket && <button type="button" onClick={() => onOpenMarket(`1 ${item.blueprint_type_name}`)}>Price BPO</button>}{onOpenAssets && item.product_type_name && <button type="button" onClick={() => onOpenAssets(item.product_type_name!)}>Assets</button>}</div></div>)}{category.items.length < category.total_count && <p className="muted">Showing {category.items.length.toLocaleString()} of {category.total_count.toLocaleString()} missing in this category. Search to narrow.</p>}</div></article>)}{catalog && catalog.total_missing === 0 && <p className="empty">No missing BPOs match this search.</p>}</div>
   </section>;
 
 }
 
 
-function RecipeList({ activities, onSelect, onLoadMore, loadingMore, hasMore }: { activities: IndustryActivity[]; onSelect: (activity: IndustryActivity) => void; onLoadMore: () => void; loadingMore: boolean; hasMore: boolean }) {
+function RecipeList({ activities, blueprints, onSelect, onLoadMore, loadingMore, hasMore }: { activities: IndustryActivity[]; blueprints: Blueprint[]; onSelect: (activity: IndustryActivity) => void; onLoadMore: () => void; loadingMore: boolean; hasMore: boolean }) {
 
   function handleScroll(event: React.UIEvent<HTMLDivElement>) {
 
@@ -1973,13 +1988,13 @@ function RecipeList({ activities, onSelect, onLoadMore, loadingMore, hasMore }: 
 
 
 
-  return <div className="card-list recipe-list" onScroll={handleScroll}>{activities.map((activity) => <article key={activity.id}><button type="button" className="recipe-card-button" onClick={() => onSelect(activity)}><strong>{activity.blueprint_type_name}</strong><span>{activity.activity_kind} · {activity.product_type_name ?? "No product"} x{activity.product_quantity}</span><span>{activity.inputs.length.toLocaleString()} inputs · {activity.time_seconds ? `${numberFormatter.format(activity.time_seconds)} sec` : "No time listed"}</span></button></article>)}{activities.length === 0 && <p className="empty">No recipes yet.</p>}{loadingMore && <p className="muted">Loading more recipes...</p>}{!loadingMore && !hasMore && activities.length > 0 && <p className="muted">All visible recipes loaded.</p>}</div>;
+  return <div className="card-list recipe-list" onScroll={handleScroll}>{activities.map((activity) => <article key={activity.id}><button type="button" className="recipe-card-button" onClick={() => onSelect(activity)}><BlueprintHoverCard details={blueprintReferenceDetails(activity.blueprint_type_id, activity.blueprint_type_name, blueprints)}><strong>{activity.blueprint_type_name}</strong></BlueprintHoverCard><span>{activity.activity_kind} · {activity.product_type_name ?? "No product"} x{activity.product_quantity}</span><span>{activity.inputs.length.toLocaleString()} inputs · {activity.time_seconds ? `${numberFormatter.format(activity.time_seconds)} sec` : "No time listed"}</span></button></article>)}{activities.length === 0 && <p className="empty">No recipes yet.</p>}{loadingMore && <p className="muted">Loading more recipes...</p>}{!loadingMore && !hasMore && activities.length > 0 && <p className="muted">All visible recipes loaded.</p>}</div>;
 
 }
 
 
 
-function RecipeDetailModal({ activity, assets, onOpenMarket, onOpenAssets, onClose }: { activity: IndustryActivity; assets: Asset[]; onOpenMarket: (text: string) => void; onOpenAssets: (itemName: string) => void; onClose: () => void }) {
+function RecipeDetailModal({ activity, blueprints, assets, onOpenMarket, onOpenAssets, onClose }: { activity: IndustryActivity; blueprints: Blueprint[]; assets: Asset[]; onOpenMarket: (text: string) => void; onOpenAssets: (itemName: string) => void; onClose: () => void }) {
 
   const outputOwned = visibleAssetQuantity(assets, activity.product_type_name);
 
@@ -1991,7 +2006,7 @@ function RecipeDetailModal({ activity, assets, onOpenMarket, onOpenAssets, onClo
 
   const missingMarketText = missingInputs.map((row) => `${row.missing} ${row.input.input_type_name}`).join("\n");
 
-  return <div className="modal-backdrop" role="presentation" onClick={onClose}><section className="modal-window recipe-detail" role="dialog" aria-modal="true" aria-label={`${activity.blueprint_type_name} recipe`} onClick={(event) => event.stopPropagation()}><div className="section-heading"><div><h3>{activity.blueprint_type_name}</h3><p>{activity.activity_kind} · {activity.product_type_name ?? "No product"} x{activity.product_quantity}</p></div><div className="button-row compact">{missingMarketText && <button type="button" onClick={() => onOpenMarket(missingMarketText)}>Price missing inputs</button>}<button type="button" onClick={onClose}>Close</button></div></div><div className="status-grid compact"><Metric icon={<Factory size={18} />} label="Activity" value={activity.activity_kind.replace("_", " ")} /><Metric icon={<PackagePlus size={18} />} label="Output" value={activity.product_quantity} /><Metric icon={<Boxes size={18} />} label="Owned output" value={outputOwned} /><Metric icon={<ScrollText size={18} />} label="Inputs" value={activity.inputs.length} /><Metric icon={<Activity size={18} />} label="Time" value={activity.time_seconds ? `${numberFormatter.format(activity.time_seconds)} sec` : "n/a"} /></div>{activity.product_type_name && <div className="recipe-output-context"><strong>{activity.product_type_name}</strong><span className={outputOwned > 0 ? "context-owned" : "context-missing"}>Already owned: {numberFormatter.format(outputOwned)}</span><div className="context-actions"><button type="button" onClick={() => onOpenAssets(activity.product_type_name!)}>View assets</button><button type="button" onClick={() => onOpenMarket(`${activity.product_quantity} ${activity.product_type_name}`)}>Price output</button></div></div>}<h4>Material Inputs</h4><div className="mini-list recipe-inputs">{activity.inputs.map((input) => { const owned = visibleAssetQuantity(assets, input.input_type_name); const missing = Math.max(0, input.quantity - owned); return <div key={input.id} className={missing > 0 ? "missing" : "covered"}><strong>{input.input_type_name}</strong><span>{numberFormatter.format(input.quantity)} {input.consume_type} · owned {numberFormatter.format(owned)} · {missing > 0 ? `short ${numberFormatter.format(missing)}` : "covered"}</span><div className="context-actions"><button type="button" onClick={() => onOpenAssets(input.input_type_name)}>Assets</button><button type="button" onClick={() => onOpenMarket(`${Math.max(1, missing || input.quantity)} ${input.input_type_name}`)}>Price</button></div></div>; })}{activity.inputs.length === 0 && <p className="empty">No material inputs listed for this activity.</p>}</div></section></div>;
+  return <div className="modal-backdrop" role="presentation" onClick={onClose}><section className="modal-window recipe-detail" role="dialog" aria-modal="true" aria-label={`${activity.blueprint_type_name} recipe`} onClick={(event) => event.stopPropagation()}><div className="section-heading"><div><h3><BlueprintHoverCard details={blueprintReferenceDetails(activity.blueprint_type_id, activity.blueprint_type_name, blueprints)}>{activity.blueprint_type_name}</BlueprintHoverCard></h3><p>{activity.activity_kind} · {activity.product_type_name ?? "No product"} x{activity.product_quantity}</p></div><div className="button-row compact">{missingMarketText && <button type="button" onClick={() => onOpenMarket(missingMarketText)}>Price missing inputs</button>}<button type="button" onClick={onClose}>Close</button></div></div><div className="status-grid compact"><Metric icon={<Factory size={18} />} label="Activity" value={activity.activity_kind.replace("_", " ")} /><Metric icon={<PackagePlus size={18} />} label="Output" value={activity.product_quantity} /><Metric icon={<Boxes size={18} />} label="Owned output" value={outputOwned} /><Metric icon={<ScrollText size={18} />} label="Inputs" value={activity.inputs.length} /><Metric icon={<Activity size={18} />} label="Time" value={activity.time_seconds ? `${numberFormatter.format(activity.time_seconds)} sec` : "n/a"} /></div>{activity.product_type_name && <div className="recipe-output-context"><strong>{activity.product_type_name}</strong><span className={outputOwned > 0 ? "context-owned" : "context-missing"}>Already owned: {numberFormatter.format(outputOwned)}</span><div className="context-actions"><button type="button" onClick={() => onOpenAssets(activity.product_type_name!)}>View assets</button><button type="button" onClick={() => onOpenMarket(`${activity.product_quantity} ${activity.product_type_name}`)}>Price output</button></div></div>}<h4>Material Inputs</h4><div className="mini-list recipe-inputs">{activity.inputs.map((input) => { const owned = visibleAssetQuantity(assets, input.input_type_name); const missing = Math.max(0, input.quantity - owned); return <div key={input.id} className={missing > 0 ? "missing" : "covered"}><strong>{input.input_type_name}</strong><span>{numberFormatter.format(input.quantity)} {input.consume_type} · owned {numberFormatter.format(owned)} · {missing > 0 ? `short ${numberFormatter.format(missing)}` : "covered"}</span><div className="context-actions"><button type="button" onClick={() => onOpenAssets(input.input_type_name)}>Assets</button><button type="button" onClick={() => onOpenMarket(`${Math.max(1, missing || input.quantity)} ${input.input_type_name}`)}>Price</button></div></div>; })}{activity.inputs.length === 0 && <p className="empty">No material inputs listed for this activity.</p>}</div></section></div>;
 
 }
 function OwnerForm({ submit }: { submit: (path: string, body: Record<string, unknown>, success: string) => Promise<void> }) {

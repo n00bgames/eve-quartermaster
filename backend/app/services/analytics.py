@@ -14,6 +14,7 @@ from app.models import (
     CharacterSkill,
     CharacterSkillQueueEntry,
     CharacterSkillSnapshot,
+    CharacterWalletSnapshot,
     CorporationSnapshot,
     CorporationWalletDivision,
     CorporationWalletSnapshot,
@@ -88,7 +89,7 @@ def analytics_corporation_ids(db: Session) -> set[int]:
 
 
 AUTO_SNAPSHOT_COALESCE_MINUTES = 60
-SNAPSHOT_SCHEMA_VERSION = 2
+SNAPSHOT_SCHEMA_VERSION = 3
 
 
 def recent_automatic_snapshot(
@@ -148,13 +149,15 @@ def create_snapshot(
     db.flush()
     try:
         if scope_type == "global":
+            snapshot_character_wallets(db, run)
             snapshot_character_skills(db, run)
             snapshot_corporations(db, run)
             snapshot_blueprints(db, run)
         elif scope_type == "character" and scope_id is not None:
+            snapshot_character_wallets(db, run, {scope_id})
             if source == "character_assets":
                 snapshot_character_assets(db, run, scope_id)
-            else:
+            elif source != "character_wallet":
                 snapshot_character_skills(db, run, {scope_id})
         elif scope_type == "corporation" and scope_id is not None:
             snapshot_corporations(db, run, {scope_id})
@@ -162,6 +165,7 @@ def create_snapshot(
                 # Detailed blueprint rows are captured only by blueprint syncs or manual global snapshots.
                 snapshot_blueprints(db, run)
         else:
+            snapshot_character_wallets(db, run)
             snapshot_character_skills(db, run)
             snapshot_corporations(db, run)
             snapshot_blueprints(db, run)
@@ -221,6 +225,43 @@ def snapshot_character_assets(db: Session, run: SnapshotRun, character_id: int) 
     add_metric(db, run, owner_type="character", owner_id=character.id, owner_name=character.name, metric_key="assets.rows", metric_value=asset_rows)
     add_metric(db, run, owner_type="character", owner_id=character.id, owner_name=character.name, metric_key="assets.units", metric_value=asset_units)
     add_metric(db, run, owner_type="character", owner_id=character.id, owner_name=character.name, metric_key="blueprints.count", metric_value=blueprint_count)
+
+
+def snapshot_character_wallets(db: Session, run: SnapshotRun, character_ids: set[int] | None = None) -> None:
+    query = (
+        select(EveCharacter)
+        .where(
+            EveCharacter.current_wallet_balance.is_not(None),
+            EveCharacter.wallet_history_opt_out.is_(False),
+            EveCharacter.sync_opt_out.is_(False),
+        )
+        .options(selectinload(EveCharacter.corporation))
+    )
+    if character_ids is not None:
+        if not character_ids:
+            return
+        query = query.where(EveCharacter.id.in_(character_ids))
+    for character in db.scalars(query.order_by(EveCharacter.name)).all():
+        db.add(
+            CharacterWalletSnapshot(
+                snapshot_run_id=run.id,
+                character_id=character.id,
+                character_eve_id=character.character_id,
+                character_name=character.name,
+                corporation_id=character.corporation_id,
+                corporation_name=character.corporation.name if character.corporation else None,
+                balance=decimal_value(character.current_wallet_balance),
+            )
+        )
+        add_metric(
+            db,
+            run,
+            owner_type="character",
+            owner_id=character.id,
+            owner_name=character.name,
+            metric_key="character_wallet.balance",
+            metric_value=character.current_wallet_balance,
+        )
 
 
 def skill_category_name(skill: CharacterSkill) -> str:

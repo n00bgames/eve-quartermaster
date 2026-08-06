@@ -1,6 +1,8 @@
 import { AlertTriangle, ChevronDown, Factory, Globe2, RefreshCw, Timer, Warehouse } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
+import { pollCharacterSyncJob } from "../../lib/characterSyncPolling";
+
 import type {
   CharacterSyncJob,
   PlanetaryColony,
@@ -58,16 +60,16 @@ export function PlanetaryIndustryPage({
     setBusy(true);
     setError(null);
     try {
-      let job = await api<CharacterSyncJob>("/esi/sync/characters/all?sync_kind=planets", {
+      const initialJob = await api<CharacterSyncJob>("/esi/sync/characters/all?sync_kind=planets", {
         method: "POST",
         body: "{}",
       });
-      setSyncJob(job);
-      while (job.status === "queued" || job.status === "running") {
-        await new Promise((resolve) => window.setTimeout(resolve, 900));
-        job = await api<CharacterSyncJob>(`/esi/sync/characters/all/${job.job_id}`);
-        setSyncJob(job);
-      }
+      setSyncJob(initialJob);
+      const job = await pollCharacterSyncJob({
+        initialJob,
+        fetchLatest: (current) => api<CharacterSyncJob>(`/esi/sync/characters/all/${current.job_id}`),
+        onUpdate: setSyncJob,
+      });
       await load();
       if (job.failed_count) setError(job.errors.join(" · "));
     } catch (reason) {
@@ -81,13 +83,13 @@ export function PlanetaryIndustryPage({
     setBusy(true);
     setError(null);
     try {
-      let job = await api<CharacterSyncJob>(`/planetary-industry/sync/${tokenId}`, { method: "POST", body: "{}" });
-      setSyncJob(job);
-      while (job.status === "queued" || job.status === "running") {
-        await new Promise((resolve) => window.setTimeout(resolve, 900));
-        job = await api<CharacterSyncJob>(`/planetary-industry/sync/jobs/${job.job_id}`);
-        setSyncJob(job);
-      }
+      const initialJob = await api<CharacterSyncJob>(`/planetary-industry/sync/${tokenId}`, { method: "POST", body: "{}" });
+      setSyncJob(initialJob);
+      const job = await pollCharacterSyncJob({
+        initialJob,
+        fetchLatest: (current) => api<CharacterSyncJob>(`/planetary-industry/sync/jobs/${current.job_id}`),
+        onUpdate: setSyncJob,
+      });
       await load();
       if (job.failed_count) setError(job.errors.join(" · "));
     } catch (reason) {

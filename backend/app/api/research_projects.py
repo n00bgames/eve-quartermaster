@@ -11,6 +11,7 @@ from app.api.auth import can_view_all_characters, get_current_user
 from app.db.session import get_db
 from app.models import Blueprint, EsiToken, EveCharacter, OwnershipEntity, ResearchProject, ResearchQueueItem, User
 from app.services.asset_visibility import can_view_owner_records
+from app.services.blueprint_hover import project_blueprint_metadata
 from app.services.permissions import can_view_section
 from app.services.research_projects import (
     ACTIVE_RESEARCH_STATUSES,
@@ -42,9 +43,10 @@ def number(value: Any) -> float | None:
     return float(value) if value is not None else None
 
 
-def serialize_project(project: ResearchProject) -> dict[str, Any]:
+def serialize_project(project: ResearchProject, blueprint_metadata: dict[str, Any] | None = None) -> dict[str, Any]:
     character = project.character
     corporation = project.corporation
+    metadata = blueprint_metadata or {}
     return {
         "id": project.id,
         "job_id": project.job_id,
@@ -60,6 +62,11 @@ def serialize_project(project: ResearchProject) -> dict[str, Any]:
         "corporation_name": corporation.name if corporation else None,
         "blueprint_type_id": project.blueprint_type_id,
         "blueprint_name": project.blueprint_type.name if project.blueprint_type else f"Blueprint type {project.blueprint_type_id}",
+        "material_efficiency": metadata.get("material_efficiency"),
+        "time_efficiency": metadata.get("time_efficiency"),
+        "runs_remaining": metadata.get("runs_remaining"),
+        "is_copy": metadata.get("is_copy"),
+        "blueprint_location_name": metadata.get("blueprint_location_name"),
         "product_type_id": project.product_type_id,
         "product_name": project.product_type.name if project.product_type else None,
         "facility_id": project.facility_id,
@@ -123,6 +130,7 @@ def list_research_projects(
             "can_sync": token.user_id == current_user.id or can_view_all_characters(current_user, db),
         })
 
+    blueprint_metadata = project_blueprint_metadata(db, projects)
     active_projects = [project for project in projects if project.status in ACTIVE_RESEARCH_STATUSES]
     now = datetime.now(timezone.utc)
     return {
@@ -136,7 +144,7 @@ def list_research_projects(
             "history": len(projects),
         },
         "sync_tokens": token_rows,
-        "projects": [serialize_project(project) for project in projects],
+        "projects": [serialize_project(project, blueprint_metadata.get(project.id)) for project in projects],
     }
 
 def owned_blueprint_query():

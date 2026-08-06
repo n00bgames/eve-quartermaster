@@ -13,6 +13,10 @@ export type EqmCharacter = {
   alliance_name?: string | null;
   public_assets_visible?: boolean;
   sync_opt_out?: boolean;
+  wallet_history_opt_out?: boolean;
+  wallet_corporation_analytics_opt_in?: boolean;
+  current_wallet_balance?: number | null;
+  wallet_synced_at?: string | null;
   last_synced_at?: string | null;
   can_manage?: boolean;
   can_assign?: boolean;
@@ -49,6 +53,8 @@ export type CharacterSummary = {
   bpcs: number;
   fittings: number;
   contracts: number;
+  wallet_balance?: number | null;
+  wallet_synced_at?: string | null;
 };
 
 export type CharacterDossierToken = {
@@ -62,6 +68,7 @@ export type CharacterDossierToken = {
   has_contract_scope: boolean;
   has_clone_scope: boolean;
   has_standings_scope: boolean;
+  has_wallet_scope: boolean;
   missing_scopes: string[];
   linked_at?: string | null;
 };
@@ -133,14 +140,18 @@ export type CharacterDossier = {
   kill_history: {
     kills_count: number;
     losses_count: number;
-    isk_destroyed: number;
-    isk_lost: number;
+    isk_destroyed: number | null;
+    isk_lost: number | null;
     kills: CharacterKillSample[];
     losses: CharacterKillSample[];
   };
   permissions: {
     public_assets_visible: boolean;
     sync_opt_out: boolean;
+    wallet_history_opt_out: boolean;
+    wallet_corporation_analytics_opt_in: boolean;
+    can_manage_wallet_privacy: boolean;
+    isk_values_visible: boolean;
     can_manage: boolean;
     can_assign: boolean;
   };

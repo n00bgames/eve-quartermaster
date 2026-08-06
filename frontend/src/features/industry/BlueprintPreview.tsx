@@ -1,3 +1,4 @@
+import { BlueprintHoverCard, blueprintHoverDetails } from "../../components/BlueprintHoverCard";
 import type { Blueprint } from "../../types/inventory";
 
 const numberFormatter = new Intl.NumberFormat();
@@ -22,7 +23,7 @@ export function BlueprintPreview({ blueprints, onOpenIndustry }: { blueprints: B
     </div>
     <div className="mini-list">
       {recentBlueprints.map((blueprint) => <div key={blueprint.id}>
-        <strong>{blueprint.blueprint_type_name}</strong>
+        <BlueprintHoverCard details={blueprintHoverDetails(blueprint)}><strong>{blueprint.blueprint_type_name}</strong></BlueprintHoverCard>
         <span>{blueprint.owner_name} · {blueprint.is_copy ? "BPC" : "BPO"}{blueprint.product_type_name ? ` · ${blueprint.product_type_name}` : ""}</span>
       </div>)}
       {blueprints.length === 0 && <p className="empty">No blueprints synced yet.</p>}

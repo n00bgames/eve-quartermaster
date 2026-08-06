@@ -78,6 +78,15 @@ export function SettingsPage({ currentUser, api, Metric, ManagedForm, accountLab
     }
   }
 
+  async function changeWalletOptOut(character: EqmCharacter, optedOut: boolean) {
+    if (optedOut && !window.confirm(`Stop collecting ${character.name}'s wallet history? This permanently deletes every stored balance snapshot and wallet journal event for this character.`)) return;
+    await patchCharacter(character, { wallet_history_opt_out: optedOut }, optedOut ? `${character.name} wallet history deleted and future collection disabled.` : `${character.name} wallet history collection enabled.`);
+  }
+
+  async function changeWalletCorporationOptIn(character: EqmCharacter, optedIn: boolean) {
+    await patchCharacter(character, { wallet_corporation_analytics_opt_in: optedIn }, optedIn ? `${character.name} explicitly opted into corporation Financial Analytics.` : `${character.name} was removed from corporation Financial Analytics.`);
+  }
+
   async function importSde() {
     setSdeBusy(true);
     setSettingsError(null);
@@ -127,6 +136,7 @@ export function SettingsPage({ currentUser, api, Metric, ManagedForm, accountLab
             <label className="check"><input type="checkbox" checked={suppressPeekNotifications} onChange={(event) => void patchNotificationSuppression(event.target.checked)} /> Suppress sync peek notifications for development or mandatory-public ESI corporations</label>
           </div>
         )}
+        <div className="privacy-placard"><strong>Wallet privacy:</strong> By default, wallet sync is visible only to its owner and excluded from corporation calculations. A pilot may explicitly opt into corporation Financial Analytics; small participation pools can make an aggregate easier to infer. Hard opt-out permanently deletes stored history and stops collection. Staff cannot enable either choice for a pilot.</div>
         <div className="card-list">
           {manageable.map((character) => (
             <article key={character.id}>
@@ -134,7 +144,11 @@ export function SettingsPage({ currentUser, api, Metric, ManagedForm, accountLab
               <span>{character.corporation_name ?? "Unknown corporation"}{character.owner_display_name ? ` · ${character.owner_display_name}` : ""}</span>
               <label className="check"><input type="checkbox" checked={Boolean(character.public_assets_visible)} onChange={(event) => void patchCharacter(character, { public_assets_visible: event.target.checked }, `${character.name} public asset visibility updated.`)} /> Public assets visible to members</label>
               <label className="check"><input type="checkbox" checked={Boolean(character.sync_opt_out)} onChange={(event) => void patchCharacter(character, { sync_opt_out: event.target.checked }, `${character.name} sync preference updated.`)} /> Keep this character private from shared Quartermaster sync</label>
-              {character.sync_opt_out && <div className="privacy-placard">This character does not wish to be synced. Admins can override temporarily for administrative review, but this preference remains visible.</div>}
+              {character.owner_user_id === currentUser.id && <label className="check"><input type="checkbox" checked={Boolean(character.wallet_corporation_analytics_opt_in)} disabled={character.wallet_history_opt_out} onChange={(event) => void changeWalletCorporationOptIn(character, event.target.checked)} /> Include my wallet in corporation Financial Analytics</label>}
+              {character.owner_user_id === currentUser.id && <label className="check"><input type="checkbox" checked={Boolean(character.wallet_history_opt_out)} onChange={(event) => void changeWalletOptOut(character, event.target.checked)} /> Hard opt out of wallet history collection and display</label>}
+              {character.wallet_corporation_analytics_opt_in && !character.wallet_history_opt_out && <div className="privacy-placard">The owner explicitly opted this character into corporation financial aggregates. Individual wallet pages remain owner-only, but small participation pools can make aggregate values easier to infer.</div>}
+              {character.wallet_history_opt_out && <div className="privacy-placard">Wallet collection is disabled. Stored wallet history has been deleted and staff cannot override this setting.</div>}
+              {character.sync_opt_out && <div className="privacy-placard">This character does not wish to be synced. Admins can override a data sync for administrative review, but private ISK values remain hidden from every other account.</div>}
             </article>
           ))}
           {manageable.length === 0 && <p className="empty">No manageable characters found.</p>}

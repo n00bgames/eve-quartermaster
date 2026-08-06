@@ -2,6 +2,8 @@ import { Copy, Download, GraduationCap, MoreHorizontal, Plus, ScrollText } from 
 import type { ReactElement, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 
+import { pollCharacterSyncJob } from "../../lib/characterSyncPolling";
+
 import { PilotSecurityStatus } from "./PilotSecurityStatus";
 import { SkillDogmaPopover } from "./SkillDogmaPopover";
 import {
@@ -34,7 +36,6 @@ export function CharacterSkills({ currentUser, api, Metric, CharacterHoverName }
   const baseSkillSp = [0, 250, 1415, 8000, 45255, 256000];
   const syncAllActive = syncAllJob?.status === "queued" || syncAllJob?.status === "running";
   const syncAllPercent = syncAllJob?.total_count ? Math.round((syncAllJob.processed_count / syncAllJob.total_count) * 100) : 0;
-  const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
   async function loadSkills() {
     setProfiles(await api<CharacterSkillProfile[]>("/esi/character-skills"));
@@ -64,20 +65,13 @@ export function CharacterSkills({ currentUser, api, Metric, CharacterHoverName }
     setSkillError(null);
     setMessage("Queued skill sync for every eligible character...");
     try {
-      let job = await api<SkillSyncAllJob>("/esi/sync/character-skills/all", { method: "POST", body: "{}" });
-      setSyncAllJob(job);
-      const startedAt = Date.now();
-      while (job.status === "queued" || job.status === "running") {
-        if (Date.now() - startedAt > 10 * 60 * 1000) {
-          setMessage(null);
-          setSkillError("Skill sync is still running after 10 minutes, so polling was stopped to quiet the logs. Refresh Skills to check the latest status, or restart the backend worker if the count is not moving.");
-          setSyncAllJob((current) => current ? { ...current, status: "failed", errors: ["Polling stopped after 10 minutes while the backend job was still running.", ...current.errors] } : current);
-          return;
-        }
-        await wait(2000);
-        job = await api<SkillSyncAllJob>(`/esi/sync/character-skills/all/${job.job_id}`);
-        setSyncAllJob(job);
-      }
+      const initialJob = await api<SkillSyncAllJob>("/esi/sync/character-skills/all", { method: "POST", body: "{}" });
+      setSyncAllJob(initialJob);
+      const job = await pollCharacterSyncJob({
+        initialJob,
+        fetchLatest: (current) => api<SkillSyncAllJob>(`/esi/sync/character-skills/all/${current.job_id}`),
+        onUpdate: setSyncAllJob,
+      });
       await loadSkills();
       if (job.status === "complete") {
         setMessage(`Synced ${job.success_count.toLocaleString()} of ${job.total_count.toLocaleString()} eligible characters. Skipped ${job.skipped_count.toLocaleString()} opted-out, duplicate, hidden, or missing-scope character${job.skipped_count === 1 ? "" : "s"}.`);

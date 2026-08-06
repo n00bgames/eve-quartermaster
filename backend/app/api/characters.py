@@ -4,7 +4,7 @@ from decimal import Decimal
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import desc, exists, func, select
+from sqlalchemy import delete, desc, exists, func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.auth import get_current_user, require_role, serialize_user
@@ -16,6 +16,8 @@ from app.models import (
     CharacterSkill,
     CharacterSkillQueueEntry,
     CharacterStanding,
+    CharacterWalletJournalEntry,
+    CharacterWalletSnapshot,
     EsiToken,
     EveCharacter,
     EveContract,
@@ -24,10 +26,12 @@ from app.models import (
     EveGroup,
     EveType,
     OwnershipEntity,
+    SnapshotMetric,
     User,
 )
 from app.models.enums import ActivityKind, OwnerKind
 from app.models.navigation import SystemIndustrialKillObservation, SystemPvpKillObservation
+from app.services.blueprint_hover import active_blueprint_uses, blueprint_active_use
 from app.services.contracts import serialize_contract
 from app.services.permissions import ROLE_RANK, can_view_section, role_rank
 from app.services.standings import serialize_character_standing
@@ -40,6 +44,7 @@ FITTING_SCOPE = "esi-fittings.read_fittings.v1"
 CONTRACT_SCOPE = "esi-contracts.read_character_contracts.v1"
 CLONE_SCOPES = ["esi-clones.read_clones.v1", "esi-clones.read_implants.v1"]
 STANDINGS_SCOPE = "esi-characters.read_standings.v1"
+WALLET_SCOPE = "esi-wallet.read_character_wallet.v1"
 
 
 def iso(value: Any) -> str | None:
@@ -67,6 +72,11 @@ def can_view_character_detail(viewer: User, character: EveCharacter, db: Session
     if viewer_rank >= ROLE_RANK["officer"] and character.owner_user and role_rank(character.owner_user, db) < ROLE_RANK["officer"]:
         return True
     return False
+
+
+def can_view_character_isk_values(viewer: User, character: EveCharacter) -> bool:
+    """Never let a staff override expose an opted-out character's ISK values."""
+    return character.owner_user_id == viewer.id or not character.sync_opt_out
 
 
 def can_sync_character_data(viewer: User, character: EveCharacter, token: EsiToken, db: Session) -> bool:
@@ -121,6 +131,10 @@ def serialize_character(character: EveCharacter, viewer: User, db: Session) -> d
             "alliance_name": character.alliance.name if character.alliance else None,
             "public_assets_visible": character.public_assets_visible,
             "sync_opt_out": character.sync_opt_out,
+            "wallet_history_opt_out": character.wallet_history_opt_out,
+            "wallet_corporation_analytics_opt_in": character.wallet_corporation_analytics_opt_in,
+            "wallet_synced_at": iso(character.wallet_synced_at),
+            "current_wallet_balance": to_float(character.current_wallet_balance) if character.owner_user_id == viewer.id and not character.wallet_history_opt_out and not character.sync_opt_out and character.current_wallet_balance is not None else None,
             "last_synced_at": iso(character.last_synced_at),
         }
     )
@@ -267,6 +281,7 @@ def serialize_blueprint(
     blueprint: Blueprint,
     capital_blueprint_type_ids: set[int] | None = None,
     product_type_fallback: EveType | None = None,
+    active_use: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     product_type = blueprint.product_type or product_type_fallback
     family = item_family(product_type, blueprint.blueprint_type.name if blueprint.blueprint_type else None)
@@ -284,6 +299,7 @@ def serialize_blueprint(
         "location_name": blueprint.location.name if blueprint.location else None,
         "location_id": blueprint.location.eve_location_id if blueprint.location else None,
         "last_synced_at": iso(blueprint.last_synced_at),
+        "active_use": active_use,
         "inventory_family": family,
         "inventory_subtype": inventory_subtype(product_type, blueprint.blueprint_type.name if blueprint.blueprint_type else None),
         "capital_construction_related": blueprint.blueprint_type_id in (capital_blueprint_type_ids or set()) and family not in {"reactions", "ram"},
@@ -304,12 +320,12 @@ def serialize_fitting(fitting: CharacterFitting) -> dict[str, Any]:
     }
 
 
-def serialize_kill_observation(row: SystemPvpKillObservation | SystemIndustrialKillObservation) -> dict[str, Any]:
+def serialize_kill_observation(row: SystemPvpKillObservation | SystemIndustrialKillObservation, *, include_isk_values: bool = True) -> dict[str, Any]:
     return {
         "killmail_id": row.killmail_id,
         "killmail_time": iso(row.killmail_time),
         "zkb_url": row.zkb_url,
-        "total_value": to_float(row.total_value),
+        "total_value": to_float(row.total_value) if include_isk_values else None,
         "victim_hull": row.victim_hull,
         "victim_character_name": row.victim_character_name,
         "victim_corporation_name": row.victim_corporation_name,
@@ -418,14 +434,15 @@ def character_tokens_payload(db: Session, viewer: User, character: EveCharacter)
                 "has_contract_scope": CONTRACT_SCOPE in scopes,
                 "has_clone_scope": all(scope in scopes for scope in CLONE_SCOPES),
                 "has_standings_scope": STANDINGS_SCOPE in scopes,
-                "missing_scopes": [scope for scope in [ASSET_SCOPE, *SKILL_SCOPES, FITTING_SCOPE, CONTRACT_SCOPE, *CLONE_SCOPES, STANDINGS_SCOPE] if scope not in scopes],
+                "has_wallet_scope": WALLET_SCOPE in scopes,
+                "missing_scopes": [scope for scope in [ASSET_SCOPE, *SKILL_SCOPES, FITTING_SCOPE, CONTRACT_SCOPE, *CLONE_SCOPES, STANDINGS_SCOPE, WALLET_SCOPE] if scope not in scopes],
                 "linked_at": iso(token.created_at),
             }
         )
     return payload
 
 
-def character_kill_history(db: Session, character: EveCharacter) -> dict[str, Any]:
+def character_kill_history(db: Session, character: EveCharacter, *, include_isk_values: bool = True) -> dict[str, Any]:
     combined_model = SystemPvpKillObservation
     kills = db.scalars(
         select(combined_model)
@@ -446,10 +463,10 @@ def character_kill_history(db: Session, character: EveCharacter) -> dict[str, An
     return {
         "kills_count": int(kills_count),
         "losses_count": int(losses_count),
-        "isk_destroyed": to_float(isk_destroyed),
-        "isk_lost": to_float(isk_lost),
-        "kills": [serialize_kill_observation(row) for row in kills],
-        "losses": [serialize_kill_observation(row) for row in losses],
+        "isk_destroyed": to_float(isk_destroyed) if include_isk_values else None,
+        "isk_lost": to_float(isk_lost) if include_isk_values else None,
+        "kills": [serialize_kill_observation(row, include_isk_values=include_isk_values) for row in kills],
+        "losses": [serialize_kill_observation(row, include_isk_values=include_isk_values) for row in losses],
     }
 
 
@@ -496,7 +513,7 @@ def get_character_dossier(character_id: int, current_user: User = Depends(get_cu
     blueprint_query = (
         select(Blueprint)
         .where(Blueprint.ownership_entity_id == owner.id if owner else False)
-        .options(selectinload(Blueprint.ownership_entity), selectinload(Blueprint.blueprint_type).selectinload(EveType.group).selectinload(EveGroup.category), selectinload(Blueprint.product_type).selectinload(EveType.group).selectinload(EveGroup.category), selectinload(Blueprint.location))
+        .options(selectinload(Blueprint.ownership_entity), selectinload(Blueprint.blueprint_type).selectinload(EveType.group).selectinload(EveGroup.category), selectinload(Blueprint.product_type).selectinload(EveType.group).selectinload(EveGroup.category), selectinload(Blueprint.location), selectinload(Blueprint.asset))
         .order_by(Blueprint.blueprint_type_id, Blueprint.id)
         .limit(50)
     )
@@ -515,9 +532,18 @@ def get_character_dossier(character_id: int, current_user: User = Depends(get_cu
         .limit(30)
     )
     summary = character_summary_payload(db, character)
+    summary["wallet_balance"] = to_float(character.current_wallet_balance) if character.owner_user_id == current_user.id and not character.wallet_history_opt_out and not character.sync_opt_out and character.current_wallet_balance is not None else None
+    summary["wallet_synced_at"] = iso(character.wallet_synced_at) if character.owner_user_id == current_user.id else None
     capital_blueprint_type_ids = blueprint_type_ids_for_capital_construction(db)
     blueprint_rows = db.scalars(blueprint_query).all() if owner else []
     blueprint_product_fallbacks = blueprint_product_type_fallbacks(db, {blueprint.blueprint_type_id for blueprint in blueprint_rows})
+    blueprint_uses = active_blueprint_uses(db, blueprint_rows)
+    isk_values_visible = can_view_character_isk_values(current_user, character)
+    contracts = [serialize_contract(contract) for contract in db.scalars(contracts_query).all()]
+    if not isk_values_visible:
+        for contract in contracts:
+            for field in ("price", "reward", "collateral", "buyout"):
+                contract[field] = None
     return {
         "character": serialize_character(character, current_user, db),
         "summary": summary,
@@ -537,9 +563,9 @@ def get_character_dossier(character_id: int, current_user: User = Depends(get_cu
             ],
         },
         "assets": [serialize_asset(asset) for asset in db.scalars(asset_query).all()] if owner else [],
-        "blueprints": [serialize_blueprint(blueprint, capital_blueprint_type_ids, blueprint_product_fallbacks.get(blueprint.blueprint_type_id)) for blueprint in blueprint_rows],
+        "blueprints": [serialize_blueprint(blueprint, capital_blueprint_type_ids, blueprint_product_fallbacks.get(blueprint.blueprint_type_id), blueprint_active_use(blueprint, blueprint_uses)) for blueprint in blueprint_rows],
         "fittings": [serialize_fitting(fitting) for fitting in db.scalars(fittings_query).all()],
-        "contracts": [serialize_contract(contract) for contract in db.scalars(contracts_query).all()],
+        "contracts": contracts,
         "standings": {
             "synced_at": iso(character.standings_synced_at),
             "entries": [
@@ -551,10 +577,14 @@ def get_character_dossier(character_id: int, current_user: User = Depends(get_cu
                 ).all()
             ],
         },
-        "kill_history": character_kill_history(db, character),
+        "kill_history": character_kill_history(db, character, include_isk_values=isk_values_visible),
         "permissions": {
             "public_assets_visible": character.public_assets_visible,
             "sync_opt_out": character.sync_opt_out,
+            "wallet_history_opt_out": character.wallet_history_opt_out,
+            "wallet_corporation_analytics_opt_in": character.wallet_corporation_analytics_opt_in,
+            "can_manage_wallet_privacy": character.owner_user_id == current_user.id,
+            "isk_values_visible": isk_values_visible,
             "can_manage": can_manage_characters(current_user, db) or character.owner_user_id == current_user.id,
             "can_assign": can_manage_characters(current_user, db),
         },
@@ -633,6 +663,24 @@ def update_character(character_id: int, payload: dict[str, Any], current_user: U
         if character.owner_user_id != current_user.id and current_user.role not in {"host", "admin"}:
             raise HTTPException(status_code=403, detail="You can only change sync privacy for your own characters")
         character.sync_opt_out = bool(payload["sync_opt_out"])
+    if "wallet_corporation_analytics_opt_in" in payload:
+        if character.owner_user_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Only the character owner can consent to corporation wallet analytics")
+        character.wallet_corporation_analytics_opt_in = bool(payload["wallet_corporation_analytics_opt_in"])
+    if "wallet_history_opt_out" in payload:
+        if character.owner_user_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Only the character owner can change wallet history collection")
+        character.wallet_history_opt_out = bool(payload["wallet_history_opt_out"])
+        if character.wallet_history_opt_out:
+            db.execute(delete(CharacterWalletSnapshot).where(CharacterWalletSnapshot.character_id == character.id))
+            db.execute(delete(CharacterWalletJournalEntry).where(CharacterWalletJournalEntry.character_id == character.id))
+            db.execute(delete(SnapshotMetric).where(
+                SnapshotMetric.owner_type == "character",
+                SnapshotMetric.owner_id == character.id,
+                SnapshotMetric.metric_key == "character_wallet.balance",
+            ))
+            character.current_wallet_balance = None
+            character.wallet_synced_at = None
     db.commit()
     character = db.scalar(
         select(EveCharacter)

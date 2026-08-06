@@ -27,6 +27,7 @@ from app.models import (
 )
 from app.models.enums import ActivityKind, AssetSource, LocationKind, OwnerKind, ProcurementKind
 from app.services.asset_visibility import can_view_owner_records, visible_asset_rows
+from app.services.blueprint_hover import active_blueprint_uses, blueprint_active_use
 from app.services.corporation_metadata import (
     asset_flag_name,
     asset_location_name,
@@ -407,10 +408,12 @@ def list_blueprints(current_user: User = Depends(get_current_user), db: Session 
             selectinload(Blueprint.blueprint_type),
             selectinload(Blueprint.product_type).selectinload(EveType.group).selectinload(EveGroup.category),
             selectinload(Blueprint.location),
+            selectinload(Blueprint.asset),
         )
         .order_by(Blueprint.id.desc())
     ).all()
     product_fallbacks = blueprint_product_type_fallbacks(db, {blueprint.blueprint_type_id for blueprint in blueprints})
+    blueprint_uses = active_blueprint_uses(db, blueprints)
     results = []
     for blueprint in blueprints:
         if not can_view_owner_records(blueprint.ownership_entity, current_user, db):
@@ -427,6 +430,7 @@ def list_blueprints(current_user: User = Depends(get_current_user), db: Session 
                     "product_type_name": product_type.name if product_type else None,
                     "location_name": blueprint.location.name if blueprint.location else None,
                     "location_id": blueprint.location.eve_location_id if blueprint.location else None,
+                    "active_use": blueprint_active_use(blueprint, blueprint_uses),
                     "inventory_family": family,
                     "inventory_subtype": inventory_subtype(product_type, blueprint.blueprint_type.name if blueprint.blueprint_type else None),
                     "capital_construction_related": blueprint.blueprint_type_id in capital_blueprint_type_ids and family not in {"reactions", "ram"},

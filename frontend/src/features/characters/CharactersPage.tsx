@@ -1,5 +1,8 @@
-import { Activity, Boxes, ClipboardList, GraduationCap, PackagePlus, ScrollText, ShoppingCart } from "lucide-react";
+import { Activity, Boxes, ClipboardList, GraduationCap, PackagePlus, ScrollText, ShoppingCart, WalletCards } from "lucide-react";
 import { useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
+
+import { pollCharacterSyncJob } from "../../lib/characterSyncPolling";
+import { iskFormatter } from "../../lib/market";
 
 import { ImplantDogmaChip } from "./ImplantDogmaChip";
 import { PilotSecurityStatus } from "./PilotSecurityStatus";
@@ -11,7 +14,7 @@ type ApiClient = <T>(path: string, options?: RequestInit) => Promise<T>;
 type UserAccount = { id: number; email: string; display_name: string; role: string };
 type EveEntityKind = "character" | "corporation" | "alliance";
 type EveIconSize = "tiny" | "sm" | "md" | "lg";
-type SyncKind = "assets" | "skills" | "standings" | "fittings" | "contracts" | "implants";
+type SyncKind = "assets" | "skills" | "standings" | "wallet" | "fittings" | "contracts" | "implants";
 type CharacterSyncAllJob = { job_id: string; status: "queued" | "running" | "complete" | "failed" | "cancelled"; created_at: string; updated_at?: string | null; completed_at?: string | null; total_count: number; processed_count: number; success_count: number; failed_count: number; skipped_count: number; current_character_name?: string | null; current_sync_kind?: SyncKind | null; results: { character_name: string; sync_kind: SyncKind; status: string }[]; errors: string[] };
 
 type MetricComponent = (props: { icon: ReactNode; label: string; value: number | string; delta?: string }) => ReactElement;
@@ -69,7 +72,6 @@ export function CharactersPage({
   const canLoadAccounts = ["host", "admin", "director"].includes(currentUser.role);
   const syncAllActive = syncAllJob?.status === "queued" || syncAllJob?.status === "running";
   const syncAllPercent = syncAllJob?.total_count ? Math.round((syncAllJob.processed_count / syncAllJob.total_count) * 100) : 0;
-  const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
   async function loadCharacters(preferredId = selectedCharacterId, preferredEveId?: number | null) {
     const loaded = await api<EqmCharacter[]>("/characters");
@@ -122,11 +124,21 @@ export function CharactersPage({
     }
   }
 
+  async function changeWalletOptOut(characterId: number, characterName: string, optedOut: boolean) {
+    if (optedOut && !window.confirm(`Stop collecting ${characterName}'s wallet history? This permanently deletes every stored balance snapshot and wallet journal event for this character.`)) return;
+    await patchCharacter(characterId, { wallet_history_opt_out: optedOut }, optedOut ? `${characterName} wallet history deleted and future collection disabled.` : `${characterName} wallet history collection enabled.`);
+  }
+
+  async function changeWalletCorporationOptIn(characterId: number, characterName: string, optedIn: boolean) {
+    await patchCharacter(characterId, { wallet_corporation_analytics_opt_in: optedIn }, optedIn ? `${characterName} explicitly opted into corporation Financial Analytics.` : `${characterName} was removed from corporation Financial Analytics.`);
+  }
+
   async function runCharacterSync(kind: SyncKind, token: CharacterDossierToken) {
     const endpoints: Record<SyncKind, string> = {
       assets: `/esi/sync/character-assets/${token.token_id}`,
       skills: `/esi/sync/character-skills/${token.token_id}`,
       standings: `/esi/sync/character-standings/${token.token_id}`,
+      wallet: `/esi/sync/character-wallet/${token.token_id}`,
       fittings: `/esi/sync/character-fittings/${token.token_id}`,
       contracts: `/contracts/sync/character/${token.token_id}`,
       implants: `/jump-clones/sync/${token.token_id}`,
@@ -153,20 +165,13 @@ export function CharactersPage({
     setCharacterError(null);
     setMessage("Queued every available character data sync, including NPC standings...");
     try {
-      let job = await api<CharacterSyncAllJob>("/esi/sync/characters/all", { method: "POST", body: "{}" });
-      setSyncAllJob(job);
-      const startedAt = Date.now();
-      while (job.status === "queued" || job.status === "running") {
-        if (Date.now() - startedAt > 10 * 60 * 1000) {
-          setMessage(null);
-          setCharacterError("Character sync is still running after 10 minutes, so polling was stopped. Refresh Characters to check the latest status, or restart the backend worker if the count is not moving.");
-          setSyncAllJob((current) => current ? { ...current, status: "failed", errors: ["Polling stopped after 10 minutes while the backend job was still running.", ...current.errors] } : current);
-          return;
-        }
-        await wait(2000);
-        job = await api<CharacterSyncAllJob>(`/esi/sync/characters/all/${job.job_id}`);
-        setSyncAllJob(job);
-      }
+      const initialJob = await api<CharacterSyncAllJob>("/esi/sync/characters/all", { method: "POST", body: "{}" });
+      setSyncAllJob(initialJob);
+      const job = await pollCharacterSyncJob({
+        initialJob,
+        fetchLatest: (current) => api<CharacterSyncAllJob>(`/esi/sync/characters/all/${current.job_id}`),
+        onUpdate: setSyncAllJob,
+      });
       const nextId = await loadCharacters(selectedCharacterId);
       await loadDossier(nextId);
       if (job.status === "complete") {
@@ -260,10 +265,12 @@ export function CharactersPage({
                 <Metric icon={<PackagePlus size={18} />} label="Ships" value={summary.ship_units} />
                 <Metric icon={<ScrollText size={18} />} label="Blueprints" value={`${summary.bpos.toLocaleString()} BPO / ${summary.bpcs.toLocaleString()} BPC`} />
                 <Metric icon={<ClipboardList size={18} />} label="Contracts" value={summary.contracts} />
+                {dossier.permissions.can_manage_wallet_privacy && <Metric icon={<WalletCards size={18} />} label="Wallet" value={dossier.permissions.wallet_history_opt_out ? "Not collected" : summary.wallet_balance == null ? "Not synced" : `${iskFormatter.format(summary.wallet_balance)} ISK`} />}
               </div>
               {canManage && (
                 <div className="character-admin-strip">
                   <h4>Character Controls</h4>
+                  {dossier.permissions.can_manage_wallet_privacy && <div className="privacy-placard"><strong>Wallet privacy:</strong> By default, wallet sync is visible only to you and excluded from corporation calculations. You may explicitly opt into corporation Financial Analytics; small participation pools can make an aggregate easier to infer. Hard opt-out deletes stored history and stops collection. Staff cannot enable either choice for you.</div>}
                   {canAssign && (
                     <label>
                       EQM Account
@@ -275,8 +282,12 @@ export function CharactersPage({
                   )}
                   <label className="check"><input type="checkbox" checked={Boolean(dossier.permissions.public_assets_visible)} onChange={(event) => void patchCharacter(dossier.character.id, { public_assets_visible: event.target.checked }, `${dossier.character.name} visibility updated.`)} /> Public assets visible to members</label>
                   <label className="check"><input type="checkbox" checked={Boolean(dossier.permissions.sync_opt_out)} onChange={(event) => void patchCharacter(dossier.character.id, { sync_opt_out: event.target.checked }, `${dossier.character.name} sync preference updated.`)} /> Keep this character private from shared Quartermaster sync</label>
+                  {dossier.permissions.can_manage_wallet_privacy && <label className="check"><input type="checkbox" checked={Boolean(dossier.permissions.wallet_corporation_analytics_opt_in)} disabled={dossier.permissions.wallet_history_opt_out} onChange={(event) => void changeWalletCorporationOptIn(dossier.character.id, dossier.character.name, event.target.checked)} /> Include my wallet in corporation Financial Analytics</label>}
+                  {dossier.permissions.can_manage_wallet_privacy && <label className="check"><input type="checkbox" checked={Boolean(dossier.permissions.wallet_history_opt_out)} onChange={(event) => void changeWalletOptOut(dossier.character.id, dossier.character.name, event.target.checked)} /> Hard opt out of wallet history collection and display</label>}
+                  {dossier.permissions.wallet_corporation_analytics_opt_in && !dossier.permissions.wallet_history_opt_out && <div className="privacy-placard">You explicitly opted this character into corporation financial aggregates. Individual wallet pages remain owner-only, but small participation pools can make aggregate values easier to infer.</div>}
+                  {dossier.permissions.wallet_history_opt_out && <div className="privacy-placard">Wallet collection is disabled. Stored snapshots and journal events have been deleted, and no administrator can override this setting.</div>}
                   {!dossier.permissions.public_assets_visible && <div className="privacy-placard">This character has not made assets public to members. Admin asset sync is an override for administrative review.</div>}
-                  {dossier.permissions.sync_opt_out && <div className="privacy-placard">This character does not wish to be synced. Admins can override temporarily for administrative review, but this preference remains visible.</div>}
+                  {dossier.permissions.sync_opt_out && <div className="privacy-placard">This character does not wish to be synced. Admins can override a data sync for administrative review, but private ISK values remain hidden from every other account.</div>}
                 </div>
               )}
               <div className="character-sync-grid">
@@ -290,6 +301,7 @@ export function CharactersPage({
                       {syncButton(token, "assets", "Sync assets", token.has_asset_scope)}
                       {syncButton(token, "skills", "Sync skills", token.has_skill_scope)}
                       {syncButton(token, "standings", "Sync standings", token.has_standings_scope)}
+                      {syncButton(token, "wallet", "Sync wallet", token.has_wallet_scope && !dossier.permissions.wallet_history_opt_out)}
                       {syncButton(token, "fittings", "Sync fittings", token.has_fitting_scope)}
                       {syncButton(token, "contracts", "Sync contracts", token.has_contract_scope)}
                       {syncButton(token, "implants", "Sync clones", token.has_clone_scope)}
@@ -347,11 +359,12 @@ export function CharactersPage({
               </div>
               <section>
                 <h4>Kill / Loss History</h4>
+                {!dossier.permissions.isk_values_visible && <div className="privacy-placard">ISK values are hidden by this character's hard privacy opt-out. Staff overrides cannot reveal them.</div>}
                 <div className="character-summary-grid">
                   <Metric icon={<Activity size={18} />} label="Kills" value={dossier.kill_history.kills_count} />
                   <Metric icon={<Activity size={18} />} label="Losses" value={dossier.kill_history.losses_count} />
-                  <Metric icon={<ShoppingCart size={18} />} label="ISK destroyed" value={Math.round(dossier.kill_history.isk_destroyed).toLocaleString()} />
-                  <Metric icon={<ShoppingCart size={18} />} label="ISK lost" value={Math.round(dossier.kill_history.isk_lost).toLocaleString()} />
+                  <Metric icon={<ShoppingCart size={18} />} label="ISK destroyed" value={dossier.kill_history.isk_destroyed == null ? "Private" : Math.round(dossier.kill_history.isk_destroyed).toLocaleString()} />
+                  <Metric icon={<ShoppingCart size={18} />} label="ISK lost" value={dossier.kill_history.isk_lost == null ? "Private" : Math.round(dossier.kill_history.isk_lost).toLocaleString()} />
                 </div>
                 <div className="mini-list character-kill-list">
                   {[...dossier.kill_history.kills, ...dossier.kill_history.losses].slice(0, 10).map((kill) => <div key={`${kill.killmail_id}-${kill.victim_character_name}`}><strong>{kill.victim_hull ?? "Unknown hull"}{kill.smartbomb_used ? " · Smartbombs" : ""}{kill.is_wardec ? " · Wardec" : ""}</strong><span>{kill.killmail_time ? formatDateTime(kill.killmail_time) : "Unknown time"} · {kill.location_name ?? "Unknown location"}{kill.zkb_url ? <a href={kill.zkb_url} target="_blank" rel="noreferrer"> zKill</a> : null}</span></div>)}

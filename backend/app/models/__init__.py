@@ -1,4 +1,5 @@
 from app.models.analytics import BlueprintSnapshot, CharacterSkillSnapshot, CorporationSnapshot, CorporationWalletSnapshot, SnapshotMetric, SnapshotRun
+from app.models.wallet import CharacterWalletJournalEntry, CharacterWalletSnapshot
 from app.models.assets import Asset, Location
 from app.models.audit import AppSetting, AuditEvent, PrivateMessage
 from app.models.contracts import EveContract
@@ -38,6 +39,8 @@ __all__ = [
     "CharacterSkill",
     "CharacterSkillQueueEntry",
     "CharacterStanding",
+    "CharacterWalletJournalEntry",
+    "CharacterWalletSnapshot",
     "CharacterJumpClone",
     "CharacterSkillSnapshot",
     "CorporationSnapshot",

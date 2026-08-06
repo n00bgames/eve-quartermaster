@@ -1,6 +1,8 @@
 import { ArrowDown, ArrowUp, CheckCircle2, Plus, RotateCcw, Search, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
+import { BlueprintHoverCard } from "../../components/BlueprintHoverCard";
+
 import "./researchQueue.css";
 
 type ApiClient = <T>(path: string, options?: RequestInit) => Promise<T>;
@@ -193,7 +195,7 @@ export function ResearchQueuePlanner({ api, formatDateTime }: { api: ApiClient; 
         Owned BPO or BPC
         <div className="input-with-icon"><Search size={15} /><input value={blueprintQuery} placeholder="Search synced blueprints" onChange={(event) => { setBlueprintQuery(event.target.value); setSelectedBlueprint(null); }} /></div>
         {blueprintOptions.length > 0 && <div className="research-queue-search-results">{blueprintOptions.map((blueprint) => <button type="button" key={blueprint.id} onClick={() => chooseBlueprint(blueprint)}>
-          <strong>{blueprint.name}</strong>
+          <BlueprintHoverCard details={{ name: blueprint.name, owner: blueprint.owner_name, kind: blueprint.kind, materialEfficiency: blueprint.material_efficiency, timeEfficiency: blueprint.time_efficiency, runsRemaining: blueprint.runs_remaining, location: blueprint.source_location_name }}><strong>{blueprint.name}</strong></BlueprintHoverCard>
           <span>{blueprint.kind} · {blueprint.owner_name} · ME {blueprint.material_efficiency} / TE {blueprint.time_efficiency}{blueprint.runs_remaining != null ? " · " + blueprint.runs_remaining + " runs" : ""}</span>
           <small>{blueprint.source_location_name ?? "Location unavailable"}{blueprint.source_hangar ? " · " + blueprint.source_hangar : ""}</small>
         </button>)}</div>}
@@ -204,7 +206,7 @@ export function ResearchQueuePlanner({ api, formatDateTime }: { api: ApiClient; 
       <button type="button" disabled={busy || !selectedBlueprint} onClick={() => void createItem()}><Plus size={16} /> Add to queue</button>
     </div>
 
-    {selectedBlueprint && <div className="research-queue-selection"><strong>{selectedBlueprint.name}</strong><span>{selectedBlueprint.kind} · {selectedBlueprint.owner_name} · ME {selectedBlueprint.material_efficiency} / TE {selectedBlueprint.time_efficiency}</span><small>{selectedBlueprint.source_location_name ?? "Location unavailable"}</small></div>}
+    {selectedBlueprint && <div className="research-queue-selection"><BlueprintHoverCard details={{ name: selectedBlueprint.name, owner: selectedBlueprint.owner_name, kind: selectedBlueprint.kind, materialEfficiency: selectedBlueprint.material_efficiency, timeEfficiency: selectedBlueprint.time_efficiency, runsRemaining: selectedBlueprint.runs_remaining, location: selectedBlueprint.source_location_name }}><strong>{selectedBlueprint.name}</strong></BlueprintHoverCard><span>{selectedBlueprint.kind} · {selectedBlueprint.owner_name} · ME {selectedBlueprint.material_efficiency} / TE {selectedBlueprint.time_efficiency}</span><small>{selectedBlueprint.source_location_name ?? "Location unavailable"}</small></div>}
     {message && <div className="notice compact">{message}</div>}
     {error && <div className="mini-alert">{error}</div>}
 
@@ -222,7 +224,7 @@ export function ResearchQueuePlanner({ api, formatDateTime }: { api: ApiClient; 
         <tbody>
           {visibleItems.map((item) => <tr key={item.id} className={item.status === "completed" ? "completed" : ""}>
             <td>{item.status === "pending" ? item.sort_order + 1 : "-"}</td>
-            <td><strong>{item.blueprint_name}</strong><span>{item.blueprint_kind} · {item.owner_name ?? "Unknown owner"} · ME {item.material_efficiency} / TE {item.time_efficiency}</span><small>{item.source_location_name ?? "Location unavailable"}</small></td>
+            <td><BlueprintHoverCard details={{ name: item.blueprint_name, owner: item.owner_name, kind: item.blueprint_kind, materialEfficiency: item.material_efficiency, timeEfficiency: item.time_efficiency, runsRemaining: item.runs_remaining, location: item.source_location_name, use: { active: false, activity: item.status === "pending" ? `Queued for ${item.activity_name}` : "Research queue", status: item.status, runs: item.runs, facility: item.source_hangar } }}><strong>{item.blueprint_name}</strong></BlueprintHoverCard><span>{item.blueprint_kind} · {item.owner_name ?? "Unknown owner"} · ME {item.material_efficiency} / TE {item.time_efficiency}</span><small>{item.source_location_name ?? "Location unavailable"}</small></td>
             <td><select value={item.activity_id} disabled={busy || item.status === "completed"} onChange={(event) => void patchItem(item, { activity_id: Number(event.target.value) })}>{activitiesFor(item.blueprint_kind).map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}</select></td>
             <td><input type="number" min={1} max={1_000_000} defaultValue={item.runs} disabled={busy || item.status === "completed"} onBlur={(event) => Number(event.target.value) !== item.runs && void patchItem(item, { runs: Number(event.target.value) })} /></td>
             <td><input defaultValue={item.source_hangar ?? ""} placeholder="Not recorded" disabled={busy || item.status === "completed"} onBlur={(event) => event.target.value !== (item.source_hangar ?? "") && void patchItem(item, { source_hangar: event.target.value })} /></td>

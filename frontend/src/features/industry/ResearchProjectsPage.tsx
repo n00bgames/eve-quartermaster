@@ -1,6 +1,9 @@
 import { Beaker, Clock3, Copy, FlaskConical, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
+import { BlueprintHoverCard } from "../../components/BlueprintHoverCard";
+import { pollCharacterSyncJob } from "../../lib/characterSyncPolling";
+
 import { ResearchQueuePlanner } from "./ResearchQueuePlanner";
 
 type ApiClient = <T>(path: string, options?: RequestInit) => Promise<T>;
@@ -8,7 +11,7 @@ type Project = {
   id: number; job_id: number; activity_id: number; activity_name: string; status: string;
   character_id?: number | null; installer_character_id?: number | null; character_name: string; character_portrait_url?: string | null;
   source_type: "character" | "corporation"; corporation_id?: number | null; corporation_name?: string | null;
-  blueprint_type_id?: number | null; blueprint_name: string; product_name?: string | null;
+  blueprint_type_id?: number | null; blueprint_name: string; product_name?: string | null; material_efficiency?: number | null; time_efficiency?: number | null; runs_remaining?: number | null; is_copy?: boolean | null; blueprint_location_name?: string | null;
   facility_id?: number | null; facility_name?: string | null; runs: number; licensed_runs?: number | null;
   successful_runs?: number | null; probability?: number | null; cost?: number | null; duration?: number | null;
   start_date?: string | null; end_date?: string | null; completed_date?: string | null; last_synced_at: string;
@@ -52,7 +55,7 @@ export function ResearchProjectsPage({ api, formatDateTime }: { api: ApiClient; 
   const [busy, setBusy] = useState(false);
   const [syncJob, setSyncJob] = useState<SyncJob | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [hoveredProject, setHoveredProject] = useState<{ project: Project; x: number; y: number } | null>(null);
+
 
   async function load() {
     setError(null);
@@ -63,13 +66,13 @@ export function ResearchProjectsPage({ api, formatDateTime }: { api: ApiClient; 
     setBusy(true);
     setError(null);
     try {
-      let job = await api<SyncJob>("/esi/sync/characters/all?sync_kind=research", { method: "POST", body: "{}" });
-      setSyncJob(job);
-      while (job.status === "queued" || job.status === "running") {
-        await new Promise((resolve) => window.setTimeout(resolve, 900));
-        job = await api<SyncJob>(`/esi/sync/characters/all/${job.job_id}`);
-        setSyncJob(job);
-      }
+      const initialJob = await api<SyncJob>("/esi/sync/characters/all?sync_kind=research", { method: "POST", body: "{}" });
+      setSyncJob(initialJob);
+      const job = await pollCharacterSyncJob({
+        initialJob,
+        fetchLatest: (current) => api<SyncJob>(`/esi/sync/characters/all/${current.job_id}`),
+        onUpdate: setSyncJob,
+      });
       await load();
       if (job.failed_count) setError(job.errors.join(" · "));
     } catch (err) {
@@ -112,14 +115,6 @@ export function ResearchProjectsPage({ api, formatDateTime }: { api: ApiClient; 
     return <button className="sort-header" type="button" onClick={() => toggleSort(key)}>{label}<span>{mark}</span></button>;
   }
 
-  function showProjectPreview(project: Project, pointerX: number, pointerY: number) {
-    const previewWidth = Math.min(460, window.innerWidth - 32);
-    setHoveredProject({
-      project,
-      x: Math.max(16, Math.min(pointerX + 18, window.innerWidth - previewWidth - 16)),
-      y: Math.max(16, Math.min(pointerY + 18, window.innerHeight - 390)),
-    });
-  }
 
   return <section className="panel stacked research-projects-page">
     <div className="section-heading">
@@ -143,18 +138,17 @@ export function ResearchProjectsPage({ api, formatDateTime }: { api: ApiClient; 
       <table className="research-table">
         <thead><tr><th>{sortHeader("blueprint", "Blueprint")}</th><th>{sortHeader("activity", "Activity")}</th><th>{sortHeader("installer", "Installed by")}</th><th>{sortHeader("owner", "Owner")}</th><th>{sortHeader("status", "Status")}</th><th>{sortHeader("runs", "Runs")}</th><th>{sortHeader("facility", "Facility")}</th><th>{sortHeader("cost", "Cost")}</th><th>{sortHeader("timing", "Timeline")}</th></tr></thead>
         <tbody>
-          {projects.map((project) => <ResearchProjectRow key={project.id} project={project} formatDateTime={formatDateTime} onHover={showProjectPreview} onLeave={() => setHoveredProject(null)} />)}
+          {projects.map((project) => <ResearchProjectRow key={project.id} project={project} formatDateTime={formatDateTime} />)}
           {data && projects.length === 0 && <tr><td colSpan={9}>No {view === "active" ? "active" : "historical"} research projects match this filter.</td></tr>}
           {!data && !error && <tr><td colSpan={9}>Loading research projects...</td></tr>}
         </tbody>
       </table>
     </div>
     <ResearchQueuePlanner api={api} formatDateTime={formatDateTime} />
-    {hoveredProject && <ResearchProjectPreview {...hoveredProject} formatDateTime={formatDateTime} />}
   </section>;
 }
 
-function ResearchProjectRow({ project, formatDateTime, onHover, onLeave }: { project: Project; formatDateTime: (value?: string | null) => string; onHover: (project: Project, x: number, y: number) => void; onLeave: () => void }) {
+function ResearchProjectRow({ project, formatDateTime }: { project: Project; formatDateTime: (value?: string | null) => string }) {
   const start = project.start_date ? new Date(project.start_date).getTime() : 0;
   const end = project.end_date ? new Date(project.end_date).getTime() : 0;
   const now = Date.now();
@@ -163,8 +157,8 @@ function ResearchProjectRow({ project, formatDateTime, onHover, onLeave }: { pro
   const portraitId = project.character_id ?? project.installer_character_id;
   const portrait = project.character_portrait_url || (portraitId ? `https://images.evetech.net/characters/${portraitId}/portrait?size=64` : "");
 
-  return <tr className="research-project-row" onPointerEnter={(event) => onHover(project, event.clientX, event.clientY)} onPointerLeave={onLeave}>
-    <td><strong>{project.blueprint_name}</strong>{project.product_name && <span>Output: {project.product_name}</span>}</td>
+  return <tr className="research-project-row">
+    <td><BlueprintHoverCard details={{ name: project.blueprint_name, owner: project.corporation_name ?? project.character_name, kind: project.is_copy == null ? null : project.is_copy ? "BPC" : "BPO", materialEfficiency: project.material_efficiency, timeEfficiency: project.time_efficiency, runsRemaining: project.runs_remaining, location: project.blueprint_location_name ?? project.facility_name, use: { active: activeStatuses.has(project.status), activity: project.activity_name, status: project.status, job_id: project.job_id, runs: project.runs, facility: project.facility_name, installer: project.character_name, start_date: project.start_date, end_date: project.end_date } }}><strong>{project.blueprint_name}</strong></BlueprintHoverCard>{project.product_name && <span>Output: {project.product_name}</span>}</td>
     <td><strong>{project.activity_name}</strong>{project.probability != null && <span>{Math.round(project.probability * 100)}% chance</span>}</td>
     <td><span className="research-installer">{portrait && <img src={portrait} alt="" />}<span>{project.character_name}</span></span></td>
     <td><span className="manufacturing-status-badge">{project.source_type}</span><span>{project.corporation_name ?? project.character_name}</span></td>
@@ -176,26 +170,6 @@ function ResearchProjectRow({ project, formatDateTime, onHover, onLeave }: { pro
   </tr>;
 }
 
-function ResearchProjectPreview({ project, x, y, formatDateTime }: { project: Project; x: number; y: number; formatDateTime: (value?: string | null) => string }) {
-  const start = project.start_date ? new Date(project.start_date).getTime() : 0;
-  const end = project.end_date ? new Date(project.end_date).getTime() : 0;
-  const progress = start && end > start ? Math.max(0, Math.min(100, (Date.now() - start) / (end - start) * 100)) : project.status === "delivered" ? 100 : 0;
-  const portraitId = project.character_id ?? project.installer_character_id;
-  const portrait = project.character_portrait_url || (portraitId ? `https://images.evetech.net/characters/${portraitId}/portrait?size=64` : "");
-  return <aside className="research-project-preview" style={{ left: x, top: y }} role="tooltip">
-    <header>{portrait && <img src={portrait} alt="" />}<div><strong>{project.blueprint_name}</strong><span>{project.activity_name}{project.product_name ? ` · ${project.product_name}` : ""}</span></div><span className="manufacturing-status-badge">{project.status}</span></header>
-    <div className="research-preview-grid">
-      <span><b>Installed by</b>{project.character_name}</span>
-      <span><b>Owner</b>{project.corporation_name ?? project.character_name}</span>
-      <span><b>Runs</b>{project.runs.toLocaleString()}</span>
-      <span><b>Cost</b>{project.cost != null ? `${isk.format(project.cost)} ISK` : "Not reported"}</span>
-      <span className="wide"><b>Facility</b>{project.facility_name ?? `Location ${project.facility_id ?? "unknown"}`}</span>
-      <span><b>Job ID</b>{project.job_id}</span>
-      {project.probability != null && <span><b>Success chance</b>{Math.round(project.probability * 100)}%</span>}
-    </div>
-    <div className="research-preview-timeline"><span>{formatDateTime(project.start_date)}</span><span>{formatDateTime(project.end_date)}</span><progress max={100} value={progress} /></div>
-  </aside>;
-}
 function durationLabel(milliseconds: number) {
   if (milliseconds <= 0) return "Ready for delivery";
   const minutes = Math.ceil(milliseconds / 60_000);

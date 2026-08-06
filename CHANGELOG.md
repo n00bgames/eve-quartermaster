@@ -7,6 +7,13 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Added
 
+- Added concise desktop-only blueprint hover cards throughout Blueprint Library, overview—including blueprint rows in Recent Assets—item context, research queues/projects, recipes, missing-BPO references, and blueprint analytics. Owned instances show ME/TE, type, runs, owner, location, and current ESI industry-job details; definition-only references are identified without fabricating instance data.
+
+- Added historical character wallet collection on eligible syncs, including daily balance snapshots, growth and change KPIs, income/spending velocity, and locally cached wallet-journal events enriched with item-level market purchase and sale details.
+- Added a dedicated Financial Analytics dashboard with personal wallet history, notable financial-event timelines, corporation-wide trends, wealth distribution, and privacy-preserving aggregate views without richest-pilot leaderboards.
+- Added explicit, owner-only consent for corporation Financial Analytics. Wallet history defaults to the pilot's private dashboard and contributes to no corporation metric until that pilot opts in; staff cannot opt in on a pilot's behalf.
+- Added owner-only hard wallet opt-out controls. Opting out purges stored wallet snapshots and journal events, clears the current balance, blocks future collection without staff override, and excludes the pilot from every financial aggregate.
+- Added director-controlled corporation wallet-total visibility. Corporation wealth combines every synced corporation wallet division with explicitly opted-in pilot wallets and shows the sources separately; reporting defaults to rebased trends, and raw totals appear only when explicitly enabled for authorized officers.
 - Added an opt-in Remember me sign-in using a 30-day HttpOnly, SameSite cookie, with cookie-aware API requests and explicit server-side cookie removal on sign-out.
 - Added live Planetary Industry checkpoint simulation that advances extractor cycles, routed commodities, factory production, storage capacity, starvation, and blocked outputs from the last ESI observation to the current time.
 - Added accessible Character Skills dogma popovers with lazy-loaded descriptions, rank, training attributes, prerequisites, per-level and current effective bonuses, affected categories, and EVE type/effect IDs.
@@ -15,6 +22,9 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Changed
 
+- Included character wallet balance and journal collection in Sync All when the ESI scope is present, while independently honoring the wallet hard opt-out so other character data can continue syncing.
+- Extended all queued character-sync polling to a hard 30-minute maximum across Characters, Skills, Mining, Planetary Industry, and Research, with a shared timeout message instead of indefinite polling.
+- Enforced character sync opt-out as a non-overridable financial privacy boundary on character sheets: other accounts, including staff, no longer receive contract ISK fields or kill-history ISK totals for an opted-out pilot.
 - Distinguished projected PI inventories and factory health from their ESI-observed checkpoint values, with automatic 30-second local refreshes and stale-checkpoint warnings.
 - Bumped the visible app, package, backend API, Android wrapper, README badge, and navigation-intel user-agent versions to 0.1.17-beta for the next development cycle.
 - Reworked shared mobile and foldable layout behavior with container-aware skill cards, wrapping toolbars and action groups, compact navigation, responsive statistics, reduced small-screen spacing, and removal of nested Skills-page scrolling.
@@ -22,6 +32,8 @@ This project is moving quickly during beta. Version sections are written as user
 ## [0.1.16-beta] - 2026-07-30
 
 ### Added
+
+- Added concise desktop-only blueprint hover cards throughout Blueprint Library, overview—including blueprint rows in Recent Assets—item context, research queues/projects, recipes, missing-BPO references, and blueprint analytics. Owned instances show ME/TE, type, runs, owner, location, and current ESI industry-job details; definition-only references are identified without fabricating instance data.
 
 - Added the manual-first HyperNet Tracker with offer planning, exact fee/core/profit calculations, seller-seeded node risk, progress snapshots, participant observations, reconciliation, and history. HyperNet offer data is never assumed to be available through ESI.
 - Added the Calendar & Events workspace with scheduling, multi-character registration, fleet composition, independent attendance, and participation analytics.
@@ -48,6 +60,8 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Added
 
+- Added concise desktop-only blueprint hover cards throughout Blueprint Library, overview—including blueprint rows in Recent Assets—item context, research queues/projects, recipes, missing-BPO references, and blueprint analytics. Owned instances show ME/TE, type, runs, owner, location, and current ESI industry-job details; definition-only references are identified without fabricating instance data.
+
 - Replaced the public Corporate Exchange seller-name clipboard action with one-time EVE SSO authorization that opens a polished, addressed purchase-request draft in the buyer's running EVE client for review and sending.
 
 ### Changed
@@ -57,6 +71,8 @@ This project is moving quickly during beta. Version sections are written as user
 ## [0.1.14-beta] - 2026-07-28
 
 ### Added
+
+- Added concise desktop-only blueprint hover cards throughout Blueprint Library, overview—including blueprint rows in Recent Assets—item context, research queues/projects, recipes, missing-BPO references, and blueprint analytics. Owned instances show ME/TE, type, runs, owner, location, and current ESI industry-job details; definition-only references are identified without fabricating instance data.
 
 - Added owner editing for Corporate Exchange listings, including restocking, available-stock adjustments, per-package fixed pricing, pre-bid auction pricing, visibility, expiration, handoff details, and unlocked package contents.
 - Added viewer-triggered five-hub appraisals and an EVE Mail recipient-copy action to account-free public Exchange listing pages.
@@ -91,6 +107,8 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Added
 
+- Added concise desktop-only blueprint hover cards throughout Blueprint Library, overview—including blueprint rows in Recent Assets—item context, research queues/projects, recipes, missing-BPO references, and blueprint analytics. Owned instances show ME/TE, type, runs, owner, location, and current ESI industry-job details; definition-only references are identified without fabricating instance data.
+
 - Added owner editing for Corporate Exchange listings, including restocking, available-stock adjustments, per-package fixed pricing, pre-bid auction pricing, visibility, expiration, handoff details, and unlocked package contents.
 - Added viewer-triggered five-hub appraisals and an EVE Mail recipient-copy action to account-free public Exchange listing pages.
 - Added per-character NPC standings sync and display for agents, NPC corporations, and factions, with resolved ESI names, source filters, search, sorting, relationship meters, sync freshness, and Sync All integration.
@@ -102,6 +120,8 @@ This project is moving quickly during beta. Version sections are written as user
 ## [0.1.12-beta] - 2026-07-22
 
 ### Added
+
+- Added concise desktop-only blueprint hover cards throughout Blueprint Library, overview—including blueprint rows in Recent Assets—item context, research queues/projects, recipes, missing-BPO references, and blueprint analytics. Owned instances show ME/TE, type, runs, owner, location, and current ESI industry-job details; definition-only references are identified without fabricating instance data.
 
 - Added owner editing for Corporate Exchange listings, including restocking, available-stock adjustments, per-package fixed pricing, pre-bid auction pricing, visibility, expiration, handoff details, and unlocked package contents.
 - Added viewer-triggered five-hub appraisals and an EVE Mail recipient-copy action to account-free public Exchange listing pages.
@@ -125,6 +145,8 @@ This project is moving quickly during beta. Version sections are written as user
 ## [0.1.11-beta] - 2026-07-20
 
 ### Added
+
+- Added concise desktop-only blueprint hover cards throughout Blueprint Library, overview—including blueprint rows in Recent Assets—item context, research queues/projects, recipes, missing-BPO references, and blueprint analytics. Owned instances show ME/TE, type, runs, owner, location, and current ESI industry-job details; definition-only references are identified without fabricating instance data.
 
 - Added owner editing for Corporate Exchange listings, including restocking, available-stock adjustments, per-package fixed pricing, pre-bid auction pricing, visibility, expiration, handoff details, and unlocked package contents.
 - Added viewer-triggered five-hub appraisals and an EVE Mail recipient-copy action to account-free public Exchange listing pages.
@@ -160,6 +182,8 @@ This project is moving quickly during beta. Version sections are written as user
 ## [0.1.10-beta] - 2026-07-16
 
 ### Added
+
+- Added concise desktop-only blueprint hover cards throughout Blueprint Library, overview—including blueprint rows in Recent Assets—item context, research queues/projects, recipes, missing-BPO references, and blueprint analytics. Owned instances show ME/TE, type, runs, owner, location, and current ESI industry-job details; definition-only references are identified without fabricating instance data.
 
 - Added owner editing for Corporate Exchange listings, including restocking, available-stock adjustments, per-package fixed pricing, pre-bid auction pricing, visibility, expiration, handoff details, and unlocked package contents.
 - Added viewer-triggered five-hub appraisals and an EVE Mail recipient-copy action to account-free public Exchange listing pages.
@@ -220,6 +244,8 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Added
 
+- Added concise desktop-only blueprint hover cards throughout Blueprint Library, overview—including blueprint rows in Recent Assets—item context, research queues/projects, recipes, missing-BPO references, and blueprint analytics. Owned instances show ME/TE, type, runs, owner, location, and current ESI industry-job details; definition-only references are identified without fabricating instance data.
+
 - Added owner editing for Corporate Exchange listings, including restocking, available-stock adjustments, per-package fixed pricing, pre-bid auction pricing, visibility, expiration, handoff details, and unlocked package contents.
 - Added viewer-triggered five-hub appraisals and an EVE Mail recipient-copy action to account-free public Exchange listing pages.
 - Added a Host account role above Admin for installation ownership and host-only database maintenance; existing installations promote the oldest active administrator during migration.
@@ -240,6 +266,8 @@ This project is moving quickly during beta. Version sections are written as user
 ## [0.1.8-beta] - 2026-07-13
 
 ### Added
+
+- Added concise desktop-only blueprint hover cards throughout Blueprint Library, overview—including blueprint rows in Recent Assets—item context, research queues/projects, recipes, missing-BPO references, and blueprint analytics. Owned instances show ME/TE, type, runs, owner, location, and current ESI industry-job details; definition-only references are identified without fabricating instance data.
 
 - Added owner editing for Corporate Exchange listings, including restocking, available-stock adjustments, per-package fixed pricing, pre-bid auction pricing, visibility, expiration, handoff details, and unlocked package contents.
 - Added viewer-triggered five-hub appraisals and an EVE Mail recipient-copy action to account-free public Exchange listing pages.
@@ -271,6 +299,8 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Added
 
+- Added concise desktop-only blueprint hover cards throughout Blueprint Library, overview—including blueprint rows in Recent Assets—item context, research queues/projects, recipes, missing-BPO references, and blueprint analytics. Owned instances show ME/TE, type, runs, owner, location, and current ESI industry-job details; definition-only references are identified without fabricating instance data.
+
 - Added owner editing for Corporate Exchange listings, including restocking, available-stock adjustments, per-package fixed pricing, pre-bid auction pricing, visibility, expiration, handoff details, and unlocked package contents.
 - Added viewer-triggered five-hub appraisals and an EVE Mail recipient-copy action to account-free public Exchange listing pages.
 - Added a Host account role above Admin for installation ownership and host-only database maintenance; existing installations promote the oldest active administrator during migration.
@@ -293,6 +323,8 @@ This project is moving quickly during beta. Version sections are written as user
 ## [0.1.6-beta] - 2026-07-10
 
 ### Added
+
+- Added concise desktop-only blueprint hover cards throughout Blueprint Library, overview—including blueprint rows in Recent Assets—item context, research queues/projects, recipes, missing-BPO references, and blueprint analytics. Owned instances show ME/TE, type, runs, owner, location, and current ESI industry-job details; definition-only references are identified without fabricating instance data.
 
 - Added owner editing for Corporate Exchange listings, including restocking, available-stock adjustments, per-package fixed pricing, pre-bid auction pricing, visibility, expiration, handoff details, and unlocked package contents.
 - Added viewer-triggered five-hub appraisals and an EVE Mail recipient-copy action to account-free public Exchange listing pages.
@@ -352,6 +384,8 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Added
 
+- Added concise desktop-only blueprint hover cards throughout Blueprint Library, overview—including blueprint rows in Recent Assets—item context, research queues/projects, recipes, missing-BPO references, and blueprint analytics. Owned instances show ME/TE, type, runs, owner, location, and current ESI industry-job details; definition-only references are identified without fabricating instance data.
+
 - Added owner editing for Corporate Exchange listings, including restocking, available-stock adjustments, per-package fixed pricing, pre-bid auction pricing, visibility, expiration, handoff details, and unlocked package contents.
 - Added viewer-triggered five-hub appraisals and an EVE Mail recipient-copy action to account-free public Exchange listing pages.
 - Added a Host account role above Admin for installation ownership and host-only database maintenance; existing installations promote the oldest active administrator during migration.
@@ -371,6 +405,8 @@ This project is moving quickly during beta. Version sections are written as user
 ## [0.1.3-beta] - 2026-07-05
 
 ### Added
+
+- Added concise desktop-only blueprint hover cards throughout Blueprint Library, overview—including blueprint rows in Recent Assets—item context, research queues/projects, recipes, missing-BPO references, and blueprint analytics. Owned instances show ME/TE, type, runs, owner, location, and current ESI industry-job details; definition-only references are identified without fabricating instance data.
 
 - Added owner editing for Corporate Exchange listings, including restocking, available-stock adjustments, per-package fixed pricing, pre-bid auction pricing, visibility, expiration, handoff details, and unlocked package contents.
 - Added viewer-triggered five-hub appraisals and an EVE Mail recipient-copy action to account-free public Exchange listing pages.

@@ -21,6 +21,7 @@ from app.models import (
     OwnershipEntity,
     User,
 )
+from app.services.blueprint_hover import active_blueprint_uses, blueprint_active_use
 from app.services.permissions import ROLE_RANK, role_rank
 from app.services.corporation_metadata import (
     asset_flag_name,
@@ -105,7 +106,7 @@ def fitting_payload(fitting: CharacterFitting, quantity: int | None = None, flag
     return payload
 
 
-def blueprint_payload(blueprint: Blueprint) -> dict[str, Any]:
+def blueprint_payload(blueprint: Blueprint, active_use: dict[str, Any] | None = None) -> dict[str, Any]:
     return {
         "id": blueprint.id,
         "owner_name": owner_label(blueprint.ownership_entity),
@@ -115,6 +116,8 @@ def blueprint_payload(blueprint: Blueprint) -> dict[str, Any]:
         "time_efficiency": blueprint.time_efficiency,
         "runs_remaining": blueprint.runs_remaining,
         "is_copy": blueprint.is_copy,
+        "location_name": blueprint.location.name if blueprint.location else None,
+        "active_use": active_use,
     }
 
 @router.post("/assets-summary")
@@ -246,11 +249,14 @@ def item_context(type_id: int, current_user: User = Depends(get_current_user), d
             selectinload(Blueprint.ownership_entity).selectinload(OwnershipEntity.character),
             selectinload(Blueprint.blueprint_type),
             selectinload(Blueprint.product_type),
+            selectinload(Blueprint.location),
+            selectinload(Blueprint.asset),
         )
     ).all()
     visible_blueprints = [blueprint for blueprint in blueprints if can_view_owner_records(blueprint.ownership_entity, current_user, db)]
     owned_blueprints = [blueprint for blueprint in visible_blueprints if blueprint.blueprint_type_id == type_id]
     product_blueprints = [blueprint for blueprint in visible_blueprints if blueprint.product_type_id == type_id]
+    blueprint_uses = active_blueprint_uses(db, visible_blueprints)
 
     activities = db.scalars(
         select(IndustryActivity)
@@ -278,6 +284,7 @@ def item_context(type_id: int, current_user: User = Depends(get_current_user), d
         activity_payload = {
             "id": activity.id,
             "activity_kind": activity.activity_kind.value,
+            "blueprint_type_id": activity.blueprint_type_id,
             "blueprint_type_name": related_names.get(activity.blueprint_type_id, f"Type {activity.blueprint_type_id}"),
             "product_type_name": related_names.get(activity.product_type_id) if activity.product_type_id else None,
             "product_quantity": activity.product_quantity,
@@ -316,8 +323,8 @@ def item_context(type_id: int, current_user: User = Depends(get_current_user), d
             "bpos": sum(1 for blueprint in owned_blueprints if not blueprint.is_copy),
             "bpcs": sum(1 for blueprint in owned_blueprints if blueprint.is_copy),
             "products_owned": sum(asset.quantity for asset in visible_assets),
-            "owned_blueprints_sample": [blueprint_payload(blueprint) for blueprint in owned_blueprints[:6]],
-            "product_blueprints": [blueprint_payload(blueprint) for blueprint in product_blueprints[:6]],
+            "owned_blueprints_sample": [blueprint_payload(blueprint, blueprint_active_use(blueprint, blueprint_uses)) for blueprint in owned_blueprints[:6]],
+            "product_blueprints": [blueprint_payload(blueprint, blueprint_active_use(blueprint, blueprint_uses)) for blueprint in product_blueprints[:6]],
         },
         "industry": {
             "produced_by": produced_by[:6],

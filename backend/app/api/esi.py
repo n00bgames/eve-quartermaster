@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.core.config import get_settings
 from app.core.security import create_sso_state, decode_sso_state_payload, decrypt_secret, encrypt_secret
 from app.db.session import SessionLocal, get_db
-from app.models import Asset, Blueprint, CharacterFitting, CharacterFittingItem, CharacterSkill, CharacterSkillQueueEntry, CorporationWalletDivision, EsiSyncJob, EsiToken, EveAlliance, EveCategory, EveCharacter, EveCorporation, EveGroup, EveSystem, EveType, ExchangeListing, Location, OwnershipEntity, RecruitmentLinkedCharacter, User
+from app.models import Asset, Blueprint, CharacterFitting, CharacterFittingItem, CharacterSkill, CharacterSkillQueueEntry, CharacterWalletJournalEntry, CorporationWalletDivision, EsiSyncJob, EsiToken, EveAlliance, EveCategory, EveCharacter, EveCorporation, EveGroup, EveSystem, EveType, ExchangeListing, Location, OwnershipEntity, RecruitmentLinkedCharacter, User
 from app.models.enums import AssetSource, LocationKind, OwnerKind, SyncStatus
 from app.services.esi_client import EsiClient, esi_status, resolve_names
 from app.services.exchange_mail import exchange_mail_body, exchange_mail_subject
@@ -125,6 +125,7 @@ SKILL_SYNC_SCOPES = [
     "esi-skills.read_skillqueue.v1",
 ]
 CHARACTER_STANDINGS_SCOPES = ["esi-characters.read_standings.v1"]
+CHARACTER_WALLET_SCOPES = ["esi-wallet.read_character_wallet.v1"]
 CORPORATION_RESEARCH_SCOPES = [
     "esi-industry.read_corporation_jobs.v1",
     "esi-characters.read_corporation_roles.v1",
@@ -1312,6 +1313,105 @@ async def sync_character_assets(token_id: int, current_user: User = Depends(get_
     return await sync_character_assets_for_token(token_id, current_user, db)
 
 
+async def fetch_character_wallet_pages(client: EsiClient, path: str) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    page = 1
+    while True:
+        payload, headers = await client.get_with_headers(path, params={"page": page})
+        rows.extend(payload or [])
+        if page >= int(headers.get("X-Pages") or headers.get("x-pages") or 1):
+            return rows
+        page += 1
+
+
+async def sync_character_wallet_for_token(token_id: int, current_user: User, db: Session, *, allow_opt_out_override: bool = True) -> dict[str, Any]:
+    token, character = get_linked_token(db, token_id)
+    if not can_force_sync_character_token(token, character, current_user, db):
+        raise HTTPException(status_code=403, detail="You can only sync characters you own or are permitted to administer")
+    if character.sync_opt_out and (not allow_opt_out_override or (token.user_id != current_user.id and current_user.role not in {"host", "admin"})):
+        raise HTTPException(status_code=403, detail=f"{character.name} has opted out of Quartermaster sync")
+    if character.wallet_history_opt_out:
+        raise HTTPException(status_code=403, detail=f"{character.name} has opted out of wallet history collection")
+    require_scope(token, CHARACTER_WALLET_SCOPES[0], f"Reading wallet history for {character.name}")
+
+    job = EsiSyncJob(token_id=token.id, sync_type="character_wallet", status=SyncStatus.RUNNING, started_at=datetime.now(timezone.utc))
+    db.add(job)
+    db.flush()
+    job_id = job.id
+    db.commit()
+    try:
+        access_token = await refresh_access_token(token)
+        db.commit()
+        client = EsiClient(access_token=access_token)
+        balance_payload = await client.get(f"/characters/{character.character_id}/wallet/")
+        journal_rows = await fetch_character_wallet_pages(client, f"/characters/{character.character_id}/wallet/journal/")
+        transaction_rows = await fetch_character_wallet_pages(client, f"/characters/{character.character_id}/wallet/transactions/")
+        transaction_type_ids = {int(row["type_id"]) for row in transaction_rows if row.get("type_id") is not None}
+        await apply_type_names(client, db, transaction_type_ids)
+        transaction_names = {row.type_id: row.name for row in db.scalars(select(EveType).where(EveType.type_id.in_(transaction_type_ids))).all()} if transaction_type_ids else {}
+        transactions = {int(row["transaction_id"]): row for row in transaction_rows if row.get("transaction_id") is not None}
+        now = datetime.now(timezone.utc)
+        synced = 0
+        for row in journal_rows:
+            reference_id = row.get("id")
+            occurred_at = parse_esi_datetime(row.get("date"))
+            reference_type = row.get("ref_type")
+            if reference_id is None or occurred_at is None or not reference_type:
+                continue
+            entry = db.scalar(select(CharacterWalletJournalEntry).where(
+                CharacterWalletJournalEntry.character_id == character.id,
+                CharacterWalletJournalEntry.reference_id == int(reference_id),
+            ))
+            if entry is None:
+                entry = CharacterWalletJournalEntry(character_id=character.id, reference_id=int(reference_id), occurred_at=occurred_at, reference_type=str(reference_type))
+                db.add(entry)
+            entry.occurred_at = occurred_at
+            entry.reference_type = str(reference_type)
+            entry.amount = row.get("amount")
+            entry.balance = row.get("balance")
+            entry.description = row.get("description")
+            entry.reason = row.get("reason")
+            entry.first_party_id = row.get("first_party_id")
+            entry.second_party_id = row.get("second_party_id")
+            entry.context_id = row.get("context_id")
+            entry.context_id_type = row.get("context_id_type")
+            transaction = transactions.get(int(entry.context_id)) if entry.context_id is not None else None
+            if transaction is not None:
+                entry.item_type_id = int(transaction["type_id"]) if transaction.get("type_id") is not None else None
+                entry.item_name = transaction_names.get(entry.item_type_id) if entry.item_type_id is not None else None
+                entry.quantity = transaction.get("quantity")
+                entry.unit_price = transaction.get("unit_price")
+                entry.is_buy = bool(transaction.get("is_buy"))
+            entry.tax = row.get("tax")
+            entry.tax_receiver_id = row.get("tax_receiver_id")
+            entry.last_synced_at = now
+            synced += 1
+        character.current_wallet_balance = Decimal(str(balance_payload))
+        character.wallet_synced_at = now
+        character.last_synced_at = now
+        job = db.get(EsiSyncJob, job_id)
+        job.status = SyncStatus.SUCCESS
+        job.message = f"Synced wallet balance, {synced} journal entries, and {len(transaction_rows)} market transactions for {character.name}."
+        job.finished_at = now
+        create_snapshot(db, scope_type="character", scope_id=character.id, source="character_wallet", message=job.message)
+        db.commit()
+        return {"status": "synced", "character_name": character.name, "journal_entries": synced, "wallet_synced_at": now.isoformat(), "job_id": job.id}
+    except Exception as exc:
+        db.rollback()
+        failed_job = db.get(EsiSyncJob, job_id)
+        if failed_job is not None:
+            failed_job.status = SyncStatus.FAILED
+            failed_job.message = str(exc)
+            failed_job.finished_at = datetime.now(timezone.utc)
+            db.commit()
+        raise
+
+
+@router.post("/sync/character-wallet/{token_id:int}")
+async def sync_character_wallet(token_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+    return await sync_character_wallet_for_token(token_id, current_user, db)
+
+
 async def sync_character_contracts_for_token(token_id: int, current_user: User, db: Session, *, allow_opt_out_override: bool = True) -> dict[str, Any]:
     token = db.get(EsiToken, token_id)
     if token is None or token.revoked_at is not None:
@@ -1621,6 +1721,7 @@ async def character_sync_all_work_items(
         "assets": ["esi-assets.read_assets.v1"],
         "skills": SKILL_SYNC_SCOPES,
         "standings": CHARACTER_STANDINGS_SCOPES,
+        "wallet": CHARACTER_WALLET_SCOPES,
         "fittings": ["esi-fittings.read_fittings.v1"],
         "contracts": ["esi-contracts.read_character_contracts.v1"],
         "research": ["esi-industry.read_character_jobs.v1"],
@@ -1649,6 +1750,9 @@ async def character_sync_all_work_items(
             skipped += len(required_scopes)
             continue
         for kind, scopes in required_scopes.items():
+            if kind == "wallet" and character.wallet_history_opt_out:
+                skipped += 1
+                continue
             if missing_scopes(token, scopes):
                 skipped += 1
                 continue
@@ -1684,6 +1788,7 @@ async def run_character_sync_all_job(job_id: str, work_items: list[dict[str, Any
         "assets": sync_character_assets_for_token,
         "skills": sync_character_skills_for_token,
         "standings": sync_character_standings_for_token,
+        "wallet": sync_character_wallet_for_token,
         "fittings": sync_character_fittings_for_token,
         "contracts": sync_character_contracts_for_token,
         "research": sync_character_research_for_token,
@@ -1758,7 +1863,7 @@ async def run_character_sync_all_job(job_id: str, work_items: list[dict[str, Any
 @router.post("/sync/characters/all")
 async def start_characters_sync_all(sync_kind: str | None = Query(None), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
     requested_kinds = {sync_kind} if sync_kind else None
-    if requested_kinds and not requested_kinds.issubset({"assets", "skills", "standings", "fittings", "contracts", "research", "mining", "planets"}):
+    if requested_kinds and not requested_kinds.issubset({"assets", "skills", "standings", "wallet", "fittings", "contracts", "research", "mining", "planets"}):
         raise HTTPException(status_code=400, detail="Unsupported character sync kind")
     work_items, skipped = await character_sync_all_work_items(db, current_user, requested_kinds)
     if not work_items:

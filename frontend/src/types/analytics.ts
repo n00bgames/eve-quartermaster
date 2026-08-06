@@ -2,7 +2,7 @@ export type AnalyticsPoint = { date?: string | null; corporation_id?: number; co
 
 export type AnalyticsGrowth = { id?: number; name: string; value?: number; delta: number };
 
-export type DuplicateBlueprint = { owner_name: string; blueprint_type_name: string; is_copy: boolean; quantity: number };
+export type DuplicateBlueprint = { owner_name: string; blueprint_type_name: string; is_copy: boolean; quantity: number; material_efficiency_levels: number[]; time_efficiency_levels: number[]; in_use: number };
 
 export type MetricCatalogItem = { metric: string; version: number; label: string; unit: string; aggregation: string; category: string; supportsCharacter: boolean; supportsCorporation: boolean; chartTypes: string[]; deprecated: boolean; hasData?: boolean };
 
@@ -15,6 +15,7 @@ export type AnalyticsCorporationScope = {
   managed: boolean;
   affiliation: boolean;
   historical: boolean;
+  wallet_totals_visible: boolean;
 };
 
 export type AnalyticsCorporationScopeResponse = {
