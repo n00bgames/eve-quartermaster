@@ -7,12 +7,15 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Added
 
+- Added an opt-in Remember me sign-in using a 30-day HttpOnly, SameSite cookie, with cookie-aware API requests and explicit server-side cookie removal on sign-out.
+- Added live Planetary Industry checkpoint simulation that advances extractor cycles, routed commodities, factory production, storage capacity, starvation, and blocked outputs from the last ESI observation to the current time.
 - Added accessible Character Skills dogma popovers with lazy-loaded descriptions, rank, training attributes, prerequisites, per-level and current effective bonuses, affected categories, and EVE type/effect IDs.
 - Added week-long local dogma caching plus authoritative SDE type-bonus lookup so repeated hover, focus, and touch access is immediate while hull-specific bonuses remain accurate.
 - Added a compact Character Skills report-action menu on narrow cards so Expand and Sync Skills remain visible while Copy Report and Download Report stay available without crowding the layout.
 
 ### Changed
 
+- Distinguished projected PI inventories and factory health from their ESI-observed checkpoint values, with automatic 30-second local refreshes and stale-checkpoint warnings.
 - Bumped the visible app, package, backend API, Android wrapper, README badge, and navigation-intel user-agent versions to 0.1.17-beta for the next development cycle.
 - Reworked shared mobile and foldable layout behavior with container-aware skill cards, wrapping toolbars and action groups, compact navigation, responsive statistics, reduced small-screen spacing, and removal of nested Skills-page scrolling.
 

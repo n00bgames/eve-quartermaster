@@ -60,7 +60,7 @@ type UserAccount = { id: number; email: string; display_name: string; role: stri
 
 type EffectivePermissions = { sections: SectionPermission[]; permissions: Record<string, boolean> };
 
-type AuthResponse = { access_token: string; user: UserAccount };
+type AuthResponse = { access_token?: string | null; remembered?: boolean; user: UserAccount };
 
 type BootstrapStatus = { needs_admin: boolean; roles: string[] };
 
@@ -273,19 +273,27 @@ function App() {
 
       setBootstrap(boot);
 
-      const token = localStorage.getItem("eq_access_token");
+      if (!boot.needs_admin) {
 
-      if (token && !boot.needs_admin) {
+        try {
 
-        const currentUser = await api<UserAccount>("/auth/me");
+          const currentUser = await api<UserAccount>("/auth/me");
 
-        setUser(currentUser);
+          setUser(currentUser);
 
-        authenticatedUser = currentUser;
+          authenticatedUser = currentUser;
 
-        const permissionPayload = await api<EffectivePermissions>("/auth/permissions/effective");
+          const permissionPayload = await api<EffectivePermissions>("/auth/permissions/effective");
 
-        setPermissions(permissionPayload.permissions);
+          setPermissions(permissionPayload.permissions);
+
+        } catch {
+
+          localStorage.removeItem("eq_access_token");
+
+          setUser(null);
+
+        }
 
       }
 
@@ -304,12 +312,12 @@ function App() {
   }
 
 
-
   async function completeAuth(path: string, body: Record<string, unknown>) {
 
     const result = await api<AuthResponse>(path, { method: "POST", body: JSON.stringify(body) });
 
-    localStorage.setItem("eq_access_token", result.access_token);
+    if (result.access_token) localStorage.setItem("eq_access_token", result.access_token);
+    else localStorage.removeItem("eq_access_token");
 
     setUser(result.user);
 
@@ -335,20 +343,31 @@ function App() {
 
 
 
-  function signOut() {
+  async function signOut() {
 
-    localStorage.removeItem("eq_access_token");
+    try {
 
-    setUser(null);
+      await api("/auth/logout", { method: "POST", body: "{}" });
 
-    setData(emptyData);
+    } catch {
 
-    setPermissions({ overview: true, profile: true });
+      // Local sign-out must still complete if the server is temporarily unreachable.
 
-    setActiveTab("overview");
+    } finally {
+
+      localStorage.removeItem("eq_access_token");
+
+      setUser(null);
+
+      setData(emptyData);
+
+      setPermissions({ overview: true, profile: true });
+
+      setActiveTab("overview");
+
+    }
 
   }
-
 
 
   async function load(role = user?.role) {
@@ -358,7 +377,7 @@ function App() {
       return;
     }
 
-    if (!localStorage.getItem("eq_access_token")) return;
+    if (!role) return;
 
     setLoading(true);
 
@@ -492,7 +511,7 @@ function App() {
 
     void refreshAuth().then((currentUser) => {
 
-      if (localStorage.getItem("eq_access_token") && currentUser?.role !== "applicant") void load(currentUser?.role);
+      if (currentUser && currentUser.role !== "applicant") void load(currentUser.role);
 
     });
 
@@ -912,13 +931,15 @@ function AuthScreen({ bootstrap, onAuth }: { bootstrap: BootstrapStatus | null; 
 
         <p className="muted">{needsAdmin ? "Set up the first Quartermaster host account." : "Use your Quartermaster account before linking EVE characters."}</p><p className="auth-tagline">EVE is Excel in a flight suit.</p>
 
-        <ManagedForm submitLabel={needsAdmin ? "Create host" : "Sign in"} onSubmit={(form) => onAuth(needsAdmin ? "/auth/bootstrap" : "/auth/login", { email: form.get("email"), password: form.get("password"), display_name: form.get("display_name") })}>
+        <ManagedForm submitLabel={needsAdmin ? "Create host" : "Sign in"} onSubmit={(form) => onAuth(needsAdmin ? "/auth/bootstrap" : "/auth/login", { email: form.get("email"), password: form.get("password"), display_name: form.get("display_name"), remember_me: !needsAdmin && form.get("remember_me") === "on" })}>
 
           {needsAdmin && <label>Display name<input name="display_name" required placeholder="Quartermaster" /></label>}
 
           <label>Email<input name="email" type="email" required placeholder="you@example.com" /></label>
 
           <label>Password<input name="password" type="password" minLength={8} required /></label>
+
+          {!needsAdmin && <label className="check auth-remember"><input name="remember_me" type="checkbox" /><span><strong>Remember me</strong><small>Stay signed in on this device for 30 days.</small></span></label>}
 
         </ManagedForm>
 

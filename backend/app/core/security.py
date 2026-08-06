@@ -74,9 +74,15 @@ def verify_password(password: str, password_hash: str | None) -> bool:
         return False
 
 
-def create_access_token(subject: str, extra: dict[str, Any] | None = None) -> str:
+def create_access_token(
+    subject: str,
+    extra: dict[str, Any] | None = None,
+    *,
+    expires_minutes: int | None = None,
+) -> str:
     settings = get_settings()
-    expires_at = datetime.now(timezone.utc) + timedelta(minutes=settings.access_token_minutes)
+    lifetime_minutes = settings.access_token_minutes if expires_minutes is None else expires_minutes
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=lifetime_minutes)
     payload: dict[str, Any] = {"sub": subject, "exp": expires_at}
     if extra:
         payload.update(extra)

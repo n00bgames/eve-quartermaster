@@ -44,6 +44,13 @@ from app.services.planetary_industry import (
     extractor_dogma_factors,
     extractor_program_projection,
 )
+from app.services.planetary_simulation import (
+    SimulationPin,
+    SimulationRoute,
+    SimulationSchematic,
+    known_pin_capacity_m3,
+    simulate_colony,
+)
 
 router = APIRouter(prefix="/planetary-industry", tags=["planetary-industry"])
 
@@ -108,7 +115,7 @@ def serialize_colony(db: Session, colony: PlanetaryColony) -> dict[str, Any]:
     }
     for pin in colony.pins:
         type_ids.update(int(item["type_id"]) for item in pin.contents_json if item.get("type_id"))
-    types = type_map(db, type_ids)
+
     extractor_type_ids = {
         pin.type_id for pin in colony.pins if pin.extractor_cycle_time is not None
     }
@@ -125,28 +132,98 @@ def serialize_colony(db: Session, colony: PlanetaryColony) -> dict[str, Any]:
             )
         ).all()
     } if schematic_ids else {}
+    for schematic in schematics.values():
+        type_ids.add(schematic.output_type_id)
+        type_ids.update(item.type_id for item in schematic.inputs)
+    types = type_map(db, type_ids)
+
+    simulation_pins: list[SimulationPin] = []
+    for pin in colony.pins:
+        schematic = schematics.get(pin.schematic_id)
+        simulation_schematic = SimulationSchematic(
+            cycle_time=int(schematic.cycle_time),
+            inputs={item.type_id: int(item.quantity) for item in schematic.inputs},
+            output_type_id=schematic.output_type_id,
+            output_quantity=int(schematic.output_quantity),
+        ) if schematic else None
+        type_name = pin.pin_type.name if pin.pin_type else f"Type {pin.type_id}"
+        capacity = known_pin_capacity_m3(type_name)
+        kind = "extractor" if pin.extractor_cycle_time is not None else "factory" if schematic else "storage" if capacity is not None else "infrastructure"
+        decay_factor, noise_factor, _ = dogma_factors.get(
+            pin.type_id,
+            (DEFAULT_DECAY_FACTOR, DEFAULT_NOISE_FACTOR, "documented_default"),
+        )
+        simulation_pins.append(
+            SimulationPin(
+                pin_id=pin.pin_id,
+                kind=kind,
+                contents={
+                    int(item["type_id"]): int(item.get("amount") or 0)
+                    for item in pin.contents_json
+                    if item.get("type_id")
+                },
+                capacity_m3=capacity,
+                schematic=simulation_schematic,
+                last_cycle_start=pin.last_cycle_start,
+                install_time=pin.install_time,
+                expiry_time=pin.expiry_time,
+                extractor_cycle_time=pin.extractor_cycle_time,
+                extractor_product_type_id=pin.extractor_product_type_id,
+                extractor_quantity_per_cycle=pin.extractor_qty_per_cycle,
+                extractor_decay_factor=decay_factor,
+                extractor_noise_factor=noise_factor,
+            )
+        )
+    simulation = simulate_colony(
+        checkpoint_at=colony.esi_last_update,
+        projected_at=now,
+        pins=simulation_pins,
+        routes=[
+            SimulationRoute(
+                source_pin_id=route.source_pin_id,
+                destination_pin_id=route.destination_pin_id,
+                content_type_id=route.content_type_id,
+                quantity=int(route.quantity or 0),
+            )
+            for route in colony.routes
+        ],
+        type_volumes={type_id: float(item.volume or 0) for type_id, item in types.items()},
+    )
+
+    def serialize_contents(contents: dict[int, int]) -> list[dict[str, Any]]:
+        return [
+            {
+                "type_id": type_id,
+                "name": types[type_id].name if type_id in types else f"Type {type_id}",
+                "amount": amount,
+                "volume": float(types[type_id].volume or 0) if type_id in types else 0,
+            }
+            for type_id, amount in sorted(
+                contents.items(),
+                key=lambda item: (types[item[0]].name if item[0] in types else f"Type {item[0]}").casefold(),
+            )
+            if amount > 0
+        ]
+
     inbound_pins = {route.destination_pin_id for route in colony.routes}
     pins: list[dict[str, Any]] = []
     expired_extractors = 0
     expiring_extractors = 0
-    starved_factories = 0
-    total_daily_output = 0
+    total_daily_output = 0.0
 
     for pin in sorted(colony.pins, key=lambda row: (row.pin_type.name if row.pin_type else "", row.pin_id)):
-        status = pin_status(pin, now)
+        observed_status = pin_status(pin, now)
         is_extractor = pin.extractor_cycle_time is not None
         is_factory = pin.schematic_id is not None
-        if is_extractor and status == "expired":
+        if is_extractor and observed_status == "expired":
             expired_extractors += 1
-        elif is_extractor and status == "expiring":
+        elif is_extractor and observed_status == "expiring":
             expiring_extractors += 1
-        if is_factory and pin.pin_id not in inbound_pins:
-            starved_factories += 1
         decay_factor, noise_factor, projection_source = dogma_factors.get(
             pin.type_id,
             (DEFAULT_DECAY_FACTOR, DEFAULT_NOISE_FACTOR, "documented_default"),
         )
-        projection = extractor_program_projection(
+        extractor_projection = extractor_program_projection(
             install_time=pin.install_time,
             expiry_time=pin.expiry_time,
             cycle_time=pin.extractor_cycle_time,
@@ -155,18 +232,22 @@ def serialize_colony(db: Session, colony: PlanetaryColony) -> dict[str, Any]:
             noise_factor=noise_factor,
             now=now,
         )
-        if pin.extractor_cycle_time and pin.extractor_qty_per_cycle and status != "expired":
-            total_daily_output += float(projection["average_daily_output"])
-        contents = [
-            {
-                "type_id": int(item["type_id"]),
-                "name": types.get(int(item["type_id"])).name if types.get(int(item["type_id"])) else f"Type {item['type_id']}",
-                "amount": int(item.get("amount") or 0),
-                "volume": float(types.get(int(item["type_id"])).volume or 0) if types.get(int(item["type_id"])) else 0,
-            }
+        if pin.extractor_cycle_time and pin.extractor_qty_per_cycle and observed_status != "expired":
+            total_daily_output += float(extractor_projection["average_daily_output"])
+
+        observed_map = {
+            int(item["type_id"]): int(item.get("amount") or 0)
             for item in pin.contents_json
             if item.get("type_id")
-        ]
+        }
+        pin_projection = simulation["pins"].get(pin.pin_id, {})
+        projected_map = pin_projection.get("contents", observed_map)
+        observed_contents = serialize_contents(observed_map)
+        projected_contents = serialize_contents(projected_map)
+        observed_volume = sum(item["amount"] * item["volume"] for item in observed_contents)
+        projected_volume = sum(item["amount"] * item["volume"] for item in projected_contents)
+        projected_status = pin_projection.get("status", observed_status)
+        schematic = schematics.get(pin.schematic_id)
         pins.append(
             {
                 "pin_id": pin.pin_id,
@@ -177,17 +258,19 @@ def serialize_colony(db: Session, colony: PlanetaryColony) -> dict[str, Any]:
                 "install_time": iso(pin.install_time),
                 "expiry_time": iso(pin.expiry_time),
                 "last_cycle_start": iso(pin.last_cycle_start),
-                "status": status,
+                "status": observed_status,
+                "projected_status": projected_status,
+                "content_source": "projected" if simulation["is_projection"] else "observed",
                 "schematic_id": pin.schematic_id,
                 "schematic": {
-                    "id": schematics[pin.schematic_id].schematic_id,
-                    "name": schematics[pin.schematic_id].name,
-                    "cycle_time": schematics[pin.schematic_id].cycle_time,
+                    "id": schematic.schematic_id,
+                    "name": schematic.name,
+                    "cycle_time": schematic.cycle_time,
                     "output": {
-                        "type_id": schematics[pin.schematic_id].output_type_id,
-                        "name": schematics[pin.schematic_id].output_type.name,
-                        "quantity": schematics[pin.schematic_id].output_quantity,
-                        "volume": float(schematics[pin.schematic_id].output_type.volume or 0),
+                        "type_id": schematic.output_type_id,
+                        "name": schematic.output_type.name,
+                        "quantity": schematic.output_quantity,
+                        "volume": float(schematic.output_type.volume or 0),
                     },
                     "inputs": [
                         {
@@ -196,17 +279,18 @@ def serialize_colony(db: Session, colony: PlanetaryColony) -> dict[str, Any]:
                             "quantity": item.quantity,
                             "volume": float(item.item_type.volume or 0),
                         }
-                        for item in sorted(
-                            schematics[pin.schematic_id].inputs,
-                            key=lambda row: row.item_type.name,
-                        )
+                        for item in sorted(schematic.inputs, key=lambda row: row.item_type.name)
                     ],
-                } if pin.schematic_id in schematics else None,
+                } if schematic else None,
                 "is_factory": is_factory,
                 "is_extractor": is_extractor,
                 "has_inbound_route": pin.pin_id in inbound_pins,
-                "contents": contents,
-                "stored_volume": sum(item["amount"] * item["volume"] for item in contents),
+                "contents": projected_contents,
+                "observed_contents": observed_contents,
+                "stored_volume": projected_volume,
+                "observed_stored_volume": observed_volume,
+                "projected_produced": serialize_contents(pin_projection.get("produced", {})),
+                "projected_blocked": serialize_contents(pin_projection.get("blocked", {})),
                 "extractor": {
                     "cycle_time": pin.extractor_cycle_time,
                     "head_radius": pin.extractor_head_radius,
@@ -214,14 +298,27 @@ def serialize_colony(db: Session, colony: PlanetaryColony) -> dict[str, Any]:
                     "product_type_id": pin.extractor_product_type_id,
                     "product_name": types.get(pin.extractor_product_type_id).name if pin.extractor_product_type_id and types.get(pin.extractor_product_type_id) else None,
                     "qty_per_cycle": pin.extractor_qty_per_cycle,
-                    "cycle_count": projection["cycle_count"],
-                    "projected_program_output": projection["program_output"],
-                    "projected_daily_output": projection["average_daily_output"],
-                    "projected_remaining_output": projection["remaining_output"],
+                    "cycle_count": extractor_projection["cycle_count"],
+                    "projected_program_output": extractor_projection["program_output"],
+                    "projected_daily_output": extractor_projection["average_daily_output"],
+                    "projected_remaining_output": extractor_projection["remaining_output"],
                     "projection_source": projection_source,
                 } if is_extractor else None,
             }
         )
+
+    starved_factories = sum(
+        1 for pin in pins if pin["is_factory"] and pin["projected_status"] in {"starved", "blocked"}
+    )
+    checkpoint = simulation["checkpoint_at"]
+    checkpoint_age_minutes = max(0, int((now - checkpoint).total_seconds() // 60)) if checkpoint else None
+    projection_warning = None
+    if checkpoint is None:
+        projection_warning = "No ESI checkpoint is available; showing observed inventory only."
+    elif simulation["truncated"]:
+        projection_warning = "Projection stopped at its safety limit; sync the colony for a newer checkpoint."
+    elif checkpoint_age_minutes is not None and checkpoint_age_minutes >= 24 * 60:
+        projection_warning = "This projection begins from an ESI checkpoint more than 24 hours old; manual transfers may not be reflected."
 
     return {
         "id": colony.id,
@@ -241,6 +338,15 @@ def serialize_colony(db: Session, colony: PlanetaryColony) -> dict[str, Any]:
         "last_synced_at": iso(colony.last_synced_at),
         "link_count": len(colony.links),
         "route_count": len(colony.routes),
+        "projection": {
+            "checkpoint_at": iso(simulation["checkpoint_at"]),
+            "projected_at": iso(simulation["projected_at"]),
+            "is_projection": simulation["is_projection"],
+            "events_processed": simulation["events_processed"],
+            "truncated": simulation["truncated"],
+            "checkpoint_age_minutes": checkpoint_age_minutes,
+            "warning": projection_warning,
+        },
         "summary": {
             "extractors": sum(1 for pin in colony.pins if pin.extractor_cycle_time is not None),
             "expired_extractors": expired_extractors,
@@ -248,6 +354,7 @@ def serialize_colony(db: Session, colony: PlanetaryColony) -> dict[str, Any]:
             "factories": sum(1 for pin in colony.pins if pin.schematic_id is not None),
             "starved_factories": starved_factories,
             "stored_volume": sum(pin["stored_volume"] for pin in pins),
+            "observed_stored_volume": sum(pin["observed_stored_volume"] for pin in pins),
             "projected_daily_output": total_daily_output,
         },
         "pins": pins,
@@ -264,7 +371,6 @@ def serialize_colony(db: Session, colony: PlanetaryColony) -> dict[str, Any]:
             for route in colony.routes
         ],
     }
-
 
 def sync_token_payload(db: Session, user: User, character_ids: set[int]) -> list[dict[str, Any]]:
     rows = db.execute(

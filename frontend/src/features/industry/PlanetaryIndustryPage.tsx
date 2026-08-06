@@ -98,8 +98,11 @@ export function PlanetaryIndustryPage({
   }
 
   useEffect(() => {
-    void load().catch((reason) => setError(reason instanceof Error ? reason.message : "Unable to load Planetary Industry"));
+    const refreshProjection = () => void load().catch((reason) => setError(reason instanceof Error ? reason.message : "Unable to load Planetary Industry"));
+    refreshProjection();
     void api<EsiAuthInfo>("/esi/auth-url?scope_group=planetary").then(setAuthInfo).catch(() => undefined);
+    const projectionTimer = window.setInterval(refreshProjection, 30_000);
+    return () => window.clearInterval(projectionTimer);
   }, []);
 
   const systems = useMemo(
@@ -133,8 +136,8 @@ export function PlanetaryIndustryPage({
       </div>
     </div>
     <div className="privacy-placard planetary-freshness">
-      <AlertTriangle size={18} />
-      <span><strong>PI data freshness:</strong> ESI may keep colony inventories unchanged until the character visits the planet in space and interacts with or submits a colony change. Allow about 10 minutes afterward, then use <b>Sync all eligible</b> or the character sync button. <b>Refresh</b> only reloads EQM's last saved snapshot.</span>
+      <Timer size={18} />
+      <span><strong>Live PI projection:</strong> EQM advances extractor cycles, factory jobs, routed materials, and storage capacity from the last ESI checkpoint to now. The projection refreshes every 30 seconds without contacting ESI. Manual transfers, expedited routes, and colony edits remain unknown until ESI publishes a newer checkpoint; visiting the planet in space and submitting a change may prompt that update.</span>
     </div>
     {error && <div className="mini-alert">{error}</div>}
     {missingScope.length > 0 && <div className="notice warning planetary-reauth">
@@ -152,8 +155,8 @@ export function PlanetaryIndustryPage({
     <div className="status-grid planetary-summary-grid">
       <article><Globe2 size={19} /><span>Colonies</span><strong>{data?.summary.colonies ?? 0}</strong></article>
       <article><Timer size={19} /><span>Extractor attention</span><strong>{(data?.summary.expired_extractors ?? 0) + (data?.summary.expiring_extractors ?? 0)}</strong></article>
-      <article><Factory size={19} /><span>Unrouted factories</span><strong>{data?.summary.starved_factories ?? 0}</strong></article>
-      <article><Warehouse size={19} /><span>Stored volume</span><strong>{number.format(data?.summary.stored_volume ?? 0)} m3</strong></article>
+      <article><Factory size={19} /><span>Factory attention</span><strong>{data?.summary.starved_factories ?? 0}</strong></article>
+      <article><Warehouse size={19} /><span>Projected volume</span><strong>{number.format(data?.summary.stored_volume ?? 0)} m3</strong></article>
     </div>
     <div className="planetary-controls">
       <label>Character<select value={character} onChange={(event) => setCharacter(event.target.value)}><option value="all">All characters</option>{data?.characters.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
@@ -189,35 +192,63 @@ function ColonyRow({
       <span><strong>{colony.planet_name}</strong><small>{colony.solar_system_name ?? `System ${colony.solar_system_id ?? "unknown"}`} · Sec {securityLabel(colony.security_status)} · {colony.planet_type ?? "Unknown type"}</small></span>
       <span><b>{colony.character_name}</b><small>Command Center {colony.upgrade_level}</small></span>
       <span><b>{colony.num_pins} pins</b><small>{colony.link_count} links · {colony.route_count} routes</small></span>
-      <span className={attention ? "planetary-attention" : "planetary-healthy"}><b>{attention ? `${attention} alerts` : "Healthy"}</b><small>Updated {formatDateTime(colony.esi_last_update)}</small></span>
+      <span className={attention ? "planetary-attention" : "planetary-healthy"}><b>{attention ? `${attention} alerts` : "Healthy"}</b><small>Projected {formatDateTime(colony.projection.projected_at)} · ESI {formatDateTime(colony.projection.checkpoint_at)}</small></span>
       <ChevronDown size={18} className={expanded ? "rotated" : ""} />
     </button>
     {expanded && <div className="planetary-colony-detail">
+      <div className="planetary-projection-note">
+        <Timer size={16} />
+        <span><strong>{colony.projection.is_projection ? "Calculated to now" : "Observed inventory"}</strong> from ESI checkpoint {formatDateTime(colony.projection.checkpoint_at)} · {number.format(colony.projection.events_processed)} production events simulated</span>
+      </div>
+      {colony.projection.warning && <div className="notice warning planetary-projection-warning"><AlertTriangle size={16} /><span>{colony.projection.warning}</span></div>}
       <div className="planetary-detail-summary">
         <span><b>{colony.summary.extractors}</b> extractors</span>
         <span><b>{colony.summary.factories}</b> factories</span>
-        <span><b>{number.format(colony.summary.stored_volume)} m3</b> stored</span>
+        <span><b>{number.format(colony.summary.stored_volume)} m3</b> projected</span>
+        <span><b>{number.format(colony.summary.observed_stored_volume)} m3</b> ESI observed</span>
         <span><b>{number.format(colony.summary.projected_daily_output)}</b> projected units/day</span>
       </div>
       <div className="table-wrap"><table className="planetary-pin-table">
-        <thead><tr><th>Installation</th><th>Role / status</th><th>Product or contents</th><th>Cycle / expiry</th><th>Routing</th></tr></thead>
+        <thead><tr><th>Installation</th><th>Projected role / status</th><th>Projected product or contents</th><th>Cycle / expiry</th><th>Routing</th></tr></thead>
         <tbody>{colony.pins.map((pin) => <PinRow key={pin.pin_id} pin={pin} />)}</tbody>
       </table></div>
     </div>}
   </article>;
 }
 
-function PinRow({ pin }: { pin: PlanetaryPin }) {
-  const contents = pin.contents.length
-    ? pin.contents.map((item) => `${item.name} x${number.format(item.amount)}`).join(" · ")
+function contentText(contents: PlanetaryPin["contents"]) {
+  return contents.length
+    ? contents.map((item) => `${item.name} x${number.format(item.amount)}`).join(" · ")
     : "Empty";
-  const role = pin.is_extractor ? "Extractor" : pin.is_factory ? "Factory" : pin.contents.length ? "Storage" : "Infrastructure";
-  const routing = pin.is_factory && !pin.has_inbound_route ? "No inbound route" : pin.has_inbound_route ? "Inbound route active" : "No inbound material";
-  return <tr className={pin.status === "expired" || (pin.is_factory && !pin.has_inbound_route) ? "pin-warning" : ""}>
+}
+
+function contentsDiffer(pin: PlanetaryPin) {
+  const projected = new Map(pin.contents.map((item) => [item.type_id, item.amount]));
+  const observed = new Map(pin.observed_contents.map((item) => [item.type_id, item.amount]));
+  return projected.size !== observed.size || [...projected].some(([typeId, amount]) => observed.get(typeId) !== amount);
+}
+
+function PinRow({ pin }: { pin: PlanetaryPin }) {
+  const contents = contentText(pin.contents);
+  const observedContents = contentText(pin.observed_contents);
+  const role = pin.is_extractor ? "Extractor" : pin.is_factory ? "Factory" : pin.contents.length || pin.observed_contents.length ? "Storage" : "Infrastructure";
+  const status = pin.projected_status;
+  const routing = pin.is_factory && status === "blocked"
+    ? "Output storage full"
+    : pin.is_factory && status === "starved"
+      ? "Waiting for routed inputs"
+      : pin.has_inbound_route
+        ? "Inbound route active"
+        : pin.is_factory
+          ? "No inbound route"
+          : "No inbound material";
+  const warning = status === "expired" || status === "starved" || status === "blocked" || status === "full";
+  const changed = contentsDiffer(pin);
+  return <tr className={warning ? "pin-warning" : ""}>
     <td><strong>{pin.type_name}</strong><span>Pin {pin.pin_id}</span></td>
-    <td><span className={`planetary-status status-${pin.status}`}>{role} · {pin.status}</span>{pin.schematic && <small>{pin.schematic.name}</small>}{pin.schematic_id && !pin.schematic && <small>Schematic {pin.schematic_id}</small>}</td>
-    <td>{pin.extractor ? <><strong>{pin.extractor.product_name ?? "Unknown product"}</strong><span>{number.format(pin.extractor.projected_daily_output)} units/day projected</span><small>{number.format(pin.extractor.projected_remaining_output)} remaining · {number.format(pin.extractor.projected_program_output)} full program · {pin.extractor.projection_source === "dogma" ? "SDE Dogma" : "CCP defaults"}</small></> : pin.schematic ? <><strong>{pin.schematic.output.name} x{number.format(pin.schematic.output.quantity)} / cycle</strong><span>{pin.schematic.inputs.map((item) => `${item.name} x${number.format(item.quantity)}`).join(" + ")}</span><small>{contents}{pin.stored_volume > 0 ? ` · ${number.format(pin.stored_volume)} m3 stored` : ""}</small></> : <><span>{contents}</span>{pin.stored_volume > 0 && <small>{number.format(pin.stored_volume)} m3</small>}</>}</td>
-    <td>{pin.extractor ? <><strong>{duration(pin.extractor.cycle_time)} cycle</strong><span>{expiryLabel(pin.expiry_time)} remaining · {pin.extractor.head_count} heads</span></> : <span>Not cyclical</span>}</td>
-    <td><span className={pin.is_factory && !pin.has_inbound_route ? "text-danger" : ""}>{routing}</span></td>
+    <td><span className={`planetary-status status-${status}`}>{role} · {status}</span>{pin.schematic && <small>{pin.schematic.name}</small>}{pin.schematic_id && !pin.schematic && <small>Schematic {pin.schematic_id}</small>}</td>
+    <td>{pin.extractor ? <><strong>{pin.extractor.product_name ?? "Unknown product"}</strong><span>{number.format(pin.extractor.projected_daily_output)} units/day projected</span><small>{contents}{pin.stored_volume > 0 ? ` · ${number.format(pin.stored_volume)} m3 projected` : ""}</small><small>{number.format(pin.extractor.projected_remaining_output)} remaining · {number.format(pin.extractor.projected_program_output)} full program · {pin.extractor.projection_source === "dogma" ? "SDE Dogma" : "CCP defaults"}</small></> : pin.schematic ? <><strong>{pin.schematic.output.name} x{number.format(pin.schematic.output.quantity)} / cycle</strong><span>{pin.schematic.inputs.map((item) => `${item.name} x${number.format(item.quantity)}`).join(" + ")}</span><small>{contents}{pin.stored_volume > 0 ? ` · ${number.format(pin.stored_volume)} m3 projected` : ""}</small></> : <><span>{contents}</span>{pin.stored_volume > 0 && <small>{number.format(pin.stored_volume)} m3 projected</small>}</>}{changed && <small className="planetary-observed">ESI observed: {observedContents}{pin.observed_stored_volume > 0 ? ` · ${number.format(pin.observed_stored_volume)} m3` : ""}</small>}{pin.projected_blocked.length > 0 && <small className="text-danger">Unrouted/full: {contentText(pin.projected_blocked)}</small>}</td>
+    <td>{pin.extractor ? <><strong>{duration(pin.extractor.cycle_time)} cycle</strong><span>{expiryLabel(pin.expiry_time)} remaining · {pin.extractor.head_count} heads</span></> : pin.schematic ? <><strong>{duration(pin.schematic.cycle_time)} cycle</strong><span>{status === "running" ? "Production active" : status === "starved" ? "Inputs unavailable" : status === "blocked" ? "Output blocked" : "Idle"}</span></> : <span>Not cyclical</span>}</td>
+    <td><span className={warning ? "text-danger" : ""}>{routing}</span></td>
   </tr>;
 }

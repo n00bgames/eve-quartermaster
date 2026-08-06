@@ -38,13 +38,19 @@ export type PlanetaryPin = {
   expiry_time?: string | null;
   last_cycle_start?: string | null;
   status: "online" | "active" | "expiring" | "expired";
+  projected_status: "online" | "active" | "expiring" | "expired" | "running" | "starved" | "blocked" | "full" | "idle";
+  content_source: "observed" | "projected";
   schematic_id?: number | null;
   schematic?: PlanetarySchematic | null;
   is_factory: boolean;
   is_extractor: boolean;
   has_inbound_route: boolean;
   stored_volume: number;
+  observed_stored_volume: number;
   contents: PlanetaryPinContent[];
+  observed_contents: PlanetaryPinContent[];
+  projected_produced: PlanetaryPinContent[];
+  projected_blocked: PlanetaryPinContent[];
   extractor?: {
     cycle_time?: number | null;
     head_radius?: number | null;
@@ -78,6 +84,15 @@ export type PlanetaryColony = {
   last_synced_at: string;
   link_count: number;
   route_count: number;
+  projection: {
+    checkpoint_at?: string | null;
+    projected_at: string;
+    is_projection: boolean;
+    events_processed: number;
+    truncated: boolean;
+    checkpoint_age_minutes?: number | null;
+    warning?: string | null;
+  };
   summary: {
     extractors: number;
     expired_extractors: number;
@@ -85,6 +100,7 @@ export type PlanetaryColony = {
     factories: number;
     starved_factories: number;
     stored_volume: number;
+    observed_stored_volume: number;
     projected_daily_output: number;
   };
   pins: PlanetaryPin[];

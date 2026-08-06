@@ -36,6 +36,7 @@ export async function api<T>(path: string, options?: RequestInit): Promise<T> {
   try {
     const response = await fetch(`${API_BASE}${path}`, {
       ...options,
+      credentials: "include",
       signal: options?.signal ?? controller.signal,
       headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}), ...options?.headers },
     });

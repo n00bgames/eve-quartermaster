@@ -56,6 +56,7 @@ export function DatabaseAdministration({ api }: { api: ApiClient }) {
     try {
       const token = localStorage.getItem("eq_access_token");
       const response = await fetch(`${API_BASE}/database/export`, {
+        credentials: "include",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!response.ok) throw new Error(await responseError(response));
@@ -83,6 +84,7 @@ export function DatabaseAdministration({ api }: { api: ApiClient }) {
       const token = localStorage.getItem("eq_access_token");
       const response = await fetch(`${API_BASE}/database/import`, {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/octet-stream",
           "X-EQM-Confirmation": restoreConfirmation,

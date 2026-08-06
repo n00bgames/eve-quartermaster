@@ -35,6 +35,7 @@ services:
       TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:-}
       AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:-dev-change-me}
       ACCESS_TOKEN_MINUTES: ${ACCESS_TOKEN_MINUTES:-720}
+      REMEMBER_ME_DAYS: ${REMEMBER_ME_DAYS:-30}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173,https://eqm.easyduneadmin.app}
       SDE_SOURCE_PATH: ${SDE_SOURCE_PATH:-/sde}

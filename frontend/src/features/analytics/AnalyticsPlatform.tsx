@@ -64,7 +64,7 @@ export function AnalyticsPlatform({ currentUser, api, Metric }: AnalyticsPlatfor
   }
   async function downloadExport(format: "csv" | "json") {
     const token = localStorage.getItem("eq_access_token");
-    const response = await fetch(`${API_BASE}/analytics/exports/metrics.${format}?days=${days}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    const response = await fetch(`${API_BASE}/analytics/exports/metrics.${format}?days=${days}`, { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
     if (!response.ok) throw new Error(`Export failed: ${response.status}`);
     const blob = await response.blob();
     const url = URL.createObjectURL(blob);

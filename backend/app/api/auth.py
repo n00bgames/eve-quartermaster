@@ -7,7 +7,7 @@ import re
 import secrets
 from typing import Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 from sqlalchemy import delete as sa_delete, func, select, update
 from sqlalchemy.orm import Session
 
@@ -20,6 +20,32 @@ from app.models import EsiSyncJob, EsiToken, EveCharacter, RecruitmentUserCapabi
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 ROLES = BUILT_IN_ROLES
+REMEMBER_ME_COOKIE = "eq_remember_session"
+
+
+def set_remember_me_cookie(response: Response, token: str) -> None:
+    settings = get_settings()
+    max_age = settings.remember_me_days * 24 * 60 * 60
+    response.set_cookie(
+        key=REMEMBER_ME_COOKIE,
+        value=token,
+        max_age=max_age,
+        httponly=True,
+        secure=settings.frontend_url.lower().startswith("https://"),
+        samesite="lax",
+        path=settings.api_prefix or "/",
+    )
+
+
+def clear_remember_me_cookie(response: Response) -> None:
+    settings = get_settings()
+    response.delete_cookie(
+        key=REMEMBER_ME_COOKIE,
+        path=settings.api_prefix or "/",
+        httponly=True,
+        secure=settings.frontend_url.lower().startswith("https://"),
+        samesite="lax",
+    )
 
 
 def serialize_user(user: User) -> dict[str, Any]:
@@ -89,10 +115,15 @@ def protect_host_assignment(current_user: User, requested_role: str) -> None:
         raise HTTPException(status_code=403, detail="Only a host can assign the host role")
 
 
-def get_current_user(authorization: str | None = Header(default=None), db: Session = Depends(get_db)) -> User:
-    if not authorization or not authorization.lower().startswith("bearer "):
+def get_current_user(
+    request: Request,
+    authorization: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+) -> User:
+    bearer_token = authorization.split(" ", 1)[1] if authorization and authorization.lower().startswith("bearer ") else None
+    token = bearer_token or request.cookies.get(REMEMBER_ME_COOKIE)
+    if not token:
         raise HTTPException(status_code=401, detail="Sign in is required")
-    token = authorization.split(" ", 1)[1]
     try:
         payload = decode_token(token)
         user_id = int(payload.get("sub"))
@@ -274,14 +305,35 @@ def bootstrap_admin(payload: dict[str, Any], db: Session = Depends(get_db)) -> d
 
 
 @router.post("/login")
-def login(payload: dict[str, Any], db: Session = Depends(get_db)) -> dict[str, Any]:
+def login(payload: dict[str, Any], response: Response, db: Session = Depends(get_db)) -> dict[str, Any]:
     email = str(payload.get("email", "")).strip().lower()
     password = str(payload.get("password", ""))
     user = db.scalar(select(User).where(User.email == email, User.deleted_at.is_(None)))
     if user is None or not verify_password(password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid email or password")
-    token = create_access_token(str(user.id), {"role": user.role})
-    return {"access_token": token, "token_type": "bearer", "user": serialize_user(user)}
+    remember_me = payload.get("remember_me") is True
+    settings = get_settings()
+    token = create_access_token(
+        str(user.id),
+        {"role": user.role, "remember_me": remember_me},
+        expires_minutes=settings.remember_me_days * 24 * 60 if remember_me else None,
+    )
+    if remember_me:
+        set_remember_me_cookie(response, token)
+    else:
+        clear_remember_me_cookie(response)
+    return {
+        "access_token": None if remember_me else token,
+        "token_type": "cookie" if remember_me else "bearer",
+        "remembered": remember_me,
+        "user": serialize_user(user),
+    }
+
+
+@router.post("/logout")
+def logout(response: Response) -> dict[str, str]:
+    clear_remember_me_cookie(response)
+    return {"status": "signed_out"}
 
 
 @router.get("/me")
