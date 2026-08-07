@@ -5,6 +5,8 @@ from datetime import datetime
 from statistics import median
 from typing import Any
 
+from app.services.metric_registry import aggregate_metric_values, derive_metric_series, metric_definition
+
 
 def daily_closing_points(rows: list[Any]) -> list[dict[str, Any]]:
     latest: dict[str, Any] = {}
@@ -16,7 +18,19 @@ def daily_closing_points(rows: list[Any]) -> list[dict[str, Any]]:
     return [{"date": day, "value": float(row.balance)} for day, row in sorted(latest.items())]
 
 
-def wallet_statistics(points: list[dict[str, Any]], *, current_balance: float | None = None) -> dict[str, Any]:
+def derived_values(metric_key: str, transform: str, points: list[dict[str, Any]]) -> list[float]:
+    definition = metric_definition(metric_key)
+    derived = next((item for item in definition["derivedMetrics"] if item["transform"] == transform), None)
+    if derived is None:
+        raise ValueError(f"Metric {metric_key!r} does not declare the {transform!r} transform")
+    return [
+        float(point["value"])
+        for point in derive_metric_series(metric_key, points)[derived["metric"]]
+        if point["value"] is not None
+    ]
+
+
+def wallet_statistics(points: list[dict[str, Any]], *, current_balance: float | None = None, metric_key: str = "character_wallet.balance") -> dict[str, Any]:
     if not points:
         return {
             "current": current_balance,
@@ -28,13 +42,18 @@ def wallet_statistics(points: list[dict[str, Any]], *, current_balance: float | 
         }
     first = float(points[0]["value"])
     latest = float(current_balance if current_balance is not None else points[-1]["value"])
-    changes = [float(points[index]["value"]) - float(points[index - 1]["value"]) for index in range(1, len(points))]
+    changes = derived_values(metric_key, "daily_delta", points)
     elapsed_days = max(1, (datetime.fromisoformat(points[-1]["date"]) - datetime.fromisoformat(points[0]["date"])).days)
-    net = latest - first
+    net = float(aggregate_metric_values([first, latest], "delta") or 0)
+    growth_points = [
+        {"date": points[0]["date"], "value": first},
+        {"date": points[-1]["date"], "value": latest},
+    ]
+    growth = derived_values(metric_key, "growth_percent", growth_points)
     return {
         "current": latest,
         "net_change": net,
-        "percentage_growth": (net / first * 100) if first else None,
+        "percentage_growth": growth[-1] if growth else None,
         "average_daily_growth": net / elapsed_days,
         "largest_gain": max([0.0, *changes]),
         "largest_loss": min([0.0, *changes]),

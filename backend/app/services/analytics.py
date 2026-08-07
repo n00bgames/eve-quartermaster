@@ -31,6 +31,7 @@ from app.models import (
     SnapshotRun,
 )
 from app.models.enums import OwnerKind, SyncStatus
+from app.services.metric_registry import metric_definition
 
 
 CORPORATION_ANALYTICS_SYNC_TYPES = frozenset(
@@ -190,9 +191,18 @@ def add_metric(
     owner_name: str | None,
     metric_key: str,
     metric_value: int | float | Decimal | None,
-    metric_version: int = 1,
+    metric_version: int | None = None,
     dimensions: dict[str, object] | None = None,
 ) -> None:
+    definition = metric_definition(metric_key)
+    if owner_type == "character" and not definition["supportsCharacter"]:
+        raise ValueError(f"Metric {metric_key!r} does not support character snapshots")
+    if owner_type == "corporation" and not definition["supportsCorporation"]:
+        raise ValueError(f"Metric {metric_key!r} does not support corporation snapshots")
+    registered_version = int(definition["version"])
+    if metric_version is not None and metric_version != registered_version:
+        raise ValueError(f"Metric {metric_key!r} requires version {registered_version}, not {metric_version}")
+    metric_version = registered_version
     db.add(
         SnapshotMetric(
             snapshot_run_id=run.id,

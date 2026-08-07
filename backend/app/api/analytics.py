@@ -15,27 +15,10 @@ from app.api.auth import get_current_user, require_role
 from app.db.session import get_db
 from app.models import BlueprintSnapshot, CharacterSkillSnapshot, CorporationSnapshot, EveCharacter, EveCorporation, ManufacturingJob, MiningLedgerEntry, OwnershipEntity, ResearchProject, SnapshotMetric, SnapshotRun, User
 from app.services.analytics import analytics_corporation_ids, create_snapshot, privileged_analytics_corporation_ids
+from app.services.metric_registry import METRIC_CATALOG
 from app.services.permissions import ROLE_RANK, can_view_section, role_rank
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
-METRIC_CATALOG: list[dict[str, Any]] = [
-    {"metric": "skill_points.total", "version": 1, "label": "Total Skill Points", "unit": "SP", "aggregation": "latest", "category": "Skills", "supportsCharacter": True, "supportsCorporation": False, "chartTypes": ["line", "bar", "histogram"], "deprecated": False},
-    {"metric": "skill_points.lost", "version": 1, "label": "Skill Point History", "unit": "SP", "aggregation": "sum", "category": "Skills", "supportsCharacter": True, "supportsCorporation": False, "chartTypes": ["bar", "histogram"], "deprecated": False},
-    {"metric": "skills.count", "version": 1, "label": "Trained Skill Count", "unit": "skills", "aggregation": "latest", "category": "Skills", "supportsCharacter": True, "supportsCorporation": False, "chartTypes": ["line", "bar"], "deprecated": False},
-    {"metric": "skill_queue.count", "version": 1, "label": "Skill Queue Count", "unit": "skills", "aggregation": "latest", "category": "Skills", "supportsCharacter": True, "supportsCorporation": False, "chartTypes": ["line", "bar"], "deprecated": False},
-    {"metric": "skill_points.category", "version": 1, "label": "Skill Points by Category", "unit": "SP", "aggregation": "sum", "category": "Skills", "supportsCharacter": True, "supportsCorporation": False, "chartTypes": ["bar", "pie", "stacked_bar"], "deprecated": False},
-    {"metric": "skill_points.category_lost", "version": 1, "label": "Skill Point History by Category", "unit": "SP", "aggregation": "sum", "category": "Skills", "supportsCharacter": True, "supportsCorporation": False, "chartTypes": ["bar", "pie"], "deprecated": False},
-    {"metric": "members.count", "version": 1, "label": "Corporation Members", "unit": "members", "aggregation": "latest", "category": "Corporations", "supportsCharacter": False, "supportsCorporation": True, "chartTypes": ["line", "bar"], "deprecated": False},
-    {"metric": "wallet.balance", "version": 1, "label": "Corporation Wallet Balance", "unit": "ISK", "aggregation": "sum", "category": "Finance", "supportsCharacter": False, "supportsCorporation": True, "chartTypes": ["line", "bar"], "deprecated": False},
-    {"metric": "character_wallet.balance", "version": 1, "label": "Character Wallet Balance", "unit": "ISK", "aggregation": "latest", "category": "Finance", "supportsCharacter": True, "supportsCorporation": True, "chartTypes": ["line", "bar", "distribution"], "deprecated": False},
-    {"metric": "wallet.division_balance", "version": 1, "label": "Wallet Division Balance", "unit": "ISK", "aggregation": "sum", "category": "Finance", "supportsCharacter": False, "supportsCorporation": True, "chartTypes": ["line", "bar", "stacked_bar", "pie"], "deprecated": False},
-    {"metric": "assets.rows", "version": 1, "label": "Asset Rows", "unit": "rows", "aggregation": "sum", "category": "Assets", "supportsCharacter": True, "supportsCorporation": True, "chartTypes": ["line", "bar", "histogram"], "deprecated": False},
-    {"metric": "assets.units", "version": 1, "label": "Asset Units", "unit": "units", "aggregation": "sum", "category": "Assets", "supportsCharacter": True, "supportsCorporation": True, "chartTypes": ["line", "bar", "histogram"], "deprecated": False},
-    {"metric": "blueprints.count", "version": 1, "label": "Blueprint Count", "unit": "BPs", "aggregation": "sum", "category": "Industry", "supportsCharacter": True, "supportsCorporation": True, "chartTypes": ["line", "bar"], "deprecated": False},
-    {"metric": "blueprint.quantity", "version": 1, "label": "Blueprint Quantity", "unit": "BPs", "aggregation": "sum", "category": "Industry", "supportsCharacter": True, "supportsCorporation": True, "chartTypes": ["bar", "pie", "histogram"], "deprecated": False},
-]
-
-
 def require_analytics(current_user: User, db: Session) -> None:
     if not can_view_section(current_user, "analytics", db):
         raise HTTPException(status_code=403, detail="analytics section access is required")
@@ -744,13 +727,25 @@ def metric_catalog(current_user: User = Depends(get_current_user), db: Session =
     rows.extend(
         {
             "metric": metric,
+            "version": 1,
             "label": metric.replace(".", " ").title(),
             "unit": "value",
-            "aggregation": "latest",
+            "aggregation": "unregistered",
+            "entityAggregation": "unregistered",
+            "timeAggregation": "unregistered",
+            "supportedAggregations": [],
+            "supportedTransforms": [],
+            "derivedMetrics": [],
+            "valueKind": "unknown",
+            "dimensions": [],
+            "privacy": "unknown",
             "category": "Discovered",
-            "supportsCharacter": True,
-            "supportsCorporation": True,
-            "chartTypes": ["line", "bar"],
+            "supportsCharacter": False,
+            "supportsCorporation": False,
+            "chartTypes": [],
+            "deprecated": True,
+            "registered": False,
+            "description": "Historical metric without a registered aggregation contract.",
             "hasData": True,
         }
         for metric in sorted(discovered - cataloged)

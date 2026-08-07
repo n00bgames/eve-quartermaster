@@ -156,7 +156,7 @@ def corporation_wallet_payload(db: Session, corporation: EveCorporation, cutoff:
     corporation_wallet_total = sum(float(row.balance or 0) for row in current_divisions)
     has_current_wealth = bool(current_balances or current_divisions)
     current_total = character_wallet_total + corporation_wallet_total if has_current_wealth else None
-    stats = wallet_statistics(absolute_points, current_balance=current_total)
+    stats = wallet_statistics(absolute_points, current_balance=current_total, metric_key="wallet.balance")
     raw_visible = bool(corporation.character_wallet_totals_visible and role_rank(current_user, db) >= ROLE_RANK["officer"])
     if raw_visible:
         points = absolute_points

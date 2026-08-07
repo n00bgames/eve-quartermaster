@@ -3,6 +3,22 @@
 All notable changes to EVE Quartermaster are tracked here.
 
 This project is moving quickly during beta. Version sections are written as user-facing release notes first, with implementation detail included where it helps operators understand deployment or testing impact.
+## [0.1.18-beta] - 2026-08-06
+
+### Added
+
+- Added an enforced analytics metric registry. Every snapshot metric now declares entity and time aggregation, supported rollups and transforms, value kind, dimensions, privacy scope, version, and chart compatibility; unregistered or incorrectly scoped metrics are rejected before collection.
+
+- Added registry-declared virtual metrics. Wallet balance observations now produce daily and weekly deltas, percentage growth, and 30-day rolling averages at query time without collectors storing redundant derived rows; financial KPIs consume the same shared derivation engine.
+
+### Changed
+
+- Bumped the visible app, package, backend API, Android wrapper, README badge, and navigation-intel user-agent versions to 0.1.18-beta for the next development cycle.
+
+- Improved historical chart rendering with dynamic non-zero Y-axis domains, 5–10% peak headroom, human-friendly tick intervals, date labels that adapt from daily through quarterly views, and pointer crosshairs with readable multi-series value cards.
+
+- Character dossiers now display both base NPC standings and effective standings calculated from active Diplomacy, Connections, or Criminal Connections levels, including the applied skill and level; the interface clarifies that Social affects future gains rather than the current standing.
+
 ## [0.1.17-beta] - 2026-08-03
 
 ### Added

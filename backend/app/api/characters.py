@@ -34,7 +34,7 @@ from app.models.navigation import SystemIndustrialKillObservation, SystemPvpKill
 from app.services.blueprint_hover import active_blueprint_uses, blueprint_active_use
 from app.services.contracts import serialize_contract
 from app.services.permissions import ROLE_RANK, can_view_section, role_rank
-from app.services.standings import serialize_character_standing
+from app.services.standings import character_standing_skill_levels, npc_standing_affiliations, serialize_character_standing
 
 router = APIRouter(prefix="/characters", tags=["characters"])
 
@@ -544,6 +544,13 @@ def get_character_dossier(character_id: int, current_user: User = Depends(get_cu
         for contract in contracts:
             for field in ("price", "reward", "collateral", "buyout"):
                 contract[field] = None
+    standing_rows = db.scalars(
+        select(CharacterStanding)
+        .where(CharacterStanding.character_id == character.id)
+        .order_by(CharacterStanding.source_type, CharacterStanding.source_name)
+    ).all()
+    standing_skill_levels = character_standing_skill_levels(db, character.id)
+    standing_affiliations = npc_standing_affiliations()
     return {
         "character": serialize_character(character, current_user, db),
         "summary": summary,
@@ -569,12 +576,12 @@ def get_character_dossier(character_id: int, current_user: User = Depends(get_cu
         "standings": {
             "synced_at": iso(character.standings_synced_at),
             "entries": [
-                serialize_character_standing(row)
-                for row in db.scalars(
-                    select(CharacterStanding)
-                    .where(CharacterStanding.character_id == character.id)
-                    .order_by(CharacterStanding.source_type, CharacterStanding.source_name)
-                ).all()
+                serialize_character_standing(
+                    row,
+                    skill_levels=standing_skill_levels,
+                    affiliations=standing_affiliations,
+                )
+                for row in standing_rows
             ],
         },
         "kill_history": character_kill_history(db, character, include_isk_values=isk_values_visible),

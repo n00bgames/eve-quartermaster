@@ -4,7 +4,9 @@ export type AnalyticsGrowth = { id?: number; name: string; value?: number; delta
 
 export type DuplicateBlueprint = { owner_name: string; blueprint_type_name: string; is_copy: boolean; quantity: number; material_efficiency_levels: number[]; time_efficiency_levels: number[]; in_use: number };
 
-export type MetricCatalogItem = { metric: string; version: number; label: string; unit: string; aggregation: string; category: string; supportsCharacter: boolean; supportsCorporation: boolean; chartTypes: string[]; deprecated: boolean; hasData?: boolean };
+export type DerivedMetricCatalogItem = { metric: string; label: string; unit: string; transform: string; windowDays?: number | null; valueKind: "derived"; materialized: false; requiresAbsolute: boolean; chartTypes: string[]; sourceMetric: string; privacy: string };
+
+export type MetricCatalogItem = { metric: string; version: number; label: string; unit: string; aggregation: string; entityAggregation: string; timeAggregation: string; supportedAggregations: string[]; supportedTransforms: string[]; derivedMetrics: DerivedMetricCatalogItem[]; valueKind: string; dimensions: string[]; privacy: string; category: string; supportsCharacter: boolean; supportsCorporation: boolean; chartTypes: string[]; deprecated: boolean; registered: boolean; description: string; hasData?: boolean };
 
 export type AnalyticsCorporationScope = {
   id: number;

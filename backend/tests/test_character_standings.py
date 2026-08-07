@@ -7,7 +7,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
 from app.models import Base, CharacterStanding, EveCharacter
-from app.services.standings import upsert_character_standings
+from app.services.standings import effective_npc_standing, upsert_character_standings
 
 
 class CharacterStandingPersistenceTests(unittest.TestCase):
@@ -87,5 +87,47 @@ class CharacterStandingPersistenceTests(unittest.TestCase):
             self.assertEqual(db.query(CharacterStanding).count(), 1)
 
 
+
+class CharacterStandingModifierTests(unittest.TestCase):
+    def test_connections_modifies_positive_non_pirate_standing(self) -> None:
+        modified, skill, level = effective_npc_standing(
+            5.0,
+            "faction",
+            500001,
+            {"connections": 3},
+        )
+        self.assertAlmostEqual(modified, 5.6)
+        self.assertEqual((skill, level), ("Connections", 3))
+
+    def test_diplomacy_modifies_negative_standing(self) -> None:
+        modified, skill, level = effective_npc_standing(
+            -5.0,
+            "npc_corp",
+            1000002,
+            {"diplomacy": 4},
+        )
+        self.assertAlmostEqual(modified, -2.6)
+        self.assertEqual((skill, level), ("Diplomacy", 4))
+
+    def test_criminal_connections_uses_sde_faction_affiliation(self) -> None:
+        modified, skill, level = effective_npc_standing(
+            2.0,
+            "agent",
+            3000001,
+            {"connections": 5, "criminal_connections": 5},
+            ({1000001: 500010}, {3000001: 1000001}),
+        )
+        self.assertAlmostEqual(modified, 3.6)
+        self.assertEqual((skill, level), ("Criminal Connections", 5))
+
+    def test_social_does_not_change_current_standing(self) -> None:
+        modified, skill, level = effective_npc_standing(
+            0.0,
+            "faction",
+            500001,
+            {"social": 5, "connections": 5, "diplomacy": 5},
+        )
+        self.assertEqual(modified, 0.0)
+        self.assertEqual((skill, level), (None, 0))
 if __name__ == "__main__":
     unittest.main()

@@ -81,6 +81,10 @@ export type CharacterStanding = {
   source_eve_id: number;
   source_name: string;
   standing: number;
+  base_standing: number;
+  modified_standing: number;
+  modifier_skill?: string | null;
+  modifier_skill_level: number;
   last_synced_at?: string | null;
 };
 export type CharacterDossierFitting = {

@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, Building2, Flag, Search, UserRound } from "lucide-react";
+import { ArrowDown, ArrowUp, Building2, Flag, Info, Search, UserRound } from "lucide-react";
 import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 
 import type { CharacterStanding, CharacterStandingSourceType } from "../../types/characters";
@@ -48,6 +48,14 @@ function standingMeterStyle(value: number): CSSProperties {
   } as CSSProperties;
 }
 
+function baseStanding(entry: CharacterStanding): number {
+  return entry.base_standing ?? entry.standing;
+}
+
+function modifiedStanding(entry: CharacterStanding): number {
+  return entry.modified_standing ?? baseStanding(entry);
+}
+
 type CharacterStandingsProps = {
   entries: CharacterStanding[];
   syncedAt?: string | null;
@@ -86,7 +94,7 @@ export function CharacterStandings({
       .sort((left, right) => {
         const comparison = sort === "name"
           ? left.source_name.localeCompare(right.source_name)
-          : left.standing - right.standing;
+          : modifiedStanding(left) - modifiedStanding(right);
         return descending ? -comparison : comparison;
       });
   }, [descending, entries, filter, query, sort]);
@@ -122,11 +130,20 @@ export function CharacterStandings({
 
       {entries.length > 0 ? (
         <>
+          <div className="standing-explanation">
+            <Info size={18} />
+            <span>
+              <strong>Base</strong> is the unmodified ESI value. <strong>Modified</strong> applies active Diplomacy,
+              Connections, or Criminal Connections levels. Social improves future standing gains, so it is not added
+              to the current value.
+            </span>
+          </div>
+
           <div className="standing-summary-grid">
             {(["faction", "npc_corp", "agent"] as CharacterStandingSourceType[]).map((sourceType) => {
               const sourceEntries = entries.filter((entry) => entry.source_type === sourceType);
               const highest = sourceEntries.reduce<CharacterStanding | null>(
-                (best, entry) => !best || entry.standing > best.standing ? entry : best,
+                (best, entry) => !best || modifiedStanding(entry) > modifiedStanding(best) ? entry : best,
                 null,
               );
               return (
@@ -134,7 +151,7 @@ export function CharacterStandings({
                   <span>{SOURCE_ICONS[sourceType]} {SOURCE_LABELS[sourceType]}</span>
                   <strong>{sourceEntries.length.toLocaleString()}</strong>
                   <small>
-                    {highest ? `Highest: ${highest.source_name} ${signedStanding(highest.standing)}` : "No stored entries"}
+                    {highest ? `Highest modified: ${highest.source_name} ${signedStanding(modifiedStanding(highest))}` : "No stored entries"}
                   </small>
                 </article>
               );
@@ -176,9 +193,10 @@ export function CharacterStandings({
                     </button>
                   </th>
                   <th>Type</th>
+                  <th>Base</th>
                   <th>
                     <button type="button" className="sort-header" onClick={() => changeSort("standing")}>
-                      Standing
+                      Modified
                       {sort === "standing" && (descending ? <ArrowDown size={14} /> : <ArrowUp size={14} />)}
                     </button>
                   </th>
@@ -186,7 +204,9 @@ export function CharacterStandings({
               </thead>
               <tbody>
                 {visible.map((entry) => {
-                  const tone = standingTone(entry.standing);
+                  const base = baseStanding(entry);
+                  const modified = modifiedStanding(entry);
+                  const tone = standingTone(modified);
                   return (
                     <tr key={`${entry.source_type}-${entry.source_eve_id}`}>
                       <td>
@@ -200,10 +220,21 @@ export function CharacterStandings({
                         </span>
                       </td>
                       <td>
+                        <div className="standing-base-value">
+                          <strong>{signedStanding(base)}</strong>
+                          <span>Unmodified</span>
+                        </div>
+                      </td>
+                      <td>
                         <div className={`standing-value ${tone}`}>
-                          <strong>{signedStanding(entry.standing)}</strong>
-                          <span>{standingLabel(entry.standing)}</span>
-                          <i style={standingMeterStyle(entry.standing)}><b /></i>
+                          <strong>{signedStanding(modified)}</strong>
+                          <span>{standingLabel(modified)}</span>
+                          <i style={standingMeterStyle(modified)}><b /></i>
+                          <small>
+                            {entry.modifier_skill && entry.modifier_skill_level > 0
+                              ? `${entry.modifier_skill} ${entry.modifier_skill_level}`
+                              : "No active modifier"}
+                          </small>
                         </div>
                       </td>
                     </tr>

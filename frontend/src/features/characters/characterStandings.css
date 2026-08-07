@@ -17,6 +17,43 @@
   color: #8b98a8;
 }
 
+.standing-explanation {
+  align-items: flex-start;
+  background: #10212a;
+  border: 1px solid #315262;
+  border-radius: 8px;
+  color: #b8c8d3;
+  display: flex;
+  gap: 9px;
+  line-height: 1.4;
+  padding: 10px 12px;
+}
+
+.standing-explanation svg {
+  color: #4fb3c7;
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.standing-explanation strong {
+  color: #e7edf5;
+}
+
+.standing-base-value {
+  display: grid;
+  gap: 3px;
+  min-width: 92px;
+}
+
+.standing-base-value strong {
+  color: #cfd8e4;
+  font-variant-numeric: tabular-nums;
+}
+
+.standing-base-value span {
+  color: #788696;
+  font-size: .72rem;
+}
 .standing-summary-grid {
   display: grid;
   gap: 8px;
@@ -119,7 +156,7 @@
 }
 
 .standing-table {
-  min-width: 620px;
+  min-width: 780px;
 }
 
 .standing-table td:first-child {
@@ -143,7 +180,7 @@
   display: grid;
   gap: 3px;
   grid-template-columns: auto 1fr;
-  min-width: 180px;
+  min-width: 190px;
 }
 
 .standing-value > strong {
@@ -154,6 +191,11 @@
   color: #8b98a8;
   font-size: .78rem;
   text-align: right;
+}
+
+.standing-value > small {
+  grid-column: 1 / -1;
+  font-size: .72rem;
 }
 
 .standing-value > i {
