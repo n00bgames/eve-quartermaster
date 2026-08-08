@@ -3,12 +3,15 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+import hashlib
+import json
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models import (
     Asset,
+    AppSetting,
     Blueprint,
     BlueprintSnapshot,
     CharacterSkill,
@@ -90,7 +93,71 @@ def analytics_corporation_ids(db: Session) -> set[int]:
 
 
 AUTO_SNAPSHOT_COALESCE_MINUTES = 60
-SNAPSHOT_SCHEMA_VERSION = 3
+SNAPSHOT_SCHEMA_VERSION = 4
+ANALYTICS_RETENTION_MODE_KEY = "analytics_retention_mode"
+RETENTION_MODE_FULL = "full"
+RETENTION_MODE_CHANGES = "changes"
+RETENTION_MODES = frozenset({RETENTION_MODE_FULL, RETENTION_MODE_CHANGES})
+
+
+def analytics_retention_mode(db: Session) -> str:
+    setting = db.get(AppSetting, ANALYTICS_RETENTION_MODE_KEY)
+    value = getattr(setting, "value", None)
+    return value if isinstance(value, str) and value in RETENTION_MODES else RETENTION_MODE_CHANGES
+
+
+def set_analytics_retention_mode(db: Session, mode: str) -> AppSetting:
+    if mode not in RETENTION_MODES:
+        raise ValueError(f"Unsupported analytics retention mode: {mode}")
+    setting = db.get(AppSetting, ANALYTICS_RETENTION_MODE_KEY)
+    if setting is None:
+        setting = AppSetting(key=ANALYTICS_RETENTION_MODE_KEY, value=mode)
+        db.add(setting)
+    else:
+        setting.value = mode
+    return setting
+
+
+def metric_series_key(*, owner_type: str, owner_id: int | None, metric_key: str, metric_version: int, dimensions: dict[str, object] | None) -> str:
+    payload = {
+        "owner_type": owner_type,
+        "owner_id": owner_id,
+        "metric_key": metric_key,
+        "metric_version": metric_version,
+        "dimensions": dimensions or {},
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _latest_metric_rows(db: Session, run: SnapshotRun, metric_key: str) -> dict[str, SnapshotMetric]:
+    cache = getattr(run, "_latest_metric_cache", None)
+    if cache is None:
+        cache = {}
+        setattr(run, "_latest_metric_cache", cache)
+    if metric_key not in cache:
+        latest: dict[str, SnapshotMetric] = {}
+        rows = db.scalars(
+            select(SnapshotMetric)
+            .where(SnapshotMetric.metric_key == metric_key, SnapshotMetric.series_key.is_not(None))
+            .order_by(SnapshotMetric.id.desc())
+        ).all()
+        for row in rows:
+            if row.series_key:
+                latest.setdefault(row.series_key, row)
+        cache[metric_key] = latest
+    return cache[metric_key]
+
+
+def _daily_checkpoint_due(db: Session, model: type, run: SnapshotRun, *filters: object) -> bool:
+    if run.source == "manual":
+        return True
+    latest = db.scalar(select(func.max(model.recorded_at)).where(*filters))
+    if latest is None:
+        return True
+    if latest.tzinfo is None:
+        latest = latest.replace(tzinfo=timezone.utc)
+    return latest.date() < datetime.now(timezone.utc).date()
 
 
 def recent_automatic_snapshot(
@@ -110,7 +177,7 @@ def recent_automatic_snapshot(
             SnapshotRun.scope_type == scope_type,
             SnapshotRun.scope_id == scope_id,
             SnapshotRun.source == source,
-            SnapshotRun.status == "success",
+            SnapshotRun.status.in_({"success", "unchanged"}),
             SnapshotRun.started_at >= cutoff,
             SnapshotRun.schema_version >= SNAPSHOT_SCHEMA_VERSION,
         )
@@ -138,6 +205,7 @@ def create_snapshot(
     if existing is not None:
         return existing
 
+    retention_mode = analytics_retention_mode(db)
     run = SnapshotRun(
         scope_type=scope_type,
         scope_id=scope_id,
@@ -149,28 +217,32 @@ def create_snapshot(
     db.add(run)
     db.flush()
     try:
+        retention_kwargs = {} if retention_mode == RETENTION_MODE_FULL else {"retention_mode": retention_mode}
         if scope_type == "global":
-            snapshot_character_wallets(db, run)
-            snapshot_character_skills(db, run)
-            snapshot_corporations(db, run)
-            snapshot_blueprints(db, run)
+            snapshot_character_wallets(db, run, **retention_kwargs)
+            snapshot_character_skills(db, run, **retention_kwargs)
+            snapshot_corporations(db, run, **retention_kwargs)
+            snapshot_blueprints(db, run, **retention_kwargs)
         elif scope_type == "character" and scope_id is not None:
-            snapshot_character_wallets(db, run, {scope_id})
+            snapshot_character_wallets(db, run, {scope_id}, **retention_kwargs)
             if source == "character_assets":
-                snapshot_character_assets(db, run, scope_id)
+                snapshot_character_assets(db, run, scope_id, **retention_kwargs)
             elif source != "character_wallet":
-                snapshot_character_skills(db, run, {scope_id})
+                snapshot_character_skills(db, run, {scope_id}, **retention_kwargs)
         elif scope_type == "corporation" and scope_id is not None:
-            snapshot_corporations(db, run, {scope_id})
+            snapshot_corporations(db, run, {scope_id}, **retention_kwargs)
             if source == "corporation_blueprints":
                 # Detailed blueprint rows are captured only by blueprint syncs or manual global snapshots.
-                snapshot_blueprints(db, run)
+                snapshot_blueprints(db, run, **retention_kwargs)
         else:
-            snapshot_character_wallets(db, run)
-            snapshot_character_skills(db, run)
-            snapshot_corporations(db, run)
-            snapshot_blueprints(db, run)
-        run.status = "success"
+            snapshot_character_wallets(db, run, **retention_kwargs)
+            snapshot_character_skills(db, run, **retention_kwargs)
+            snapshot_corporations(db, run, **retention_kwargs)
+            snapshot_blueprints(db, run, **retention_kwargs)
+        db.flush()
+        run.status = "unchanged" if retention_mode == RETENTION_MODE_CHANGES and not snapshot_run_has_observations(db, run.id) else "success"
+        if run.status == "unchanged":
+            run.message = f"{message or ''} No changed metric series required retention.".strip()
         run.completed_at = datetime.now(timezone.utc)
         db.flush()
         return run
@@ -193,7 +265,8 @@ def add_metric(
     metric_value: int | float | Decimal | None,
     metric_version: int | None = None,
     dimensions: dict[str, object] | None = None,
-) -> None:
+    retention_mode: str = RETENTION_MODE_FULL,
+) -> bool:
     definition = metric_definition(metric_key)
     if owner_type == "character" and not definition["supportsCharacter"]:
         raise ValueError(f"Metric {metric_key!r} does not support character snapshots")
@@ -203,21 +276,43 @@ def add_metric(
     if metric_version is not None and metric_version != registered_version:
         raise ValueError(f"Metric {metric_key!r} requires version {registered_version}, not {metric_version}")
     metric_version = registered_version
-    db.add(
-        SnapshotMetric(
+    value = decimal_value(metric_value)
+    series_key = metric_series_key(
+        owner_type=owner_type,
+        owner_id=owner_id,
+        metric_key=metric_key,
+        metric_version=metric_version,
+        dimensions=dimensions,
+    )
+    if retention_mode == RETENTION_MODE_CHANGES:
+        prior = _latest_metric_rows(db, run, metric_key).get(series_key)
+        if prior is not None and decimal_value(prior.metric_value) == value:
+            return False
+    row = SnapshotMetric(
             snapshot_run_id=run.id,
             owner_type=owner_type,
             owner_id=owner_id,
             owner_name=owner_name,
             metric_key=metric_key,
+            series_key=series_key,
             metric_version=metric_version,
-            metric_value=decimal_value(metric_value),
+            metric_value=value,
             dimensions_json=dimensions,
         )
-    )
+    db.add(row)
+    if retention_mode == RETENTION_MODE_CHANGES:
+        _latest_metric_rows(db, run, metric_key)[series_key] = row
+    return True
 
 
-def snapshot_character_assets(db: Session, run: SnapshotRun, character_id: int) -> None:
+def snapshot_run_has_observations(db: Session, run_id: int) -> bool:
+    for model in (SnapshotMetric, CharacterWalletSnapshot, CharacterSkillSnapshot, CorporationSnapshot, CorporationWalletSnapshot, BlueprintSnapshot):
+        if db.scalar(select(func.count()).select_from(model).where(model.snapshot_run_id == run_id)):
+            return True
+    return False
+
+
+def snapshot_character_assets(db: Session, run: SnapshotRun, character_id: int, *, retention_mode: str = RETENTION_MODE_FULL) -> None:
     character = db.get(EveCharacter, character_id)
     if character is None:
         return
@@ -232,12 +327,12 @@ def snapshot_character_assets(db: Session, run: SnapshotRun, character_id: int) 
         asset_rows = int(db.scalar(select(func.count()).select_from(Asset).where(Asset.ownership_entity_id == owner.id)) or 0)
         asset_units = int(db.scalar(select(func.coalesce(func.sum(Asset.quantity), 0)).where(Asset.ownership_entity_id == owner.id)) or 0)
         blueprint_count = int(db.scalar(select(func.count()).select_from(Blueprint).where(Blueprint.ownership_entity_id == owner.id)) or 0)
-    add_metric(db, run, owner_type="character", owner_id=character.id, owner_name=character.name, metric_key="assets.rows", metric_value=asset_rows)
-    add_metric(db, run, owner_type="character", owner_id=character.id, owner_name=character.name, metric_key="assets.units", metric_value=asset_units)
-    add_metric(db, run, owner_type="character", owner_id=character.id, owner_name=character.name, metric_key="blueprints.count", metric_value=blueprint_count)
+    add_metric(db, run, owner_type="character", owner_id=character.id, owner_name=character.name, metric_key="assets.rows", metric_value=asset_rows, retention_mode=retention_mode)
+    add_metric(db, run, owner_type="character", owner_id=character.id, owner_name=character.name, metric_key="assets.units", metric_value=asset_units, retention_mode=retention_mode)
+    add_metric(db, run, owner_type="character", owner_id=character.id, owner_name=character.name, metric_key="blueprints.count", metric_value=blueprint_count, retention_mode=retention_mode)
 
 
-def snapshot_character_wallets(db: Session, run: SnapshotRun, character_ids: set[int] | None = None) -> None:
+def snapshot_character_wallets(db: Session, run: SnapshotRun, character_ids: set[int] | None = None, *, retention_mode: str = RETENTION_MODE_FULL) -> None:
     query = (
         select(EveCharacter)
         .where(
@@ -252,18 +347,7 @@ def snapshot_character_wallets(db: Session, run: SnapshotRun, character_ids: set
             return
         query = query.where(EveCharacter.id.in_(character_ids))
     for character in db.scalars(query.order_by(EveCharacter.name)).all():
-        db.add(
-            CharacterWalletSnapshot(
-                snapshot_run_id=run.id,
-                character_id=character.id,
-                character_eve_id=character.character_id,
-                character_name=character.name,
-                corporation_id=character.corporation_id,
-                corporation_name=character.corporation.name if character.corporation else None,
-                balance=decimal_value(character.current_wallet_balance),
-            )
-        )
-        add_metric(
+        changed = add_metric(
             db,
             run,
             owner_type="character",
@@ -271,7 +355,20 @@ def snapshot_character_wallets(db: Session, run: SnapshotRun, character_ids: set
             owner_name=character.name,
             metric_key="character_wallet.balance",
             metric_value=character.current_wallet_balance,
+            retention_mode=retention_mode,
         )
+        if retention_mode == RETENTION_MODE_FULL or changed:
+            db.add(
+                CharacterWalletSnapshot(
+                    snapshot_run_id=run.id,
+                    character_id=character.id,
+                    character_eve_id=character.character_id,
+                    character_name=character.name,
+                    corporation_id=character.corporation_id,
+                    corporation_name=character.corporation.name if character.corporation else None,
+                    balance=decimal_value(character.current_wallet_balance),
+                )
+            )
 
 
 def skill_category_name(skill: CharacterSkill) -> str:
@@ -284,7 +381,7 @@ def skill_category_name(skill: CharacterSkill) -> str:
     return "Uncategorized"
 
 
-def snapshot_character_skills(db: Session, run: SnapshotRun, character_ids: set[int] | None = None) -> None:
+def snapshot_character_skills(db: Session, run: SnapshotRun, character_ids: set[int] | None = None, *, retention_mode: str = RETENTION_MODE_FULL) -> None:
     query = select(EveCharacter).where(EveCharacter.total_skill_points.is_not(None))
     if character_ids is not None:
         if not character_ids:
@@ -302,22 +399,23 @@ def snapshot_character_skills(db: Session, run: SnapshotRun, character_ids: set[
         for skill in skills:
             category_points[skill_category_name(skill)] += int(skill.skillpoints_in_skill or 0)
 
-        db.add(
-            CharacterSkillSnapshot(
-                snapshot_run_id=run.id,
-                character_id=character.id,
-                character_eve_id=character.character_id,
-                character_name=character.name,
-                total_skill_points=int(character.total_skill_points or 0),
-                unallocated_skill_points=int(character.unallocated_skill_points or 0),
-                skill_count=len(skills),
-                queue_count=int(queue_count),
-            )
-        )
-        add_metric(db, run, owner_type="character", owner_id=character.id, owner_name=character.name, metric_key="skill_points.total", metric_value=character.total_skill_points)
-        add_metric(db, run, owner_type="character", owner_id=character.id, owner_name=character.name, metric_key="skills.count", metric_value=len(skills))
-        add_metric(db, run, owner_type="character", owner_id=character.id, owner_name=character.name, metric_key="skill_queue.count", metric_value=queue_count)
+        detail_due = retention_mode == RETENTION_MODE_FULL or _daily_checkpoint_due(db, CharacterSkillSnapshot, run, CharacterSkillSnapshot.character_id == character.id)
+        metric_changed = add_metric(db, run, owner_type="character", owner_id=character.id, owner_name=character.name, metric_key="skill_points.total", metric_value=character.total_skill_points, retention_mode=retention_mode)
+        metric_changed = add_metric(db, run, owner_type="character", owner_id=character.id, owner_name=character.name, metric_key="skills.count", metric_value=len(skills), retention_mode=retention_mode) or metric_changed
+        metric_changed = add_metric(db, run, owner_type="character", owner_id=character.id, owner_name=character.name, metric_key="skill_queue.count", metric_value=queue_count, retention_mode=retention_mode) or metric_changed
         for category, points in sorted(category_points.items()):
+            metric_changed = add_metric(
+                db,
+                run,
+                owner_type="character",
+                owner_id=character.id,
+                owner_name=character.name,
+                metric_key="skill_points.category",
+                metric_value=points,
+                dimensions={"category": category},
+                retention_mode=retention_mode,
+            ) or metric_changed
+        if detail_due or metric_changed:
             db.add(
                 CharacterSkillSnapshot(
                     snapshot_run_id=run.id,
@@ -328,20 +426,23 @@ def snapshot_character_skills(db: Session, run: SnapshotRun, character_ids: set[
                     unallocated_skill_points=int(character.unallocated_skill_points or 0),
                     skill_count=len(skills),
                     queue_count=int(queue_count),
-                    category_name=category,
-                    category_skill_points=points,
                 )
             )
-            add_metric(
-                db,
-                run,
-                owner_type="character",
-                owner_id=character.id,
-                owner_name=character.name,
-                metric_key="skill_points.category",
-                metric_value=points,
-                dimensions={"category": category},
-            )
+            for category, points in sorted(category_points.items()):
+                db.add(
+                    CharacterSkillSnapshot(
+                        snapshot_run_id=run.id,
+                        character_id=character.id,
+                        character_eve_id=character.character_id,
+                        character_name=character.name,
+                        total_skill_points=int(character.total_skill_points or 0),
+                        unallocated_skill_points=int(character.unallocated_skill_points or 0),
+                        skill_count=len(skills),
+                        queue_count=int(queue_count),
+                        category_name=category,
+                        category_skill_points=points,
+                    )
+                )
 
 
 RESEARCH_BLUEPRINT_ACTIVITIES = frozenset({3, 4, 5})
@@ -462,7 +563,7 @@ def scoped_blueprint_records(db: Session) -> list[dict[str, object]]:
         }
     return list(records.values())
 
-def snapshot_corporations(db: Session, run: SnapshotRun, requested_corporation_ids: set[int] | None = None) -> None:
+def snapshot_corporations(db: Session, run: SnapshotRun, requested_corporation_ids: set[int] | None = None, *, retention_mode: str = RETENTION_MODE_FULL) -> None:
     corporation_ids = analytics_corporation_ids(db)
     if requested_corporation_ids is not None:
         corporation_ids &= requested_corporation_ids
@@ -492,36 +593,28 @@ def snapshot_corporations(db: Session, run: SnapshotRun, requested_corporation_i
             blueprint_count = blueprint_counts.get(owner.id, 0)
         wallets = db.scalars(select(CorporationWalletDivision).where(CorporationWalletDivision.corporation_id == corporation.id)).all()
         wallet_total = sum(decimal_value(wallet.balance) for wallet in wallets)
-        db.add(
-            CorporationSnapshot(
-                snapshot_run_id=run.id,
-                corporation_id=corporation.id,
-                corporation_eve_id=corporation.corporation_id,
-                corporation_name=corporation.name,
-                member_count=corporation.member_count,
-                wallet_balance=wallet_total,
-                asset_rows=int(asset_rows),
-                asset_units=int(asset_units),
-                blueprint_count=int(blueprint_count),
-            )
-        )
-        add_metric(db, run, owner_type="corporation", owner_id=corporation.id, owner_name=corporation.name, metric_key="members.count", metric_value=corporation.member_count)
-        add_metric(db, run, owner_type="corporation", owner_id=corporation.id, owner_name=corporation.name, metric_key="wallet.balance", metric_value=wallet_total)
-        add_metric(db, run, owner_type="corporation", owner_id=corporation.id, owner_name=corporation.name, metric_key="assets.rows", metric_value=asset_rows)
-        add_metric(db, run, owner_type="corporation", owner_id=corporation.id, owner_name=corporation.name, metric_key="assets.units", metric_value=asset_units)
-        add_metric(db, run, owner_type="corporation", owner_id=corporation.id, owner_name=corporation.name, metric_key="blueprints.count", metric_value=blueprint_count)
-        for wallet in wallets:
+        detail_due = retention_mode == RETENTION_MODE_FULL or _daily_checkpoint_due(db, CorporationSnapshot, run, CorporationSnapshot.corporation_id == corporation.id)
+        metric_changed = add_metric(db, run, owner_type="corporation", owner_id=corporation.id, owner_name=corporation.name, metric_key="members.count", metric_value=corporation.member_count, retention_mode=retention_mode)
+        metric_changed = add_metric(db, run, owner_type="corporation", owner_id=corporation.id, owner_name=corporation.name, metric_key="wallet.balance", metric_value=wallet_total, retention_mode=retention_mode) or metric_changed
+        metric_changed = add_metric(db, run, owner_type="corporation", owner_id=corporation.id, owner_name=corporation.name, metric_key="assets.rows", metric_value=asset_rows, retention_mode=retention_mode) or metric_changed
+        metric_changed = add_metric(db, run, owner_type="corporation", owner_id=corporation.id, owner_name=corporation.name, metric_key="assets.units", metric_value=asset_units, retention_mode=retention_mode) or metric_changed
+        metric_changed = add_metric(db, run, owner_type="corporation", owner_id=corporation.id, owner_name=corporation.name, metric_key="blueprints.count", metric_value=blueprint_count, retention_mode=retention_mode) or metric_changed
+        if detail_due or metric_changed:
             db.add(
-                CorporationWalletSnapshot(
+                CorporationSnapshot(
                     snapshot_run_id=run.id,
                     corporation_id=corporation.id,
                     corporation_eve_id=corporation.corporation_id,
                     corporation_name=corporation.name,
-                    division=wallet.division,
-                    balance=decimal_value(wallet.balance),
+                    member_count=corporation.member_count,
+                    wallet_balance=wallet_total,
+                    asset_rows=int(asset_rows),
+                    asset_units=int(asset_units),
+                    blueprint_count=int(blueprint_count),
                 )
             )
-            add_metric(
+        for wallet in wallets:
+            changed = add_metric(
                 db,
                 run,
                 owner_type="corporation",
@@ -530,11 +623,24 @@ def snapshot_corporations(db: Session, run: SnapshotRun, requested_corporation_i
                 metric_key="wallet.division_balance",
                 metric_value=wallet.balance,
                 dimensions={"division": wallet.division},
+                retention_mode=retention_mode,
             )
+            if retention_mode == RETENTION_MODE_FULL or changed:
+                db.add(
+                    CorporationWalletSnapshot(
+                        snapshot_run_id=run.id,
+                        corporation_id=corporation.id,
+                        corporation_eve_id=corporation.corporation_id,
+                        corporation_name=corporation.name,
+                        division=wallet.division,
+                        balance=decimal_value(wallet.balance),
+                    )
+                )
 
 
-def snapshot_blueprints(db: Session, run: SnapshotRun) -> None:
+def snapshot_blueprints(db: Session, run: SnapshotRun, *, retention_mode: str = RETENTION_MODE_FULL) -> None:
     records = scoped_blueprint_records(db)
+    write_detail = retention_mode == RETENTION_MODE_FULL or _daily_checkpoint_due(db, BlueprintSnapshot, run)
     grouped: dict[tuple[int, int, int, int, bool, str, str, str], int] = defaultdict(int)
     for record in records:
         owner_id = int(record["owner_id"])
@@ -545,8 +651,9 @@ def snapshot_blueprints(db: Session, run: SnapshotRun) -> None:
         te = int(record["time_efficiency"])
         is_copy = bool(record["is_copy"])
         inventory_state = str(record["inventory_state"])
-        db.add(
-            BlueprintSnapshot(
+        if write_detail:
+            db.add(
+                BlueprintSnapshot(
                 snapshot_run_id=run.id,
                 ownership_entity_id=owner_id,
                 owner_name=owner_name,
@@ -559,12 +666,22 @@ def snapshot_blueprints(db: Session, run: SnapshotRun) -> None:
                 is_copy=is_copy,
                 inventory_state=inventory_state,
                 research_job_id=record["research_job_id"],
-                quantity=1,
+                    quantity=1,
+                )
             )
-        )
         grouped[(owner_id, type_id, me, te, is_copy, owner_name, type_name, inventory_state)] += 1
 
+    current_series_keys: set[str] = set()
     for (owner_id, type_id, me, te, is_copy, owner_name, type_name, inventory_state), quantity in grouped.items():
+        dimensions = {
+            "blueprint_type_id": type_id,
+            "blueprint": type_name,
+            "material_efficiency": me,
+            "time_efficiency": te,
+            "is_copy": is_copy,
+            "inventory_state": inventory_state,
+        }
+        current_series_keys.add(metric_series_key(owner_type="owner", owner_id=owner_id, metric_key="blueprint.quantity", metric_version=int(metric_definition("blueprint.quantity")["version"]), dimensions=dimensions))
         add_metric(
             db,
             run,
@@ -573,12 +690,21 @@ def snapshot_blueprints(db: Session, run: SnapshotRun) -> None:
             owner_name=owner_name,
             metric_key="blueprint.quantity",
             metric_value=quantity,
-            dimensions={
-                "blueprint_type_id": type_id,
-                "blueprint": type_name,
-                "me": me,
-                "te": te,
-                "is_copy": is_copy,
-                "inventory_state": inventory_state,
-            },
+            dimensions=dimensions,
+            retention_mode=retention_mode,
         )
+
+    if retention_mode == RETENTION_MODE_CHANGES:
+        for series_key, prior in list(_latest_metric_rows(db, run, "blueprint.quantity").items()):
+            if series_key not in current_series_keys and decimal_value(prior.metric_value) != 0:
+                add_metric(
+                    db,
+                    run,
+                    owner_type=prior.owner_type,
+                    owner_id=prior.owner_id,
+                    owner_name=prior.owner_name,
+                    metric_key="blueprint.quantity",
+                    metric_value=0,
+                    dimensions=prior.dimensions_json,
+                    retention_mode=retention_mode,
+                )

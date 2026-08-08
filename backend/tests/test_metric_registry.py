@@ -3,7 +3,8 @@ from __future__ import annotations
 import unittest
 from types import SimpleNamespace
 
-from app.services.analytics import add_metric
+from app.models import SnapshotMetric
+from app.services.analytics import RETENTION_MODE_CHANGES, add_metric, analytics_retention_mode, metric_series_key
 from app.services.metric_registry import METRIC_CATALOG, aggregate_metric_values, derive_metric_series, derived_metric_definition, metric_definition, validate_metric_registry
 
 
@@ -15,7 +16,20 @@ class FakeDb:
         self.rows.append(row)
 
 
+class FakeChangeDb(FakeDb):
+    def __init__(self, existing: list[SnapshotMetric]) -> None:
+        super().__init__()
+        self.existing = existing
+
+    def scalars(self, _statement):
+        return SimpleNamespace(all=lambda: self.existing)
+
+
 class MetricRegistryTests(unittest.TestCase):
+    def test_new_installations_default_to_change_retention(self) -> None:
+        db = SimpleNamespace(get=lambda *_args: None)
+        self.assertEqual(analytics_retention_mode(db), RETENTION_MODE_CHANGES)
+
     def test_every_metric_has_an_explicit_aggregation_contract(self) -> None:
         validate_metric_registry()
         for definition in METRIC_CATALOG:
@@ -68,6 +82,49 @@ class MetricRegistryTests(unittest.TestCase):
     def test_snapshot_writer_rejects_unregistered_metrics(self) -> None:
         with self.assertRaisesRegex(ValueError, "is not registered"):
             add_metric(FakeDb(), SimpleNamespace(id=44), owner_type="character", owner_id=9, owner_name="Example Pilot", metric_key="mystery.value", metric_value=1)
+
+    def test_metric_series_key_is_stable_across_dimension_order(self) -> None:
+        left = metric_series_key(owner_type="owner", owner_id=9, metric_key="blueprint.quantity", metric_version=1, dimensions={"blueprint": "Example", "is_copy": False})
+        right = metric_series_key(owner_type="owner", owner_id=9, metric_key="blueprint.quantity", metric_version=1, dimensions={"is_copy": False, "blueprint": "Example"})
+        self.assertEqual(left, right)
+
+    def test_change_retention_skips_an_identical_series_value(self) -> None:
+        dimensions = {"division": 1}
+        series_key = metric_series_key(owner_type="corporation", owner_id=7, metric_key="wallet.division_balance", metric_version=1, dimensions=dimensions)
+        prior = SnapshotMetric(series_key=series_key, metric_key="wallet.division_balance", metric_value=123)
+        db = FakeChangeDb([prior])
+        changed = add_metric(
+            db,
+            SimpleNamespace(id=44),
+            owner_type="corporation",
+            owner_id=7,
+            owner_name="Example Corp",
+            metric_key="wallet.division_balance",
+            metric_value=123,
+            dimensions=dimensions,
+            retention_mode=RETENTION_MODE_CHANGES,
+        )
+        self.assertFalse(changed)
+        self.assertEqual(db.rows, [])
+
+    def test_change_retention_writes_a_changed_series_value(self) -> None:
+        dimensions = {"division": 1}
+        series_key = metric_series_key(owner_type="corporation", owner_id=7, metric_key="wallet.division_balance", metric_version=1, dimensions=dimensions)
+        prior = SnapshotMetric(series_key=series_key, metric_key="wallet.division_balance", metric_value=123)
+        db = FakeChangeDb([prior])
+        changed = add_metric(
+            db,
+            SimpleNamespace(id=45),
+            owner_type="corporation",
+            owner_id=7,
+            owner_name="Example Corp",
+            metric_key="wallet.division_balance",
+            metric_value=124,
+            dimensions=dimensions,
+            retention_mode=RETENTION_MODE_CHANGES,
+        )
+        self.assertTrue(changed)
+        self.assertEqual(len(db.rows), 1)
 
 
 if __name__ == "__main__":

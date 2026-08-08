@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.api.auth import get_current_user
@@ -52,15 +52,74 @@ def financial_event_label(row: CharacterWalletJournalEntry) -> str:
     return EVENT_LABELS.get(row.reference_type, row.reference_type.replace("_", " ").title())
 
 
-def personal_wallet_payload(db: Session, character: EveCharacter, cutoff: datetime) -> dict[str, Any]:
-    history = list(
+def character_wallet_history(db: Session, character_id: int, cutoff: datetime) -> list[CharacterWalletSnapshot]:
+    rows = list(
         db.scalars(
             select(CharacterWalletSnapshot)
-            .where(CharacterWalletSnapshot.character_id == character.id, CharacterWalletSnapshot.recorded_at >= cutoff)
+            .where(CharacterWalletSnapshot.character_id == character_id, CharacterWalletSnapshot.recorded_at >= cutoff)
             .order_by(CharacterWalletSnapshot.recorded_at, CharacterWalletSnapshot.id)
         ).all()
     )
-    points = daily_closing_points(history)
+    baseline = db.scalar(
+        select(CharacterWalletSnapshot)
+        .where(CharacterWalletSnapshot.character_id == character_id, CharacterWalletSnapshot.recorded_at < cutoff)
+        .order_by(CharacterWalletSnapshot.recorded_at.desc(), CharacterWalletSnapshot.id.desc())
+        .limit(1)
+    )
+    return ([baseline] if baseline else []) + rows
+
+
+def corporation_character_wallet_history(db: Session, corporation_id: int, character_ids: set[int], cutoff: datetime) -> list[CharacterWalletSnapshot]:
+    if not character_ids:
+        return []
+    ranked = select(
+        CharacterWalletSnapshot.id.label("id"),
+        func.row_number().over(
+            partition_by=CharacterWalletSnapshot.character_id,
+            order_by=(CharacterWalletSnapshot.recorded_at.desc(), CharacterWalletSnapshot.id.desc()),
+        ).label("position"),
+    ).where(
+        CharacterWalletSnapshot.corporation_id == corporation_id,
+        CharacterWalletSnapshot.character_id.in_(character_ids),
+        CharacterWalletSnapshot.recorded_at < cutoff,
+    ).subquery()
+    baseline_ids = select(ranked.c.id).where(ranked.c.position == 1)
+    return list(db.scalars(
+        select(CharacterWalletSnapshot)
+        .where(
+            CharacterWalletSnapshot.corporation_id == corporation_id,
+            CharacterWalletSnapshot.character_id.in_(character_ids),
+            or_(CharacterWalletSnapshot.recorded_at >= cutoff, CharacterWalletSnapshot.id.in_(baseline_ids)),
+        )
+        .order_by(CharacterWalletSnapshot.recorded_at, CharacterWalletSnapshot.id)
+    ).all())
+
+
+def corporation_division_wallet_history(db: Session, corporation_id: int, cutoff: datetime) -> list[CorporationWalletSnapshot]:
+    ranked = select(
+        CorporationWalletSnapshot.id.label("id"),
+        func.row_number().over(
+            partition_by=CorporationWalletSnapshot.division,
+            order_by=(CorporationWalletSnapshot.recorded_at.desc(), CorporationWalletSnapshot.id.desc()),
+        ).label("position"),
+    ).where(
+        CorporationWalletSnapshot.corporation_id == corporation_id,
+        CorporationWalletSnapshot.recorded_at < cutoff,
+    ).subquery()
+    baseline_ids = select(ranked.c.id).where(ranked.c.position == 1)
+    return list(db.scalars(
+        select(CorporationWalletSnapshot)
+        .where(
+            CorporationWalletSnapshot.corporation_id == corporation_id,
+            or_(CorporationWalletSnapshot.recorded_at >= cutoff, CorporationWalletSnapshot.id.in_(baseline_ids)),
+        )
+        .order_by(CorporationWalletSnapshot.recorded_at, CorporationWalletSnapshot.id)
+    ).all())
+
+
+def personal_wallet_payload(db: Session, character: EveCharacter, cutoff: datetime) -> dict[str, Any]:
+    history = character_wallet_history(db, character.id, cutoff)
+    points = daily_closing_points(history, start_date=cutoff.date())
     stats = wallet_statistics(points, current_balance=float(character.current_wallet_balance) if character.current_wallet_balance is not None else None)
     journal = list(
         db.scalars(
@@ -114,29 +173,10 @@ def corporation_wallet_payload(db: Session, corporation: EveCorporation, cutoff:
             )
         ).all()
     )
-    history = list(
-        db.scalars(
-            select(CharacterWalletSnapshot)
-            .where(
-                CharacterWalletSnapshot.corporation_id == corporation.id,
-                CharacterWalletSnapshot.character_id.in_(eligible_character_ids) if eligible_character_ids else False,
-                CharacterWalletSnapshot.recorded_at >= cutoff,
-            )
-            .order_by(CharacterWalletSnapshot.recorded_at, CharacterWalletSnapshot.id)
-        ).all()
-    )
-    character_points = corporation_daily_points(history)
-    division_history = list(
-        db.scalars(
-            select(CorporationWalletSnapshot)
-            .where(
-                CorporationWalletSnapshot.corporation_id == corporation.id,
-                CorporationWalletSnapshot.recorded_at >= cutoff,
-            )
-            .order_by(CorporationWalletSnapshot.recorded_at, CorporationWalletSnapshot.id)
-        ).all()
-    )
-    division_points = corporation_division_daily_points(division_history)
+    history = corporation_character_wallet_history(db, corporation.id, eligible_character_ids, cutoff)
+    character_points = corporation_daily_points(history, start_date=cutoff.date())
+    division_history = corporation_division_wallet_history(db, corporation.id, cutoff)
+    division_points = corporation_division_daily_points(division_history, start_date=cutoff.date())
     absolute_points = combine_daily_series(character_points, division_points)
     current_balances = [
         float(value)

@@ -26,6 +26,19 @@ class AnalyticsSeriesTests(unittest.TestCase):
             ],
         )
 
+    def test_pre_range_baseline_is_rendered_at_the_range_start(self) -> None:
+        rows = [
+            SimpleNamespace(corporation_id=1, corporation_name="Alpha", recorded_at=datetime(2026, 7, 20, 8, tzinfo=timezone.utc), wallet_balance=Decimal("10")),
+            SimpleNamespace(corporation_id=1, corporation_name="Alpha", recorded_at=datetime(2026, 8, 3, 8, tzinfo=timezone.utc), wallet_balance=Decimal("15")),
+        ]
+        self.assertEqual(
+            daily_corporation_series(rows, "wallet_balance", datetime(2026, 8, 1, tzinfo=timezone.utc)),
+            [
+                {"date": "2026-08-01", "corporation_id": 1, "corporation_name": "Alpha", "value": 10.0},
+                {"date": "2026-08-03", "corporation_id": 1, "corporation_name": "Alpha", "value": 15.0},
+            ],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

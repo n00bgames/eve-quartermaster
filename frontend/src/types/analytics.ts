@@ -34,6 +34,13 @@ export type AnalyticsMaintenancePreview = {
     metric_rows: number;
   };
 };
+export type AnalyticsRetentionMode = "full" | "changes";
+export type AnalyticsRetentionSettings = {
+  mode: AnalyticsRetentionMode;
+  can_manage: boolean;
+  modes: { key: AnalyticsRetentionMode; label: string; description: string }[];
+  note: string;
+};
 export type ManufacturingAnalyticsItem = {
   name: string;
   quantity: number;
@@ -115,6 +122,16 @@ export type AnalyticsSummary = {
   latest_snapshot_at?: string | null;
   latest_snapshot_status?: string | null;
   snapshot_count: number;
+  observation_count: number;
+  retention_mode: AnalyticsRetentionMode;
+  coverage: {
+    requested_from: string;
+    requested_to: string;
+    available_from?: string | null;
+    available_to?: string | null;
+    available_seconds: number;
+    complete: boolean;
+  };
   cards: { wallet_total: number; blueprint_total: number; member_total: number; character_count: number };
   top_sp_gainers: AnalyticsGrowth[];
   top_sp_losses: AnalyticsGrowth[];

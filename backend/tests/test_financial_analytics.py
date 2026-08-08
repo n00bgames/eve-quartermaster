@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import unittest
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from types import SimpleNamespace
 
 from app.services.financial_analytics import combine_daily_series, corporation_daily_points, corporation_division_daily_points, daily_closing_points, distribution, wallet_statistics
@@ -19,6 +19,13 @@ class FinancialAnalyticsTests(unittest.TestCase):
     def test_daily_closing_uses_last_observation(self) -> None:
         points = daily_closing_points([row(1, 1, "2026-08-01T08:00:00", 100), row(2, 1, "2026-08-01T20:00:00", 140), row(3, 1, "2026-08-02T08:00:00", 120)])
         self.assertEqual(points, [{"date": "2026-08-01", "value": 140.0}, {"date": "2026-08-02", "value": 120.0}])
+
+    def test_pre_range_baseline_is_clamped_to_selected_start(self) -> None:
+        points = daily_closing_points(
+            [row(1, 1, "2026-07-20T08:00:00", 100), row(2, 1, "2026-08-03T20:00:00", 140)],
+            start_date=date(2026, 8, 1),
+        )
+        self.assertEqual(points, [{"date": "2026-08-01", "value": 100.0}, {"date": "2026-08-03", "value": 140.0}])
 
     def test_wallet_statistics_report_growth_and_extremes(self) -> None:
         stats = wallet_statistics([{"date": "2026-08-01", "value": 100}, {"date": "2026-08-02", "value": 160}, {"date": "2026-08-03", "value": 130}])

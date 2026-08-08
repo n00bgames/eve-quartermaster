@@ -7,11 +7,19 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Added
 
+- Added a host-selectable Analytics storage policy: **Full History** preserves every eligible observation, while **Changes + Daily Checkpoints** stores metric values only when they change and limits high-volume skill, corporation, and blueprint detail to daily checkpoints. The lower-storage mode is the default for new installations; upgrades with existing history remain on Full History until a host changes it. Blueprint removals are retained as explicit zero-value changes, and switching modes never rewrites existing history.
+
+- Added selected-range coverage metadata and an Analytics placard that reports the history actually available instead of implying a complete 7D/30D/90D/1Y window. Metric series are explicitly treated according to their own timestamps rather than as globally synchronized snapshot runs.
+
 - Added an enforced analytics metric registry. Every snapshot metric now declares entity and time aggregation, supported rollups and transforms, value kind, dimensions, privacy scope, version, and chart compatibility; unregistered or incorrectly scoped metrics are rejected before collection.
 
 - Added registry-declared virtual metrics. Wallet balance observations now produce daily and weekly deltas, percentage growth, and 30-day rolling averages at query time without collectors storing redundant derived rows; financial KPIs consume the same shared derivation engine.
 
 ### Changed
+
+- Historical character, corporation, and financial trends now include the most recent observation before the selected range as their opening baseline, keeping deltas and unchanged series correct under change-only retention.
+
+- Duplicate-blueprint analytics now reads the current scoped blueprint inventory rather than depending on the latest retained full-detail checkpoint.
 
 - Bumped the visible app, package, backend API, Android wrapper, README badge, and navigation-intel user-agent versions to 0.1.18-beta for the next development cycle.
 

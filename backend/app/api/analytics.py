@@ -14,11 +14,41 @@ from sqlalchemy.orm import Session, selectinload
 from app.api.auth import get_current_user, require_role
 from app.db.session import get_db
 from app.models import BlueprintSnapshot, CharacterSkillSnapshot, CorporationSnapshot, EveCharacter, EveCorporation, ManufacturingJob, MiningLedgerEntry, OwnershipEntity, ResearchProject, SnapshotMetric, SnapshotRun, User
-from app.services.analytics import analytics_corporation_ids, create_snapshot, privileged_analytics_corporation_ids
+from app.services.analytics import (
+    RETENTION_MODE_CHANGES,
+    RETENTION_MODE_FULL,
+    analytics_corporation_ids,
+    analytics_retention_mode,
+    create_snapshot,
+    privileged_analytics_corporation_ids,
+    scoped_blueprint_records,
+    set_analytics_retention_mode,
+)
+from app.services.audit import record_audit_event
 from app.services.metric_registry import METRIC_CATALOG
 from app.services.permissions import ROLE_RANK, can_view_section, role_rank
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
+
+
+def retention_settings_payload(db: Session, current_user: User) -> dict[str, Any]:
+    return {
+        "mode": analytics_retention_mode(db),
+        "can_manage": role_rank(current_user, db) >= ROLE_RANK["host"],
+        "modes": [
+            {
+                "key": RETENTION_MODE_CHANGES,
+                "label": "Changes + Daily Checkpoints",
+                "description": "Stores changes plus periodic state snapshots. Much lower storage use while retaining historical reconstruction; removed blueprint series are recorded as zero.",
+            },
+            {
+                "key": RETENTION_MODE_FULL,
+                "label": "Full History",
+                "description": "Stores every collected observation after normal one-hour scope/source coalescing. Highest storage use; maximum forensic detail.",
+            },
+        ],
+        "note": "The selection affects future observations only. Existing history is not deleted or rewritten.",
+    }
 def require_analytics(current_user: User, db: Session) -> None:
     if not can_view_section(current_user, "analytics", db):
         raise HTTPException(status_code=403, detail="analytics section access is required")
@@ -32,6 +62,12 @@ def as_float(value: Any) -> float:
 
 def iso(value: datetime | None) -> str | None:
     return value.isoformat() if value else None
+
+
+def aware_utc(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    return value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
 
 
 def start_cutoff(days: int) -> datetime:
@@ -288,6 +324,36 @@ def analytics_corporations(current_user: User = Depends(get_current_user), db: S
     }
 
 
+@router.get("/retention")
+def analytics_retention_settings(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+    require_analytics(current_user, db)
+    return retention_settings_payload(db, current_user)
+
+
+@router.patch("/retention")
+def update_analytics_retention_settings(
+    payload: dict[str, Any],
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    require_analytics(current_user, db)
+    require_role(current_user, "host", db)
+    mode = str(payload.get("mode", "")).strip().lower()
+    if mode not in {RETENTION_MODE_FULL, RETENTION_MODE_CHANGES}:
+        raise HTTPException(status_code=400, detail="mode must be full or changes")
+    previous = analytics_retention_mode(db)
+    set_analytics_retention_mode(db, mode)
+    record_audit_event(
+        db,
+        event_kind="analytics_retention_mode_changed",
+        title="Analytics retention mode changed",
+        body=f"{previous} -> {mode}. Existing analytics history was preserved.",
+        actor_user=current_user,
+    )
+    db.commit()
+    return retention_settings_payload(db, current_user)
+
+
 @router.patch("/corporations/{corporation_id}")
 def update_analytics_corporation(
     corporation_id: int,
@@ -409,10 +475,19 @@ def character_history_rows(
     if character_ids is not None and not character_ids:
         return []
     category_filter = CharacterSkillSnapshot.category_name.is_not(None) if categorized else CharacterSkillSnapshot.category_name.is_(None)
-    query = select(CharacterSkillSnapshot).where(
-        CharacterSkillSnapshot.recorded_at >= start_cutoff(days),
-        category_filter,
-    )
+    cutoff = start_cutoff(days)
+    ranked_baselines = select(
+        CharacterSkillSnapshot.id.label("id"),
+        func.row_number().over(
+            partition_by=(CharacterSkillSnapshot.character_id, CharacterSkillSnapshot.category_name),
+            order_by=(CharacterSkillSnapshot.recorded_at.desc(), CharacterSkillSnapshot.id.desc()),
+        ).label("position"),
+    ).where(CharacterSkillSnapshot.recorded_at < cutoff, category_filter)
+    if character_ids is not None:
+        ranked_baselines = ranked_baselines.where(CharacterSkillSnapshot.character_id.in_(character_ids))
+    ranked = ranked_baselines.subquery()
+    baseline_ids = select(ranked.c.id).where(ranked.c.position == 1)
+    query = select(CharacterSkillSnapshot).where(or_(CharacterSkillSnapshot.id.in_(baseline_ids), CharacterSkillSnapshot.recorded_at >= cutoff), category_filter)
     if character_ids is not None:
         query = query.where(CharacterSkillSnapshot.character_id.in_(character_ids))
     return list(
@@ -434,7 +509,19 @@ def corporation_history_rows(
 ) -> list[CorporationSnapshot]:
     if corporation_ids is not None and not corporation_ids:
         return []
-    query = select(CorporationSnapshot).where(CorporationSnapshot.recorded_at >= start_cutoff(days))
+    cutoff = start_cutoff(days)
+    ranked_baselines = select(
+        CorporationSnapshot.id.label("id"),
+        func.row_number().over(
+            partition_by=CorporationSnapshot.corporation_id,
+            order_by=(CorporationSnapshot.recorded_at.desc(), CorporationSnapshot.id.desc()),
+        ).label("position"),
+    ).where(CorporationSnapshot.recorded_at < cutoff)
+    if corporation_ids is not None:
+        ranked_baselines = ranked_baselines.where(CorporationSnapshot.corporation_id.in_(corporation_ids))
+    ranked = ranked_baselines.subquery()
+    baseline_ids = select(ranked.c.id).where(ranked.c.position == 1)
+    query = select(CorporationSnapshot).where(or_(CorporationSnapshot.id.in_(baseline_ids), CorporationSnapshot.recorded_at >= cutoff))
     if corporation_ids is not None:
         query = query.where(CorporationSnapshot.corporation_id.in_(corporation_ids))
     return list(
@@ -557,22 +644,21 @@ def skill_category_losses(
 def duplicate_blueprints(db: Session, ownership_entity_ids: set[int] | None) -> list[dict[str, Any]]:
     if ownership_entity_ids is not None and not ownership_entity_ids:
         return []
-    latest_run_id = db.scalar(select(func.max(BlueprintSnapshot.snapshot_run_id)))
-    if not latest_run_id:
-        return []
-    query = select(BlueprintSnapshot).where(BlueprintSnapshot.snapshot_run_id == latest_run_id)
-    if ownership_entity_ids is not None:
-        query = query.where(BlueprintSnapshot.ownership_entity_id.in_(ownership_entity_ids))
-    rows = db.scalars(query).all()
     grouped: dict[tuple[str, str, bool], dict[str, Any]] = {}
-    for row in rows:
-        key = (row.owner_name, row.blueprint_type_name, row.is_copy)
+    for row in scoped_blueprint_records(db):
+        owner_id = int(row["owner_id"])
+        if ownership_entity_ids is not None and owner_id not in ownership_entity_ids:
+            continue
+        owner_name = str(row["owner_name"])
+        type_name = str(row["type_name"])
+        is_copy = bool(row["is_copy"])
+        key = (owner_name, type_name, is_copy)
         entry = grouped.setdefault(key, {"quantity": 0, "me": set(), "te": set(), "in_use": 0})
-        entry["quantity"] += int(row.quantity or 0)
-        entry["me"].add(int(row.material_efficiency or 0))
-        entry["te"].add(int(row.time_efficiency or 0))
-        if row.inventory_state == "in_production":
-            entry["in_use"] += int(row.quantity or 0)
+        entry["quantity"] += 1
+        entry["me"].add(int(row["material_efficiency"] or 0))
+        entry["te"].add(int(row["time_efficiency"] or 0))
+        if row["inventory_state"] == "in_production":
+            entry["in_use"] += 1
     duplicates = [
         {
             "owner_name": owner,
@@ -589,28 +675,29 @@ def duplicate_blueprints(db: Session, ownership_entity_ids: set[int] | None) -> 
     return sorted(duplicates, key=lambda item: int(item["quantity"]), reverse=True)[:50]
 
 
-def daily_corporation_series(rows: list[CorporationSnapshot], value_attr: str) -> list[dict[str, Any]]:
+def daily_corporation_series(rows: list[CorporationSnapshot], value_attr: str, range_start: datetime | None = None) -> list[dict[str, Any]]:
     """Return the latest observation for each corporation on each UTC day."""
     latest_by_day: dict[tuple[int, str], CorporationSnapshot] = {}
     for row in rows:
-        day = row.recorded_at.date().isoformat()
+        effective_time = max(row.recorded_at, range_start) if range_start is not None else row.recorded_at
+        day = effective_time.date().isoformat()
         key = (int(row.corporation_id), day)
         previous = latest_by_day.get(key)
         if previous is None or row.recorded_at > previous.recorded_at:
             latest_by_day[key] = row
 
     daily_rows = sorted(
-        latest_by_day.values(),
-        key=lambda row: (row.recorded_at.date(), row.corporation_name, row.corporation_id),
+        latest_by_day.items(),
+        key=lambda item: (item[0][1], item[1].corporation_name, item[1].corporation_id),
     )
     return [
         {
-            "date": row.recorded_at.date().isoformat(),
+            "date": day,
             "corporation_id": int(row.corporation_id),
             "corporation_name": row.corporation_name,
             "value": as_float(getattr(row, value_attr) or 0),
         }
-        for row in daily_rows
+        for (_, day), row in daily_rows
     ]
 
 
@@ -622,13 +709,21 @@ def corporation_series(
     history_rows: list[CorporationSnapshot] | None = None,
 ) -> list[dict[str, Any]]:
     rows = history_rows if history_rows is not None else corporation_history_rows(db, days, corporation_ids)
-    return daily_corporation_series(rows, value_attr)
+    return daily_corporation_series(rows, value_attr, start_cutoff(days))
 
 @router.get("/summary")
 def analytics_summary(days: int = Query(30, ge=1, le=3660), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
     require_analytics(current_user, db)
-    latest_run = db.scalar(select(SnapshotRun).order_by(SnapshotRun.started_at.desc()))
-    snapshot_count = db.scalar(select(func.count()).select_from(SnapshotRun).where(SnapshotRun.started_at >= start_cutoff(days))) or 0
+    cutoff = start_cutoff(days)
+    now = datetime.now(timezone.utc)
+    latest_run = db.scalar(select(SnapshotRun).where(SnapshotRun.status.in_({"success", "unchanged"})).order_by(SnapshotRun.started_at.desc()))
+    snapshot_count = db.scalar(select(func.count()).select_from(SnapshotRun).where(SnapshotRun.started_at >= cutoff, SnapshotRun.status == "success")) or 0
+    observation_count = db.scalar(select(func.count()).select_from(SnapshotRun).where(SnapshotRun.started_at >= cutoff, SnapshotRun.status.in_({"success", "unchanged"}))) or 0
+    first_metric_at = aware_utc(db.scalar(select(func.min(SnapshotMetric.recorded_at))))
+    observed_through = aware_utc((latest_run.completed_at or latest_run.started_at) if latest_run else None)
+    covered_from = max(cutoff, first_metric_at) if first_metric_at else None
+    covered_to = min(now, observed_through) if observed_through else None
+    coverage_seconds = max(0, int((covered_to - covered_from).total_seconds())) if covered_from and covered_to else 0
     character_ids = visible_character_ids(current_user, db)
     corporation_ids = visible_corporation_ids(current_user, db, character_ids)
     ownership_entity_ids = visible_ownership_entity_ids(current_user, db)
@@ -649,6 +744,16 @@ def analytics_summary(days: int = Query(30, ge=1, le=3660), current_user: User =
         "latest_snapshot_at": iso(latest_run.completed_at or latest_run.started_at) if latest_run else None,
         "latest_snapshot_status": latest_run.status if latest_run else None,
         "snapshot_count": snapshot_count,
+        "observation_count": observation_count,
+        "retention_mode": analytics_retention_mode(db),
+        "coverage": {
+            "requested_from": iso(cutoff),
+            "requested_to": iso(now),
+            "available_from": iso(covered_from),
+            "available_to": iso(covered_to),
+            "available_seconds": coverage_seconds,
+            "complete": bool(first_metric_at and first_metric_at <= cutoff),
+        },
         "cards": {
             "wallet_total": latest_wallet_total,
             "blueprint_total": latest_blueprints,
@@ -751,7 +856,3 @@ def metric_catalog(current_user: User = Depends(get_current_user), db: Session =
         for metric in sorted(discovered - cataloged)
     )
     return rows
-
-
-
-

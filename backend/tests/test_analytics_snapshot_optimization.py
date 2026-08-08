@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 from app.models import SnapshotRun
-from app.services.analytics import SNAPSHOT_SCHEMA_VERSION, create_snapshot, recent_automatic_snapshot
+from app.services.analytics import RETENTION_MODE_FULL, SNAPSHOT_SCHEMA_VERSION, create_snapshot, recent_automatic_snapshot
 
 
 class AnalyticsSnapshotOptimizationTests(unittest.TestCase):
@@ -13,6 +13,7 @@ class AnalyticsSnapshotOptimizationTests(unittest.TestCase):
         db = MagicMock()
         with (
             patch("app.services.analytics.recent_automatic_snapshot", return_value=None),
+            patch("app.services.analytics.analytics_retention_mode", return_value=RETENTION_MODE_FULL),
             patch("app.services.analytics.snapshot_character_skills") as snapshot_skills,
             patch("app.services.analytics.snapshot_character_assets") as snapshot_assets,
             patch("app.services.analytics.snapshot_corporations") as snapshot_corporations,
@@ -36,6 +37,7 @@ class AnalyticsSnapshotOptimizationTests(unittest.TestCase):
         db = MagicMock()
         with (
             patch("app.services.analytics.recent_automatic_snapshot", return_value=None),
+            patch("app.services.analytics.analytics_retention_mode", return_value=RETENTION_MODE_FULL),
             patch("app.services.analytics.snapshot_character_skills") as snapshot_skills,
             patch("app.services.analytics.snapshot_character_assets") as snapshot_assets,
             patch("app.services.analytics.snapshot_corporations") as snapshot_corporations,
@@ -57,6 +59,7 @@ class AnalyticsSnapshotOptimizationTests(unittest.TestCase):
         db = MagicMock()
         with (
             patch("app.services.analytics.recent_automatic_snapshot", return_value=None),
+            patch("app.services.analytics.analytics_retention_mode", return_value=RETENTION_MODE_FULL),
             patch("app.services.analytics.snapshot_character_skills") as snapshot_skills,
             patch("app.services.analytics.snapshot_character_assets") as snapshot_assets,
             patch("app.services.analytics.snapshot_corporations") as snapshot_corporations,

@@ -1,17 +1,18 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import datetime
+from datetime import date, datetime
 from statistics import median
 from typing import Any
 
 from app.services.metric_registry import aggregate_metric_values, derive_metric_series, metric_definition
 
 
-def daily_closing_points(rows: list[Any]) -> list[dict[str, Any]]:
+def daily_closing_points(rows: list[Any], *, start_date: date | None = None) -> list[dict[str, Any]]:
     latest: dict[str, Any] = {}
     for row in rows:
-        day = row.recorded_at.date().isoformat()
+        observed_day = row.recorded_at.date()
+        day = max(observed_day, start_date).isoformat() if start_date else observed_day.isoformat()
         previous = latest.get(day)
         if previous is None or (row.recorded_at, row.id) > (previous.recorded_at, previous.id):
             latest[day] = row
@@ -60,10 +61,11 @@ def wallet_statistics(points: list[dict[str, Any]], *, current_balance: float | 
     }
 
 
-def grouped_daily_points(rows: list[Any], group_attribute: str) -> list[dict[str, Any]]:
+def grouped_daily_points(rows: list[Any], group_attribute: str, *, start_date: date | None = None) -> list[dict[str, Any]]:
     latest: dict[tuple[str, int], Any] = {}
     for row in rows:
-        day = row.recorded_at.date().isoformat()
+        observed_day = row.recorded_at.date()
+        day = max(observed_day, start_date).isoformat() if start_date else observed_day.isoformat()
         key = (day, int(getattr(row, group_attribute)))
         previous = latest.get(key)
         if previous is None or (row.recorded_at, row.id) > (previous.recorded_at, previous.id):
@@ -79,12 +81,12 @@ def grouped_daily_points(rows: list[Any], group_attribute: str) -> list[dict[str
     return points
 
 
-def corporation_daily_points(rows: list[Any]) -> list[dict[str, Any]]:
-    return grouped_daily_points(rows, "character_id")
+def corporation_daily_points(rows: list[Any], *, start_date: date | None = None) -> list[dict[str, Any]]:
+    return grouped_daily_points(rows, "character_id", start_date=start_date)
 
 
-def corporation_division_daily_points(rows: list[Any]) -> list[dict[str, Any]]:
-    return grouped_daily_points(rows, "division")
+def corporation_division_daily_points(rows: list[Any], *, start_date: date | None = None) -> list[dict[str, Any]]:
+    return grouped_daily_points(rows, "division", start_date=start_date)
 
 
 def combine_daily_series(*series: list[dict[str, Any]]) -> list[dict[str, Any]]:
