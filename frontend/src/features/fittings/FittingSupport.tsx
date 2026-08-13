@@ -335,6 +335,16 @@ export function chargeMatchesModule(item: FittingItem, charge: FittingSearchType
 
   const moduleIsXl = /(^|\s)xl(\s|$)/.test(moduleText) || moduleText.includes("capital") || moduleText.includes("citadel");
 
+  const exactChargeGroups = item.compatible_charge_group_ids ?? [];
+
+  if (exactChargeGroups.length > 0 && charge.group_id != null) {
+
+    const sizeMatches = item.charge_size == null || charge.charge_size == null || item.charge_size === charge.charge_size;
+
+    return exactChargeGroups.includes(charge.group_id) && sizeMatches;
+
+  }
+
   if (chargeText.includes("script")) return /(tracking computer|tracking link|sensor booster|remote sensor|guidance computer|guidance enhancer|missile guidance|omnidirectional tracking|warp disruption field)/.test(moduleText);
 
   if (moduleText.includes("capacitor booster") || moduleText.includes("ancillary shield booster")) return chargeText.includes("cap booster") || chargeText.includes("capacitor booster");
@@ -353,7 +363,7 @@ export function chargeMatchesModule(item: FittingItem, charge: FittingSearchType
 
   if (moduleText.includes("launcher")) return !chargeIsXl && (chargeText.includes("missile") || chargeText.includes("rocket") || chargeText.includes("torpedo"));
 
-  if (moduleText.includes("laser")) return chargeText.includes("frequency crystal");
+  if (moduleText.includes("laser")) return chargeText.includes("frequency crystal") || chargeText.includes("laser crystal");
 
   if (moduleText.includes("railgun") || moduleText.includes("blaster") || moduleText.includes("hybrid")) return chargeText.includes("hybrid charge");
 

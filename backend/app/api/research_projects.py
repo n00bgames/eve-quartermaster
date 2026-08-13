@@ -137,6 +137,7 @@ def list_research_projects(
         "as_of": now.isoformat(),
         "summary": {
             "active": len(active_projects),
+            "manufacturing": sum(project.activity_id == 1 for project in active_projects),
             "material_efficiency": sum(project.activity_id == 4 for project in active_projects),
             "time_efficiency": sum(project.activity_id == 3 for project in active_projects),
             "copying": sum(project.activity_id == 5 for project in active_projects),

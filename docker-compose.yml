@@ -66,6 +66,12 @@ services:
       redis:
         condition: service_started
 
+  backend-tests:
+    profiles: ["test"]
+    build:
+      context: ./backend
+      target: test
+
   frontend:
     build:
       context: .

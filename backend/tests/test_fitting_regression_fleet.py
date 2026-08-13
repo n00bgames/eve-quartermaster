@@ -9,7 +9,11 @@ from app.services.fitting_simulator import (
     EVASIVE_MANEUVERING_TYPE_ID,
     NAVIGATION_TYPE_ID,
     SPACESHIP_COMMAND_TYPE_ID,
+    active_capacitor_use_per_second,
     compute_fitting_stats,
+    is_drone_group,
+    is_turret_group,
+    item_effects_apply,
     item_resource_usage,
     normalize_attr,
     stacking_raw_multiplier,
@@ -280,3 +284,211 @@ def test_nomad_set_bonus_amplifies_selected_nomad_agility_effects() -> None:
 
 def test_stacking_penalty_helper_remains_for_penalized_ship_attributes() -> None:
     assert stacking_raw_multiplier([0.9, 0.9]) == pytest.approx(0.9 * (1 + (0.9 - 1) * 0.8708869))
+
+
+def test_sde_weapon_and_drone_groups_are_classified_without_false_positives() -> None:
+    assert is_turret_group("Hybrid Weapon")
+    assert is_turret_group("Projectile Weapon")
+    assert is_turret_group("Energy Weapon")
+    assert is_drone_group("Combat Drone")
+    assert not is_drone_group("Drone Control Range Module")
+    assert not is_drone_group("Drone Damage Module")
+
+
+def test_active_modules_require_running_state_while_passive_modules_only_require_online() -> None:
+    afterburner = fitting_item(1, 10, "MedSlot0", "10MN Afterburner II", "online")
+    expander = fitting_item(2, EXPANDED_CARGOHOLD_II_ID, "LoSlot0", "Expanded Cargohold II", "online")
+
+    assert not item_effects_apply(afterburner, {"speedfactor": 135.0}, "Afterburner", "10MN Afterburner II")
+    afterburner.simulation_state = "active"
+    assert item_effects_apply(afterburner, {"speedfactor": 135.0}, "Afterburner", "10MN Afterburner II")
+    assert item_effects_apply(expander, {"cargocapacitymultiplier": 1.275}, "Expanded Cargohold", "Expanded Cargohold II")
+
+
+def test_common_targeting_skills_apply_to_range_scan_resolution_and_matching_sensor() -> None:
+    ship_id = 900_001
+    fitting = SimpleNamespace(ship_type_id=ship_id, items=[])
+    dogma = {
+        ship_id: {
+            "maxTargetRange": 55_000.0,
+            "scanResolution": 260.0,
+            "scanGravimetricStrength": 17.0,
+            "maxVelocity": 190.0,
+        },
+    }
+    dogma = {
+        type_id: {normalize_attr(attribute_name): value for attribute_name, value in attributes.items()}
+        for type_id, attributes in dogma.items()
+    }
+
+    stats = compute_fitting_stats(
+        fitting,
+        dogma,
+        {ship_id: "Reference Cruiser"},
+        {},
+        {},
+        {
+            "Long Range Targeting": 5,
+            "Signature Analysis": 5,
+            "Gravimetric Sensor Compensation": 5,
+        },
+        {},
+    )
+
+    assert stats["targeting"]["targeting_range"] == pytest.approx(68_750.0)
+    assert stats["targeting"]["scan_resolution"] == pytest.approx(325.0)
+    assert stats["targeting"]["sensor_strength"] == pytest.approx(20.4)
+
+
+def test_afterburner_velocity_uses_thrust_mass_and_acceleration_control() -> None:
+    ship_id = 900_002
+    afterburner_id = 900_003
+    afterburner = fitting_item(1, afterburner_id, "MedSlot0", "10MN Afterburner II", "active")
+    fitting = SimpleNamespace(ship_type_id=ship_id, items=[afterburner])
+    dogma = {
+        ship_id: {"maxVelocity": 190.0, "medSlots": 1.0},
+        afterburner_id: {"speedFactor": 135.0, "speedBoostFactor": 15_000_000.0, "massAddition": 5_000_000.0},
+    }
+    dogma = {
+        type_id: {normalize_attr(attribute_name): value for attribute_name, value in attributes.items()}
+        for type_id, attributes in dogma.items()
+    }
+
+    stats = compute_fitting_stats(
+        fitting,
+        dogma,
+        {ship_id: "Moa", afterburner_id: "10MN Afterburner II"},
+        {afterburner_id: "Afterburner"},
+        {NAVIGATION_TYPE_ID: 5},
+        {"Acceleration Control": 5},
+        {},
+        ship_mass=12_000_000.0,
+    )
+
+    expected = 190.0 * 1.25 * (1 + 1.35 * 1.25 * 15_000_000.0 / 17_000_000.0)
+    assert stats["mobility"]["max_velocity"] == pytest.approx(expected)
+
+
+def test_afterburner_capacitor_applies_both_cap_skills_and_cycle_skill() -> None:
+    ship_id = 900_004
+    afterburner_id = 900_005
+    fuel_conservation_id = 900_006
+    afterburner_skill_id = 900_007
+    afterburner = fitting_item(1, afterburner_id, "MedSlot0", "10MN Afterburner II", "active")
+    fitting = SimpleNamespace(ship_type_id=ship_id, items=[afterburner])
+    dogma = {
+        ship_id: {"capacitorCapacity": 1_000.0, "rechargeRate": 200_000.0, "medSlots": 1.0},
+        afterburner_id: {"capacitorNeed": 90.0, "duration": 10_000.0},
+        fuel_conservation_id: {"capNeedBonus": -10.0},
+        afterburner_skill_id: {"capNeedBonus": -10.0, "durationBonus": -5.0},
+    }
+    dogma = {
+        type_id: {normalize_attr(attribute_name): value for attribute_name, value in attributes.items()}
+        for type_id, attributes in dogma.items()
+    }
+
+    stats = compute_fitting_stats(
+        fitting,
+        dogma,
+        {
+            ship_id: "Reference Cruiser",
+            afterburner_id: "10MN Afterburner II",
+            fuel_conservation_id: "Fuel Conservation",
+            afterburner_skill_id: "Afterburner",
+        },
+        {afterburner_id: "Propulsion Module"},
+        {},
+        {"Fuel Conservation": 5, "Afterburner": 5},
+        {},
+    )
+
+    # 90 GJ * 50% * 50% over a 10 s cycle shortened by 25% = 3 GJ/s.
+    assert stats["capacitor"]["draw_per_second"] == pytest.approx(3.0)
+    assert stats["capacitor"]["modules"][0]["cycle_seconds"] == pytest.approx(7.5)
+
+
+def test_shield_booster_repair_amount_is_not_added_to_shield_capacity() -> None:
+    ship_id = 900_008
+    booster_id = 900_009
+    booster = fitting_item(1, booster_id, "MedSlot0", "Medium Shield Booster II", "active")
+    fitting = SimpleNamespace(ship_type_id=ship_id, items=[booster])
+    dogma = {
+        ship_id: {"shieldCapacity": 1_000.0, "medSlots": 1.0},
+        booster_id: {"shieldBonus": 104.0, "duration": 3_000.0},
+    }
+    dogma = {
+        type_id: {normalize_attr(attribute_name): value for attribute_name, value in attributes.items()}
+        for type_id, attributes in dogma.items()
+    }
+
+    stats = compute_fitting_stats(
+        fitting,
+        dogma,
+        {ship_id: "Reference Cruiser", booster_id: "Medium Shield Booster II"},
+        {booster_id: "Shield Booster"},
+        {},
+        {},
+        {},
+    )
+
+    assert stats["defense"]["shield_hp"] == pytest.approx(1_000.0)
+    assert stats["defense"]["shield_repair_hps"] == pytest.approx(104.0 / 3.0)
+
+
+def test_turret_capacitor_draw_uses_applicable_hull_rate_of_fire_bonus() -> None:
+    railgun_id = 900_010
+    railgun_group_id = 900_011
+    railgun = fitting_item(1, railgun_id, "HiSlot0", "200mm Railgun II", "active")
+    dogma = {railgun_id: {normalize_attr("capacitorNeed"): 4.5, normalize_attr("speed"): 4_000.0}}
+    hull_weapon_rules = [{
+        "target": "speed",
+        "multiplier": 0.75,
+        "group_id": railgun_group_id,
+        "required_skill_id": None,
+    }]
+
+    draw, modules = active_capacitor_use_per_second(
+        [railgun],
+        dogma,
+        {railgun_id: "200mm Railgun II"},
+        {railgun_id: "Hybrid Weapon"},
+        {},
+        {},
+        hull_weapon_rules,
+        {railgun_id: railgun_group_id},
+    )
+
+    assert draw == pytest.approx(1.5)
+    assert modules[0]["cycle_seconds"] == pytest.approx(3.0)
+
+
+def test_multiple_cap_rechargers_use_sde_stackable_multiplier_without_penalty() -> None:
+    ship_id = 900_012
+    recharger_id = 900_013
+    fitting = SimpleNamespace(
+        ship_type_id=ship_id,
+        items=[
+            fitting_item(1, recharger_id, "MedSlot0", "Cap Recharger II"),
+            fitting_item(2, recharger_id, "MedSlot1", "Cap Recharger II"),
+        ],
+    )
+    dogma = {
+        ship_id: {"capacitorCapacity": 1_000.0, "rechargeRate": 100_000.0, "medSlots": 2.0},
+        recharger_id: {"capacitorRechargeRateMultiplier": 0.8},
+    }
+    dogma = {
+        type_id: {normalize_attr(attribute_name): value for attribute_name, value in attributes.items()}
+        for type_id, attributes in dogma.items()
+    }
+
+    stats = compute_fitting_stats(
+        fitting,
+        dogma,
+        {ship_id: "Reference Cruiser", recharger_id: "Cap Recharger II"},
+        {recharger_id: "Capacitor Recharger"},
+        {},
+        {},
+        {},
+    )
+
+    assert stats["capacitor"]["recharge_time"] == pytest.approx(64.0)

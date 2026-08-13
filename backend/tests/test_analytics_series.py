@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from types import SimpleNamespace
 
-from app.api.analytics import daily_corporation_series
+from app.api.analytics import change_breakdown, daily_corporation_series
 
 
 class AnalyticsSeriesTests(unittest.TestCase):
@@ -38,6 +38,28 @@ class AnalyticsSeriesTests(unittest.TestCase):
                 {"date": "2026-08-03", "corporation_id": 1, "corporation_name": "Alpha", "value": 15.0},
             ],
         )
+
+    def test_change_breakdown_separates_onboarding_from_organic_growth(self) -> None:
+        rows = [
+            SimpleNamespace(id=1, character_id=10, character_name="Existing", recorded_at=datetime(2026, 7, 20, tzinfo=timezone.utc), total_skill_points=100),
+            SimpleNamespace(id=2, character_id=10, character_name="Existing", recorded_at=datetime(2026, 8, 3, tzinfo=timezone.utc), total_skill_points=110),
+            SimpleNamespace(id=3, character_id=20, character_name="New", recorded_at=datetime(2026, 8, 2, tzinfo=timezone.utc), total_skill_points=200),
+            SimpleNamespace(id=4, character_id=20, character_name="New", recorded_at=datetime(2026, 8, 4, tzinfo=timezone.utc), total_skill_points=205),
+            SimpleNamespace(id=5, character_id=30, character_name="Unchanged", recorded_at=datetime(2026, 7, 25, tzinfo=timezone.utc), total_skill_points=50),
+        ]
+        result = change_breakdown(
+            rows,
+            key="character_id",
+            value_attr="total_skill_points",
+            name_attr="character_name",
+            cutoff=datetime(2026, 8, 1, tzinfo=timezone.utc),
+        )
+        self.assertEqual(result["current"], 365)
+        self.assertEqual(result["organic_delta"], 15)
+        self.assertEqual(result["coverage_delta"], 200)
+        self.assertEqual(result["total_delta"], 215)
+        self.assertEqual(result["newly_tracked_count"], 1)
+        self.assertEqual(result["newly_tracked"][0]["name"], "New")
 
 
 if __name__ == "__main__":

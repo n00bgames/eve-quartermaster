@@ -2,10 +2,11 @@ import { Copy, Download, GraduationCap, MoreHorizontal, Plus, ScrollText } from 
 import type { ReactElement, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 
-import { pollCharacterSyncJob } from "../../lib/characterSyncPolling";
+import { isCharacterSyncPollingAborted, resumeCharacterSyncJob, trackCharacterSyncJob } from "../../lib/characterSyncPolling";
 
 import { PilotSecurityStatus } from "./PilotSecurityStatus";
 import { SkillDogmaPopover } from "./SkillDogmaPopover";
+import { SkillPlansPanel } from "./SkillPlansPanel";
 import {
   characterSkillReport,
   characterSkillReportFilename,
@@ -23,9 +24,10 @@ type CharacterSkillsProps = {
   api: ApiClient;
   Metric: MetricComponent;
   CharacterHoverName: (props: { characterId?: number | null; name: string; className?: string; href?: string }) => ReactElement;
+  selectedPlanId?: number | null;
 };
 
-export function CharacterSkills({ currentUser, api, Metric, CharacterHoverName }: CharacterSkillsProps) {
+function CharacterSkillProfiles({ currentUser, api, Metric, CharacterHoverName }: CharacterSkillsProps) {
   const [profiles, setProfiles] = useState<CharacterSkillProfile[]>([]);
   const [expandedProfileIds, setExpandedProfileIds] = useState<Set<number>>(new Set());
   const [skillError, setSkillError] = useState<string | null>(null);
@@ -33,6 +35,8 @@ export function CharacterSkills({ currentUser, api, Metric, CharacterHoverName }
   const [busyTokenId, setBusyTokenId] = useState<number | null>(null);
   const [syncAllJob, setSyncAllJob] = useState<SkillSyncAllJob | null>(null);
   const syncAllPollingRef = useRef(false);
+  const syncPollAbortRef = useRef<AbortController | null>(null);
+  const syncResumeScope = `skills-all:${currentUser.id}`;
   const baseSkillSp = [0, 250, 1415, 8000, 45255, 256000];
   const syncAllActive = syncAllJob?.status === "queued" || syncAllJob?.status === "running";
   const syncAllPercent = syncAllJob?.total_count ? Math.round((syncAllJob.processed_count / syncAllJob.total_count) * 100) : 0;
@@ -67,10 +71,12 @@ export function CharacterSkills({ currentUser, api, Metric, CharacterHoverName }
     try {
       const initialJob = await api<SkillSyncAllJob>("/esi/sync/character-skills/all", { method: "POST", body: "{}" });
       setSyncAllJob(initialJob);
-      const job = await pollCharacterSyncJob({
+      const job = await trackCharacterSyncJob({
+        scope: syncResumeScope,
         initialJob,
         fetchLatest: (current) => api<SkillSyncAllJob>(`/esi/sync/character-skills/all/${current.job_id}`),
         onUpdate: setSyncAllJob,
+        signal: syncPollAbortRef.current?.signal,
       });
       await loadSkills();
       if (job.status === "complete") {
@@ -80,8 +86,10 @@ export function CharacterSkills({ currentUser, api, Metric, CharacterHoverName }
         setSkillError(job.errors[0] ?? "One or more character skill syncs failed.");
       }
     } catch (err) {
-      setMessage(null);
-      setSkillError(err instanceof Error ? err.message : "Sync all skills failed");
+      if (!isCharacterSyncPollingAborted(err)) {
+        setMessage(null);
+        setSkillError(err instanceof Error ? err.message : "Sync all skills failed");
+      }
     } finally {
       syncAllPollingRef.current = false;
     }
@@ -140,5 +148,31 @@ export function CharacterSkills({ currentUser, api, Metric, CharacterHoverName }
 
   useEffect(() => { void loadSkills().catch((err) => setSkillError(err instanceof Error ? err.message : "Unable to load character skills")); }, []);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    syncPollAbortRef.current = controller;
+    syncAllPollingRef.current = true;
+    void resumeCharacterSyncJob<SkillSyncAllJob>({
+      scope: syncResumeScope,
+      fetchById: (jobId) => api<SkillSyncAllJob>(`/esi/sync/character-skills/all/${jobId}`),
+      onUpdate: (job) => { setSyncAllJob(job); setMessage("Resumed skill sync progress from the server..."); },
+      signal: controller.signal,
+    }).then(async (job) => {
+      if (!job) return;
+      await loadSkills();
+      if (job.status === "complete") setMessage(`Synced ${job.success_count.toLocaleString()} of ${job.total_count.toLocaleString()} eligible characters.`);
+      else setSkillError(job.errors[0] ?? "One or more character skill syncs failed.");
+    }).catch((err) => {
+      if (!isCharacterSyncPollingAborted(err)) setSkillError(err instanceof Error ? err.message : "Unable to resume skill sync");
+    }).finally(() => { syncAllPollingRef.current = false; });
+    return () => controller.abort();
+  }, [currentUser.id]);
+
   return <section className="panel stacked skills-page"><div className="section-heading skills-page-heading"><h3>Character Skills</h3><div className="button-row compact skills-page-actions"><button type="button" onClick={() => setExpandedProfileIds(new Set(profiles.map((profile) => profile.token_id)))}>Expand all</button><button type="button" onClick={() => setExpandedProfileIds(new Set())}>Collapse all</button><button type="button" disabled={syncAllActive || busyTokenId !== null || profiles.length === 0} onClick={() => void syncAllSkills()}>{syncAllActive ? "Syncing all" : "Sync all eligible"}</button><button type="button" disabled={syncAllActive} onClick={() => void loadSkills()}>Refresh</button></div></div>{syncAllJob && <div className={`queue-badge queue-${syncAllJob.status}`}><strong>{syncAllJob.processed_count.toLocaleString()} / {syncAllJob.total_count.toLocaleString()}</strong><span>{syncAllJob.status === "complete" ? "Skill sync complete" : syncAllJob.status === "failed" ? "Skill sync needs review" : syncAllJob.current_character_name ? `Syncing ${syncAllJob.current_character_name}` : "Skill sync queued"} · {syncAllJob.success_count.toLocaleString()} synced · {syncAllJob.failed_count.toLocaleString()} failed · {syncAllJob.skipped_count.toLocaleString()} skipped</span><i style={{ width: `${syncAllPercent}%` }} /></div>}{message && <div className="notice inline">{message}</div>}{skillError && <div className="mini-alert">{skillError}</div>}<div className="card-list skill-profiles">{profiles.map((profile) => { const expanded = expandedProfileIds.has(profile.token_id); return <article key={profile.token_id} className="skill-profile-card"><div className="section-heading compact skill-profile-heading"><div className="skill-profile-identity"><strong><CharacterHoverName characterId={profile.character_id} name={profile.character_name} /><PilotSecurityStatus securityStatus={profile.security_status} compact /></strong><span>Character ID {profile.character_id}</span></div><div className="button-row compact skill-profile-actions"><button type="button" className="skill-profile-toggle" onClick={() => toggleProfile(profile.token_id)} aria-expanded={expanded}>{expanded ? "Collapse" : "Expand"}</button><button type="button" className="skill-report-action" disabled={profile.skills.length === 0} onClick={() => void copySkillReport(profile)} title="Copy a categorized skill report for sharing"><Copy size={16} /> Copy report</button><button type="button" className="skill-report-action" disabled={profile.skills.length === 0} onClick={() => downloadSkillReport(profile)} title="Download a categorized plain-text skill report"><Download size={16} /> Download report</button>{profile.can_sync && <button type="button" className="skill-sync-action" disabled={syncAllActive || profile.missing_skill_scopes.length > 0 || busyTokenId === profile.token_id} onClick={() => void syncSkills(profile)}>{busyTokenId === profile.token_id ? "Syncing" : profile.sync_opt_out && profile.owner_user_id !== currentUser.id && ["host", "admin"].includes(currentUser.role) ? "Admin override sync" : "Sync skills"}</button>}<details className="skill-profile-overflow"><summary aria-label={`More report actions for ${profile.character_name}`} title="More report actions"><MoreHorizontal size={18} /><span>Reports</span></summary><div className="skill-profile-overflow-menu"><button type="button" disabled={profile.skills.length === 0} onClick={(event) => { event.currentTarget.closest("details")?.removeAttribute("open"); void copySkillReport(profile); }}><Copy size={16} /> Copy report</button><button type="button" disabled={profile.skills.length === 0} onClick={(event) => { event.currentTarget.closest("details")?.removeAttribute("open"); downloadSkillReport(profile); }}><Download size={16} /> Download report</button></div></details></div></div>{profile.sync_opt_out && <div className="privacy-placard">This character does not wish to be synced.{profile.admin_override_visible ? " Admin view is active for administrative review." : " This data stays private to the character owner unless an admin opens an override view."}</div>}{profile.can_sync && profile.missing_skill_scopes.length > 0 && <span className="scope-warn">Missing skill scopes: {profile.missing_skill_scopes.join(", ")}. Re-link through ESI Sync.</span>}<div className="status-grid compact skill-profile-stats"><Metric icon={<GraduationCap size={18} />} label="Total SP" value={profile.total_skill_points ?? 0} /><Metric icon={<Plus size={18} />} label="Unallocated SP" value={profile.unallocated_skill_points ?? 0} /><Metric icon={<ScrollText size={18} />} label="Skills" value={profile.skill_count} /></div><div className="skill-profile-timestamps"><span>Skills synced {profile.skills_synced_at ? new Date(profile.skills_synced_at).toLocaleString() : "never"}</span><span>Queue synced {profile.skill_queue_synced_at ? new Date(profile.skill_queue_synced_at).toLocaleString() : "never"}</span></div>{expanded && <div className="two-column skill-columns"><section><h4>Trained Skills</h4><div className="skill-group-list">{groupedSkills(profile).map(([groupName, skills]) => <details key={groupName} className="skill-group" open><summary>{groupName}<span>{skills.length.toLocaleString()} skills · {categorySkillPoints(skills).toLocaleString()} SP</span></summary><div className="mini-list">{skills.map((skill) => { const progress = skillProgress(skill); return <div key={skill.id} className="skill-row"><SkillDogmaPopover api={api} skillTypeId={skill.skill_type_id} skillName={skill.skill_name} trainedLevel={skill.trained_skill_level} /><span>Level {skill.trained_skill_level} · Active {skill.active_skill_level}</span><div className="skill-progress-line"><span>{skill.skillpoints_in_skill.toLocaleString()} / {progress.targetSp.toLocaleString()} SP</span><span>{Math.round(progress.percent)}%</span></div><div className="skill-progress-bar" title="Progress target is estimated until SDE dogma skill ranks are imported."><i style={{ width: `${progress.percent}%` }} /></div></div>; })}</div></details>)}{profile.skills.length === 0 && <p className="empty">No trained skills imported yet.</p>}</div></section><section><h4>Current Queue</h4><div className="mini-list">{profile.queue.map((entry) => <div key={entry.id}><strong>{entry.queue_position + 1}. {entry.skill_name}</strong><span>To level {entry.finished_level}{entry.finish_date ? ` · finishes ${new Date(entry.finish_date).toLocaleString()}` : ""}</span></div>)}{profile.queue.length === 0 && <p className="empty">No active queue imported.</p>}</div></section></div>}</article>; })}{profiles.length === 0 && <p className="empty">No linked characters visible. Link a character through ESI Sync first.</p>}</div></section>;
+}
+
+export function CharacterSkills(props: CharacterSkillsProps) {
+  const [section, setSection] = useState<"characters" | "plans">(props.selectedPlanId ? "plans" : "characters");
+  useEffect(()=>{if(props.selectedPlanId)setSection("plans");},[props.selectedPlanId]);
+  return <div className="skills-module"><div className="owner-kind-chips skills-module-tabs" role="tablist" aria-label="Skills sections"><button type="button" role="tab" aria-selected={section === "characters"} className={section === "characters" ? "active" : ""} onClick={() => setSection("characters")}>Character Skills</button><button type="button" role="tab" aria-selected={section === "plans"} className={section === "plans" ? "active" : ""} onClick={() => setSection("plans")}>Skill Plans</button></div>{section === "characters" ? <CharacterSkillProfiles {...props} /> : <SkillPlansPanel api={props.api} selectedPlanId={props.selectedPlanId} />}</div>;
 }

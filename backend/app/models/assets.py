@@ -20,7 +20,7 @@ class Location(Base):
     source: Mapped[AssetSource] = mapped_column(default=AssetSource.MANUAL, nullable=False)
     notes: Mapped[str | None] = mapped_column(String)
 
-    parent: Mapped["Location | None"] = relationship(remote_side=[id])
+    parent: Mapped["Location | None"] = relationship(remote_side=[id], lazy="joined")
 
 
 class Asset(Base):

@@ -1,4 +1,4 @@
-import { Activity, Boxes, Building2, CalendarDays, ClipboardList, Coins, Database, Factory, FlaskConical, GraduationCap, Globe2, KeyRound, MapIcon, MessageCircle, NotebookTabs, PackagePlus, Pickaxe, Plus, RefreshCw, ScrollText, Settings, ShoppingCart, Siren, Sparkles, Store, UserRoundCheck } from "lucide-react";
+import { Activity, Boxes, Building2, CalendarDays, ClipboardList, Coins, Database, Factory, FlaskConical, GraduationCap, Globe2, KeyRound, MapIcon, MessageCircle, NotebookTabs, PackagePlus, Pickaxe, Plus, RefreshCw, ScrollText, Settings, ShieldCheck, ShoppingCart, Siren, Sparkles, Store, UserRoundCheck } from "lucide-react";
 
 import React, { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
@@ -39,6 +39,8 @@ import { MiningLedgerPage } from "./features/mining/MiningLedgerPage";
 import { RecruitingPage } from "./features/recruiting/RecruitingPage";
 import { RecruitingPublicPage } from "./features/recruiting/RecruitingPublicPage";
 import { EventsPage } from "./features/events/EventsPage";
+import { DoctrinePage } from "./features/doctrines/DoctrinePage";
+import { SrpPage } from "./features/srp/SrpPage";
 import { NextEventBadge } from "./features/events/NextEventBadge";
 import { UpcomingEventsWidget } from "./features/events/UpcomingEventsWidget";
 import { IndustrialSystemThreatWidget, LocalThreatWidget, PvpIntelWidget } from "./features/navigation/ThreatIntelWidgets";
@@ -54,6 +56,7 @@ import { APP_VERSION } from "./version";
 
 
 type ApiClient = <T>(path: string, options?: RequestInit) => Promise<T>;
+type InventoryExportResponse = { filename: string; mime_type: string; content: string; row_count: number; schema_version: string; generated_at_utc: string; application_version: string };
 
 type Health = { status: string; app: string };
 
@@ -239,6 +242,7 @@ function App() {
   const [marketSeed, setMarketSeed] = useState<MarketSeed | null>(null);
 
   const [fittingSeed, setFittingSeed] = useState<FittingSeed | null>(null);
+  const [skillPlanFocusId, setSkillPlanFocusId] = useState<number | null>(null);
 
   const [assetSeed, setAssetSeed] = useState<AssetTableSeed | null>(null);
 
@@ -474,6 +478,9 @@ function App() {
     const esiError = params.get("esi_error");
 
     if (window.location.hash.startsWith("#events")) setActiveTab("calendar_events");
+    else if (window.location.hash.startsWith("#doctrines")) setActiveTab("doctrines");
+    else if (window.location.hash.startsWith("#skills")) setActiveTab("skills");
+    else if (window.location.hash.startsWith("#srp")) setActiveTab("srp");
     else if (window.location.hash.startsWith("#hypernet")) setActiveTab("hypernet");
     else if (window.location.hash === "#esi" || window.location.hash === "#recruiting" || window.location.hash === "#planetary_industry" || params.get("esi_status") || esiError) setActiveTab(esiDestination);
 
@@ -522,6 +529,7 @@ function App() {
     if (locationHash.startsWith("#events")) setActiveTab("calendar_events");
     else if (locationHash.startsWith("#exchange")) setActiveTab("exchange");
     else if (locationHash.startsWith("#hypernet")) setActiveTab("hypernet");
+    else if (locationHash.startsWith("#skills")) setActiveTab("skills");
   }, [locationHash]);
 
   useEffect(() => {
@@ -620,7 +628,7 @@ function App() {
 
           {canView("characters") && <button className={activeTab === "characters" ? "active" : ""} onClick={() => setActiveTab("characters")}><UserRoundCheck size={18} /> Characters</button>}
 
-          {canView("skills") && <button className={activeTab === "skills" ? "active" : ""} onClick={() => setActiveTab("skills")}><GraduationCap size={18} /> Skills</button>}
+          {canView("skills") && <button className={activeTab === "skills" ? "active" : ""} onClick={() => { setSkillPlanFocusId(null); window.location.hash="skills"; setActiveTab("skills"); }}><GraduationCap size={18} /> Skills</button>}
 
           {canView("fittings") && <button className={`fittings-wip${activeTab === "fittings" ? " active" : ""}`} onClick={() => setActiveTab("fittings")}><ClipboardList size={18} /> Fittings - WIP</button>}
 
@@ -662,7 +670,11 @@ function App() {
 
           {canView("analytics") && <button className={activeTab === "analytics" ? "active" : ""} onClick={() => setActiveTab("analytics")}><Activity size={18} /> Analytics</button>}
 
-          {["calendar_events", "recruiting"].some(canView) && <span className="nav-section-label">Community</span>}
+          {["doctrines", "srp", "calendar_events", "recruiting"].some(canView) && <span className="nav-section-label">Fleet & Community</span>}
+
+          {canView("doctrines") && <button className={activeTab === "doctrines" ? "active" : ""} onClick={() => { window.location.hash = "doctrines"; setActiveTab("doctrines"); }}><ShieldCheck size={18} /> Doctrines</button>}
+
+          {canView("srp") && <button className={activeTab === "srp" ? "active" : ""} onClick={() => { window.location.hash = "srp"; setActiveTab("srp"); }}><ClipboardList size={18} /> SRP Requests</button>}
 
           {canView("calendar_events") && <button className={activeTab === "calendar_events" ? "active" : ""} onClick={() => { window.location.hash = "events"; setActiveTab("calendar_events"); }}><CalendarDays size={18} /> Calendar & Events</button>}
 
@@ -747,6 +759,10 @@ function App() {
 
         {activeTab === "calendar_events" && canView("calendar_events") && <EventsPage api={api} currentUser={user} />}
 
+        {activeTab === "doctrines" && canView("doctrines") && <DoctrinePage api={api} onOpenFitting={(name) => { setFittingSeed({ text: name, nonce: Date.now() }); setActiveTab("fittings"); }} onOpenSkillPlan={(planId) => { setSkillPlanFocusId(planId); window.location.hash=`skills/plans/${planId}`; setActiveTab("skills"); }} />}
+
+        {activeTab === "srp" && canView("srp") && <SrpPage api={api} />}
+
         {activeTab === "notes" && canView("notes") && <NotesListsPage api={api} />}
 
         {activeTab === "manufacturing" && canView("manufacturing") && <ManufacturingPage api={api} formatDateTime={(value) => formatDateTime(value, preferredTimeZone(user))} />}
@@ -763,7 +779,7 @@ function App() {
 
         {activeTab === "recruiting" && canView("recruiting") && <RecruitingPage api={api} />}
 
-        {activeTab === "skills" && canView("skills") && <CharacterSkills currentUser={user} api={api} Metric={Metric} CharacterHoverName={CharacterHoverName} />}
+        {activeTab === "skills" && canView("skills") && <CharacterSkills currentUser={user} api={api} Metric={Metric} CharacterHoverName={CharacterHoverName} selectedPlanId={skillPlanFocusId ?? (locationHash.match(/^#skills\/plans\/(\d+)/)?.[1] ? Number(locationHash.match(/^#skills\/plans\/(\d+)/)?.[1]) : null)} />}
 
         {activeTab === "fittings" && canView("fittings") && <FittingsPage currentUser={user} assets={data.assets} seed={fittingSeed} api={api} onOpenAssets={(itemName) => { setAssetSeed(itemName ? { key: "item", value: itemName, mode: "exact", nonce: Date.now() } : { key: "item", value: "", mode: "contains", nonce: Date.now() }); setActiveTab("assets"); }} onOpenMarket={(text) => { setMarketSeed({ text, nonce: Date.now() }); setActiveTab("market"); }} />}
 
@@ -775,7 +791,7 @@ function App() {
 
         {activeTab === "assets" && canView("assets") && <Assets data={data} seed={assetSeed} submit={submit} ownerOptions={ownerOptions} typeOptions={typeOptions} locationOptions={locationOptions} api={api} onOpenFittings={(itemName) => { setFittingSeed({ text: itemName, nonce: Date.now() }); setActiveTab("fittings"); }} onOpenMarket={(text) => { setMarketSeed({ text, nonce: Date.now() }); setActiveTab("market"); }} />}
 
-        {activeTab === "industry" && canView("industry") && <Industry data={data} submit={submit} ownerOptions={ownerOptions} typeOptions={typeOptions} locationOptions={locationOptions} activityOptions={activityOptions} onOpenMarket={(text) => { setMarketSeed({ text, nonce: Date.now() }); setActiveTab("market"); }} onOpenAssets={(itemName) => { setAssetSeed({ key: "item", value: itemName, mode: "exact", nonce: Date.now() }); setActiveTab("assets"); }} />}
+        {activeTab === "industry" && canView("industry") && <Industry data={data} submit={submit} ownerOptions={ownerOptions} typeOptions={typeOptions} locationOptions={locationOptions} activityOptions={activityOptions} api={api} onOpenMarket={(text) => { setMarketSeed({ text, nonce: Date.now() }); setActiveTab("market"); }} onOpenAssets={(itemName) => { setAssetSeed({ key: "item", value: itemName, mode: "exact", nonce: Date.now() }); setActiveTab("assets"); }} />}
 
         {activeTab === "esi" && canView("esi") && <EsiSyncPage load={load} currentUser={user} api={api} ManagedForm={ManagedForm} Metric={Metric} CharacterHoverName={CharacterHoverName} />}
 
@@ -1098,7 +1114,7 @@ function Assets({ data, seed, submit, ownerOptions, typeOptions, locationOptions
 
 
 
-function Industry({ data, submit, ownerOptions, typeOptions, locationOptions, activityOptions, onOpenMarket, onOpenAssets }: { data: AppData; submit: (path: string, body: Record<string, unknown>, success: string) => Promise<void>; ownerOptions: React.ReactNode; typeOptions: React.ReactNode; locationOptions: React.ReactNode; activityOptions: React.ReactNode; onOpenMarket: (text: string) => void; onOpenAssets: (itemName: string) => void }) {
+function Industry({ data, submit, ownerOptions, typeOptions, locationOptions, activityOptions, api, onOpenMarket, onOpenAssets }: { data: AppData; submit: (path: string, body: Record<string, unknown>, success: string) => Promise<void>; ownerOptions: React.ReactNode; typeOptions: React.ReactNode; locationOptions: React.ReactNode; activityOptions: React.ReactNode; api: ApiClient; onOpenMarket: (text: string) => void; onOpenAssets: (itemName: string) => void }) {
 
   const recipePageSize = 250;
 
@@ -1158,7 +1174,7 @@ function Industry({ data, submit, ownerOptions, typeOptions, locationOptions, ac
 
     <div className="two-column">
 
-      <section className="panel"><h3>Blueprints</h3><BlueprintList blueprints={data.blueprints} assets={data.assets} onOpenMarket={onOpenMarket} onOpenAssets={onOpenAssets} /></section>
+      <section className="panel"><h3>Blueprints</h3><BlueprintList blueprints={data.blueprints} assets={data.assets} api={api} onOpenMarket={onOpenMarket} onOpenAssets={onOpenAssets} /></section>
 
       <section className="panel"><h3>Add Blueprint</h3><BlueprintForm submit={submit} ownerOptions={ownerOptions} typeOptions={typeOptions} locationOptions={locationOptions} /></section>
 
@@ -1607,9 +1623,20 @@ function AssetTable({ assets, blueprints = [], seed, api, serverMode = false, on
 
         {filter ? <div className="active-filter"><span>{filter.label} {filter.mode === "contains" ? "contains" : "is"}: {filter.value}</span><button type="button" onClick={clearFilter}>Clear filter</button></div> : <span className="muted">{serverMode ? "Showing paged assets" : "Showing all assets"}</span>}
 
-        <div className="button-row compact"><button type="button" disabled={visibleAssets.length === 0} onClick={exportCsv}>{serverMode ? "Export page CSV" : "Export CSV"}</button><button type="button" disabled={visibleAssets.length === 0} onClick={() => void copyJaniceList()}>{serverMode ? "Copy page for Janice" : "Copy for Janice"}</button></div>
+        <div className="button-row compact"><button type="button" disabled={visibleAssets.length === 0} onClick={exportCsv}>{serverMode ? "Export This Page CSV" : "Quick CSV"}</button><button type="button" disabled={visibleAssets.length === 0} onClick={() => void copyJaniceList()}>{serverMode ? "Copy page for Janice" : "Copy for Janice"}</button></div>
 
       </div>
+
+      {serverMode && api && <InventoryExportControls api={api} endpoint="/quartermaster/assets-export" kind="assets" disabled={serverBusy} filters={{
+        owner_kind: ownerKindFilter || null,
+        category: categoryFilter,
+        subtype: subtypeFilter || null,
+        filter_key: filter?.key ?? null,
+        filter_value: filter?.value ?? null,
+        filter_mode: filter?.mode ?? "exact",
+        sort_key: sortKey,
+        sort_direction: sortDirection,
+      }} />}
 
       {serverBusy && <div className="notice inline">Loading asset page...</div>}
 
@@ -1779,7 +1806,91 @@ function blueprintReferenceDetails(blueprintTypeId: number | null | undefined, n
   return { ...blueprintHoverDetails(matches[0]), note: matches.length > 1 ? `${matches.length.toLocaleString()} owned instances match this blueprint reference; showing the most recently loaded instance.` : null };
 }
 
-function BlueprintList({ blueprints, assets = [], onOpenMarket, onOpenAssets }: { blueprints: Blueprint[]; assets?: Asset[]; onOpenMarket?: (text: string) => void; onOpenAssets?: (itemName: string) => void }) {
+function downloadInventoryExport(result: InventoryExportResponse) {
+  const blob = new Blob([result.content], { type: result.mime_type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = result.filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function parseLocationAliases(value: string) {
+  const aliases: Record<string, string> = {};
+  for (const rawLine of value.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    const separator = line.indexOf("=");
+    if (separator <= 0 || !line.slice(separator + 1).trim()) throw new Error(`Invalid alias line: ${line}. Use location ID or exact name = alias.`);
+    aliases[line.slice(0, separator).trim()] = line.slice(separator + 1).trim();
+  }
+  return aliases;
+}
+
+function InventoryExportControls({ api, endpoint, kind, filters, disabled = false }: { api: ApiClient; endpoint: string; kind: string; filters: Record<string, unknown>; disabled?: boolean }) {
+  const [format, setFormat] = useState<"csv" | "json">("csv");
+  const [includeOwnerIds, setIncludeOwnerIds] = useState(true);
+  const [includeLocationIds, setIncludeLocationIds] = useState(true);
+  const [includeLocationNames, setIncludeLocationNames] = useState(true);
+  const [excludeOwnerNames, setExcludeOwnerNames] = useState(false);
+  const [hashIds, setHashIds] = useState(false);
+  const [aliasText, setAliasText] = useState("");
+  const [advanced, setAdvanced] = useState(false);
+  const [busyScope, setBusyScope] = useState<"filtered" | "all" | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function run(scope: "filtered" | "all") {
+    setBusyScope(scope);
+    setMessage(null);
+    setError(null);
+    try {
+      const result = await api<InventoryExportResponse>(endpoint, {
+        method: "POST",
+        body: JSON.stringify({
+          format,
+          scope,
+          filters,
+          location_aliases: parseLocationAliases(aliasText),
+          privacy: { include_owner_ids: includeOwnerIds, include_location_ids: includeLocationIds, include_location_names: includeLocationNames, exclude_owner_names: excludeOwnerNames, hash_ids: hashIds },
+        }),
+      });
+      if (result.row_count === 0) {
+        setMessage(`No accessible ${kind.toLowerCase()} matched this export.`);
+        return;
+      }
+      downloadInventoryExport(result);
+      setMessage(`Exported ${result.row_count.toLocaleString()} ${kind.toLowerCase()} as ${format.toUpperCase()}.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : `Unable to export ${kind.toLowerCase()}`);
+    } finally {
+      setBusyScope(null);
+    }
+  }
+
+  return <div className="inventory-export-panel">
+    <div className="button-row compact">
+      <label>Format<select value={format} onChange={(event) => setFormat(event.target.value as "csv" | "json")}><option value="csv">CSV</option><option value="json">JSON</option></select></label>
+      <button type="button" disabled={disabled || busyScope !== null} onClick={() => void run("filtered")}>{busyScope === "filtered" ? "Exporting..." : "Export Current Filter"}</button>
+      <button type="button" disabled={disabled || busyScope !== null} onClick={() => void run("all")}>{busyScope === "all" ? "Exporting..." : "Export All Accessible Records"}</button>
+      <button type="button" className="secondary" onClick={() => setAdvanced((value) => !value)}>{advanced ? "Hide privacy options" : "Privacy options"}</button>
+    </div>
+    {advanced && <div className="inventory-export-options">
+      <label><input type="checkbox" checked={includeOwnerIds} onChange={(event) => setIncludeOwnerIds(event.target.checked)} /> Include exact owner IDs</label>
+      <label><input type="checkbox" checked={includeLocationIds} onChange={(event) => setIncludeLocationIds(event.target.checked)} /> Include exact location IDs</label>
+      <label><input type="checkbox" checked={includeLocationNames} onChange={(event) => setIncludeLocationNames(event.target.checked)} /> Include exact location names</label>
+      <label><input type="checkbox" checked={excludeOwnerNames} onChange={(event) => setExcludeOwnerNames(event.target.checked)} /> Exclude owner names</label>
+      <label><input type="checkbox" checked={hashIds} onChange={(event) => setHashIds(event.target.checked)} /> Hash item, owner, structure, and location IDs</label>
+      <label className="export-aliases">Location aliases<textarea value={aliasText} onChange={(event) => setAliasText(event.target.value)} placeholder={"60003760 = Trade Hub\nHome Structure = Home Industry"} /><small>One location ID or exact location name = safe alias per line.</small></label>
+    </div>}
+    {busyScope && <div className="notice inline" role="status">Preparing the complete authorized export. Large inventories may take a moment.</div>}
+    {message && <div className="notice inline">{message}</div>}
+    {error && <div className="mini-alert">{error}</div>}
+  </div>;
+}
+
+function BlueprintList({ blueprints, assets = [], api, onOpenMarket, onOpenAssets }: { blueprints: Blueprint[]; assets?: Asset[]; api?: ApiClient; onOpenMarket?: (text: string) => void; onOpenAssets?: (itemName: string) => void }) {
 
   const [kindFilter, setKindFilter] = useState<"all" | "bpo" | "bpc">("all");
 
@@ -1819,7 +1930,7 @@ function BlueprintList({ blueprints, assets = [], onOpenMarket, onOpenAssets }: 
 
   const searchNeedle = searchText.trim().toLowerCase();
 
-  const filteredBlueprints = searchNeedle ? subtypeFilteredBlueprints.filter((blueprint) => [blueprint.blueprint_type_name, blueprint.product_type_name, blueprint.owner_name, blueprint.location_name, blueprint.product_category_name, blueprint.product_group_name, blueprint.is_copy ? "BPC" : "BPO", `ME ${blueprint.material_efficiency}`, `TE ${blueprint.time_efficiency}`].filter(Boolean).join(" ").toLowerCase().includes(searchNeedle)) : subtypeFilteredBlueprints;
+  const filteredBlueprints = searchNeedle ? subtypeFilteredBlueprints.filter((blueprint) => [blueprint.blueprint_type_name, blueprint.product_type_name, blueprint.owner_name, blueprint.location_name, blueprint.product_category_name, blueprint.product_group_name, blueprint.is_copy ? "BPC" : "BPO", blueprint.research_shadow ? "in research" : null, blueprint.active_use?.activity, `ME ${blueprint.material_efficiency}`, `TE ${blueprint.time_efficiency}`].filter(Boolean).join(" ").toLowerCase().includes(searchNeedle)) : subtypeFilteredBlueprints;
 
   const visibleBlueprints = [...filteredBlueprints].sort((left, right) => {
 
@@ -1895,7 +2006,8 @@ function BlueprintList({ blueprints, assets = [], onOpenMarket, onOpenAssets }: 
       <label>Subtype<select value={subtypeFilter} onChange={(event) => setSubtypeFilter(event.target.value)}><option value="">All subtypes</option>{subtypeOptions.map((subtype) => <option key={subtype} value={subtype}>{subtype}</option>)}</select></label>
     </div>
     <div className="blueprint-filter owners"><button type="button" className={ownerFilter === null ? "active" : ""} onClick={() => setOwnerFilter(null)}>All owners <span>{blueprints.length.toLocaleString()}</span></button>{ownerOptions.map((owner) => <button type="button" key={owner} className={ownerFilter === owner ? "active" : ""} onClick={() => setOwnerFilter(owner)}>{owner} <span>{(ownerCounts.get(owner) ?? 0).toLocaleString()}</span></button>)}</div>
-    <div className="card-list">{visibleBlueprints.map((bp) => { const ownedOutput = visibleAssetQuantity(assets, bp.product_type_name); const outputLocations = visibleAssetLocations(assets, bp.product_type_name); return <article key={bp.id}><BlueprintHoverCard details={blueprintHoverDetails(bp)}><strong>{bp.blueprint_type_name}</strong></BlueprintHoverCard><span><button type="button" className="inline-filter" onClick={() => setOwnerFilter(bp.owner_name)}>{bp.owner_name}</button> · {bp.product_type_name ?? "No product"}</span>{bp.product_group_name && <small>{bp.product_category_name ? `${bp.product_category_name} / ` : ""}{bp.product_group_name}</small>}{bp.product_type_name && <div className="blueprint-context"><span className={ownedOutput > 0 ? "context-owned" : "context-missing"}>Owned output: {numberFormatter.format(ownedOutput)}</span>{outputLocations.length > 0 && <small>{outputLocations.join(" | ")}</small>}<div className="context-actions">{onOpenAssets && <button type="button" onClick={() => onOpenAssets(bp.product_type_name!)}>Assets</button>}{onOpenMarket && <button type="button" onClick={() => onOpenMarket(`1 ${bp.product_type_name}`)}>Price output</button>}</div></div>}<div className="badge-row"><button type="button" className="bp-badge" onClick={() => chooseSort("me")}>ME {bp.material_efficiency}</button><button type="button" className="bp-badge" onClick={() => chooseSort("te")}>TE {bp.time_efficiency}</button><button type="button" className={bp.is_copy ? "bp-badge copy" : "bp-badge original"} onClick={() => setKindFilter(bp.is_copy ? "bpc" : "bpo")}>{bp.is_copy ? "BPC" : "BPO"}</button>{bp.product_group_name && <button type="button" className="bp-badge" onClick={() => applyBlueprintSubtypeFilter(bp)}>{bp.product_group_name}</button>}{bp.capital_construction_related && <button type="button" className="bp-badge original" onClick={() => { setCategoryFilter("capital-construction"); setSubtypeFilter(""); }}>Capital chain</button>}</div></article>; })}{blueprints.length === 0 && <p className="empty">No blueprints yet.</p>}{blueprints.length > 0 && visibleBlueprints.length === 0 && <p className="empty">{searchNeedle ? `No blueprints match "${searchText.trim()}".` : "No blueprints match this filter."}</p>}</div>
+    {api && <InventoryExportControls api={api} endpoint="/quartermaster/blueprints-export" kind="blueprints" filters={{ kind: kindFilter, owner: ownerFilter, category: categoryFilter, subtype: subtypeFilter || null, search: searchText.trim(), sort_key: sortKey, sort_direction: sortDirection }} />}
+    <div className="card-list">{visibleBlueprints.map((bp) => { const ownedOutput = visibleAssetQuantity(assets, bp.product_type_name); const outputLocations = visibleAssetLocations(assets, bp.product_type_name); return <article key={bp.id}><BlueprintHoverCard details={blueprintHoverDetails(bp)}><strong>{bp.blueprint_type_name}</strong></BlueprintHoverCard><span><button type="button" className="inline-filter" onClick={() => setOwnerFilter(bp.owner_name)}>{bp.owner_name}</button> · {bp.product_type_name ?? "No product"}</span>{bp.product_group_name && <small>{bp.product_category_name ? `${bp.product_category_name} / ` : ""}{bp.product_group_name}</small>}{bp.product_type_name && <div className="blueprint-context"><span className={ownedOutput > 0 ? "context-owned" : "context-missing"}>Owned output: {numberFormatter.format(ownedOutput)}</span>{outputLocations.length > 0 && <small>{outputLocations.join(" | ")}</small>}<div className="context-actions">{onOpenAssets && <button type="button" onClick={() => onOpenAssets(bp.product_type_name!)}>Assets</button>}{onOpenMarket && <button type="button" onClick={() => onOpenMarket(`1 ${bp.product_type_name}`)}>Price output</button>}</div></div>}<div className="badge-row"><button type="button" className="bp-badge" onClick={() => chooseSort("me")}>ME {bp.material_efficiency}</button><button type="button" className="bp-badge" onClick={() => chooseSort("te")}>TE {bp.time_efficiency}</button><button type="button" className={bp.is_copy ? "bp-badge copy" : "bp-badge original"} onClick={() => setKindFilter(bp.is_copy ? "bpc" : "bpo")}>{bp.is_copy ? "BPC" : "BPO"}</button>{bp.research_shadow && <span className="bp-badge research">In research · {bp.active_use?.activity ?? "Active"}</span>}{bp.product_group_name && <button type="button" className="bp-badge" onClick={() => applyBlueprintSubtypeFilter(bp)}>{bp.product_group_name}</button>}{bp.capital_construction_related && <button type="button" className="bp-badge original" onClick={() => { setCategoryFilter("capital-construction"); setSubtypeFilter(""); }}>Capital chain</button>}</div></article>; })}{blueprints.length === 0 && <p className="empty">No blueprints yet.</p>}{blueprints.length > 0 && visibleBlueprints.length === 0 && <p className="empty">{searchNeedle ? `No blueprints match "${searchText.trim()}".` : "No blueprints match this filter."}</p>}</div>
     <MissingBlueprintPane onOpenMarket={onOpenMarket} onOpenAssets={onOpenAssets} />
   </div>;
 
@@ -2099,7 +2211,7 @@ function ManagedForm({ children, onSubmit, submitLabel = "Save" }: { children: R
 
 function titleFor(tab: string) {
 
-  return ({ overview: "Quartermaster Overview", ownership: "Ownership and Locations", characters: "Characters", roster: "Alliance Roster", navigation: "Navigation", market: "Market Appraisal", exchange: "Corporate Exchange", hypernet: "HyperNet Tracker", calendar_events: "Calendar & Events", notes: "Notes & Lists", manufacturing: "Manufacturing", research_projects: "Research Projects", mining: "Mining Ledger", planetary_industry: "Planetary Industry", contracts: "Contracts", analytics: "Analytics Platform", recruiting: "Recruiting", skills: "Character Skills", fittings: "Fittings", jump_clones: "Jump Clones", settings: "Settings", corporations: "Corporations", assets: "Asset Ledger", industry: "Blueprints and Recipes", esi: "ESI Sync", profile: "Profile", users: "User Administration", audit: "Audit Log" } as Record<string, string>)[tab];
+  return ({ overview: "Quartermaster Overview", ownership: "Ownership and Locations", characters: "Characters", roster: "Alliance Roster", navigation: "Navigation", market: "Market Appraisal", exchange: "Corporate Exchange", hypernet: "HyperNet Tracker", calendar_events: "Calendar & Events", doctrines: "Doctrine Management", srp: "SRP Requests", notes: "Notes & Lists", manufacturing: "Manufacturing", research_projects: "Research Projects", mining: "Mining Ledger", planetary_industry: "Planetary Industry", contracts: "Contracts", analytics: "Analytics Platform", recruiting: "Recruiting", skills: "Character Skills & Plans", fittings: "Fittings", jump_clones: "Jump Clones", settings: "Settings", corporations: "Corporations", assets: "Asset Ledger", industry: "Blueprints and Recipes", esi: "ESI Sync", profile: "Profile", users: "User Administration", audit: "Audit Log" } as Record<string, string>)[tab];
 
 }
 
@@ -2107,7 +2219,7 @@ function titleFor(tab: string) {
 
 function subtitleFor(tab: string) {
 
-  return ({ overview: "Live status and the first useful totals from the database.", ownership: "Define the characters, corporations, manual buckets, and places assets can belong to.", characters: "Assign EVE characters to Quartermaster accounts and control public asset visibility.", roster: "A corporation-grouped character roster suitable for diplomats and prospective members.", navigation: "Plan gate routes from imported SDE map data before layering on kill checks and local threat analysis.", market: "Paste item lists and compare buy, sell, and split prices across trade hubs.", hypernet: "Plan, monitor, and reconcile HyperNet offers with seller-seeded nodes kept separate from organic participation.", calendar_events: "Plan fleets, register pilots, record attendance, and measure participation.", notes: "Keep private working notes and destination-aware resupply lists with live asset context.", manufacturing: "Track manufacturing jobs, costs, required inputs, hub prices, and production history.", research_projects: "Monitor ESI research, copying, and invention queues while retaining project history for analytics.", mining: "Track persistent per-character mining yield, residue efficiency, and named fleet operations.", planetary_industry: "Monitor synchronized colonies, extractor cycles, routed production, storage, and factory health.", contracts: "Sync and review current character and corporation contracts.", analytics: "Snapshot history, metric widgets, exports, and the foundation for custom dashboards.", recruiting: "Configure public recruiting, review applicants, and coordinate interviews without exposing internal notes.", skills: "Import trained skills, total skill points, and active skill queues from ESI.", fittings: "Sync saved EVE fittings, review modules, experiment in a scratchpad, and copy EFT-style text.", jump_clones: "Sync jump clones, inspect implants, and build custom implant sets for fitting experiments.", settings: "Control character visibility and sync privacy.", corporations: "Review enrolled corporations and sync corporation asset ledgers through authorized CEO or director tokens.", assets: "Track item stacks by owner, type, location, and EVE-style location flag.", industry: "Store blueprints, recipe activities, and material inputs before wiring in SDE imports.", esi: "A holding area for the upcoming SSO and sync work.", profile: "Manage your account and private messages.", users: "Manage Quartermaster accounts and role levels.", audit: "Review sync peeks, system events, and administrative activity." } as Record<string, string>)[tab];
+  return ({ overview: "Live status and the first useful totals from the database.", ownership: "Define the characters, corporations, manual buckets, and places assets can belong to.", characters: "Assign EVE characters to Quartermaster accounts and control public asset visibility.", roster: "A corporation-grouped character roster suitable for diplomats and prospective members.", navigation: "Plan gate routes from imported SDE map data before layering on kill checks and local threat analysis.", market: "Paste item lists and compare buy, sell, and split prices across trade hubs.", hypernet: "Plan, monitor, and reconcile HyperNet offers with seller-seeded nodes kept separate from organic participation.", calendar_events: "Plan fleets, register pilots, record attendance, and measure participation.", doctrines: "Build canonical operational doctrines with configurable priorities, fittings, and readiness plans.", srp: "Submit and review timezone-safe ship replacement requests against EQM characters and fittings.", notes: "Keep private working notes and destination-aware resupply lists with live asset context.", manufacturing: "Track manufacturing jobs, costs, required inputs, hub prices, and production history.", research_projects: "Monitor ESI manufacturing, research, copying, and invention queues while retaining project history for analytics.", mining: "Track persistent per-character mining yield, residue efficiency, and named fleet operations.", planetary_industry: "Monitor synchronized colonies, extractor cycles, routed production, storage, and factory health.", contracts: "Sync and review current character and corporation contracts.", analytics: "Snapshot history, metric widgets, exports, and the foundation for custom dashboards.", recruiting: "Configure public recruiting, review applicants, and coordinate interviews without exposing internal notes.", skills: "Review trained skills and maintain manual or fitting-generated skill plans.", fittings: "Sync saved EVE fittings, review modules, experiment in a scratchpad, and copy EFT-style text.", jump_clones: "Sync jump clones, inspect implants, and build custom implant sets for fitting experiments.", settings: "Control character visibility and sync privacy.", corporations: "Review enrolled corporations and sync corporation asset ledgers through authorized CEO or director tokens.", assets: "Track item stacks by owner, type, location, and EVE-style location flag.", industry: "Store blueprints, recipe activities, and material inputs before wiring in SDE imports.", esi: "Review dataset freshness, durable jobs, missing scopes, privacy-disabled collection, and linked-character authorization.", profile: "Manage your account and private messages.", users: "Manage Quartermaster accounts and role levels.", audit: "Review sync peeks, system events, and administrative activity." } as Record<string, string>)[tab];
 
 }
 

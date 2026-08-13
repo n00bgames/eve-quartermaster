@@ -1,8 +1,8 @@
-import { Beaker, Clock3, Copy, FlaskConical, RefreshCw } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Beaker, Clock3, Copy, Factory, FlaskConical, RefreshCw } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { BlueprintHoverCard } from "../../components/BlueprintHoverCard";
-import { pollCharacterSyncJob } from "../../lib/characterSyncPolling";
+import { isCharacterSyncPollingAborted, resumeCharacterSyncJob, trackCharacterSyncJob } from "../../lib/characterSyncPolling";
 
 import { ResearchQueuePlanner } from "./ResearchQueuePlanner";
 
@@ -18,7 +18,7 @@ type Project = {
 };
 type Payload = {
   as_of: string;
-  summary: { active: number; material_efficiency: number; time_efficiency: number; copying: number; invention: number; history: number };
+  summary: { active: number; manufacturing: number; material_efficiency: number; time_efficiency: number; copying: number; invention: number; history: number };
   sync_tokens: { token_id: number; character_id: number; character_name: string; has_scope: boolean; has_corporation_scope: boolean; has_corporation_role_scope: boolean; can_sync: boolean }[];
   projects: Project[];
 };
@@ -55,6 +55,7 @@ export function ResearchProjectsPage({ api, formatDateTime }: { api: ApiClient; 
   const [busy, setBusy] = useState(false);
   const [syncJob, setSyncJob] = useState<SyncJob | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const syncPollAbortRef = useRef<AbortController | null>(null);
 
 
   async function load() {
@@ -68,21 +69,40 @@ export function ResearchProjectsPage({ api, formatDateTime }: { api: ApiClient; 
     try {
       const initialJob = await api<SyncJob>("/esi/sync/characters/all?sync_kind=research", { method: "POST", body: "{}" });
       setSyncJob(initialJob);
-      const job = await pollCharacterSyncJob({
+      const job = await trackCharacterSyncJob({
+        scope: "research-all",
         initialJob,
         fetchLatest: (current) => api<SyncJob>(`/esi/sync/characters/all/${current.job_id}`),
         onUpdate: setSyncJob,
+        signal: syncPollAbortRef.current?.signal,
       });
       await load();
       if (job.failed_count) setError(job.errors.join(" · "));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Research sync failed");
+      if (!isCharacterSyncPollingAborted(err)) setError(err instanceof Error ? err.message : "Research sync failed");
     } finally {
       setBusy(false);
     }
   }
 
-  useEffect(() => { void load().catch((err) => setError(err instanceof Error ? err.message : "Unable to load research projects")); }, []);
+  useEffect(() => {
+    const controller = new AbortController();
+    syncPollAbortRef.current = controller;
+    void load().catch((err) => setError(err instanceof Error ? err.message : "Unable to load research projects"));
+    void resumeCharacterSyncJob<SyncJob>({
+      scope: "research-all",
+      fetchById: (jobId) => api<SyncJob>(`/esi/sync/characters/all/${jobId}`),
+      onUpdate: (job) => { setSyncJob(job); setBusy(true); },
+      signal: controller.signal,
+    }).then(async (job) => {
+      if (!job) return;
+      await load();
+      if (job.failed_count) setError(job.errors.join(" · "));
+    }).catch((err) => {
+      if (!isCharacterSyncPollingAborted(err)) setError(err instanceof Error ? err.message : "Unable to resume research sync");
+    }).finally(() => setBusy(false));
+    return () => controller.abort();
+  }, []);
 
   const projects = useMemo(() => {
     return (data?.projects ?? []).filter((project) => {
@@ -118,13 +138,14 @@ export function ResearchProjectsPage({ api, formatDateTime }: { api: ApiClient; 
 
   return <section className="panel stacked research-projects-page">
     <div className="section-heading">
-      <div><h3>Research Projects</h3><p>Current character and corporation blueprint research, copying, and invention queues with retained history for analytics.</p></div>
-      <div className="button-row compact"><button type="button" disabled={busy || eligible === 0} onClick={() => void syncAll()}><RefreshCw size={16} />{busy ? "Syncing" : "Sync all research"}</button><button type="button" disabled={busy} onClick={() => void load()}><RefreshCw size={16} />Refresh</button></div>
+      <div><h3>Research Projects</h3><p>Current character and corporation manufacturing, research, copying, and invention queues with retained history for analytics.</p></div>
+      <div className="button-row compact"><button type="button" disabled={busy || eligible === 0} onClick={() => void syncAll()}><RefreshCw size={16} />{busy ? "Syncing" : "Sync all projects"}</button><button type="button" disabled={busy} onClick={() => void load()}><RefreshCw size={16} />Refresh</button></div>
     </div>
     {error && <div className="mini-alert">{error}</div>}
-    {syncJob && <div className={`research-sync-status ${syncJob.failed_count ? "has-errors" : ""}`}><div><strong>{syncJob.processed_count} / {syncJob.total_count}</strong><span>{syncJob.current_character_name ? `Syncing ${syncJob.current_character_name}` : syncJob.status === "complete" ? "Research sync complete" : syncJob.status === "failed" ? "Research sync needs review" : "Research sync queued"}</span></div><progress max={100} value={syncPercent} /><small>{syncJob.success_count} synced · {syncJob.failed_count} failed · {syncJob.skipped_count} skipped</small></div>}
+    {syncJob && <div className={`research-sync-status ${syncJob.failed_count ? "has-errors" : ""}`}><div><strong>{syncJob.processed_count} / {syncJob.total_count}</strong><span>{syncJob.current_character_name ? `Syncing ${syncJob.current_character_name}` : syncJob.status === "complete" ? "Industry-project sync complete" : syncJob.status === "failed" ? "Industry-project sync needs review" : "Industry-project sync queued"}</span></div><progress max={100} value={syncPercent} /><small>{syncJob.success_count} synced · {syncJob.failed_count} failed · {syncJob.skipped_count} skipped</small></div>}
     <div className="status-grid research-summary-grid">
       <article><Beaker size={19} /><span>Active</span><strong>{data?.summary.active ?? 0}</strong></article>
+      <article><Factory size={19} /><span>Manufacturing</span><strong>{data?.summary.manufacturing ?? 0}</strong></article>
       <article><FlaskConical size={19} /><span>ME / TE</span><strong>{(data?.summary.material_efficiency ?? 0) + (data?.summary.time_efficiency ?? 0)}</strong></article>
       <article><Copy size={19} /><span>Copying</span><strong>{data?.summary.copying ?? 0}</strong></article>
       <article><Beaker size={19} /><span>Invention</span><strong>{data?.summary.invention ?? 0}</strong></article>
@@ -132,15 +153,15 @@ export function ResearchProjectsPage({ api, formatDateTime }: { api: ApiClient; 
     </div>
     <div className="research-controls">
       <div className="owner-kind-chips"><button type="button" className={view === "active" ? "active" : ""} onClick={() => setView("active")}>In progress</button><button type="button" className={view === "history" ? "active" : ""} onClick={() => setView("history")}>History</button></div>
-      <label>Activity<select value={activity} onChange={(event) => setActivity(event.target.value)}><option value="all">All activities</option><option value="4">Material Efficiency</option><option value="3">Time Efficiency</option><option value="5">Copying</option><option value="8">Invention</option></select></label>
+      <label>Activity<select value={activity} onChange={(event) => setActivity(event.target.value)}><option value="all">All activities</option><option value="1">Manufacturing</option><option value="4">Material Efficiency</option><option value="3">Time Efficiency</option><option value="5">Copying</option><option value="8">Invention</option></select></label>
     </div>
     <div className="table-wrap research-table-wrap">
       <table className="research-table">
         <thead><tr><th>{sortHeader("blueprint", "Blueprint")}</th><th>{sortHeader("activity", "Activity")}</th><th>{sortHeader("installer", "Installed by")}</th><th>{sortHeader("owner", "Owner")}</th><th>{sortHeader("status", "Status")}</th><th>{sortHeader("runs", "Runs")}</th><th>{sortHeader("facility", "Facility")}</th><th>{sortHeader("cost", "Cost")}</th><th>{sortHeader("timing", "Timeline")}</th></tr></thead>
         <tbody>
           {projects.map((project) => <ResearchProjectRow key={project.id} project={project} formatDateTime={formatDateTime} />)}
-          {data && projects.length === 0 && <tr><td colSpan={9}>No {view === "active" ? "active" : "historical"} research projects match this filter.</td></tr>}
-          {!data && !error && <tr><td colSpan={9}>Loading research projects...</td></tr>}
+          {data && projects.length === 0 && <tr><td colSpan={9}>No {view === "active" ? "active" : "historical"} industry projects match this filter.</td></tr>}
+          {!data && !error && <tr><td colSpan={9}>Loading industry projects...</td></tr>}
         </tbody>
       </table>
     </div>

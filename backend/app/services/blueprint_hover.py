@@ -27,6 +27,7 @@ def research_use_payload(project: ResearchProject) -> dict[str, Any]:
         "status": project.status,
         "job_id": project.job_id,
         "runs": project.runs,
+        "facility_id": getattr(project, "facility_id", None),
         "facility": project.facility_name,
         "installer": project.character.name if project.character else project.installer_name,
         "start_date": project.start_date.isoformat() if project.start_date else None,

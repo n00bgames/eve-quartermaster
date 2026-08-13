@@ -14,7 +14,8 @@ import httpx
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from fastapi.responses import RedirectResponse
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.config import get_settings
@@ -41,6 +42,7 @@ from app.api.auth import can_view_all_characters, get_current_user
 from app.services.permissions import ROLE_RANK, can_view_section, role_rank
 from app.services.recruiting import applicant_application, audit as recruitment_audit, sync_recruitment_character
 from app.services.skill_dogma import build_skill_dogma
+from app.services.sync_freshness import CHARACTER_SYNC_DATASETS, dataset_freshness
 
 router = APIRouter(prefix="/esi", tags=["esi"])
 
@@ -199,6 +201,8 @@ def auth_scopes_for_group(scope_group: str | None) -> list[str]:
         return _unique_scopes(CORE_AUTH_SCOPES + MAIL_SYNC_SCOPES)
     if group in {"planet", "planets", "planetary", "planetary_industry", "pi"}:
         return _unique_scopes(CORE_AUTH_SCOPES + PLANETARY_AUTH_SCOPES)
+    if group in {"fitting", "fittings", "send_fitting"}:
+        return _unique_scopes(CORE_AUTH_SCOPES)
     if group == "full":
         return _unique_scopes(PUBLIC_SCOPES)
     return _unique_scopes(CORE_AUTH_SCOPES)
@@ -882,6 +886,134 @@ def linked_characters(current_user: User = Depends(get_current_user), db: Sessio
     return results
 
 
+@router.get("/sync-freshness")
+def sync_freshness(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+    """Return a permission-filtered view of durable ESI dataset health."""
+    token_query = (
+        select(EsiToken, EveCharacter, User)
+        .join(EveCharacter, EveCharacter.id == EsiToken.character_id)
+        .join(User, User.id == EsiToken.user_id)
+        .where(EsiToken.revoked_at.is_(None))
+        .order_by(EveCharacter.name, EsiToken.created_at.desc())
+    )
+    if current_user.role not in {"host", "admin"}:
+        token_query = token_query.where(EsiToken.user_id == current_user.id)
+    token_rows = db.execute(token_query).all()
+    token_ids = [token.id for token, _, _ in token_rows]
+    sync_types = {dataset.key for dataset in CHARACTER_SYNC_DATASETS}
+
+    latest_by_dataset: dict[tuple[int, str], EsiSyncJob] = {}
+    recent_jobs: list[EsiSyncJob] = []
+    if token_ids:
+        latest_job_ids = (
+            select(func.max(EsiSyncJob.id))
+            .where(EsiSyncJob.token_id.in_(token_ids), EsiSyncJob.sync_type.in_(sync_types))
+            .group_by(EsiSyncJob.token_id, EsiSyncJob.sync_type)
+        )
+        jobs = db.scalars(select(EsiSyncJob).where(EsiSyncJob.id.in_(latest_job_ids))).all()
+        recent_jobs = list(db.scalars(
+            select(EsiSyncJob)
+            .where(EsiSyncJob.token_id.in_(token_ids))
+            .order_by(EsiSyncJob.finished_at.desc().nullslast(), EsiSyncJob.started_at.desc().nullslast(), EsiSyncJob.created_at.desc())
+            .limit(25)
+        ).all())
+        for job in jobs:
+            if job.token_id is not None and job.sync_type in sync_types:
+                latest_by_dataset.setdefault((job.token_id, job.sync_type), job)
+
+    generated_at = datetime.now(timezone.utc)
+    counts = {key: 0 for key in ("current", "active", "stale", "failed", "never_synced", "missing_scope", "disabled", "skipped")}
+    characters: list[dict[str, Any]] = []
+    token_names: dict[int, str] = {}
+    for token, character, linked_user in token_rows:
+        token_names[token.id] = character.name
+        granted_scopes = token_scopes(token)
+        datasets = []
+        for dataset in CHARACTER_SYNC_DATASETS:
+            disabled_reason = None
+            if character.sync_opt_out:
+                disabled_reason = "Character sync is disabled by its owner"
+            elif dataset.key == "character_wallet" and character.wallet_history_opt_out:
+                disabled_reason = "Wallet history collection is disabled by its owner"
+            state = dataset_freshness(
+                dataset,
+                granted_scopes=granted_scopes,
+                job=latest_by_dataset.get((token.id, dataset.key)),
+                now=generated_at,
+                disabled_reason=disabled_reason,
+            )
+            counts[state["health"]] += 1
+            datasets.append(state)
+        characters.append(
+            {
+                "token_id": token.id,
+                "character_id": character.character_id,
+                "character_name": character.name,
+                "linked_user_id": token.user_id,
+                "linked_user_display_name": linked_user.display_name,
+                "sync_opt_out": character.sync_opt_out,
+                "datasets": datasets,
+            }
+        )
+
+    from app.api.planetary_industry import PLANETARY_SYNC_JOBS
+
+    active_batches = []
+    for job_kind, jobs in (
+        ("Character data", CHARACTER_SYNC_ALL_JOBS),
+        ("Character skills", SKILL_SYNC_JOBS),
+        ("Planetary Industry", PLANETARY_SYNC_JOBS),
+    ):
+        for job in jobs.values():
+            if job.get("user_id") != current_user.id or job.get("status") not in {"queued", "running"}:
+                continue
+            active_batches.append(
+                {
+                    "job_id": job["job_id"],
+                    "job_kind": job_kind,
+                    "status": job["status"],
+                    "total_count": job["total_count"],
+                    "processed_count": job["processed_count"],
+                    "success_count": job["success_count"],
+                    "failed_count": job["failed_count"],
+                    "skipped_count": job["skipped_count"],
+                    "current_character_name": job.get("current_character_name"),
+                    "current_sync_kind": job.get("current_sync_kind") or ("skills" if job_kind == "Character skills" else None),
+                    "updated_at": job.get("updated_at"),
+                }
+            )
+
+    attention_count = counts["stale"] + counts["failed"] + counts["never_synced"]
+    return {
+        "generated_at": generated_at.isoformat(),
+        "summary": {
+            "linked_characters": len(characters),
+            "datasets": sum(counts.values()),
+            "current": counts["current"],
+            "active": max(counts["active"], len(active_batches)),
+            "attention": attention_count,
+            "missing_scope": counts["missing_scope"],
+            "disabled": counts["disabled"],
+            "counts": counts,
+        },
+        "characters": characters,
+        "active_batches": active_batches,
+        "recent_jobs": [
+            {
+                "id": job.id,
+                "token_id": job.token_id,
+                "character_name": token_names.get(job.token_id or -1),
+                "sync_type": job.sync_type,
+                "status": job.status.value,
+                "started_at": job.started_at.isoformat() if job.started_at else None,
+                "finished_at": job.finished_at.isoformat() if job.finished_at else None,
+                "message": job.message[:500] if job.message else None,
+            }
+            for job in recent_jobs
+        ],
+    }
+
+
 
 def serialize_character_skill_record(skill: CharacterSkill) -> dict[str, Any]:
     skill_type = skill.skill_type
@@ -1155,6 +1287,7 @@ async def start_character_skills_sync_all(current_user: User = Depends(get_curre
     now = utc_job_iso()
     SKILL_SYNC_JOBS[job_id] = {
         "job_id": job_id,
+        "user_id": current_user.id,
         "status": "queued",
         "created_at": now,
         "updated_at": now,
@@ -1175,7 +1308,7 @@ async def start_character_skills_sync_all(current_user: User = Depends(get_curre
 @router.get("/sync/character-skills/all/{job_id}")
 def get_character_skills_sync_all_job(job_id: str, current_user: User = Depends(get_current_user)) -> dict[str, Any]:
     job = SKILL_SYNC_JOBS.get(job_id)
-    if job is None:
+    if job is None or job.get("user_id") != current_user.id:
         raise HTTPException(status_code=404, detail="Skill sync job was not found. It may have been cleared by a backend restart.")
     return skill_sync_job_payload(job)
 
@@ -1324,6 +1457,92 @@ async def fetch_character_wallet_pages(client: EsiClient, path: str) -> list[dic
         page += 1
 
 
+def upsert_character_wallet_journal_rows(
+    db: Session,
+    *,
+    character_id: int,
+    journal_rows: list[dict[str, Any]],
+    transactions: dict[int, dict[str, Any]],
+    transaction_names: dict[int, str],
+    synced_at: datetime,
+) -> int:
+    """Deduplicate ESI pages and atomically refresh journal rows by reference ID."""
+    values_by_reference: dict[int, dict[str, Any]] = {}
+    for row in journal_rows:
+        reference_id = row.get("id")
+        occurred_at = parse_esi_datetime(row.get("date"))
+        reference_type = row.get("ref_type")
+        if reference_id is None or occurred_at is None or not reference_type:
+            continue
+        context_id = row.get("context_id")
+        try:
+            transaction = transactions.get(int(context_id)) if context_id is not None else None
+        except (TypeError, ValueError):
+            transaction = None
+        item_type_id = int(transaction["type_id"]) if transaction is not None and transaction.get("type_id") is not None else None
+        values_by_reference[int(reference_id)] = {
+            "character_id": character_id,
+            "reference_id": int(reference_id),
+            "occurred_at": occurred_at,
+            "reference_type": str(reference_type),
+            "amount": row.get("amount"),
+            "balance": row.get("balance"),
+            "description": row.get("description"),
+            "reason": row.get("reason"),
+            "first_party_id": row.get("first_party_id"),
+            "second_party_id": row.get("second_party_id"),
+            "context_id": context_id,
+            "context_id_type": row.get("context_id_type"),
+            "item_type_id": item_type_id,
+            "item_name": transaction_names.get(item_type_id) if item_type_id is not None else None,
+            "quantity": transaction.get("quantity") if transaction is not None else None,
+            "unit_price": transaction.get("unit_price") if transaction is not None else None,
+            "is_buy": bool(transaction.get("is_buy")) if transaction is not None else None,
+            "tax": row.get("tax"),
+            "tax_receiver_id": row.get("tax_receiver_id"),
+            "last_synced_at": synced_at,
+        }
+    if not values_by_reference:
+        return 0
+
+    statement = pg_insert(CharacterWalletJournalEntry).values(list(values_by_reference.values()))
+    update_columns = {
+        column: getattr(statement.excluded, column)
+        for column in (
+            "occurred_at",
+            "reference_type",
+            "amount",
+            "balance",
+            "description",
+            "reason",
+            "first_party_id",
+            "second_party_id",
+            "context_id",
+            "context_id_type",
+            "item_type_id",
+            "item_name",
+            "quantity",
+            "unit_price",
+            "is_buy",
+            "tax",
+            "tax_receiver_id",
+            "last_synced_at",
+        )
+    }
+    db.execute(
+        statement.on_conflict_do_update(
+            constraint="uq_character_wallet_journal_reference",
+            set_=update_columns,
+        )
+    )
+    return len(values_by_reference)
+
+
+def compact_wallet_sync_error(exc: Exception) -> str:
+    message = str(exc).split("\n[parameters:", 1)[0].strip()
+    return message[:2000] or exc.__class__.__name__
+
+
 async def sync_character_wallet_for_token(token_id: int, current_user: User, db: Session, *, allow_opt_out_override: bool = True) -> dict[str, Any]:
     token, character = get_linked_token(db, token_id)
     if not can_force_sync_character_token(token, character, current_user, db):
@@ -1351,41 +1570,14 @@ async def sync_character_wallet_for_token(token_id: int, current_user: User, db:
         transaction_names = {row.type_id: row.name for row in db.scalars(select(EveType).where(EveType.type_id.in_(transaction_type_ids))).all()} if transaction_type_ids else {}
         transactions = {int(row["transaction_id"]): row for row in transaction_rows if row.get("transaction_id") is not None}
         now = datetime.now(timezone.utc)
-        synced = 0
-        for row in journal_rows:
-            reference_id = row.get("id")
-            occurred_at = parse_esi_datetime(row.get("date"))
-            reference_type = row.get("ref_type")
-            if reference_id is None or occurred_at is None or not reference_type:
-                continue
-            entry = db.scalar(select(CharacterWalletJournalEntry).where(
-                CharacterWalletJournalEntry.character_id == character.id,
-                CharacterWalletJournalEntry.reference_id == int(reference_id),
-            ))
-            if entry is None:
-                entry = CharacterWalletJournalEntry(character_id=character.id, reference_id=int(reference_id), occurred_at=occurred_at, reference_type=str(reference_type))
-                db.add(entry)
-            entry.occurred_at = occurred_at
-            entry.reference_type = str(reference_type)
-            entry.amount = row.get("amount")
-            entry.balance = row.get("balance")
-            entry.description = row.get("description")
-            entry.reason = row.get("reason")
-            entry.first_party_id = row.get("first_party_id")
-            entry.second_party_id = row.get("second_party_id")
-            entry.context_id = row.get("context_id")
-            entry.context_id_type = row.get("context_id_type")
-            transaction = transactions.get(int(entry.context_id)) if entry.context_id is not None else None
-            if transaction is not None:
-                entry.item_type_id = int(transaction["type_id"]) if transaction.get("type_id") is not None else None
-                entry.item_name = transaction_names.get(entry.item_type_id) if entry.item_type_id is not None else None
-                entry.quantity = transaction.get("quantity")
-                entry.unit_price = transaction.get("unit_price")
-                entry.is_buy = bool(transaction.get("is_buy"))
-            entry.tax = row.get("tax")
-            entry.tax_receiver_id = row.get("tax_receiver_id")
-            entry.last_synced_at = now
-            synced += 1
+        synced = upsert_character_wallet_journal_rows(
+            db,
+            character_id=character.id,
+            journal_rows=journal_rows,
+            transactions=transactions,
+            transaction_names=transaction_names,
+            synced_at=now,
+        )
         character.current_wallet_balance = Decimal(str(balance_payload))
         character.wallet_synced_at = now
         character.last_synced_at = now
@@ -1401,7 +1593,7 @@ async def sync_character_wallet_for_token(token_id: int, current_user: User, db:
         failed_job = db.get(EsiSyncJob, job_id)
         if failed_job is not None:
             failed_job.status = SyncStatus.FAILED
-            failed_job.message = str(exc)
+            failed_job.message = compact_wallet_sync_error(exc)
             failed_job.finished_at = datetime.now(timezone.utc)
             db.commit()
         raise
@@ -1477,7 +1669,7 @@ async def sync_character_research_for_token(token_id: int, current_user: User, d
         rows = await fetch_character_industry_jobs(client, character.character_id)
         synced, active = upsert_research_projects(db, character.id, rows)
         job.status = SyncStatus.SUCCESS
-        job.message = f"Synced {synced} research projects for {character.name}."
+        job.message = f"Synced {synced} industry projects for {character.name}."
         job.finished_at = datetime.now(timezone.utc)
         db.commit()
         return {"status": "synced", "character_name": character.name, "projects": synced, "active_projects": active, "job_id": job.id}
@@ -1614,7 +1806,7 @@ async def sync_corporation_research_for_tokens(
                 )
                 job.status = SyncStatus.SUCCESS
                 scope_label = "linked-character corporation" if linked_installers_only else "corporation"
-                job.message = f"Synced {synced} {scope_label} research projects for {corporation.name} using {character.name}."
+                job.message = f"Synced {synced} {scope_label} industry projects for {corporation.name} using {character.name}."
                 job.finished_at = datetime.now(timezone.utc)
                 db.commit()
                 return {
@@ -1872,6 +2064,7 @@ async def start_characters_sync_all(sync_kind: str | None = Query(None), current
     now = utc_job_iso()
     CHARACTER_SYNC_ALL_JOBS[job_id] = {
         "job_id": job_id,
+        "user_id": current_user.id,
         "status": "queued",
         "created_at": now,
         "updated_at": now,
@@ -1893,7 +2086,7 @@ async def start_characters_sync_all(sync_kind: str | None = Query(None), current
 @router.get("/sync/characters/all/{job_id}")
 def get_characters_sync_all_job(job_id: str, current_user: User = Depends(get_current_user)) -> dict[str, Any]:
     job = CHARACTER_SYNC_ALL_JOBS.get(job_id)
-    if job is None:
+    if job is None or job.get("user_id") != current_user.id:
         raise HTTPException(status_code=404, detail="Character sync job was not found. It may have been cleared by a backend restart.")
     return character_sync_all_job_payload(job)
 
@@ -2624,6 +2817,8 @@ async def auth_callback(code: str | None = None, state: str | None = None, db: S
         destination = "recruiting"
     elif state_mode in {"planet", "planets", "planetary", "planetary_industry", "pi"}:
         destination = "planetary_industry"
+    elif state_mode in {"fitting", "fittings", "send_fitting"}:
+        destination = "fittings"
     else:
         destination = "esi"
     return RedirectResponse(url=f"{settings.frontend_url}/?{query}#{destination}", status_code=303)

@@ -12,6 +12,7 @@ from app.services.analytics import analytics_corporation_ids
 from app.services.esi_client import EsiClient
 
 RESEARCH_ACTIVITY_NAMES = {
+    1: "Manufacturing",
     3: "Time Efficiency",
     4: "Material Efficiency",
     5: "Copying",

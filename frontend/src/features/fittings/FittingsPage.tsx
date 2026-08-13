@@ -35,7 +35,7 @@ type FittingsPageProps = {
 };
 export function FittingsPage({ currentUser, assets, seed, onOpenAssets, onOpenMarket, api }: FittingsPageProps) {
 
-  const [payload, setPayload] = useState<FittingsPayload>({ fittings: [], sync_tokens: [], editable_flags: [] });
+  const [payload, setPayload] = useState<FittingsPayload>({ fittings: [], sync_tokens: [], send_tokens: [], editable_flags: [] });
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
@@ -88,6 +88,14 @@ export function FittingsPage({ currentUser, assets, seed, onOpenAssets, onOpenMa
   const [message, setMessage] = useState<string | null>(null);
 
   const [error, setError] = useState<string | null>(null);
+
+  const [sendPanelOpen, setSendPanelOpen] = useState(false);
+
+  const [sendTokenId, setSendTokenId] = useState<number | "">("");
+
+  const [sendBusy, setSendBusy] = useState(false);
+
+  const [authBusy, setAuthBusy] = useState(false);
 
 
 
@@ -202,13 +210,73 @@ export function FittingsPage({ currentUser, assets, seed, onOpenAssets, onOpenMa
     const next = await api<FittingsPayload>("/fittings");
     api<JumpClonePayload>("/jump-clones").then(setJumpClonePayload).catch(() => setJumpClonePayload({ characters: [], clones: [], custom_sets: [], sync_tokens: [] }));
 
-    setPayload({ ...next, editable_flags: next.editable_flags ?? [] });
+    const normalizedPayload = { ...next, send_tokens: next.send_tokens ?? [], editable_flags: next.editable_flags ?? [] };
+
+    setPayload(normalizedPayload);
 
     setSelectedId((current) => current ?? next.fittings[0]?.id ?? null);
 
     setSyncTokenId((current) => current === "" ? next.sync_tokens.find((token) => token.can_sync)?.token_id ?? next.sync_tokens[0]?.token_id ?? "" : current);
 
     setImportCharacterId((current) => current === "" ? next.sync_tokens.find((token) => token.can_sync)?.character_id ?? next.sync_tokens[0]?.character_id ?? "" : current);
+
+    setSendTokenId((current) => current === "" ? normalizedPayload.send_tokens.find((token) => token.has_fitting_write_scope)?.token_id ?? normalizedPayload.send_tokens[0]?.token_id ?? "" : current);
+
+  }
+
+
+
+  async function authorizeFittingWrite() {
+
+    setAuthBusy(true);
+
+    setError(null);
+
+    try {
+
+      const auth = await api<{ ready: boolean; url?: string; message?: string }>("/esi/auth-url?scope_group=fittings");
+
+      if (!auth.ready || !auth.url) throw new Error(auth.message || "EVE SSO is not configured");
+
+      window.location.assign(auth.url);
+
+    } catch (err) {
+
+      setError(err instanceof Error ? err.message : "Unable to start EVE SSO");
+
+      setAuthBusy(false);
+
+    }
+
+  }
+
+
+
+  async function sendToEve(fitting: CharacterFittingRecord) {
+
+    if (sendTokenId === "") return;
+
+    setSendBusy(true);
+
+    setError(null);
+
+    try {
+
+      const result = await api<{ fitting_name: string; character_name: string }>(`/fittings/${fitting.id}/send-to-eve`, { method: "POST", body: JSON.stringify({ token_id: sendTokenId }) });
+
+      setMessage(`${result.fitting_name} was saved to ${result.character_name}'s EVE fitting library.`);
+
+      setSendPanelOpen(false);
+
+    } catch (err) {
+
+      setError(err instanceof Error ? err.message : "Unable to send fitting to EVE");
+
+    } finally {
+
+      setSendBusy(false);
+
+    }
 
   }
 
@@ -729,6 +797,8 @@ export function FittingsPage({ currentUser, assets, seed, onOpenAssets, onOpenMa
 
   }, [payload.sync_tokens]);
 
+  const sendToken = useMemo(() => payload.send_tokens.find((token) => token.token_id === sendTokenId) ?? null, [payload.send_tokens, sendTokenId]);
+
 
 
   const groupedItems = useMemo(() => {
@@ -988,9 +1058,23 @@ export function FittingsPage({ currentUser, assets, seed, onOpenAssets, onOpenMa
 
             <div><h3>{selected.ship_type_name}</h3><p>{selected.name} · {selected.character_name}{selected.owner_display_name ? ` · ${selected.owner_display_name}` : ""}</p></div>
 
-            <div className="button-row compact">{selected.can_manage && !selected.is_draft && <button type="button" disabled={editorBusy} onClick={() => void createDraft(selected)}>Create draft</button>}{selected.can_manage && <button type="button" onClick={() => void toggleShare(selected)}>{selected.is_shared ? "Make private" : "Share fitting"}</button>}<button type="button" onClick={() => void copyScratch()}>Copy fitting</button></div>
+            <div className="button-row compact">{selected.can_manage && !selected.is_draft && <button type="button" disabled={editorBusy} onClick={() => void createDraft(selected)}>Create draft</button>}{selected.can_manage && <button type="button" onClick={() => void toggleShare(selected)}>{selected.is_shared ? "Make private" : "Share fitting"}</button>}<button type="button" onClick={() => setSendPanelOpen((open) => !open)}>Send to EVE</button><button type="button" onClick={() => void copyScratch()}>Copy fitting</button></div>
 
           </div>
+
+          {sendPanelOpen && <div className="fitting-send-panel">
+
+            <div><strong>Send {selected.name} to EVE</strong><span>Choose one of your linked characters. ESI saves a new copy in that character's fitting library.</span></div>
+
+            <label>Target character<select value={sendTokenId} onChange={(event) => setSendTokenId(event.target.value ? Number(event.target.value) : "")}><option value="">Choose character</option>{payload.send_tokens.map((token) => <option key={token.token_id} value={token.token_id}>{token.character_name}{token.has_fitting_write_scope ? "" : " · authorization required"}</option>)}</select></label>
+
+            <div className="button-row compact"><button type="button" onClick={() => setSendPanelOpen(false)}>Cancel</button>{sendToken?.has_fitting_write_scope ? <button type="button" disabled={sendBusy} onClick={() => void sendToEve(selected)}>{sendBusy ? "Sending" : "Send fitting"}</button> : <button type="button" disabled={authBusy} onClick={() => void authorizeFittingWrite()}>{authBusy ? "Opening EVE SSO" : payload.send_tokens.length > 0 ? "Authorize with EVE" : "Link a character with EVE"}</button>}</div>
+
+            {sendToken && !sendToken.has_fitting_write_scope && <div className="scope-warn">Select this same character on EVE SSO to grant <code>{"esi-fittings.write_fittings.v1"}</code>, then return here and send the fit.</div>}
+
+            {payload.send_tokens.length === 0 && <div className="scope-warn">No characters are linked to your EQM account yet. Link one through EVE SSO first.</div>}
+
+          </div>}
 
           <div className="fitting-sim-toolbar"><label>Simulate as<select value={simulationCharacterId} onChange={(event) => setSimulationCharacterId(event.target.value ? Number(event.target.value) : "")}><option value="">Choose character</option>{simulationCharacterOptions.map((token) => <option key={token.character_id} value={token.character_id}>{token.character_name}</option>)}</select></label><label>Implants<select value={simulationImplantChoice} onChange={(event) => setSimulationImplantChoice(event.target.value)}><option value="">No implants</option>{implantOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label><div className="segmented-control compact"><button type="button" className={!simulationHeat ? "active" : ""} onClick={() => setSimulationHeat(false)}>Cold</button><button type="button" className={simulationHeat ? "active hot" : ""} onClick={() => setSimulationHeat(true)}>Hot</button></div><span className="fitting-dev-warning">In development · values may be inaccurate</span><span className={`fitting-sim-status sim-${simulation?.status ?? "unknown"}`}>{simulationBusy ? "Simulating" : simulation?.status === "pass" ? "Ready" : simulation?.status === "warning" ? "Needs attention" : "Dogma pending"}</span></div>
 

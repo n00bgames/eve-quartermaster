@@ -2,9 +2,9 @@ export type FittingSeed = { text: string; nonce: number };
 
 export type FittingSimulationState = "offline" | "online" | "active" | "overheated";
 
-export type FittingItem = { id: number; type_id: number; type_name: string; charge_type_id?: number | null; charge_type_name?: string | null; flag: string; quantity: number; simulation_state?: FittingSimulationState; slot_group: string; volume?: number | null };
+export type FittingItem = { id: number; type_id: number; type_name: string; group_id?: number | null; charge_size?: number | null; compatible_charge_group_ids?: number[]; charge_type_id?: number | null; charge_type_name?: string | null; flag: string; quantity: number; simulation_state?: FittingSimulationState; slot_group: string; volume?: number | null };
 
-export type FittingSearchType = { type_id: number; name: string; group_id?: number | null; group_name?: string | null; category_name?: string | null; volume?: number | null; published?: boolean; bucket?: FittingPickerTab };
+export type FittingSearchType = { type_id: number; name: string; group_id?: number | null; group_name?: string | null; category_name?: string | null; volume?: number | null; published?: boolean; charge_size?: number | null; compatible_charge_group_ids?: number[]; bucket?: FittingPickerTab };
 
 export const FITTING_PICKER_TABS = ["Modules", "Rigs", "Ammo", "Drones", "Other"] as const;
 
@@ -21,9 +21,9 @@ export function fittingPickerBucket(item: Pick<FittingSearchType, "name" | "grou
 
 export type CharacterFittingRecord = { id: number; eve_fitting_id?: number | null; source_fitting_id?: number | null; source_fitting_name?: string | null; name: string; description?: string | null; ship_type_id: number; ship_type_name: string; ship_capacity?: number | null; character_id?: number | null; character_eve_id?: number | null; character_name: string; owner_user_id?: number | null; owner_display_name?: string | null; is_shared: boolean; is_draft: boolean; can_manage: boolean; last_synced_at?: string | null; updated_at?: string | null; summary: Record<string, number>; copy_text: string; items: FittingItem[] };
 
-export type FittingSyncToken = { token_id: number; character_id: number; character_name: string; has_fitting_scope: boolean; can_sync: boolean };
+export type FittingSyncToken = { token_id: number; character_id: number; character_name: string; has_fitting_scope: boolean; has_fitting_write_scope: boolean; can_sync: boolean; can_send: boolean };
 
-export type FittingsPayload = { fittings: CharacterFittingRecord[]; sync_tokens: FittingSyncToken[]; editable_flags: string[] };
+export type FittingsPayload = { fittings: CharacterFittingRecord[]; sync_tokens: FittingSyncToken[]; send_tokens: FittingSyncToken[]; editable_flags: string[] };
 
 export type FittingImportResult = { fitting: CharacterFittingRecord; warnings: string[] };
 

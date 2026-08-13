@@ -32,6 +32,9 @@ from app.api.quartermaster import router as quartermaster_router
 from app.api.research_projects import router as research_projects_router
 from app.api.recruiting import router as recruiting_router
 from app.api.sde import router as sde_router
+from app.api.doctrines import router as doctrines_router
+from app.api.skill_plans import router as skill_plans_router
+from app.api.srp import router as srp_router
 
 api_router = APIRouter()
 api_router.include_router(analytics_router)
@@ -66,3 +69,6 @@ api_router.include_router(recruiting_router)
 api_router.include_router(sde_router)
 api_router.include_router(esi_router)
 api_router.include_router(character_standings_router)
+api_router.include_router(doctrines_router)
+api_router.include_router(skill_plans_router)
+api_router.include_router(srp_router)

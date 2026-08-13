@@ -1,0 +1,57 @@
+{
+  "evidence_version": 1,
+  "captured_at": "2026-08-11",
+  "source": {
+    "kind": "pyfa_screenshot",
+    "character_profile": "Steihl Lianul",
+    "skill_export": "steihl-lianul-eqm-skills(6).txt",
+    "pyfa_version": "2.68.0",
+    "externally_verified": true,
+    "release_gate_ready": true,
+    "release_gate_blockers": []
+  },
+  "state": {
+    "heat": "cold",
+    "implants": "none",
+    "boosters": "none",
+    "fleet_effects": "none",
+    "active_modules": "Visible green-check modules are active.",
+    "drones": "The displayed drone flight is active; red-X spare drones are inactive."
+  },
+  "all_v_reference": "pyfa-all-v-2026-08-11.json",
+  "captures": [
+    {
+      "name": "EQM Reference 01 - Rail Moa",
+      "screenshot": "codex-clipboard-681868e6-0fc1-4887-845a-0f31eaa626b0.png",
+      "offense": { "weapon_dps": 420, "drone_dps": 54.7, "total_dps": 474, "volley": 1248 },
+      "targeting_and_movement": { "sensor_strength": 19.7 }
+    },
+    {
+      "name": "EQM Reference 02 - Rapid Light Caracal",
+      "screenshot": "codex-clipboard-8e33de4b-7943-48b6-a027-af58d9f1f0fb.png",
+      "resources": { "cpu_used_tf": 485.2, "powergrid_used_mw": 647.2 },
+      "offense": { "weapon_dps": 400, "drone_dps": 36.5, "total_dps": 437, "volley": 1154 },
+      "targeting_and_movement": { "sensor_strength": 18.6, "signature_radius_m": 207 }
+    },
+    {
+      "name": "EQM Reference 03 - Active Armor Vexor",
+      "screenshot": "codex-clipboard-c65d1265-9075-4598-b089-401dd0add149.png",
+      "resources": { "cpu_used_tf": 351.0, "powergrid_used_mw": 516.9 },
+      "defense": {
+        "effective_hp": 14100,
+        "armor_ehp": 5730,
+        "armor_resists_percent": { "em": 67.7, "thermal": 58.0, "kinetic": 58.0, "explosive": 41.9 },
+        "armor_active_burst_ehp_s": 126.9,
+        "armor_active_sustained_ehp_s": 107.8
+      },
+      "offense": { "weapon_dps": 102, "drone_dps": 331, "total_dps": 433, "volley": 1650 },
+      "targeting_and_movement": { "sensor_strength": 18.6 }
+    }
+  ],
+  "quality_notes": [
+    "The initial Caracal and Vexor follow-up screenshots still displayed the All 5 profile and remain classified only as All-V confirmations.",
+    "Large values are screenshot-rounded; release assertions must use display-aware tolerances.",
+    "Pyfa's two armor repair readouts are burst and capacitor-sustained EHP/s, not raw repair HP/s.",
+    "The Vexor screenshot predates the imported SDE used by EQM: Pyfa shows 155 MW for Medium Armor Repairer II while the current SDE supplies 138 MW, accounting for the displayed powergrid-used difference."
+  ]
+}

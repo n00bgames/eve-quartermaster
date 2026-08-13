@@ -9,8 +9,9 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.auth import can_view_all_characters, get_current_user
+from app.api.esi import refresh_access_token
 from app.db.session import get_db
-from app.models import CharacterFitting, CharacterFittingItem, CharacterJumpClone, EsiToken, EveCategory, EveCharacter, EveGroup, EveType, ImplantSet, ImplantSetImplant, JumpCloneImplant, User
+from app.models import CharacterFitting, CharacterFittingItem, CharacterJumpClone, Doctrine, DoctrineFitting, EsiToken, EveCategory, EveCharacter, EveDogmaAttribute, EveGroup, EveType, EveTypeDogmaAttribute, ImplantSet, ImplantSetImplant, JumpCloneImplant, User
 from app.services.esi_client import EsiClient
 from app.services.fitting_simulator import load_fitting_for_simulation, simulate_fitting
 from app.services.permissions import can_view_section
@@ -19,6 +20,7 @@ from app.services.ship_capacity import resolved_ship_capacity
 router = APIRouter(prefix="/fittings", tags=["fittings"])
 
 FITTING_READ_SCOPE = "esi-fittings.read_fittings.v1"
+FITTING_WRITE_SCOPE = "esi-fittings.write_fittings.v1"
 
 FLAG_ORDER = [
     "LoSlot",
@@ -82,6 +84,9 @@ BAY_FLAG_LABELS = {
 
 FITTED_SLOT_PREFIXES = {"HiSlot", "MedSlot", "LoSlot", "RigSlot", "SubSystemSlot", "ServiceSlot"}
 
+CHARGE_SIZE_ATTRIBUTE = "chargeSize"
+CHARGE_GROUP_ATTRIBUTES = tuple(f"chargeGroup{index}" for index in range(1, 6))
+
 DRAFT_FLAGS = [
     "HiSlot0",
     "HiSlot1",
@@ -120,6 +125,18 @@ DRAFT_FLAGS = [
     "ServiceSlot3",
     *BAY_FLAGS,
 ]
+
+ESI_FITTING_FLAGS = {
+    "Cargo",
+    "DroneBay",
+    "FighterBay",
+    *(f"HiSlot{index}" for index in range(8)),
+    *(f"MedSlot{index}" for index in range(8)),
+    *(f"LoSlot{index}" for index in range(8)),
+    *(f"RigSlot{index}" for index in range(3)),
+    *(f"ServiceSlot{index}" for index in range(8)),
+    *(f"SubSystemSlot{index}" for index in range(4)),
+}
 
 SECTION_SLOT_PREFIXES = ["LoSlot", "MedSlot", "HiSlot", "RigSlot", "SubSystemSlot", "ServiceSlot"]
 QUANTITY_SUFFIX_RE = re.compile(r"\s+x\s*([0-9][0-9,]*)\s*$", re.IGNORECASE)
@@ -233,10 +250,22 @@ def normalize_draft_fitting_items(db: Session, fitting: CharacterFitting) -> boo
         original_flag = item.flag
         original_quantity = item.quantity
         if slot_prefix(item.flag) in FITTED_SLOT_PREFIXES:
-            corrected_flag = normalize_item_flag_for_type(item_type, item.flag)
-            item.flag = next_free_fitting_flag(fitting, corrected_flag, item.id)
+            item.flag = normalize_item_flag_for_type(item_type, item.flag)
         item.quantity = fitting_item_quantity_for_flag(item.flag, item.quantity)
         changed = changed or item.flag != original_flag or item.quantity != original_quantity
+
+    # Slot numbers are presentation positions, not persistent module identity.
+    # Compact each family after reclassification so a module moved from (for
+    # example) LoSlot7 cannot become an invalid HiSlot7 on a seven-high hull.
+    for prefix in FITTED_SLOT_PREFIXES:
+        family = sorted(
+            (item for item in fitting.items if slot_prefix(item.flag) == prefix),
+            key=lambda row: (fitting_slot_index(row.flag), row.id or 0),
+        )
+        for index, item in enumerate(family):
+            compacted_flag = normalize_flag(f"{prefix}{index}")
+            changed = changed or item.flag != compacted_flag
+            item.flag = compacted_flag
     if changed:
         fitting.updated_at = datetime.now(timezone.utc)
     return changed
@@ -306,10 +335,10 @@ def fitting_slot_prefix_for_type(row: EveType, section_prefix: str | None) -> st
     group_name = (row.group.name if row.group else "") or ""
     category_name = (row.group.category.name if row.group and row.group.category else "") or ""
     haystack = f"{row.name} {group_name} {category_name}".lower()
-    high_tokens = ["launcher", "turret", "smartbomb", "cynosural", "probe launcher", "cloak", "salvager", "tractor beam", "mining laser", "strip miner"]
+    high_tokens = ["launcher", "turret", "smartbomb", "cynosural", "probe launcher", "cloak", "salvager", "tractor beam", "mining laser", "strip miner", "command burst"]
     mid_tokens = ["shield", "propulsion", "afterburner", "microwarpdrive", "capacitor booster", "target painter", "stasis webifier", "warp disrupt", "warp scram", "tracking computer", "guidance computer", "sensor booster", "ecm", "scanner", "analyzer"]
     low_tokens = ["armor", "damage control", "ballistic control", "gyrostabilizer", "heat sink", "magnetic field", "reactor control", "power diagnostic", "capacitor power relay", "nanofiber", "inertia", "overdrive", "cargohold", "drone damage", "tracking enhancer", "weapon upgrade", "mining laser upgrade", "co-processor", "signal amplifier"]
-    if category_name in {"Drone", "Fighter"} or "drone" in haystack:
+    if category_name in {"Drone", "Fighter"}:
         return "DroneBay" if category_name != "Fighter" and "fighter" not in haystack else "FighterBay"
     if category_name == "Charge":
         return "Cargo"
@@ -452,10 +481,122 @@ def fitting_summary(fitting: CharacterFitting) -> dict[str, int]:
     return {key: value for key, value in summary.items() if value > 0}
 
 
-def serialize_fitting(fitting: CharacterFitting, current_user: User, db: Session) -> dict[str, Any]:
+def esi_fitting_payload(fitting: CharacterFitting) -> dict[str, Any]:
+    """Build the current ESI saved-fitting representation without leaking EQM state."""
+    rows: dict[tuple[str, int], int] = {}
+    explicit_cargo_types = {
+        int(item.type_id)
+        for item in fitting.items
+        if (item.flag if item.flag in ESI_FITTING_FLAGS else "Cargo") == "Cargo"
+    }
+    charge_counts: dict[int, int] = {}
+
+    for item in fitting.items:
+        flag = item.flag if item.flag in ESI_FITTING_FLAGS else "Cargo"
+        quantity = 1 if slot_prefix(flag) in FITTED_SLOT_PREFIXES else max(1, int(item.quantity or 1))
+        key = (flag, int(item.type_id))
+        rows[key] = rows.get(key, 0) + quantity
+        if item.charge_type_id is not None:
+            charge_type_id = int(item.charge_type_id)
+            charge_counts[charge_type_id] = charge_counts.get(charge_type_id, 0) + quantity
+
+    # ESI saved fittings do not expose EQM's module-to-charge relationship.
+    # Preserve selected charges as cargo unless the fit already carries that type.
+    for charge_type_id, quantity in charge_counts.items():
+        if charge_type_id not in explicit_cargo_types:
+            rows[("Cargo", charge_type_id)] = rows.get(("Cargo", charge_type_id), 0) + quantity
+
+    items = [
+        {"flag": flag, "quantity": quantity, "type_id": type_id}
+        for (flag, type_id), quantity in sorted(rows.items(), key=lambda row: (row[0][0], row[0][1]))
+    ]
+    if not items:
+        raise HTTPException(status_code=400, detail="This fitting has no items to send to EVE")
+    return {
+        "name": (fitting.name.strip() or "EQM fitting")[:50],
+        "description": (fitting.description or "Saved from EVE Quartermaster.")[:500],
+        "ship_type_id": int(fitting.ship_type_id),
+        "items": items,
+    }
+
+
+def owned_fitting_send_token(db: Session, current_user: User, token_id: int) -> tuple[EsiToken, EveCharacter]:
+    row = db.execute(
+        select(EsiToken, EveCharacter)
+        .join(EveCharacter, EveCharacter.id == EsiToken.character_id)
+        .where(EsiToken.id == token_id, EsiToken.user_id == current_user.id, EsiToken.revoked_at.is_(None))
+    ).first()
+    if row is None:
+        raise HTTPException(status_code=403, detail="You can only send fittings to characters linked to your own EQM account")
+    token, character = row
+    if FITTING_WRITE_SCOPE not in token_scopes(token):
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "fitting_write_scope_required",
+                "message": f"{character.name} must authorize {FITTING_WRITE_SCOPE} before EQM can send fittings.",
+            },
+        )
+    return token, character
+
+
+def fitting_charge_metadata(db: Session, type_ids: set[int]) -> dict[int, dict[str, Any]]:
+    if not type_ids:
+        return {}
+    rows = db.execute(
+        select(EveTypeDogmaAttribute.type_id, EveDogmaAttribute.name, EveTypeDogmaAttribute.value)
+        .join(EveDogmaAttribute, EveDogmaAttribute.attribute_id == EveTypeDogmaAttribute.attribute_id)
+        .where(
+            EveTypeDogmaAttribute.type_id.in_(type_ids),
+            EveDogmaAttribute.name.in_((CHARGE_SIZE_ATTRIBUTE, *CHARGE_GROUP_ATTRIBUTES)),
+        )
+    ).all()
+    result: dict[int, dict[str, Any]] = {}
+    for type_id, attribute_name, value in rows:
+        metadata = result.setdefault(int(type_id), {"charge_size": None, "compatible_charge_group_ids": []})
+        if attribute_name == CHARGE_SIZE_ATTRIBUTE:
+            metadata["charge_size"] = int(value)
+        elif attribute_name in CHARGE_GROUP_ATTRIBUTES:
+            metadata["compatible_charge_group_ids"].append(int(value))
+    for metadata in result.values():
+        metadata["compatible_charge_group_ids"] = sorted(set(metadata["compatible_charge_group_ids"]))
+    return result
+
+
+def charge_type_is_compatible(module_type: EveType, charge_type: EveType, metadata: dict[int, dict[str, Any]]) -> bool:
+    module_metadata = metadata.get(module_type.type_id, {})
+    charge_metadata = metadata.get(charge_type.type_id, {})
+    compatible_group_ids = module_metadata.get("compatible_charge_group_ids") or []
+    if compatible_group_ids and charge_type.group_id not in compatible_group_ids:
+        return False
+    module_charge_size = module_metadata.get("charge_size")
+    charge_size = charge_metadata.get("charge_size")
+    if module_charge_size is not None and charge_size is not None and module_charge_size != charge_size:
+        return False
+    return True
+
+
+def require_compatible_charge(db: Session, module_type: EveType, charge_type_id: int) -> EveType:
+    charge_type = get_type_with_group(db, charge_type_id)
+    if charge_type is None:
+        raise HTTPException(status_code=400, detail="Charge type was not found in the SDE")
+    metadata = fitting_charge_metadata(db, {module_type.type_id, charge_type.type_id})
+    if not charge_type_is_compatible(module_type, charge_type, metadata):
+        raise HTTPException(status_code=400, detail=f"{charge_type.name} is not compatible with {module_type.name}")
+    return charge_type
+
+
+def serialize_fitting(
+    fitting: CharacterFitting,
+    current_user: User,
+    db: Session,
+    charge_metadata: dict[int, dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     character = fitting.character
     ship_type = fitting.ship_type
     items = sorted(fitting.items, key=lambda item: (FLAG_ORDER.index(slot_prefix(item.flag)) if slot_prefix(item.flag) in FLAG_ORDER else 99, item.flag, item.item_type.name if item.item_type else str(item.type_id)))
+    if charge_metadata is None:
+        charge_metadata = fitting_charge_metadata(db, {item.type_id for item in items})
     return {
         "id": fitting.id,
         "eve_fitting_id": fitting.eve_fitting_id,
@@ -483,6 +624,9 @@ def serialize_fitting(fitting: CharacterFitting, current_user: User, db: Session
                 "id": item.id,
                 "type_id": item.type_id,
                 "type_name": item.item_type.name if item.item_type else f"Type {item.type_id}",
+                "group_id": item.item_type.group_id if item.item_type else None,
+                "charge_size": charge_metadata.get(item.type_id, {}).get("charge_size"),
+                "compatible_charge_group_ids": charge_metadata.get(item.type_id, {}).get("compatible_charge_group_ids", []),
                 "charge_type_id": item.charge_type_id,
                 "charge_type_name": item.charge_type.name if item.charge_type else None,
                 "flag": item.flag,
@@ -518,6 +662,7 @@ def list_fittings(current_user: User = Depends(get_current_user), db: Session = 
     normalized_any = any(normalize_draft_fitting_items(db, fitting) for fitting in fittings)
     if normalized_any:
         db.commit()
+    charge_metadata = fitting_charge_metadata(db, {item.type_id for fitting in fittings for item in fitting.items})
 
     token_query = (
         select(EsiToken, EveCharacter)
@@ -534,14 +679,51 @@ def list_fittings(current_user: User = Depends(get_current_user), db: Session = 
             "character_id": character.id,
             "character_name": character.name,
             "has_fitting_scope": FITTING_READ_SCOPE in token_scopes(token),
+            "has_fitting_write_scope": FITTING_WRITE_SCOPE in token_scopes(token),
             "can_sync": token.user_id == current_user.id or can_view_all_characters(current_user, db),
+            "can_send": token.user_id == current_user.id,
         }
         for token, character in tokens
     ]
-    return {"fittings": [serialize_fitting(fitting, current_user, db) for fitting in fittings], "sync_tokens": sync_tokens, "editable_flags": DRAFT_FLAGS}
+    send_tokens = [token for token in sync_tokens if token["can_send"]]
+    return {"fittings": [serialize_fitting(fitting, current_user, db, charge_metadata) for fitting in fittings], "sync_tokens": sync_tokens, "send_tokens": send_tokens, "editable_flags": DRAFT_FLAGS}
 
 
-def serialize_fitting_picker_type(row: EveType) -> dict[str, Any]:
+@router.post("/{fitting_id}/send-to-eve")
+async def send_fitting_to_eve(
+    fitting_id: int,
+    payload: dict[str, Any],
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    require_fittings_view(current_user, db)
+    fitting = load_fitting_or_404(db, fitting_id)
+    if not can_view_fitting(current_user, fitting, db):
+        raise HTTPException(status_code=403, detail="You cannot view this fitting")
+    try:
+        token_id = int(payload.get("token_id") or 0)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail="Choose a linked character before sending the fitting") from exc
+    if token_id <= 0:
+        raise HTTPException(status_code=400, detail="Choose a linked character before sending the fitting")
+    token, character = owned_fitting_send_token(db, current_user, token_id)
+    access_token = await refresh_access_token(token)
+    db.commit()
+    result = await EsiClient(access_token=access_token).post(
+        f"/characters/{character.character_id}/fittings/",
+        esi_fitting_payload(fitting),
+    )
+    return {
+        "status": "sent",
+        "fitting_id": int(result.get("fitting_id")) if isinstance(result, dict) and result.get("fitting_id") is not None else None,
+        "fitting_name": fitting.name,
+        "character_id": character.character_id,
+        "character_name": character.name,
+    }
+
+
+def serialize_fitting_picker_type(row: EveType, charge_metadata: dict[int, dict[str, Any]] | None = None) -> dict[str, Any]:
+    metadata = (charge_metadata or {}).get(row.type_id, {})
     return {
         "type_id": row.type_id,
         "name": row.name,
@@ -550,6 +732,8 @@ def serialize_fitting_picker_type(row: EveType) -> dict[str, Any]:
         "category_name": row.group.category.name if row.group and row.group.category else None,
         "volume": row.volume,
         "published": row.published,
+        "charge_size": metadata.get("charge_size"),
+        "compatible_charge_group_ids": metadata.get("compatible_charge_group_ids", []),
     }
 
 
@@ -566,7 +750,8 @@ def search_fitting_items(q: str = Query("", min_length=1), limit: int = 25, curr
         .order_by(EveType.name)
         .limit(max(1, min(limit, 80)))
     ).all()
-    return [serialize_fitting_picker_type(row) for row in rows]
+    metadata = fitting_charge_metadata(db, {row.type_id for row in rows})
+    return [serialize_fitting_picker_type(row, metadata) for row in rows]
 
 
 @router.get("/item-catalog")
@@ -593,7 +778,8 @@ def fitting_item_catalog(bucket: str = Query("Modules"), limit: int = 8000, curr
         .order_by(EveGroup.name, EveType.name)
         .limit(max(1, min(limit, 12000)))
     ).all()
-    return [serialize_fitting_picker_type(row) for row in rows]
+    metadata = fitting_charge_metadata(db, {row.type_id for row in rows})
+    return [serialize_fitting_picker_type(row, metadata) for row in rows]
 
 
 
@@ -639,6 +825,8 @@ def update_fitting(fitting_id: int, payload: dict[str, Any], current_user: User 
     if not can_manage_fitting(current_user, fitting, db):
         raise HTTPException(status_code=403, detail="You can only edit your own fittings")
     if "is_shared" in payload:
+        if not bool(payload["is_shared"]) and db.scalar(select(Doctrine.id).join(DoctrineFitting, DoctrineFitting.doctrine_id == Doctrine.id).where(DoctrineFitting.fitting_id == fitting.id, Doctrine.is_shared.is_(True), Doctrine.archived_at.is_(None)).limit(1)):
+            raise HTTPException(status_code=409, detail="This fitting is used by an active shared doctrine and must remain shared")
         fitting.is_shared = bool(payload["is_shared"])
     if fitting.is_draft and "name" in payload:
         name = str(payload.get("name") or "").strip()
@@ -702,8 +890,7 @@ def add_fitting_item(fitting_id: int, payload: dict[str, Any], current_user: Use
         charge_type_id = None
     if charge_type_id is not None:
         charge_type_id = int(charge_type_id)
-        if db.get(EveType, charge_type_id) is None:
-            raise HTTPException(status_code=400, detail="Charge type was not found in the SDE")
+        require_compatible_charge(db, item_type, charge_type_id)
     simulation_state = str(payload.get("simulation_state") or "online").strip().lower()
     if simulation_state not in SIMULATION_STATES:
         raise HTTPException(status_code=400, detail="Unknown simulation state")
@@ -745,8 +932,7 @@ def update_fitting_item(fitting_id: int, item_id: int, payload: dict[str, Any], 
             item.charge_type_id = None
         else:
             charge_type_id = int(charge_type_id)
-            if db.get(EveType, charge_type_id) is None:
-                raise HTTPException(status_code=400, detail="Charge type was not found in the SDE")
+            require_compatible_charge(db, item_type, charge_type_id)
             item.charge_type_id = charge_type_id
     if "simulation_state" in payload:
         simulation_state = str(payload.get("simulation_state") or "online").strip().lower()

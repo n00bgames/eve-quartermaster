@@ -17,6 +17,7 @@ ADVANCED_WEAPON_UPGRADES_TYPE_ID = 11207
 MEDIUM_HYBRID_TURRET_TYPE_ID = 3304
 MINING_UPGRADES_TYPE_ID = 22578
 SHIELD_UPGRADES_TYPE_ID = 3425
+ENERGY_GRID_UPGRADES_TYPE_ID = 3424
 SHIELD_MANAGEMENT_TYPE_ID = 3416
 MECHANICS_TYPE_ID = 3392
 HULL_UPGRADES_TYPE_ID = 3394
@@ -58,10 +59,10 @@ RESISTANCE_ATTRS = {
         ("armorExplosiveDamageResonance",),
     ),
     "structure": (
-        ("hullEmDamageResonance", "emDamageResonance"),
-        ("hullThermalDamageResonance", "thermalDamageResonance"),
-        ("hullKineticDamageResonance", "kineticDamageResonance"),
-        ("hullExplosiveDamageResonance", "explosiveDamageResonance"),
+        ("emDamageResonance", "hullEmDamageResonance"),
+        ("thermalDamageResonance", "hullThermalDamageResonance"),
+        ("kineticDamageResonance", "hullKineticDamageResonance"),
+        ("explosiveDamageResonance", "hullExplosiveDamageResonance"),
     ),
 }
 STACKING_PENALTIES = (1.0, 0.8708869, 0.5705831, 0.2829552, 0.1059926, 0.0299912, 0.0064102)
@@ -383,7 +384,7 @@ def effective_ship_attrs_with_subsystems(ship_attrs: dict[str, float], items: li
 
 def is_weapon_group(group_name: str) -> bool:
     normalized = group_name.lower()
-    return "turret" in normalized or "launcher" in normalized or "smartbomb" in normalized
+    return is_turret_group(group_name) or is_launcher_group(group_name) or "smartbomb" in normalized
 
 
 def module_is_passive(item: CharacterFittingItem, attrs: dict[str, float], group_name: str, item_name: str) -> bool:
@@ -401,7 +402,7 @@ def module_is_passive(item: CharacterFittingItem, attrs: dict[str, float], group
 
 
 def item_effects_apply(item: CharacterFittingItem, attrs: dict[str, float], group_name: str, item_name: str) -> bool:
-    return item_is_online(item)
+    return item_is_online(item) and (module_is_passive(item, attrs, group_name, item_name) or item_is_running(item))
 
 
 def is_mining_upgrade_group(group_name: str) -> bool:
@@ -494,6 +495,8 @@ def item_resource_usage(item: CharacterFittingItem, attrs: dict[str, float], gro
         cpu *= max(0.0, 1 - 0.05 * skill_level(skill_levels, MINING_UPGRADES_TYPE_ID))
     if is_shield_extender_group(group_name):
         powergrid *= max(0.0, 1 - 0.05 * skill_level(skill_levels, SHIELD_UPGRADES_TYPE_ID))
+    if module_requires_skill(attrs, ENERGY_GRID_UPGRADES_TYPE_ID):
+        cpu *= max(0.0, 1 - 0.05 * skill_level(skill_levels, ENERGY_GRID_UPGRADES_TYPE_ID))
 
     ship_attrs = ship_attrs or {}
     family = f"{getattr(item.item_type, 'name', '')} {group_name}".lower()
@@ -724,12 +727,18 @@ def is_launcher_group(group_name: str) -> bool:
 
 
 def is_turret_group(group_name: str) -> bool:
-    return "turret" in group_name.lower()
+    normalized = group_name.lower()
+    return "turret" in normalized or normalized in {
+        "energy weapon",
+        "hybrid weapon",
+        "precursor weapon",
+        "projectile weapon",
+    }
 
 
 def is_drone_group(group_name: str) -> bool:
     normalized = group_name.lower()
-    return "drone" in normalized or "fighter" in normalized
+    return normalized.endswith("drone") or "fighter" in normalized
 
 
 def charge_kind(name: str, group_name: str) -> str:
@@ -759,9 +768,29 @@ def charge_kind(name: str, group_name: str) -> str:
     return "charge"
 
 
-def charge_is_compatible_with_module(module_name: str, module_group: str, charge_name: str, charge_group: str) -> bool:
+def charge_is_compatible_with_module(
+    module_name: str,
+    module_group: str,
+    charge_name: str,
+    charge_group: str,
+    module_attrs: dict[str, float] | None = None,
+    charge_attrs: dict[str, float] | None = None,
+    charge_group_id: int | None = None,
+) -> bool:
     module_text = f"{module_name} {module_group}".lower()
     charge_text = f"{charge_name} {charge_group}".lower()
+    allowed_charge_groups = {
+        int(value)
+        for index in range(1, 6)
+        for value in [attr_value(module_attrs or {}, f"chargeGroup{index}")]
+        if value is not None
+    }
+    if allowed_charge_groups and charge_group_id is not None and charge_group_id not in allowed_charge_groups:
+        return False
+    module_charge_size = attr_value(module_attrs or {}, "chargeSize")
+    charge_size = attr_value(charge_attrs or {}, "chargeSize")
+    if module_charge_size is not None and charge_size is not None and int(module_charge_size) != int(charge_size):
+        return False
     charge_is_xl = bool(re.search(r"(^|\s)xl(\s|$)", charge_text)) or "extra large" in charge_text
     module_is_xl = bool(re.search(r"(^|\s)xl(\s|$)", module_text)) or "capital" in module_text or "citadel" in module_text
     if "script" in charge_text:
@@ -783,7 +812,7 @@ def charge_is_compatible_with_module(module_name: str, module_group: str, charge
     if "launcher" in module_text:
         return not charge_is_xl and ("missile" in charge_text or "rocket" in charge_text or "torpedo" in charge_text)
     if "laser" in module_text:
-        return "frequency crystal" in charge_text
+        return "frequency crystal" in charge_text or "laser crystal" in charge_text
     if "railgun" in module_text or "blaster" in module_text or "hybrid" in module_text:
         return "hybrid charge" in charge_text
     if "autocannon" in module_text or "artillery" in module_text or "projectile" in module_text:
@@ -808,21 +837,11 @@ def missile_charge_skill_id(kind: str) -> int | None:
 
 
 def missile_skill_damage_multiplier(kind: str, skill_levels: dict[int, int]) -> float:
-    multiplier = 1 + 0.02 * skill_level(skill_levels, WARHEAD_UPGRADES_TYPE_ID)
-    charge_skill_id = missile_charge_skill_id(kind)
-    if charge_skill_id in {TORPEDOES_TYPE_ID, CRUISE_MISSILES_TYPE_ID}:
-        multiplier *= 1 + 0.05 * skill_level(skill_levels, charge_skill_id)
-    return multiplier
+    return 1 + 0.02 * skill_level(skill_levels, WARHEAD_UPGRADES_TYPE_ID)
 
 
 def missile_skill_rof_multiplier(kind: str, module_attrs: dict[str, float], skill_levels: dict[int, int]) -> float:
-    multiplier = max(0.01, 1 - 0.02 * skill_level(skill_levels, MISSILE_LAUNCHER_OPERATION_TYPE_ID))
-    multiplier *= max(0.01, 1 - 0.03 * skill_level(skill_levels, RAPID_LAUNCH_TYPE_ID))
-    if "torpedo" in kind and module_requires_skill(module_attrs, TORPEDO_SPECIALIZATION_TYPE_ID):
-        multiplier *= max(0.01, 1 - 0.02 * skill_level(skill_levels, TORPEDO_SPECIALIZATION_TYPE_ID))
-    if "cruise missile" in kind and module_requires_skill(module_attrs, CRUISE_MISSILE_SPECIALIZATION_TYPE_ID):
-        multiplier *= max(0.01, 1 - 0.02 * skill_level(skill_levels, CRUISE_MISSILE_SPECIALIZATION_TYPE_ID))
-    return multiplier
+    return max(0.01, 1 - 0.03 * skill_level(skill_levels, RAPID_LAUNCH_TYPE_ID))
 
 
 def missile_skill_velocity_multiplier(skill_name_levels: dict[str, int]) -> float:
@@ -850,6 +869,113 @@ def per_level_bonus_multiplier(value: float | None, level: int) -> float:
     if value is None or level <= 0:
         return 1.0
     return max(0.01, 1 + float(value) / 100.0 * level)
+
+
+def required_skill_combat_multipliers(
+    attribute_sets: tuple[dict[str, float], ...],
+    dogma: dict[int, dict[str, float]],
+    skill_levels: dict[int, int],
+) -> tuple[float, float]:
+    damage_multiplier = 1.0
+    rof_multiplier = 1.0
+    seen_skill_ids: set[int] = set()
+    for attrs in attribute_sets:
+        for requirement in required_skills_from_attrs(attrs):
+            skill_type_id = int(requirement["skill_type_id"])
+            if skill_type_id in seen_skill_ids:
+                continue
+            seen_skill_ids.add(skill_type_id)
+            skill_attrs = dogma.get(skill_type_id, {})
+            level = skill_level(skill_levels, skill_type_id)
+            damage_multiplier *= per_level_bonus_multiplier(attr_value(skill_attrs, "damageMultiplierBonus"), level)
+            rof_multiplier *= per_level_bonus_multiplier(attr_value(skill_attrs, "rofBonus", "turretSpeeBonus"), level)
+    return damage_multiplier, rof_multiplier
+
+
+def named_skill_dogma_multiplier(
+    dogma: dict[int, dict[str, float]],
+    names: dict[int, str],
+    skill_name_levels: dict[str, int],
+    skill_name: str,
+    *attribute_names: str,
+) -> float:
+    normalized_skill_name = normalize_attr(skill_name)
+    type_id = next((type_id for type_id, name in names.items() if normalize_attr(name) == normalized_skill_name), None)
+    if type_id is None:
+        return 1.0
+    return per_level_bonus_multiplier(
+        attr_value(dogma.get(type_id, {}), *attribute_names),
+        named_skill_level(skill_name_levels, skill_name),
+    )
+
+
+def ship_effect_rules(
+    ship_type_id: int,
+    ship_attrs: dict[str, float],
+    dogma_effects: dict[int, list[dict[str, Any]]],
+    skill_levels: dict[int, int],
+) -> dict[str, Any]:
+    hull_skill_id = int(attr_value(ship_attrs, "requiredSkill1") or 0)
+    hull_level = skill_level(skill_levels, hull_skill_id)
+    result: dict[str, Any] = {
+        "weapon": [],
+        "resonance": {layer: {damage_type: 1.0 for damage_type in DAMAGE_TYPES} for layer in RESISTANCE_ATTRS},
+    }
+    if hull_level <= 0:
+        return result
+
+    seen_rules: set[tuple[Any, ...]] = set()
+    for effect in dogma_effects.get(ship_type_id, []):
+        for modifier in effect.get("modifier_info", []):
+            if int(modifier.get("operation", -1)) != 6:
+                continue
+            source_name = modifier.get("modifying_attribute_name")
+            target_name = normalize_attr(str(modifier.get("modified_attribute_name") or ""))
+            source_value = attr_value(ship_attrs, str(source_name)) if source_name else None
+            if source_value is None or not target_name:
+                continue
+            multiplier = per_level_bonus_multiplier(source_value, hull_level)
+            if "resonance" in target_name:
+                layer = "shield" if "shield" in target_name else "armor" if "armor" in target_name else "structure"
+                damage_type = next((candidate for candidate in DAMAGE_TYPES if candidate in target_name), None)
+                if damage_type:
+                    result["resonance"][layer][damage_type] *= multiplier
+                continue
+            if target_name not in {"damagemultiplier", "speed"}:
+                continue
+            rule = {
+                "target": target_name,
+                "multiplier": multiplier,
+                "group_id": int(modifier["groupID"]) if modifier.get("groupID") is not None else None,
+                "required_skill_id": int(modifier["skillTypeID"]) if modifier.get("skillTypeID") is not None else None,
+            }
+            key = (rule["target"], rule["multiplier"], rule["group_id"], rule["required_skill_id"])
+            if key not in seen_rules:
+                seen_rules.add(key)
+                result["weapon"].append(rule)
+    return result
+
+
+def ship_effect_weapon_multipliers(
+    rules: list[dict[str, Any]],
+    attrs: dict[str, float],
+    group_id: int | None,
+) -> tuple[float, float]:
+    damage_multiplier = 1.0
+    rof_multiplier = 1.0
+    for rule in rules:
+        required_skill_id = rule.get("required_skill_id")
+        applies = (
+            (rule.get("group_id") is not None and group_id == rule["group_id"])
+            or (required_skill_id is not None and module_requires_skill(attrs, int(required_skill_id)))
+        )
+        if not applies:
+            continue
+        if rule["target"] == "damagemultiplier":
+            damage_multiplier *= float(rule["multiplier"])
+        elif rule["target"] == "speed":
+            rof_multiplier *= float(rule["multiplier"])
+    return damage_multiplier, rof_multiplier
 
 
 def ship_missile_velocity_multiplier(ship_attrs: dict[str, float], kind: str, skill_name_levels: dict[str, int]) -> float:
@@ -1002,12 +1128,15 @@ def ship_missile_damage_multiplier(ship_attrs: dict[str, float], kind: str, skil
     return multiplier
 
 
-def matching_charge(module_name: str, module_group: str, charges: list[dict[str, Any]]) -> dict[str, Any] | None:
+def matching_charge(
+    module_name: str,
+    module_group: str,
+    charges: list[dict[str, Any]],
+    module_attrs: dict[str, float] | None = None,
+) -> dict[str, Any] | None:
     if not charges:
         return None
     module_haystack = f"{module_name} {module_group}".lower()
-    if len(charges) == 1:
-        return charges[0]
     preferred: list[str] = []
     if "rapid light missile" in module_haystack or "light missile" in module_haystack:
         preferred.append("light missile")
@@ -1029,7 +1158,18 @@ def matching_charge(module_name: str, module_group: str, charges: list[dict[str,
         preferred.append("projectile ammo")
     if "laser" in module_haystack:
         preferred.append("frequency crystal")
-    compatible_charges = [charge for charge in charges if charge_is_compatible_with_module(module_name, module_group, charge["name"], charge["group"])]
+    compatible_charges = [
+        charge for charge in charges
+        if charge_is_compatible_with_module(
+            module_name,
+            module_group,
+            charge["name"],
+            charge["group"],
+            module_attrs,
+            charge["attrs"],
+            charge.get("group_id"),
+        )
+    ]
     if not compatible_charges:
         return None
     for kind in preferred:
@@ -1162,9 +1302,25 @@ def capacitor_depletion_seconds(capacity: float, recharge_seconds: float, drain_
     return elapsed if capacitor <= 0 else None
 
 
-def active_capacitor_use_per_second(items: list[CharacterFittingItem], dogma: dict[int, dict[str, float]], names: dict[int, str]) -> tuple[float, list[dict[str, Any]]]:
+def active_capacitor_use_per_second(
+    items: list[CharacterFittingItem],
+    dogma: dict[int, dict[str, float]],
+    names: dict[int, str],
+    group_names: dict[int, str],
+    skill_levels: dict[int, int],
+    skill_name_levels: dict[str, int],
+    hull_weapon_rules: list[dict[str, Any]] | None = None,
+    type_group_ids: dict[int, int] | None = None,
+) -> tuple[float, list[dict[str, Any]]]:
     total = 0.0
     rows: list[dict[str, Any]] = []
+    armor_rig_cycle_multipliers = [
+        multiplier
+        for item in items
+        if item_is_online(item) and "rig armor" in group_names.get(item.type_id, "").lower()
+        for multiplier in [dogma_multiplier(attr_value(dogma.get(item.type_id, {}), "durationSkillBonus"))]
+        if multiplier is not None
+    ]
     for item in items:
         if not item_is_running(item):
             continue
@@ -1173,19 +1329,57 @@ def active_capacitor_use_per_second(items: list[CharacterFittingItem], dogma: di
         cycle = cycle_seconds(attrs)
         if not cycle:
             continue
-        gross_per_second = max(0.0, float(cap_need or 0.0)) / cycle * module_quantity(item)
+        item_name = names.get(item.type_id, f"Type {item.type_id}")
+        group_name = group_names.get(item.type_id, "")
         charge_attrs = dogma.get(int(item.charge_type_id), {}) if getattr(item, "charge_type_id", None) else {}
+        cap_need_multiplier = 1.0
+        cycle_multiplier = 1.0
+        family = f"{item_name} {group_name}".lower()
+        if "afterburner" in family or "propulsion module" in family:
+            cap_need_multiplier *= named_skill_dogma_multiplier(
+                dogma, names, skill_name_levels, "Fuel Conservation", "capNeedBonus"
+            )
+            cap_need_multiplier *= named_skill_dogma_multiplier(
+                dogma, names, skill_name_levels, "Afterburner", "capNeedBonus"
+            )
+            cycle_multiplier *= named_skill_dogma_multiplier(
+                dogma, names, skill_name_levels, "Afterburner", "durationBonus"
+            )
+        if "shield booster" in family:
+            cap_need_multiplier *= named_skill_dogma_multiplier(
+                dogma, names, skill_name_levels, "Shield Compensation", "shieldBoostCapacitorBonus"
+            )
+        if is_turret_group(group_name):
+            cap_need_multiplier *= named_skill_dogma_multiplier(
+                dogma, names, skill_name_levels, "Controlled Bursts", "capNeedBonus"
+            )
+            _, required_rof_multiplier = required_skill_combat_multipliers((attrs, charge_attrs), dogma, skill_levels)
+            cycle_multiplier *= required_rof_multiplier
+            cycle_multiplier *= named_skill_dogma_multiplier(
+                dogma, names, skill_name_levels, "Rapid Firing", "rofBonus"
+            )
+            _, hull_rof_multiplier = ship_effect_weapon_multipliers(
+                hull_weapon_rules or [], attrs, (type_group_ids or {}).get(item.type_id)
+            )
+            cycle_multiplier *= hull_rof_multiplier
+        if "armor repair" in family or "ancillary armor" in family:
+            cycle_multiplier *= named_skill_dogma_multiplier(
+                dogma, names, skill_name_levels, "Repair Systems", "durationSkillBonus"
+            )
+            cycle_multiplier *= stacking_raw_multiplier(armor_rig_cycle_multipliers)
+        effective_cycle = cycle * cycle_multiplier
+        gross_per_second = max(0.0, float(cap_need or 0.0)) * cap_need_multiplier / effective_cycle * module_quantity(item)
         injected_per_second = 0.0
-        if "capacitor booster" in names.get(item.type_id, f"Type {item.type_id}").lower():
-            injected_per_second = capacitor_charge_gj(charge_attrs) / cycle * module_quantity(item)
+        if "capacitor booster" in item_name.lower():
+            injected_per_second = capacitor_charge_gj(charge_attrs) / effective_cycle * module_quantity(item)
         per_second = gross_per_second - injected_per_second
         if abs(per_second) <= 0.0001:
             continue
         total += per_second
         rows.append({
-            "name": names.get(item.type_id, f"Type {item.type_id}"),
+            "name": item_name,
             "gj_per_second": per_second,
-            "cycle_seconds": cycle,
+            "cycle_seconds": effective_cycle,
             "quantity": module_quantity(item),
         })
     rows.sort(key=lambda row: abs(row["gj_per_second"]), reverse=True)
@@ -1214,9 +1408,9 @@ def compute_fitting_stats(
         dogma_effects or {},
         type_group_ids or {},
     )
-    shield_hp = safe_number(attr_value(ship_attrs, "shieldCapacity")) * (1 + 0.05 * skill_level(skill_levels, SHIELD_MANAGEMENT_TYPE_ID))
-    armor_hp = safe_number(attr_value(ship_attrs, "armorHP")) * (1 + 0.05 * skill_level(skill_levels, HULL_UPGRADES_TYPE_ID))
-    structure_hp = safe_number(attr_value(ship_attrs, "hp", "structureHP")) * (1 + 0.05 * skill_level(skill_levels, MECHANICS_TYPE_ID))
+    shield_hp = safe_number(attr_value(ship_attrs, "shieldCapacity"))
+    armor_hp = safe_number(attr_value(ship_attrs, "armorHP"))
+    structure_hp = safe_number(attr_value(ship_attrs, "hp", "structureHP"))
     shield_recharge_ms = attr_value(ship_attrs, "shieldRechargeRate")
 
     fitted_items = [item for item in fitting.items if slot_prefix(item.flag) in FITTED_SLOT_PREFIXES]
@@ -1240,15 +1434,19 @@ def compute_fitting_stats(
     drone_control_bonus_m = 0.0
     drone_control_multipliers: list[float] = []
     velocity_multipliers: list[float] = []
+    propulsion_bonuses: list[tuple[float, float, float]] = []
     structure_multipliers: list[float] = []
     signature_multipliers: list[float] = []
     capacitor_multipliers: list[float] = []
+    capacitor_recharge_multipliers: list[float] = []
+    capacitor_recharge_rig_multipliers: list[float] = []
     cargo_capacity_multipliers: list[float] = []
     shield_repair_hps = 0.0
     armor_repair_hps = 0.0
     structure_repair_hps = 0.0
     shield_repair_multipliers: list[float] = []
     armor_repair_multipliers: list[float] = []
+    armor_repair_cycle_multipliers: list[float] = []
     structure_repair_multipliers: list[float] = []
     mass_addition = 0.0
     agility_multipliers: list[float] = []
@@ -1259,6 +1457,11 @@ def compute_fitting_stats(
     }
     layer_bonus_mods = {layer: {damage: [] for damage in ("em", "thermal", "kinetic", "explosive")} for layer in resonances}
     direct_resonance_mods = {layer: {damage: [] for damage in ("em", "thermal", "kinetic", "explosive")} for layer in resonances}
+    hull_effects = ship_effect_rules(fitting.ship_type_id, ship_attrs, dogma_effects or {}, skill_levels)
+    for layer, by_damage in hull_effects["resonance"].items():
+        for damage_type, multiplier in by_damage.items():
+            if abs(float(multiplier) - 1.0) > 0.0001:
+                resonances[layer][damage_type] *= float(multiplier)
 
     for item in active_fitted_items:
         attrs = dogma.get(item.type_id, {})
@@ -1271,8 +1474,8 @@ def compute_fitting_stats(
         item_family = f"{name} {group}".lower()
         is_shield_family = "shield" in item_family
         is_prop_family = "afterburner" in item_family or "microwarpdrive" in item_family or "propulsion" in item_family
-        capacity_bonus = attr_value(attrs, "capacityBonus", "shieldBonus")
-        if capacity_bonus and is_shield_family:
+        capacity_bonus = attr_value(attrs, "capacityBonus")
+        if capacity_bonus and is_shield_extender_group(group):
             shield_hp += float(capacity_bonus) * qty
         shield_hp += safe_number(attr_value(attrs, "shieldCapacityBonusAdd")) * qty
         armor_hp += safe_number(attr_value(attrs, "armorHPBonusAdd", "armorHpBonusAdd")) * qty
@@ -1314,6 +1517,8 @@ def compute_fitting_stats(
             if "guidance computer" in item_family or "guidance enhancer" in item_family or "missile guidance" in item_family:
                 missile_range_mods.extend([range_bonus] * qty)
         damage_bonus = attr_value(attrs, "damageMultiplierBonus")
+        if damage_bonus is None and any(token in item_family for token in ("magnetic field stabilizer", "heat sink", "gyrostabilizer")):
+            damage_bonus = attr_value(attrs, "damageMultiplier")
         if damage_bonus:
             turret_damage_mods.extend([float(damage_bonus)] * qty)
         drone_bonus = attr_value(attrs, "droneDamageBonus", "droneDamageMultiplierBonus")
@@ -1342,10 +1547,19 @@ def compute_fitting_stats(
         speed_factor = attr_value(attrs, "speedFactor", "maxVelocityBonus")
         if speed_factor and is_prop_family:
             heated_speed_factor = float(speed_factor) + (float(attr_value(attrs, "overloadSpeedFactorBonus") or 0.0) if overheated else 0.0)
-            velocity_multipliers.extend([1 + heated_speed_factor / 100.0] * qty)
+            speed_boost_factor = safe_number(attr_value(attrs, "speedBoostFactor"))
+            module_mass_addition = safe_number(attr_value(attrs, "massAddition"))
+            propulsion_bonuses.extend([(heated_speed_factor, speed_boost_factor, module_mass_addition)] * qty)
         signature_bonus = attr_value(attrs, "signatureRadiusBonus")
         if signature_bonus:
             signature_multipliers.extend([1 + float(signature_bonus) / 100.0] * qty)
+        drawback = attr_value(attrs, "drawback")
+        if drawback and "rig shield" in group.lower():
+            mitigation = named_skill_dogma_multiplier(
+                dogma, names, skill_name_levels, "Shield Rigging", "rigDrawbackBonus"
+            )
+            effective_drawback = float(drawback) * mitigation
+            signature_multipliers.extend([1 + effective_drawback / 100.0] * qty)
         mass_addition += safe_number(attr_value(attrs, "massAddition")) * qty
         agility_multiplier = dogma_multiplier(attr_value(attrs, "agilityMultiplier"))
         if agility_multiplier:
@@ -1353,6 +1567,12 @@ def compute_fitting_stats(
         cap_multiplier = dogma_multiplier(attr_value(attrs, "capacitorCapacityMultiplier", "capacitorCapacityBonus"))
         if cap_multiplier:
             capacitor_multipliers.extend([cap_multiplier] * qty)
+        recharge_multiplier = dogma_multiplier(attr_value(attrs, "capacitorRechargeRateMultiplier"))
+        if recharge_multiplier:
+            capacitor_recharge_multipliers.extend([recharge_multiplier] * qty)
+        recharge_rig_multiplier = dogma_multiplier(attr_value(attrs, "capRechargeBonus"))
+        if recharge_rig_multiplier and "rig" in group.lower():
+            capacitor_recharge_rig_multipliers.extend([recharge_rig_multiplier] * qty)
         cargo_multiplier = cargo_capacity_multiplier_from_item(attrs, group, name)
         if cargo_multiplier:
             cargo_capacity_multipliers.extend([cargo_multiplier] * qty)
@@ -1372,14 +1592,33 @@ def compute_fitting_stats(
         if shield_repair_multiplier:
             shield_repair_multipliers.extend([shield_repair_multiplier] * qty)
         armor_repair_multiplier = dogma_multiplier(attr_value(attrs, "armorRepairMultiplier", "armorRepairAmountBonus", "armorRepairerAmountBonus", "armorDamageAmountBonus"))
+        if armor_repair_multiplier is None and "rig armor" in group.lower():
+            armor_repair_multiplier = dogma_multiplier(attr_value(attrs, "repairBonus"))
         if armor_repair_multiplier:
             armor_repair_multipliers.extend([armor_repair_multiplier] * qty)
+        armor_cycle_multiplier = dogma_multiplier(attr_value(attrs, "durationSkillBonus"))
+        if armor_cycle_multiplier and "rig armor" in group.lower():
+            armor_repair_cycle_multipliers.extend([armor_cycle_multiplier] * qty)
         structure_repair_multiplier = dogma_multiplier(attr_value(attrs, "structureRepairMultiplier", "hullRepairMultiplier"))
         if structure_repair_multiplier:
             structure_repair_multipliers.extend([structure_repair_multiplier] * qty)
 
         layer = infer_resistance_layer(group, name, attrs)
         collected_bonus_mods, collected_direct_mods = collect_resistance_modifiers(attrs, layer)
+        passive_compensation_family = (
+            "resistance amplifier" in item_family
+            or "energized" in item_family
+            or "plating" in item_family
+        )
+        if layer in {"shield", "armor"} and passive_compensation_family:
+            for damage_type, values in collected_bonus_mods.items():
+                if not values:
+                    continue
+                compensation_skill = f"{damage_type.title()} {layer.title()} Compensation"
+                compensation_multiplier = named_skill_dogma_multiplier(
+                    dogma, names, skill_name_levels, compensation_skill, "hardeningBonus"
+                )
+                collected_bonus_mods[damage_type] = [float(value) * compensation_multiplier for value in values]
         hardening = 1 + (float(attr_value(attrs, "overloadHardeningBonus") or 0.0) / 100.0 if overheated else 0.0)
         for damage_type, values in collected_bonus_mods.items():
             if layer and values:
@@ -1389,12 +1628,21 @@ def compute_fitting_stats(
                 if values:
                     direct_resonance_mods[layer_name][damage_type].extend([float(value) for value in values for _ in range(qty)])
 
-    shield_hp *= percent_bonus_multiplier(shield_hp_pct_mods)
-    armor_hp *= percent_bonus_multiplier(armor_hp_pct_mods)
-    structure_hp *= percent_bonus_multiplier(structure_hp_pct_mods)
+    shield_hp *= 1 + 0.05 * skill_level(skill_levels, SHIELD_MANAGEMENT_TYPE_ID)
+    armor_hp *= 1 + 0.05 * skill_level(skill_levels, HULL_UPGRADES_TYPE_ID)
+    structure_hp *= 1 + 0.05 * skill_level(skill_levels, MECHANICS_TYPE_ID)
+    shield_hp *= unpenalized_multiplier([1 + float(value) / 100.0 for value in shield_hp_pct_mods])
+    armor_hp *= unpenalized_multiplier([1 + float(value) / 100.0 for value in armor_hp_pct_mods])
+    structure_hp *= unpenalized_multiplier([1 + float(value) / 100.0 for value in structure_hp_pct_mods])
     structure_hp *= unpenalized_multiplier(structure_multipliers)
     shield_repair_hps *= stacking_raw_multiplier(shield_repair_multipliers) * ship_shield_boost_multiplier(ship_attrs, skill_name_levels)
     armor_repair_hps *= stacking_raw_multiplier(armor_repair_multipliers)
+    repair_systems_cycle = named_skill_dogma_multiplier(
+        dogma, names, skill_name_levels, "Repair Systems", "durationSkillBonus"
+    )
+    armor_repair_cycle_multiplier = stacking_raw_multiplier(armor_repair_cycle_multipliers) * repair_systems_cycle
+    if armor_repair_cycle_multiplier > 0:
+        armor_repair_hps /= armor_repair_cycle_multiplier
     structure_repair_hps *= stacking_raw_multiplier(structure_repair_multipliers)
     apply_resistance_modifiers(resonances, layer_bonus_mods, direct_resonance_mods)
     shield_resists = resistance_profile_from_resonance(resonances["shield"])
@@ -1412,7 +1660,7 @@ def compute_fitting_stats(
         group = group_names.get(type_id, "")
         if damage <= 0 and "script" not in f"{name} {group}".lower():
             return None
-        return {"type_id": type_id, "name": name, "group": group, "damage": damage, "damage_types": profile, "attrs": attrs, "kind": charge_kind(name, group)}
+        return {"type_id": type_id, "name": name, "group": group, "group_id": (type_group_ids or {}).get(type_id), "damage": damage, "damage_types": profile, "attrs": attrs, "kind": charge_kind(name, group)}
 
     charges: list[dict[str, Any]] = []
     for item in cargo_items:
@@ -1427,6 +1675,12 @@ def compute_fitting_stats(
     missile_range_multiplier = stacking_raw_multiplier(missile_range_mods)
     turret_damage_multiplier = stacking_multiplier(turret_damage_mods)
     turret_rof_multiplier = stacking_raw_multiplier(turret_rof_mods)
+    turret_damage_multiplier *= named_skill_dogma_multiplier(
+        dogma, names, skill_name_levels, "Surgical Strike", "damageMultiplierBonus"
+    )
+    turret_rof_multiplier *= named_skill_dogma_multiplier(
+        dogma, names, skill_name_levels, "Rapid Firing", "rofBonus"
+    )
     turret_range_multiplier = stacking_raw_multiplier(turret_range_mods)
     drone_damage_multiplier = stacking_multiplier(drone_damage_mods) * (1 + 0.1 * named_skill_level(skill_name_levels, "Drone Interfacing"))
     drone_control_range = drone_control_range_m(
@@ -1451,10 +1705,19 @@ def compute_fitting_stats(
         if not item_effects_apply(item, attrs, group, name):
             continue
         explicit_charge = charge_row(item.charge_type_id) if getattr(item, "charge_type_id", None) else None
-        if explicit_charge and not charge_is_compatible_with_module(name, group, explicit_charge["name"], explicit_charge["group"]):
+        if explicit_charge and not charge_is_compatible_with_module(
+            name,
+            group,
+            explicit_charge["name"],
+            explicit_charge["group"],
+            attrs,
+            explicit_charge["attrs"],
+            explicit_charge.get("group_id"),
+        ):
             explicit_charge = None
-        charge = explicit_charge if explicit_charge else matching_charge(name, group, charges)
+        charge = explicit_charge if explicit_charge else matching_charge(name, group, charges, attrs)
         kind = charge["kind"] if charge else charge_kind(name, group)
+        charge_attrs = charge["attrs"] if charge else {}
         base_profile = charge["damage_types"] if charge else damage_profile(attrs)
         base_damage = sum(base_profile.values())
         damage_multiplier = safe_number(attr_value(attrs, "damageMultiplier"), 1.0) or 1.0
@@ -1473,6 +1736,14 @@ def compute_fitting_stats(
             fitted_damage_multiplier *= missile_skill_damage_multiplier(kind, skill_levels)
             fitted_damage_multiplier *= ship_missile_damage_multiplier(ship_attrs, kind, skill_name_levels)
             fitted_rof_multiplier *= missile_skill_rof_multiplier(kind, attrs, skill_levels)
+        required_damage_multiplier, required_rof_multiplier = required_skill_combat_multipliers(
+            (attrs, charge_attrs), dogma, skill_levels
+        )
+        hull_damage_multiplier, hull_rof_multiplier = ship_effect_weapon_multipliers(
+            hull_effects["weapon"], attrs, (type_group_ids or {}).get(item.type_id)
+        )
+        fitted_damage_multiplier *= required_damage_multiplier * hull_damage_multiplier
+        fitted_rof_multiplier *= required_rof_multiplier * hull_rof_multiplier
         total_damage_multiplier = damage_multiplier * fitted_damage_multiplier * module_quantity(item)
         item_damage_types = scale_damage_profile(base_profile, total_damage_multiplier)
         item_volley = base_damage * total_damage_multiplier
@@ -1484,7 +1755,6 @@ def compute_fitting_stats(
         elif is_turret_group(group):
             turret_dps += item_dps
         volley += item_volley
-        charge_attrs = charge["attrs"] if charge else {}
         weapon_rows.append({
             "item_id": item.id,
             "type_id": item.type_id,
@@ -1510,6 +1780,8 @@ def compute_fitting_stats(
         })
 
     for item in bay_items:
+        if not item_is_running(item):
+            continue
         attrs = dogma.get(item.type_id, {})
         group = group_names.get(item.type_id, "")
         if not is_drone_group(group):
@@ -1517,10 +1789,23 @@ def compute_fitting_stats(
         base_damage = damage_amount(attrs)
         damage_multiplier = safe_number(attr_value(attrs, "damageMultiplier"), 1.0) or 1.0
         cycle = cycle_seconds(attrs)
-        total_damage_multiplier = damage_multiplier * drone_damage_multiplier * module_quantity(item)
+        required_damage_multiplier, required_rof_multiplier = required_skill_combat_multipliers(
+            (attrs,), dogma, skill_levels
+        )
+        hull_damage_multiplier, hull_rof_multiplier = ship_effect_weapon_multipliers(
+            hull_effects["weapon"], attrs, (type_group_ids or {}).get(item.type_id)
+        )
+        total_damage_multiplier = (
+            damage_multiplier
+            * drone_damage_multiplier
+            * required_damage_multiplier
+            * hull_damage_multiplier
+            * module_quantity(item)
+        )
         item_damage_types = scale_damage_profile(damage_profile(attrs), total_damage_multiplier)
         item_volley = base_damage * total_damage_multiplier
-        item_dps = item_volley / cycle if cycle else 0.0
+        effective_cycle = cycle * required_rof_multiplier * hull_rof_multiplier if cycle else None
+        item_dps = item_volley / effective_cycle if effective_cycle else 0.0
         drone_dps += item_dps
         volley += item_volley
         if item_volley > 0:
@@ -1536,7 +1821,7 @@ def compute_fitting_stats(
             "volley": item_volley,
             "charge_name": None,
             "damage_types": item_damage_types,
-            "state": "online",
+            "state": item_state(item),
             "overheated": False,
             "range_m": attr_value(attrs, "maxRange"),
             "optimal_m": attr_value(attrs, "maxRange"),
@@ -1548,6 +1833,16 @@ def compute_fitting_stats(
     if max_velocity is not None:
         max_velocity *= 1 + 0.05 * skill_level(skill_levels, NAVIGATION_TYPE_ID)
         max_velocity *= ship_freighter_skill_multiplier(ship_attrs, skill_levels, FREIGHTER_VELOCITY_BONUS_ATTRS)
+        base_mass = ship_mass if ship_mass is not None else attr_value(ship_attrs, "mass")
+        if base_mass and propulsion_bonuses:
+            acceleration_control = 1 + 0.05 * named_skill_level(skill_name_levels, "Acceleration Control")
+            calculated_propulsion_bonuses = [
+                speed_factor / 100.0 * acceleration_control * thrust / (float(base_mass) + mass_addition_value)
+                for speed_factor, thrust, mass_addition_value in propulsion_bonuses
+                if thrust > 0 and float(base_mass) + mass_addition_value > 0
+            ]
+            if calculated_propulsion_bonuses:
+                max_velocity *= 1 + max(calculated_propulsion_bonuses)
         max_velocity *= stacking_raw_multiplier(velocity_multipliers)
     mass = ship_mass if ship_mass is not None else attr_value(ship_attrs, "mass")
     if mass is not None:
@@ -1582,9 +1877,21 @@ def compute_fitting_stats(
             recharge_bonus,
             skill_level(skill_levels, CAPACITOR_SYSTEMS_OPERATION_TYPE_ID),
         )
+    if capacitor_recharge_seconds is not None:
+        capacitor_recharge_seconds *= unpenalized_multiplier(capacitor_recharge_multipliers)
+        capacitor_recharge_seconds *= unpenalized_multiplier(capacitor_recharge_rig_multipliers)
     if capacitor_capacity and capacitor_recharge_seconds:
         capacitor_peak_recharge = float(capacitor_capacity) / capacitor_recharge_seconds * 2.5
-    capacitor_draw, capacitor_modules = active_capacitor_use_per_second(active_fitted_items, dogma, names)
+    capacitor_draw, capacitor_modules = active_capacitor_use_per_second(
+        active_fitted_items,
+        dogma,
+        names,
+        group_names,
+        skill_levels,
+        skill_name_levels,
+        hull_effects["weapon"],
+        type_group_ids,
+    )
     stable_percent = None
     depletion_seconds = None
     cap_stable = False
@@ -1598,14 +1905,31 @@ def compute_fitting_stats(
         stable_percent = 100.0
     shield_peak_recharge = None
     if shield_hp and shield_recharge_ms:
-        shield_peak_recharge = shield_hp / (float(shield_recharge_ms) / 1000.0) * 2.5
+        shield_recharge_multiplier = named_skill_dogma_multiplier(
+            dogma, names, skill_name_levels, "Shield Operation", "rechargeratebonus"
+        )
+        shield_peak_recharge = shield_hp / (float(shield_recharge_ms) / 1000.0 * shield_recharge_multiplier) * 2.5
     signature_radius = attr_value(ship_attrs, "signatureRadius")
     if signature_radius is not None:
-        signature_radius = float(signature_radius) * stacking_raw_multiplier(signature_multipliers)
+        signature_radius = float(signature_radius)
         for item in active_fitted_items:
             signature_radius += safe_number(attr_value(dogma.get(item.type_id, {}), "signatureRadiusAdd")) * module_quantity(item)
+        signature_radius *= stacking_raw_multiplier(signature_multipliers)
 
     cargo_capacity = effective_cargo_capacity(ship_attrs, skill_levels, cargo_capacity_multipliers, ship_capacity)
+
+    targeting_range = attr_value(ship_attrs, "maxTargetRange")
+    if targeting_range is not None:
+        targeting_range *= 1 + 0.05 * named_skill_level(skill_name_levels, "Long Range Targeting")
+    scan_resolution = attr_value(ship_attrs, "scanResolution")
+    if scan_resolution is not None:
+        scan_resolution *= 1 + 0.05 * named_skill_level(skill_name_levels, "Signature Analysis")
+    sensor_strengths = (
+        safe_number(attr_value(ship_attrs, "scanRadarStrength")) * (1 + 0.04 * named_skill_level(skill_name_levels, "Radar Sensor Compensation")),
+        safe_number(attr_value(ship_attrs, "scanLadarStrength")) * (1 + 0.04 * named_skill_level(skill_name_levels, "Ladar Sensor Compensation")),
+        safe_number(attr_value(ship_attrs, "scanMagnetometricStrength")) * (1 + 0.04 * named_skill_level(skill_name_levels, "Magnetometric Sensor Compensation")),
+        safe_number(attr_value(ship_attrs, "scanGravimetricStrength")) * (1 + 0.04 * named_skill_level(skill_name_levels, "Gravimetric Sensor Compensation")),
+    )
 
     return {
         "offense": {
@@ -1657,14 +1981,9 @@ def compute_fitting_stats(
         "cargo_bays": cargo_bay_rows(ship_attrs, fitting.items, volumes, ship_capacity, cargo_capacity),
         "targeting": {
             "max_targets": attr_value(ship_attrs, "maxLockedTargets"),
-            "targeting_range": attr_value(ship_attrs, "maxTargetRange"),
-            "scan_resolution": attr_value(ship_attrs, "scanResolution"),
-            "sensor_strength": max(
-                safe_number(attr_value(ship_attrs, "scanRadarStrength")),
-                safe_number(attr_value(ship_attrs, "scanLadarStrength")),
-                safe_number(attr_value(ship_attrs, "scanMagnetometricStrength")),
-                safe_number(attr_value(ship_attrs, "scanGravimetricStrength")),
-            ),
+            "targeting_range": targeting_range,
+            "scan_resolution": scan_resolution,
+            "sensor_strength": max(sensor_strengths),
             "drone_control_range_m": drone_control_range,
         },
         "notes": [
@@ -1680,6 +1999,7 @@ def simulate_fitting(db: Session, fitting: CharacterFitting, character: EveChara
         fitting.ship_type_id,
         *(item.type_id for item in fitting.items),
         *(item.charge_type_id for item in fitting.items if getattr(item, "charge_type_id", None)),
+        *skill_levels.keys(),
         *implant_type_ids,
         *MOBILITY_SKILL_TYPE_IDS,
         *CAPACITOR_SKILL_TYPE_IDS,

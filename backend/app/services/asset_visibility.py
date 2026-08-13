@@ -21,9 +21,12 @@ def visible_asset_rows(current_user: User, db: Session) -> list[Asset]:
         select(Asset)
         .options(
             selectinload(Asset.ownership_entity).selectinload(OwnershipEntity.character),
+            selectinload(Asset.ownership_entity).selectinload(OwnershipEntity.corporation),
+            selectinload(Asset.ownership_entity).selectinload(OwnershipEntity.alliance),
             selectinload(Asset.item_type).selectinload(EveType.group).selectinload(EveGroup.category),
             selectinload(Asset.location),
             selectinload(Asset.parent_asset).selectinload(Asset.location),
+            selectinload(Asset.parent_asset).selectinload(Asset.parent_asset),
             selectinload(Asset.parent_asset).selectinload(Asset.item_type).selectinload(EveType.group).selectinload(EveGroup.category),
         )
         .order_by(Asset.updated_at.desc(), Asset.id.desc())

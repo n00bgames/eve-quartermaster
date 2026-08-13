@@ -20,6 +20,7 @@ from app.models import (
 from app.models.enums import OwnerKind, SyncStatus
 from app.services.research_projects import (
     scoped_corporation_research_rows,
+    upsert_research_projects,
     visible_research_project_filter,
 )
 
@@ -190,6 +191,40 @@ class ResearchProjectScopeTests(unittest.TestCase):
         )
         self.assertFalse(linked_only)
         self.assertEqual(included_rows, [{"job_id": 13, "installer_id": 999_999_999}])
+
+    def test_industry_sync_retains_manufacturing_jobs(self) -> None:
+        pilot = EveCharacter(
+            character_id=99_200_001,
+            name="Manufacturing Pilot",
+            owner_user_id=self.user.id,
+        )
+        self.db.add(pilot)
+        self.db.flush()
+
+        synced, active = upsert_research_projects(
+            self.db,
+            pilot.id,
+            [
+                {
+                    "job_id": 9001,
+                    "installer_id": pilot.character_id,
+                    "activity_id": 1,
+                    "status": "active",
+                    "blueprint_id": 10_001,
+                    "blueprint_type_id": None,
+                    "product_type_id": None,
+                    "runs": 12,
+                },
+                {"job_id": 9002, "activity_id": 9, "status": "active"},
+            ],
+        )
+
+        project = self.db.scalar(select(ResearchProject).where(ResearchProject.job_id == 9001))
+        self.assertEqual((synced, active), (1, 1))
+        self.assertIsNotNone(project)
+        self.assertEqual(project.activity_id, 1)
+        self.assertEqual(project.runs, 12)
+        self.assertIsNone(self.db.scalar(select(ResearchProject).where(ResearchProject.job_id == 9002)))
 
 
 if __name__ == "__main__":

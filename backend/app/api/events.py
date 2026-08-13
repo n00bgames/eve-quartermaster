@@ -461,7 +461,8 @@ def event_doctrine_search(
     if q.strip():
         statement = statement.where(Doctrine.name.ilike(f"%{q.strip()}%"))
     rows = db.scalars(statement.order_by(func.lower(Doctrine.name)).limit(50)).all()
-    return [{"id": row.id, "name": row.name, "description": row.description, "external_url": row.external_url} for row in rows]
+    return [{"id": row.id, "name": row.name, "description": row.description, "purpose": row.purpose or row.description,
+             "priority_code": row.priority_code, "fitting_id": row.fitting_id, "external_url": row.external_url} for row in rows]
 
 
 @router.get("/next")
@@ -1414,4 +1415,3 @@ def delete_attendance(
     )
     db.commit()
     return {"ok": True}
-

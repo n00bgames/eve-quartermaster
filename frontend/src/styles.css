@@ -2,6 +2,7 @@
 
 
 .fitting-import-panel{border:1px solid rgba(79,179,199,.36);border-radius:10px;background:linear-gradient(145deg,rgba(10,24,30,.6),rgba(18,23,29,.9));padding:10px 12px}.fitting-import-panel summary{color:#d9e6f7;cursor:pointer;font-weight:900}.fitting-import-grid{display:grid;grid-template-columns:minmax(240px,1fr) auto;gap:10px 14px;align-items:end;padding-top:10px}.fitting-import-text{grid-column:1/-1}.fitting-import-text textarea{min-height:150px;font-family:Consolas,"Liberation Mono",monospace}@media (width<=900px){.fitting-import-grid{grid-template-columns:1fr}}
+.fitting-send-panel{background:linear-gradient(145deg,#153226d9,#10151bf2);border:1px solid #70c894;border-radius:10px;grid-template-columns:minmax(220px,1fr) minmax(220px,.7fr) auto;align-items:end;gap:12px;padding:14px;display:grid}.fitting-send-panel>div:first-child{align-self:center;gap:4px;display:grid}.fitting-send-panel>div:first-child span{color:#b9c7d8;font-size:.88rem}.fitting-send-panel>.scope-warn{grid-column:1/-1}.fitting-send-panel code{display:inline;padding:2px 5px}@media (width<=980px){.fitting-send-panel{grid-template-columns:1fr}}
 .market-layout{grid-template-columns:minmax(320px,.7fr) minmax(320px,1fr);gap:16px;align-items:start;display:grid}.market-paste{min-height:260px;font-family:Consolas,"Liberation Mono",monospace}.market-hub-grid{grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px;display:grid}.market-hub-option{background:#10151bd1;border:1px solid #303741;border-radius:8px;gap:6px;padding:10px;display:grid;min-width:0;overflow:hidden;align-content:start}.market-hub-option.active{border-color:#e8b84d;background:#33281366}.market-hub-option.disabled{opacity:.55}.market-hub-option input{width:auto;min-height:auto}.market-hub-option strong,.market-hub-option span{min-width:0;overflow-wrap:anywhere;line-height:1.25}.market-hub-option span{color:#8b98a8;font-size:.82rem}.market-total-grid{grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;display:grid}.market-total-grid article{background:#10151bd1;border:1px solid #303741;border-radius:8px;gap:3px;padding:12px;display:grid}.market-total-grid span,.market-total-grid small{color:#aab4c2}.market-total-grid strong{font-size:1.1rem}.market-table-wrap{max-height:min(62vh,820px)}.market-table{min-width:1100px}.market-table td:first-child span,.market-table td:first-child small{color:#aab4c2;display:block}.market-price-cell{gap:2px;display:grid}.market-price-cell b{white-space:nowrap}.market-price-cell small{color:#8b98a8}.section-toggle-grid{grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px;display:grid}.section-toggle-card{background:#10151bd1;border:1px solid #303741;border-radius:8px;gap:4px;padding:10px;display:grid}.section-toggle-card.enabled{border-color:#70c89466}.section-toggle-card.disabled{border-color:#e8b84d;background:#33281366}.section-toggle-card input{width:auto;min-height:auto}.section-toggle-card span{color:#8b98a8;font-size:.82rem}.contract-token-grid{grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;display:grid}.contract-token-card{background:#10151bd1;border:1px solid #303741;border-radius:8px;gap:8px;padding:12px;display:grid}.contract-token-card span{color:#aab4c2}.contracts-table-wrap{max-height:min(68vh,900px)}.contracts-table{min-width:1050px}.contract-money-cell{gap:2px;display:grid}.contract-money-cell b{white-space:nowrap}.contract-scope-badge{color:#c9f6ff;background:#4fb3c71a;border:1px solid #4fb3c75c;border-radius:999px;padding:3px 8px;font-size:.75rem;font-weight:900;text-transform:uppercase}@media (width<=900px){.market-layout{grid-template-columns:1fr}}
 .market-margin-hints{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}.market-margin-card{display:grid;gap:4px;border:1px solid #303741;border-radius:8px;background:#10151bd1;padding:10px}.market-margin-card span{color:#aab4c2}.market-margin-card b{font-size:1.05rem}.market-margin-card.positive{border-color:#70c89488;background:#12342199}.market-margin-card.positive b{color:#8ff0ad}.market-margin-card.negative{border-color:#ef747488;background:#3b151999}.market-margin-card.negative b{color:#ff9d9d}.market-legend{display:flex;gap:12px;flex-wrap:wrap;color:#aab4c2;font-size:.86rem}.legend-dot{display:inline-block;width:10px;height:10px;border-radius:999px;margin-right:5px;box-shadow:0 0 10px currentColor}.legend-dot.healthy{background:#70c894;color:#70c894}.legend-dot.buy{background:#b07cff;color:#b07cff}.legend-dot.split{background:#e8b84d;color:#e8b84d}.legend-dot.one{background:#ef7474;color:#ef7474}.market-line{border-radius:6px;padding:2px 6px;margin-left:-6px}.market-best-buy{background:#27183f;border:1px solid #b07cff99;color:#eadcff}.market-best-sell{background:#123421;border:1px solid #70c89488;color:#c9ffd8}.market-best-split{background:#332813;border:1px solid #e8b84d99;color:#ffe39a}.market-depth{display:inline-flex;align-items:center;justify-content:center;min-width:1.8em;border-radius:999px;padding:1px 6px;margin-right:4px;font-weight:900}.market-depth.healthy{background:#123421;border:1px solid #70c89488;color:#8ff0ad}.market-depth.thin{background:#332813;border:1px solid #e8b84d99;color:#ffe39a}.market-depth.one{background:#3b1519;border:1px solid #ef747488;color:#ff9d9d}
 
@@ -1446,7 +1447,65 @@
 /* Analytics loading and legacy storage maintenance */
 .analytics-loading-placard,.analytics-maintenance-placard{border:1px solid #4fb3c7;border-radius:10px;background:linear-gradient(145deg,#102934e8,#0d171fe8);padding:14px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 0 22px #4fb3c71f}.analytics-loading-placard>svg{color:#64d6e8;flex:0 0 auto}.analytics-loading-placard>div,.analytics-maintenance-placard>div:first-child{gap:3px;display:grid}.analytics-loading-placard strong,.analytics-maintenance-placard strong{color:#eafaff}.analytics-loading-placard span,.analytics-maintenance-placard span,.analytics-maintenance-placard small{color:#aab9c9}.analytics-maintenance-placard{justify-content:space-between;border-color:#e8b84d;background:linear-gradient(145deg,#332813c9,#16130ddb)}.analytics-maintenance-placard small{color:#f0c974;font-weight:800}.analytics-maintenance-placard .button-row{justify-content:flex-end;flex:0 0 auto}@media (width<=800px){.analytics-maintenance-placard{align-items:stretch;display:grid}.analytics-maintenance-placard .button-row{justify-content:flex-start}}
 .analytics-retention-panel{border:1px solid #4fb3c773;border-radius:10px;background:linear-gradient(145deg,#0b1b22e8,#10151be8);padding:14px 16px;display:grid;gap:12px}.analytics-retention-panel>div:first-child{display:grid;gap:3px}.analytics-retention-panel strong{color:#eafaff}.analytics-retention-panel span,.analytics-retention-panel small{color:#aab9c9}.analytics-retention-controls{grid-template-columns:repeat(2,minmax(240px,1fr)) auto;align-items:stretch;gap:9px;display:grid}.analytics-retention-controls label{cursor:pointer;border:1px solid #303741;border-radius:8px;background:#0b1016;padding:10px;display:flex;align-items:flex-start;gap:9px}.analytics-retention-controls label.active{border-color:#e8b84d;background:#33281375}.analytics-retention-controls label>span{display:grid;gap:3px}.analytics-retention-controls b{color:#f5f7fb}.analytics-retention-controls button{align-self:stretch}.analytics-coverage-placard{border-left:4px solid #63d890;border-radius:6px;background:#10251b;padding:10px 13px;display:grid;gap:3px}.analytics-coverage-placard.partial{border-left-color:#e8b84d;background:#2b230f}.analytics-coverage-placard strong{color:#eafaff}.analytics-coverage-placard span{color:#b8c4d1}@media (width<=900px){.analytics-retention-controls{grid-template-columns:1fr}.analytics-retention-controls button{justify-self:start}}
+.change-composition-widget{grid-column:1/-1}.change-composition-widget>p{color:#aab4c2;margin:0}.change-composition-list{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;display:grid}.change-composition-list section{background:#10151b;border:1px solid #303741;border-radius:8px;gap:5px;padding:10px;display:grid}.change-composition-list section>div{justify-content:space-between;align-items:baseline;gap:10px;display:flex}.change-composition-list span,.change-composition-list small{color:#aab4c2}.change-composition-list strong{color:#f5f7fb;text-align:right}.change-composition-list b{color:#8bd8e8}.change-composition-list small{line-height:1.35}@media (width<=1000px){.change-composition-list{grid-template-columns:repeat(2,minmax(0,1fr))}}@media (width<=600px){.change-composition-list{grid-template-columns:1fr}}
 /* Planetary Industry checkpoint simulation */
 .planetary-projection-note{align-items:center;background:#102934;border:1px solid #4fb3c7;border-radius:8px;color:#b9cad8;display:flex;gap:9px;padding:9px 11px}.planetary-projection-note svg{color:#64d6e8;flex:0 0 auto}.planetary-projection-note strong{color:#eafaff}.planetary-projection-warning{margin:0}.planetary-observed{border-left:2px solid #4fb3c7;color:#8fb9c3!important;margin-top:7px;padding-left:7px}.planetary-status.status-running{background:#153226;border-color:#3a7f58;color:#b6f5ce!important}.planetary-status.status-starved,.planetary-status.status-blocked,.planetary-status.status-full{background:#351d1f;border-color:#ef776e;color:#ffd8d5!important}.planetary-status.status-idle{background:#222832;border-color:#596574;color:#c4ccd6!important}@media (width<=680px){.planetary-projection-note{align-items:flex-start}.planetary-detail-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.planetary-detail-summary span{background:#111821;border:1px solid #303741;border-radius:7px;display:grid;padding:8px}.planetary-detail-summary span:last-child{grid-column:1/-1}}
 /* Remembered sign-in */
 .auth-remember{background:#10151be6;border:1px solid #303741;border-radius:8px;cursor:pointer;gap:10px;margin-top:2px;padding:10px 12px}.auth-remember input{accent-color:#e8b84d;height:18px;width:18px}.auth-remember span{display:grid;gap:2px}.auth-remember strong{color:#e9eef5}.auth-remember small{color:#8b98a8;line-height:1.35}
+/* Unified ESI Sync & Freshness Center */
+.bp-badge.research{color:#d9f8ff;background:#4fb3c724;border-color:#4fb3c7}
+.esi-sync-page{display:grid;gap:18px}.sync-freshness-center{background:linear-gradient(145deg,#10212ae8,#151a21f0)}.sync-freshness-center .section-heading p{color:#aab4c2;margin:4px 0 0}.sync-freshness-center .section-heading button{gap:7px}.sync-freshness-summary{margin-bottom:0}.sync-freshness-characters{display:grid;gap:9px}.sync-freshness-character{background:#0b1117;border:1px solid #303741;border-radius:9px;overflow:hidden}.sync-freshness-character>summary{align-items:center;cursor:pointer;display:flex;gap:12px;justify-content:space-between;padding:12px 14px}.sync-freshness-character>summary>span:first-child{display:grid;gap:2px}.sync-freshness-character>summary small{color:#e8b84d}.freshness-count{background:#153226;border:1px solid #3a7f58;border-radius:999px;color:#b6f5ce;font-size:.75rem;font-weight:850;padding:4px 9px}.freshness-count.attention{background:#332813;border-color:#e8b84d;color:#ffe8aa}.sync-dataset-grid{border-top:1px solid #303741;display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));padding:10px}.sync-dataset-card{background:#10151b;border:1px solid #303741;border-left-width:4px;border-radius:8px;display:grid;gap:6px;min-width:0;padding:9px 10px}.sync-dataset-card>div{align-items:baseline;display:flex;gap:8px;justify-content:space-between}.sync-dataset-card>div span{text-transform:uppercase;font-size:.66rem;font-weight:900}.sync-dataset-card small{color:#9aa7b7;line-height:1.35;overflow-wrap:anywhere}.sync-dataset-card p{color:#ffd8d5;display:-webkit-box;font-size:.76rem;-webkit-line-clamp:2;-webkit-box-orient:vertical;margin:0;overflow:hidden}.sync-dataset-card.health-current{border-left-color:#70c894}.sync-dataset-card.health-current span{color:#79e0a7}.sync-dataset-card.health-active{border-left-color:#4fb3c7}.sync-dataset-card.health-active span{color:#8bd8e8}.sync-dataset-card:is(.health-stale,.health-never_synced,.health-skipped,.health-missing_scope){border-left-color:#e8b84d}.sync-dataset-card:is(.health-stale,.health-never_synced,.health-skipped,.health-missing_scope) span{color:#ffe08b}.sync-dataset-card.health-failed{border-left-color:#ef776e}.sync-dataset-card.health-failed span{color:#ff9b94}.sync-dataset-card.health-disabled{border-left-color:#657386;opacity:.72}.sync-dataset-card.health-disabled span{color:#aab4c2}.sync-job-history{background:#0b1117;border:1px solid #303741;border-radius:8px;padding:10px}.sync-job-history>summary{cursor:pointer;font-weight:850}.sync-job-history>div{display:grid;gap:6px;margin-top:9px}.sync-job-history article{align-items:center;border-top:1px solid #303741;display:grid;gap:8px;grid-template-columns:minmax(0,1fr) auto auto;padding-top:7px}.sync-job-history article>span{border:1px solid #303741;border-radius:999px;font-size:.7rem;font-weight:900;padding:3px 7px;text-transform:uppercase}.sync-job-history small{color:#8b98a8}.sync-job-history .health-success{color:#79e0a7}.sync-job-history .health-failed{color:#ff9b94}.sync-job-history .health-running,.sync-job-history .health-queued{color:#8bd8e8}@media (width<=620px){.sync-freshness-character>summary{align-items:flex-start;display:grid}.sync-job-history article{grid-template-columns:1fr auto}.sync-job-history small{grid-column:1/-1}}
+.inventory-export-panel {
+  margin: 0.75rem 0;
+  padding: 0.75rem;
+  border: 1px solid #303741;
+  border-radius: 12px;
+  background: #121a22;
+}
+
+.inventory-export-panel .button-row > label {
+  min-width: 7rem;
+}
+
+.inventory-export-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.65rem 1rem;
+  margin-top: 0.75rem;
+}
+
+.inventory-export-options > label:not(.export-aliases) {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.inventory-export-options input[type="checkbox"] {
+  width: auto;
+}
+
+.inventory-export-options .export-aliases {
+  grid-column: 1 / -1;
+}
+
+.inventory-export-options textarea {
+  min-height: 5.5rem;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+/* Six project KPIs: active total, manufacturing, ME/TE, copying, invention, history. */
+.research-summary-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+@media (max-width: 980px) {
+  .research-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .research-summary-grid {
+    grid-template-columns: 1fr;
+  }
+}

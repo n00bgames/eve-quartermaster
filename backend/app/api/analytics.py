@@ -27,6 +27,7 @@ from app.services.analytics import (
 from app.services.audit import record_audit_event
 from app.services.metric_registry import METRIC_CATALOG
 from app.services.permissions import ROLE_RANK, can_view_section, role_rank
+from app.services.research_projects import RESEARCH_ACTIVITY_NAMES
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
@@ -213,12 +214,11 @@ def research_project_analytics(db: Session, days: int, character_ids: set[int] |
             return {"project_count": 0, "active_count": 0, "completed_count": 0, "by_activity": [], "by_character": []}
         query = query.where(ResearchProject.character_id.in_(character_ids))
     projects = db.scalars(query).all()
-    activity_names = {3: "Time Efficiency", 4: "Material Efficiency", 5: "Copying", 8: "Invention"}
     active_statuses = {"active", "paused", "ready"}
     by_activity: dict[str, int] = {}
     by_character: dict[str, int] = {}
     for project in projects:
-        activity = activity_names.get(project.activity_id, f"Activity {project.activity_id}")
+        activity = RESEARCH_ACTIVITY_NAMES.get(project.activity_id, f"Activity {project.activity_id}")
         character = project.character.name if project.character else project.installer_name or f"Character {project.installer_character_id or 'unknown'}"
         by_activity[activity] = by_activity.get(activity, 0) + 1
         by_character[character] = by_character.get(character, 0) + 1
@@ -577,6 +577,54 @@ def delta_rows(latest: list[Any], earliest: list[Any], key: str, value_attr: str
     return sorted(rows, key=lambda item: item["delta"], reverse=True)
 
 
+def change_breakdown(
+    rows: list[Any],
+    *,
+    key: str,
+    value_attr: str,
+    name_attr: str,
+    cutoff: datetime,
+) -> dict[str, Any]:
+    """Separate real movement from owners first observed inside the selected range."""
+    grouped: dict[int, list[Any]] = {}
+    for row in rows:
+        grouped.setdefault(int(getattr(row, key)), []).append(row)
+
+    current = 0.0
+    organic_delta = 0.0
+    coverage_delta = 0.0
+    newly_tracked: list[dict[str, Any]] = []
+    for owner_id, history in grouped.items():
+        history.sort(key=lambda row: (row.recorded_at, row.id))
+        first = history[0]
+        latest = history[-1]
+        first_value = as_float(getattr(first, value_attr, 0) or 0)
+        latest_value = as_float(getattr(latest, value_attr, 0) or 0)
+        current += latest_value
+        first_observed_at = aware_utc(first.recorded_at)
+        if first_observed_at and first_observed_at >= cutoff:
+            coverage_delta += first_value
+            newly_tracked.append(
+                {
+                    "id": owner_id,
+                    "name": getattr(latest, name_attr),
+                    "value": first_value,
+                    "first_observed_at": iso(first_observed_at),
+                }
+            )
+        if len(history) > 1:
+            organic_delta += latest_value - first_value
+
+    return {
+        "current": current,
+        "total_delta": organic_delta + coverage_delta,
+        "organic_delta": organic_delta,
+        "coverage_delta": coverage_delta,
+        "newly_tracked_count": len(newly_tracked),
+        "newly_tracked": sorted(newly_tracked, key=lambda item: item["value"], reverse=True)[:12],
+    }
+
+
 def category_deltas(
     db: Session,
     days: int,
@@ -739,6 +787,12 @@ def analytics_summary(days: int = Query(30, ge=1, le=3660), current_user: User =
     latest_wallet_total = sum(as_float(row.wallet_balance) for row in latest_corps)
     latest_blueprints = sum(int(row.blueprint_count or 0) for row in latest_corps)
     latest_members = sum(int(row.member_count or 0) for row in latest_corps)
+    change_composition = {
+        "skill_points": change_breakdown(character_rows, key="character_id", value_attr="total_skill_points", name_attr="character_name", cutoff=cutoff),
+        "corporation_wallets": change_breakdown(corporation_rows, key="corporation_id", value_attr="wallet_balance", name_attr="corporation_name", cutoff=cutoff),
+        "members": change_breakdown(corporation_rows, key="corporation_id", value_attr="member_count", name_attr="corporation_name", cutoff=cutoff),
+        "blueprints": change_breakdown(corporation_rows, key="corporation_id", value_attr="blueprint_count", name_attr="corporation_name", cutoff=cutoff),
+    }
     return {
         "days": days,
         "latest_snapshot_at": iso(latest_run.completed_at or latest_run.started_at) if latest_run else None,
@@ -760,6 +814,7 @@ def analytics_summary(days: int = Query(30, ge=1, le=3660), current_user: User =
             "member_total": latest_members,
             "character_count": len(latest_characters),
         },
+        "change_composition": change_composition,
         "top_sp_gainers": sp_gainers,
         "top_sp_losses": skill_point_losses(db, days, character_ids, character_rows),
         "top_skill_category_gainers": category_deltas(db, days, character_ids, character_category_rows),

@@ -10,6 +10,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    JSON,
     String,
     Text,
     UniqueConstraint,
@@ -27,6 +28,21 @@ class Doctrine(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     description: Mapped[str | None] = mapped_column(Text)
+    purpose: Mapped[str | None] = mapped_column(String(500))
+    priority_code: Mapped[str | None] = mapped_column(String(120), index=True)
+    priority_values: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    priority_code_manual: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    fitting_id: Mapped[int | None] = mapped_column(
+        ForeignKey("character_fittings.id", ondelete="RESTRICT"), index=True
+    )
+    fitting_snapshot: Mapped[dict | None] = mapped_column(JSON)
+    notes: Mapped[str | None] = mapped_column(Text)
+    linked_skill_plan_id: Mapped[int | None] = mapped_column(
+        ForeignKey("skill_plans.id", ondelete="SET NULL"), index=True
+    )
+    updated_by_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
     external_url: Mapped[str | None] = mapped_column(String(1000))
     created_by_user_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), index=True
@@ -41,6 +57,71 @@ class Doctrine(Base):
     )
 
     created_by_user = relationship("User", foreign_keys=[created_by_user_id])
+    updated_by_user = relationship("User", foreign_keys=[updated_by_user_id])
+    fitting = relationship("CharacterFitting")
+    fitting_links: Mapped[list["DoctrineFitting"]] = relationship(
+        back_populates="doctrine",
+        cascade="all, delete-orphan",
+        order_by="DoctrineFitting.sort_order",
+    )
+    linked_skill_plan = relationship("SkillPlan", foreign_keys=[linked_skill_plan_id])
+    skill_plan_links: Mapped[list["DoctrineSkillPlan"]] = relationship(
+        back_populates="doctrine",
+        cascade="all, delete-orphan",
+        order_by="DoctrineSkillPlan.sort_order",
+    )
+
+
+class DoctrineFitting(Base):
+    __tablename__ = "doctrine_fittings"
+    __table_args__ = (
+        UniqueConstraint("doctrine_id", "fitting_id", name="uq_doctrine_fitting"),
+        CheckConstraint("sort_order >= 0", name="ck_doctrine_fittings_sort_order"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    doctrine_id: Mapped[int] = mapped_column(
+        ForeignKey("doctrines.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    fitting_id: Mapped[int] = mapped_column(
+        ForeignKey("character_fittings.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+    is_primary: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    fitting_snapshot: Mapped[dict | None] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    doctrine: Mapped[Doctrine] = relationship(back_populates="fitting_links")
+    fitting = relationship("CharacterFitting")
+
+
+class DoctrineSkillPlan(Base):
+    __tablename__ = "doctrine_skill_plans"
+    __table_args__ = (
+        UniqueConstraint("doctrine_id", "skill_plan_id", name="uq_doctrine_skill_plan"),
+        CheckConstraint("sort_order >= 0", name="ck_doctrine_skill_plans_sort_order"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    doctrine_id: Mapped[int] = mapped_column(
+        ForeignKey("doctrines.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    skill_plan_id: Mapped[int] = mapped_column(
+        ForeignKey("skill_plans.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    fitting_id: Mapped[int | None] = mapped_column(
+        ForeignKey("character_fittings.id", ondelete="SET NULL"), index=True
+    )
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    doctrine: Mapped[Doctrine] = relationship(back_populates="skill_plan_links")
+    skill_plan = relationship("SkillPlan")
+    fitting = relationship("CharacterFitting")
 
 
 class Event(Base):

@@ -1,6 +1,14 @@
 export type AnalyticsPoint = { date?: string | null; corporation_id?: number; corporation_name?: string; value: number };
 
 export type AnalyticsGrowth = { id?: number; name: string; value?: number; delta: number };
+export type AnalyticsChangeBreakdown = {
+  current: number;
+  total_delta: number;
+  organic_delta: number;
+  coverage_delta: number;
+  newly_tracked_count: number;
+  newly_tracked: { id: number; name: string; value: number; first_observed_at: string }[];
+};
 
 export type DuplicateBlueprint = { owner_name: string; blueprint_type_name: string; is_copy: boolean; quantity: number; material_efficiency_levels: number[]; time_efficiency_levels: number[]; in_use: number };
 
@@ -133,6 +141,12 @@ export type AnalyticsSummary = {
     complete: boolean;
   };
   cards: { wallet_total: number; blueprint_total: number; member_total: number; character_count: number };
+  change_composition: {
+    skill_points: AnalyticsChangeBreakdown;
+    corporation_wallets: AnalyticsChangeBreakdown;
+    members: AnalyticsChangeBreakdown;
+    blueprints: AnalyticsChangeBreakdown;
+  };
   top_sp_gainers: AnalyticsGrowth[];
   top_sp_losses: AnalyticsGrowth[];
   top_skill_category_gainers: { name: string; delta: number }[];

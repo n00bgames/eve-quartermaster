@@ -7,9 +7,43 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Added
 
+- Added ESI manufacturing jobs to Research Projects, including character and corporation jobs, active/history views, activity filtering, a dedicated summary count, and Analytics attribution alongside ME/TE, copying, and invention.
+
+- Added **Send to EVE** for saved and draft fittings. Users can choose one of their own linked characters, authorize `esi-fittings.write_fittings.v1` through EVE SSO when needed, and save the EQM fit directly into that character's EVE fitting library; write-token ownership remains account-private even for EQM staff.
+
+- Added EVE-compatible Skill Plan export with one-click clipboard copy and UTF-8 text download. Target levels expand into ordered individual levels for EVE’s Import Skills from Clipboard action, with a warning for plans beyond the client’s 150-level personal-plan limit.
+
+- Added multiple, optionally fitting-specific skill-plan links per doctrine; plan links now deep-link directly to the selected Skills > Skill Plans record, and two or more plans can be combined into a reviewed master plan with duplicate skills retained at the highest requested level.
+
+- Added permission-filtered Assets and Blueprint Library exports in CSV and JSON. Users can export the current filter or every accessible record; exports include a versioned schema, UTC generation time, application version, stable EVE IDs, BPO/BPC research/job context, item taxonomy, volume fields, exact-ID-safe JSON strings, timestamped filenames, and explicit unknown pricing fields. Optional privacy controls can suppress owner/location names and IDs, substitute user-defined location aliases, or replace sensitive IDs with keyed hashes.
+
+- Expanded Doctrine Management from one canonical fit per doctrine to an ordered multi-fit doctrine library. Officers can now create a named doctrine before attaching fits, add or remove several shared fits, select a primary compatibility fit, inspect each fit, and run live multi-hub market appraisal with per-fit and combined buy, split, and replacement totals. Existing doctrines migrate their canonical fit automatically.
+
+- Added an integrated Doctrine Management module with searchable list/detail views, officer-managed create/edit/archive workflows, configurable validated priority fields and generated or manual priority codes, canonical Fittings links with historical snapshots, inline EFT fit creation, audit metadata, and optional Skill Plan links. Existing Calendar & Events doctrine records remain compatible and can be upgraded in place.
+
+- Added editable Skill Plans inside the Character Skills module. Plans may be built manually or generated from a doctrine/fitting using imported EVE SDE dogma for hulls, modules, rigs, drones, fighters, charges, scripts, and recursively available prerequisites; repeated requirements are deduplicated at the highest minimum level, generation sources remain visible during review, and linked-character progress distinguishes complete, partial, and missing skills.
+
+- Added Ship Replacement Requests with owner-scoped EQM character selection, doctrine or general fitting selection, labeled EVE-time/UTC loss date and time, stable historical name snapshots, search and filters, draft editing, and the extensible Submitted → Under Review → Approved/Rejected → Paid workflow. Officer review permissions and all data validation are enforced on the server.
+
+- Expanded SRP into staff-created operation instances with generated submission links, open/closed intake, inherited operation/doctrine context, configurable loss reasons, location and organization snapshots, encrypted optional killmail hashes, immutable fitting composition, fixed-precision loss and reimbursement values, duplicate/invalid/test/cancelled controls, and append-only workflow/review events.
+
+- Added a permission-filtered SRP Analytics workspace with UTC/custom-range reporting, loss and ISK trends, doctrine/fit/ship/class/pilot/operation/organization/location/status breakdowns, reimbursement gaps, data-quality indicators, aggregate drilldowns, and exact detailed or aggregate CSV exports. Missing valuations remain unknown rather than becoming zero.
+
+- Added systemic resumable progress tracking for bulk character workflows. Character Data, Character Skills, Mining, Research, and both bulk and per-character Planetary Industry syncs now remember their server job, stop page-local polling when the module is left, and resume the same progress indicator when the user returns. Stale references are safely cleared after expiry or a backend restart.
+
+- Added live bulk-workflow rows to the ESI Sync & Freshness Center. Character Data Sync, Character Skills, and Planetary Industry coordinators are now counted and refreshed while active, including overall progress and the current character/data type.
+
+- Added a permission-filtered ESI Sync & Freshness Center that consolidates durable per-character dataset status, age, active and failed jobs, never-synced data, missing scopes, and owner-disabled collection. Full character sync opt-out and wallet-history opt-out are identified as intentional privacy states instead of false failures.
+
+- Added a third-party research and provenance ledger plus a README acknowledgment for feature-direction research informed by the MIT-licensed EVE Buddy project. The record clearly separates independent implementation and validation evidence from incorporated source code or assets.
+
+- Added a versioned fitting-reference fixture harness with required provenance, explicit tolerances, reusable metric-path assertions, and an initial formula-based Fenrir fixture. Independently verified Pyfa or EVE-client fixtures can now become measurable release gates without treating EQM's own output as its source of truth.
+
 - Added a host-selectable Analytics storage policy: **Full History** preserves every eligible observation, while **Changes + Daily Checkpoints** stores metric values only when they change and limits high-volume skill, corporation, and blueprint detail to daily checkpoints. The lower-storage mode is the default for new installations; upgrades with existing history remain on Full History until a host changes it. Blueprint removals are retained as explicit zero-value changes, and switching modes never rewrites existing history.
 
 - Added selected-range coverage metadata and an Analytics placard that reports the history actually available instead of implying a complete 7D/30D/90D/1Y window. Metric series are explicitly treated according to their own timestamps rather than as globally synchronized snapshot runs.
+
+- Added a compact Change Composition widget for skill points, corporation wallets, members, and blueprints. Net change is separated into organic movement for already-observed owners and coverage change from first-time observations, preventing newly linked characters or corporations from masquerading as enormous growth.
 
 - Added an enforced analytics metric registry. Every snapshot metric now declares entity and time aggregation, supported rollups and transforms, value kind, dimensions, privacy scope, version, and chart compatibility; unregistered or incorrectly scoped metrics are rejected before collection.
 
@@ -17,7 +51,15 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Changed
 
+- Rebuilt the fitting simulator's common cold-fit calculation path around imported SDE dogma and character skills. Turret/launcher/drone damage, hull bonuses, resistance compensation, extender and repair rigs, capacitor use, targeting, propulsion, signature radius, sensor compensation, resource reductions, and drone activation now follow the applicable skill and module state instead of broad name-based approximations. Loaded charge and script effects, T2 hull-skill routing, command bursts and their charges, plate mass, passive-coating compensation, and shared agility effects now use the same reusable Dogma path across ship classes.
+
+- Added externally verified Pyfa 2.68.0 All-V and Steihl Lianul reference evidence for Rail Moa, Rapid Light Caracal, Active Armor Vexor, and command-burst Absolution fits, including explicit heat, implant, booster, fleet-effect, module-state, drone-state, rounding, and SDE-version provenance. The Absolution fixture is also cross-checked against the EVE fitting simulator for offense, tank, movement, targeting, and drone output.
+
+- Added an isolated Python 3.12 backend test image and opt-in Compose test profile. The complete pytest suite and the focused fitting regression fleet now run through repeatable Docker commands without installing pytest in the production backend or worker images.
+
 - Historical character, corporation, and financial trends now include the most recent observation before the selected range as their opening baseline, keeping deltas and unchanged series correct under change-only retention.
+
+- Analytics gain rankings now remain explicitly organic: owners need a comparison baseline before their movement can appear as training, wallet, member, or blueprint growth.
 
 - Duplicate-blueprint analytics now reads the current scoped blueprint inventory rather than depending on the latest retained full-detail checkpoint.
 
@@ -26,6 +68,32 @@ This project is moving quickly during beta. Version sections are written as user
 - Improved historical chart rendering with dynamic non-zero Y-axis domains, 5–10% peak headroom, human-friendly tick intervals, date labels that adapt from daily through quarterly views, and pointer crosshairs with readable multi-series value cards.
 
 - Character dossiers now display both base NPC standings and effective standings calculated from active Diplomacy, Connections, or Criminal Connections levels, including the applied skill and level; the interface clarifies that Social affects future gains rather than the current standing.
+
+### Fixed
+
+- Fixed the Skill Plan editor remounting its form after every keystroke, which caused name, description, search, per-skill notes, and plan-notes fields to lose focus after a single character.
+
+- Fixed Blueprint Library exports leaving canonical locations blank for blueprints nested beneath containers and corporation offices. Export schema v2 now follows the permission-checked asset hierarchy to the containing station or Upwell structure, exposes immediate and root locations plus container ancestry and corporation flags, classifies resolved/parent-resolved/anonymized/inaccessible/unresolved records, reports location-resolution quality totals, and uses the same canonical root location in the Blueprint Library UI.
+
+- Fixed Doctrine Management text fields losing focus after every typed character. The editor now stays mounted through form-state updates, so names, purposes, searches, notes, priority configuration, and inline EFT input accept uninterrupted typing.
+
+- Fixed the Blueprint Library dropping originals while ESI temporarily removes an installed blueprint from the normal blueprint inventory response. Active ME, TE, and copying jobs now contribute a permission-filtered in-research library row, preserve the last observed ME/TE and location context, remain searchable, and do not appear as a false Missing BPO.
+
+- Fixed Character Data Sync appearing as zero active jobs while its coordinator was still processing characters between durable ESI subjobs. Bulk job access is now scoped to the account that launched it so persisted browser references cannot expose another user's progress.
+
+- Fixed EFT imports that misclassified Drone Damage Amplifiers, Drone Link Augmentors, and Omnidirectional Tracking Links as drones, which removed them from their actual fitting slots and corrupted resources, damage, range, and capacitor estimates.
+
+- Fixed online-but-inactive fitted modules and inactive drone-bay entries contributing active effects, and corrected afterburner capacitor use to include both Afterburner and Fuel Conservation skill modifiers plus the trained activation cycle.
+
+- Fixed shield booster repair amounts being mistaken for permanent shield capacity, made applicable hull rate-of-fire modifiers carry through to turret capacitor draw as well as weapon DPS, and stopped applying a stacking penalty to SDE-declared stackable capacitor rechargers.
+
+- Fixed T2 ammunition such as Scorch and Conflagration being omitted from laser charge selectors. Fitting controls and simulation now use the SDE's allowed charge groups and charge sizes, so modules offer compatible standard, faction, and T2 charges without mixing weapon sizes.
+
+- Fixed draft normalization moving Armor and Shield Command Bursts into low or mid slots because their bonus-family names resembled tank modules. Every command-burst family now remains in a high slot when cloning, importing, editing, or repairing a draft.
+
+- Fixed SDE imports preferring stale nested `fsd` copies over newer root YAML files, and fixed duplicate pending placeholder groups during large current-SDE imports. Re-importing now refreshes current ship cargo, module attributes, Dogma, scripts, and ammunition metadata reliably.
+
+- Character wallet journal sync now deduplicates repeated ESI reference IDs and uses an atomic database upsert, preventing an already-stored journal entry from failing the entire balance/history sync. Failure records also omit enormous bulk-parameter dumps.
 
 ## [0.1.17-beta] - 2026-08-03
 

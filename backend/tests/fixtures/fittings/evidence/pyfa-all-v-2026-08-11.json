@@ -1,0 +1,188 @@
+{
+  "evidence_version": 1,
+  "captured_at": "2026-08-11",
+  "source": {
+    "kind": "pyfa_screenshot",
+    "character_profile": "All 5",
+    "pyfa_version": "2.68.0",
+    "externally_verified": true,
+    "release_gate_ready": true,
+    "release_gate_blockers": []
+  },
+  "state": {
+    "heat": "cold",
+    "implants": "none",
+    "boosters": "none",
+    "fleet_effects": "none",
+    "active_modules": "Visible green-check modules are active.",
+    "active_drones": 0
+  },
+  "captures": [
+    {
+      "name": "EQM Reference 01 - Rail Moa",
+      "screenshot": "codex-clipboard-529592b6-140d-4be9-ad21-959f5b610952.png",
+      "resources": {
+        "turrets_used": 5,
+        "turrets_capacity": 5,
+        "launchers_used": 0,
+        "launchers_capacity": 0,
+        "calibration_used": 150,
+        "calibration_capacity": 400,
+        "cpu_used_tf": 460.8,
+        "cpu_capacity_tf": 475.0,
+        "powergrid_used_mw": 940.8,
+        "powergrid_capacity_mw": 1062.0,
+        "drone_bay_used_m3": 15,
+        "drone_bay_capacity_m3": 15,
+        "drone_bandwidth_used_mbit_s": 0,
+        "drone_bandwidth_capacity_mbit_s": 15
+      },
+      "defense": {
+        "effective_hp": 40100,
+        "layer_ehp": { "shield": 33300, "armor": 2180, "structure": 4660 },
+        "shield_resists_percent": { "em": 73.3, "thermal": 62.2, "kinetic": 71.6, "explosive": 76.4 },
+        "armor_resists_percent": { "em": 57.5, "thermal": 53.2, "kinetic": 36.3, "explosive": 23.5 },
+        "structure_resists_percent": { "em": 59.8, "thermal": 59.8, "kinetic": 59.8, "explosive": 59.8 },
+        "shield_passive_ehp_s": 119.1,
+        "shield_active_ehp_s": 88.8
+      },
+      "offense": { "weapon_dps": 427, "drone_dps": 0, "total_dps": 427, "volley": 1048 },
+      "drone_active_capture": {
+        "screenshot": "codex-clipboard-d977993c-9d65-44ce-ac07-eaa88011082d.png",
+        "active_flight": "3x Hornet II",
+        "active_drones": 3,
+        "drone_bandwidth_used_mbit_s": 15,
+        "drone_bandwidth_capacity_mbit_s": 15,
+        "weapon_dps": 427,
+        "drone_dps": 55.7,
+        "total_dps": 483,
+        "volley": 1271
+      },
+      "capacitor": { "capacity_gj": 1940, "stable_percent": 0, "depletion_seconds": 87, "net_gj_s": -17.9 },
+      "targeting_and_movement": {
+        "max_targets": 7,
+        "targeting_range_km": 68.8,
+        "scan_resolution_mm": 325,
+        "sensor_strength": 20.4,
+        "drone_control_range_km": 60,
+        "max_velocity_m_s": 591,
+        "align_time_s": 8.27,
+        "signature_radius_m": 180,
+        "warp_speed_au_s": 4,
+        "cargo_m3": 450
+      }
+    },
+    {
+      "name": "EQM Reference 02 - Rapid Light Caracal",
+      "screenshot": "codex-clipboard-3cd75c0e-05a0-4017-9fc2-b543871de2dd.png",
+      "resources": {
+        "turrets_used": 0,
+        "turrets_capacity": 0,
+        "launchers_used": 5,
+        "launchers_capacity": 5,
+        "calibration_used": 150,
+        "calibration_capacity": 400,
+        "cpu_used_tf": 485.2,
+        "cpu_capacity_tf": 537.5,
+        "powergrid_used_mw": 647.2,
+        "powergrid_capacity_mw": 787.5,
+        "drone_bay_used_m3": 10,
+        "drone_bay_capacity_m3": 10,
+        "drone_bandwidth_used_mbit_s": 0,
+        "drone_bandwidth_capacity_mbit_s": 10
+      },
+      "defense": {
+        "effective_hp": 43000,
+        "layer_ehp": { "shield": 36000, "armor": 2610, "structure": 4350 },
+        "shield_resists_percent": { "em": 66.6, "thermal": 52.7, "kinetic": 64.6, "explosive": 70.5 },
+        "armor_resists_percent": { "em": 57.5, "thermal": 53.2, "kinetic": 36.3, "explosive": 23.5 },
+        "structure_resists_percent": { "em": 59.8, "thermal": 59.8, "kinetic": 59.8, "explosive": 59.8 },
+        "shield_passive_ehp_s": 96.1
+      },
+      "offense": { "weapon_dps": 409, "drone_dps": 0, "total_dps": 409, "volley": 1008 },
+      "drone_active_capture": {
+        "screenshot": "codex-clipboard-2fb28a50-a06b-4d28-a5aa-517075e5237f.png",
+        "active_flight": "2x Hornet II",
+        "active_drones": 2,
+        "drone_bandwidth_used_mbit_s": 10,
+        "drone_bandwidth_capacity_mbit_s": 10,
+        "weapon_dps": 409,
+        "drone_dps": 37.1,
+        "total_dps": 446,
+        "volley": 1156
+      },
+      "capacitor": { "capacity_gj": 1560, "stable_percent": 70.3, "net_gj_s": 5.5 },
+      "targeting_and_movement": {
+        "max_targets": 6,
+        "targeting_range_km": 71.9,
+        "scan_resolution_mm": 338,
+        "sensor_strength": 19.2,
+        "drone_control_range_km": 60,
+        "max_velocity_m_s": 718,
+        "align_time_s": 7.44,
+        "signature_radius_m": 197,
+        "warp_speed_au_s": 4,
+        "cargo_m3": 450
+      }
+    },
+    {
+      "name": "EQM Reference 03 - Active Armor Vexor",
+      "screenshot": "codex-clipboard-9ded7c0e-f4b5-4119-95ca-4e2988cfc7c2.png",
+      "resources": {
+        "turrets_used": 2,
+        "turrets_capacity": 4,
+        "launchers_used": 0,
+        "launchers_capacity": 0,
+        "calibration_used": 300,
+        "calibration_capacity": 400,
+        "cpu_used_tf": 351.0,
+        "cpu_capacity_tf": 375.0,
+        "powergrid_used_mw": 514.0,
+        "powergrid_capacity_mw": 875.0,
+        "drone_bay_used_m3": 75,
+        "drone_bay_capacity_m3": 125,
+        "drone_bandwidth_used_mbit_s": 0,
+        "drone_bandwidth_capacity_mbit_s": 75
+      },
+      "defense": {
+        "effective_hp": 14200,
+        "layer_ehp": { "shield": 2170, "armor": 5810, "structure": 6220 },
+        "shield_resists_percent": { "em": 12.5, "thermal": 30.0, "kinetic": 47.5, "explosive": 56.2 },
+        "armor_resists_percent": { "em": 68.1, "thermal": 58.6, "kinetic": 58.6, "explosive": 42.6 },
+        "structure_resists_percent": { "em": 59.8, "thermal": 59.8, "kinetic": 59.8, "explosive": 59.8 },
+        "armor_active_ehp_s": 128.6
+      },
+      "offense": { "weapon_dps": 103, "drone_dps": 0, "total_dps": 103, "volley": 332 },
+      "drone_active_capture": {
+        "screenshot": "codex-clipboard-d2a921b6-340a-47c8-9f75-f8de876bd5c5.png",
+        "active_flight": "5x Hammerhead II",
+        "inactive_spares": "5x Hobgoblin II",
+        "active_drones": 5,
+        "drone_bandwidth_used_mbit_s": 50,
+        "drone_bandwidth_capacity_mbit_s": 75,
+        "weapon_dps": 103,
+        "drone_dps": 337,
+        "total_dps": 441,
+        "volley": 1681
+      },
+      "capacitor": { "capacity_gj": 1810, "stable_percent": 0, "depletion_seconds": 252, "net_gj_s": -3.14 },
+      "targeting_and_movement": {
+        "max_targets": 6,
+        "targeting_range_km": 65.6,
+        "scan_resolution_mm": 350,
+        "sensor_strength": 19.2,
+        "drone_control_range_km": 84,
+        "max_velocity_m_s": 627,
+        "align_time_s": 8.44,
+        "signature_radius_m": 145,
+        "warp_speed_au_s": 4,
+        "cargo_m3": 480
+      }
+    }
+  ],
+  "rounding_notes": {
+    "ehp": "Pyfa abbreviates large EHP values in the screenshot; use display-aware tolerances.",
+    "capacitor_capacity": "Pyfa abbreviates capacitor capacity in thousands of GJ; use display-aware tolerances.",
+    "integer_stats": "DPS, volley, velocity, range, and scan values are screenshot-rounded."
+  }
+}
