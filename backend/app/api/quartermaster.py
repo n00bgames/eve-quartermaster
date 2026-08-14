@@ -48,7 +48,7 @@ router = APIRouter(prefix="/quartermaster", tags=["quartermaster"], dependencies
 
 RESEARCH_BLUEPRINT_ACTIVITY_IDS = frozenset({3, 4, 5})
 EXPORT_SCHEMA_VERSION = "eqm.inventory.v2"
-EXPORT_APP_VERSION = "0.1.18-beta"
+EXPORT_APP_VERSION = "0.1.19-beta"
 
 
 def iso_utc(value: Any) -> str | None:

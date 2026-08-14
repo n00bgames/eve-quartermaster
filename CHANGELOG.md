@@ -3,6 +3,25 @@
 All notable changes to EVE Quartermaster are tracked here.
 
 This project is moving quickly during beta. Version sections are written as user-facing release notes first, with implementation detail included where it helps operators understand deployment or testing impact.
+
+## [0.1.19-beta] - Unreleased
+
+### Added
+
+- Added the EQM Killboard: polite incremental zKillboard discovery, authoritative ESI killmail retrieval, normalized victim/attacker/item storage, raw source payload retention, deduplication by killmail ID, durable resumable cursors, direct zKill links, and account/character/corporation combat analytics across configurable 7/30/90-day views.
+
+- Added combat analytics for kills, losses, zKill-estimated ISK destroyed/lost and efficiency, solo/fleet participation, final blows, damage contribution, hull usage/destruction/loss, system/region/security activity, recurring opponents, streaks, inactivity, and characters frequently appearing together. Registered Killboard gauges also feed EQM's existing snapshot infrastructure.
+
+- Added administrator-configurable Killboard enablement, refresh period, historical lookback, zKill request delay, and page ceiling, plus per-role section permissions and explicit discovery-coverage/source placards.
+
+### Changed
+
+- Killboard synchronization automatically refreshes when due and the module is visited, while preserving its server-side cursor and page progress across navigation. Failed source requests retain every previously imported canonical record and can be resumed safely.
+
+### Fixed
+
+- Killboard opponents and other public combatants now resolve through ESI into a dedicated, refreshable entity-name cache instead of remaining as raw `Character 123456789` or corporation/alliance ID labels. Deleted or inaccessible entities continue to show an explicit ID fallback without breaking analytics.
+
 ## [0.1.18-beta] - 2026-08-06
 
 ### Added

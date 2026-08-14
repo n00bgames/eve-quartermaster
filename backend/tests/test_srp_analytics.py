@@ -97,7 +97,7 @@ class TestSrpAnalytics:
         assert report["time_series"][0]["bucket"] == "2026-07-31"
 
 
-def test_migration_graph_has_doctrine_fittings_as_single_head() -> None:
+def test_migration_graph_has_killboard_as_single_head() -> None:
     config = Config("alembic.ini")
     script = ScriptDirectory.from_config(config)
-    assert script.get_heads() == ["0069_doctrine_skill_plans"]
+    assert script.get_heads() == ["0071_killboard_entity_names"]

@@ -17,6 +17,7 @@ from app.api.fittings import router as fittings_router
 from app.api.health import router as health_router
 from app.api.hypernet import router as hypernet_router
 from app.api.jump_clones import router as jump_clones_router
+from app.api.killboard import router as killboard_router
 from app.api.mail import router as mail_router
 from app.api.market import router as market_router
 from app.api.manufacturing import router as manufacturing_router
@@ -52,6 +53,7 @@ api_router.include_router(fittings_router)
 api_router.include_router(health_router)
 api_router.include_router(hypernet_router)
 api_router.include_router(jump_clones_router)
+api_router.include_router(killboard_router)
 api_router.include_router(mail_router)
 api_router.include_router(market_router)
 api_router.include_router(manufacturing_router)

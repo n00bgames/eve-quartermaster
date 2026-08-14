@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/n00bgames/eve-quartermaster"><img alt="Project" src="https://img.shields.io/badge/project-eve--quartermaster-e8b84d?style=for-the-badge"></a>
-  <img alt="Version" src="https://img.shields.io/badge/version-0.1.18--beta-4fb3c7?style=for-the-badge">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.1.19--beta-4fb3c7?style=for-the-badge">
   <img alt="License" src="https://img.shields.io/badge/license-AGPL--3.0--or--later-70c894?style=for-the-badge">
 </p>
 
@@ -57,6 +57,7 @@ See [CHANGELOG.md](CHANGELOG.md) for version-by-version release notes.
 - Doctrine Management with operator-configurable priority fields, canonical fittings, optional readiness plans, historical fit snapshots, and safe archival.
 - Skill Plans integrated into Character Skills, including editable SDE-dogma-derived minimum requirements, recursive prerequisites, per-item provenance, deduplication, ordering, and character progress.
 - Ship Replacement Program instances with generated intake links, EQM character ownership checks, doctrine or general fittings, exact timezone-aware loss recording, immutable historical snapshots, append-only review history, precise valuation/reimbursement fields, and permission-filtered analytics and CSV exports.
+- Killboard discovery through zKillboard with canonical ESI killmail storage, resumable incremental sync, direct source links, and historical kill/loss, ISK, hull, geography, participation, opponent, streak, and wingmate analytics.
 - Manual-first HyperNet Tracker with offer economics, seller-seeded node risk, organic progress history, participant observations, and completed/expired reconciliation.
 - Persistent Mining Ledger with per-character ESI history, detailed residue-aware imports, named mining operations, production/value graphs, and honest residue-measured efficiency rankings.
 - Mining Op Settlement workflow with saved-operation or date-range sourcing, actual refined-output entry, hub price snapshots, operation reserves, expenses, support-role compensation, weighted shares, reconciled ISK payouts, editable drafts, and immutable finalized history.
@@ -545,6 +546,7 @@ The Financial Analytics dashboard records current wallet, net and percentage cha
 - **SRP instances and requests:** authorized officers create an SRP instance for an operation and copy its generated submission link. Signed-in members may use that link to submit one or more losses; the instance and any configured doctrine are inherited and locked. Staff can close or reopen intake without deleting history. Standalone requests remain available for backward compatibility and unusual losses.
 - **SRP loss records:** each request keeps UTC loss time plus the user-entered timezone, pilot corporation/alliance snapshots, operation and configurable loss-reason snapshots, immutable fit composition, ship type/class, optional system/region/security context, encrypted killmail hash, separate submission/killmail/verified valuations, requested/approved/paid reimbursement, and duplicate/invalid/test/cancelled disposition controls.
 - **SRP Analytics:** the Analytics tab computes filtered server-side loss counts, exact ISK totals, calendar-day and active-loss-day averages, reimbursement liability, time series, doctrine/ship/operation/status breakdowns, top losses, data-quality indicators, drilldowns, and detailed or aggregate CSV exports. Members see only their own SRP analytics; officers see the SRP scope already granted by their role. Reporting uses EVE time/UTC by default.
+- **Killboard:** open Steihl's Violence Ledger under Fleet & Community to inspect combined-account, character, corporation, or authorized all-entity views over 7, 30, or 90 days. EQM uses zKillboard only to discover killmail IDs/hashes and obtain explicitly labeled estimates/classifications; it fetches and retains the canonical victim, attacker, item, system, and time record from ESI. Public character, corporation, alliance, and faction IDs are translated in batches through ESI and stored in a separate refreshable name cache; deleted or inaccessible entities retain an honest ID fallback. Synchronization is incremental, deduplicated by killmail ID, cached locally, and resumable from a durable target/feed/page cursor. The configured refresh period is checked when the module is visited; **Sync now** remains available. zKillboard discovery is best-effort and must never be interpreted as a complete record of all activity.
 
 ### Doctrine, Skill Plan, and SRP data integrity
 

@@ -1,4 +1,4 @@
-import { Activity, Boxes, Building2, CalendarDays, ClipboardList, Coins, Database, Factory, FlaskConical, GraduationCap, Globe2, KeyRound, MapIcon, MessageCircle, NotebookTabs, PackagePlus, Pickaxe, Plus, RefreshCw, ScrollText, Settings, ShieldCheck, ShoppingCart, Siren, Sparkles, Store, UserRoundCheck } from "lucide-react";
+import { Activity, Boxes, Building2, CalendarDays, ClipboardList, Coins, Database, Factory, FlaskConical, GraduationCap, Globe2, KeyRound, MapIcon, MessageCircle, NotebookTabs, PackagePlus, Pickaxe, Plus, RefreshCw, ScrollText, Settings, ShieldCheck, ShoppingCart, Siren, Skull, Sparkles, Store, UserRoundCheck } from "lucide-react";
 
 import React, { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
@@ -41,6 +41,7 @@ import { RecruitingPublicPage } from "./features/recruiting/RecruitingPublicPage
 import { EventsPage } from "./features/events/EventsPage";
 import { DoctrinePage } from "./features/doctrines/DoctrinePage";
 import { SrpPage } from "./features/srp/SrpPage";
+import { KillboardPage } from "./features/killboard/KillboardPage";
 import { NextEventBadge } from "./features/events/NextEventBadge";
 import { UpcomingEventsWidget } from "./features/events/UpcomingEventsWidget";
 import { IndustrialSystemThreatWidget, LocalThreatWidget, PvpIntelWidget } from "./features/navigation/ThreatIntelWidgets";
@@ -481,6 +482,7 @@ function App() {
     else if (window.location.hash.startsWith("#doctrines")) setActiveTab("doctrines");
     else if (window.location.hash.startsWith("#skills")) setActiveTab("skills");
     else if (window.location.hash.startsWith("#srp")) setActiveTab("srp");
+    else if (window.location.hash.startsWith("#killboard")) setActiveTab("killboard");
     else if (window.location.hash.startsWith("#hypernet")) setActiveTab("hypernet");
     else if (window.location.hash === "#esi" || window.location.hash === "#recruiting" || window.location.hash === "#planetary_industry" || params.get("esi_status") || esiError) setActiveTab(esiDestination);
 
@@ -529,6 +531,7 @@ function App() {
     if (locationHash.startsWith("#events")) setActiveTab("calendar_events");
     else if (locationHash.startsWith("#exchange")) setActiveTab("exchange");
     else if (locationHash.startsWith("#hypernet")) setActiveTab("hypernet");
+    else if (locationHash.startsWith("#killboard")) setActiveTab("killboard");
     else if (locationHash.startsWith("#skills")) setActiveTab("skills");
   }, [locationHash]);
 
@@ -670,11 +673,13 @@ function App() {
 
           {canView("analytics") && <button className={activeTab === "analytics" ? "active" : ""} onClick={() => setActiveTab("analytics")}><Activity size={18} /> Analytics</button>}
 
-          {["doctrines", "srp", "calendar_events", "recruiting"].some(canView) && <span className="nav-section-label">Fleet & Community</span>}
+          {["doctrines", "srp", "killboard", "calendar_events", "recruiting"].some(canView) && <span className="nav-section-label">Fleet & Community</span>}
 
           {canView("doctrines") && <button className={activeTab === "doctrines" ? "active" : ""} onClick={() => { window.location.hash = "doctrines"; setActiveTab("doctrines"); }}><ShieldCheck size={18} /> Doctrines</button>}
 
           {canView("srp") && <button className={activeTab === "srp" ? "active" : ""} onClick={() => { window.location.hash = "srp"; setActiveTab("srp"); }}><ClipboardList size={18} /> SRP Requests</button>}
+
+          {canView("killboard") && <button className={activeTab === "killboard" ? "active" : ""} onClick={() => { window.location.hash = "killboard"; setActiveTab("killboard"); }}><Skull size={18} /> Killboard</button>}
 
           {canView("calendar_events") && <button className={activeTab === "calendar_events" ? "active" : ""} onClick={() => { window.location.hash = "events"; setActiveTab("calendar_events"); }}><CalendarDays size={18} /> Calendar & Events</button>}
 
@@ -762,6 +767,8 @@ function App() {
         {activeTab === "doctrines" && canView("doctrines") && <DoctrinePage api={api} onOpenFitting={(name) => { setFittingSeed({ text: name, nonce: Date.now() }); setActiveTab("fittings"); }} onOpenSkillPlan={(planId) => { setSkillPlanFocusId(planId); window.location.hash=`skills/plans/${planId}`; setActiveTab("skills"); }} />}
 
         {activeTab === "srp" && canView("srp") && <SrpPage api={api} />}
+
+        {activeTab === "killboard" && canView("killboard") && <KillboardPage api={api} />}
 
         {activeTab === "notes" && canView("notes") && <NotesListsPage api={api} />}
 
@@ -2211,7 +2218,7 @@ function ManagedForm({ children, onSubmit, submitLabel = "Save" }: { children: R
 
 function titleFor(tab: string) {
 
-  return ({ overview: "Quartermaster Overview", ownership: "Ownership and Locations", characters: "Characters", roster: "Alliance Roster", navigation: "Navigation", market: "Market Appraisal", exchange: "Corporate Exchange", hypernet: "HyperNet Tracker", calendar_events: "Calendar & Events", doctrines: "Doctrine Management", srp: "SRP Requests", notes: "Notes & Lists", manufacturing: "Manufacturing", research_projects: "Research Projects", mining: "Mining Ledger", planetary_industry: "Planetary Industry", contracts: "Contracts", analytics: "Analytics Platform", recruiting: "Recruiting", skills: "Character Skills & Plans", fittings: "Fittings", jump_clones: "Jump Clones", settings: "Settings", corporations: "Corporations", assets: "Asset Ledger", industry: "Blueprints and Recipes", esi: "ESI Sync", profile: "Profile", users: "User Administration", audit: "Audit Log" } as Record<string, string>)[tab];
+  return ({ overview: "Quartermaster Overview", ownership: "Ownership and Locations", characters: "Characters", roster: "Alliance Roster", navigation: "Navigation", market: "Market Appraisal", exchange: "Corporate Exchange", hypernet: "HyperNet Tracker", calendar_events: "Calendar & Events", doctrines: "Doctrine Management", srp: "SRP Requests", killboard: "Killboard", notes: "Notes & Lists", manufacturing: "Manufacturing", research_projects: "Research Projects", mining: "Mining Ledger", planetary_industry: "Planetary Industry", contracts: "Contracts", analytics: "Analytics Platform", recruiting: "Recruiting", skills: "Character Skills & Plans", fittings: "Fittings", jump_clones: "Jump Clones", settings: "Settings", corporations: "Corporations", assets: "Asset Ledger", industry: "Blueprints and Recipes", esi: "ESI Sync", profile: "Profile", users: "User Administration", audit: "Audit Log" } as Record<string, string>)[tab];
 
 }
 
@@ -2219,7 +2226,7 @@ function titleFor(tab: string) {
 
 function subtitleFor(tab: string) {
 
-  return ({ overview: "Live status and the first useful totals from the database.", ownership: "Define the characters, corporations, manual buckets, and places assets can belong to.", characters: "Assign EVE characters to Quartermaster accounts and control public asset visibility.", roster: "A corporation-grouped character roster suitable for diplomats and prospective members.", navigation: "Plan gate routes from imported SDE map data before layering on kill checks and local threat analysis.", market: "Paste item lists and compare buy, sell, and split prices across trade hubs.", hypernet: "Plan, monitor, and reconcile HyperNet offers with seller-seeded nodes kept separate from organic participation.", calendar_events: "Plan fleets, register pilots, record attendance, and measure participation.", doctrines: "Build canonical operational doctrines with configurable priorities, fittings, and readiness plans.", srp: "Submit and review timezone-safe ship replacement requests against EQM characters and fittings.", notes: "Keep private working notes and destination-aware resupply lists with live asset context.", manufacturing: "Track manufacturing jobs, costs, required inputs, hub prices, and production history.", research_projects: "Monitor ESI manufacturing, research, copying, and invention queues while retaining project history for analytics.", mining: "Track persistent per-character mining yield, residue efficiency, and named fleet operations.", planetary_industry: "Monitor synchronized colonies, extractor cycles, routed production, storage, and factory health.", contracts: "Sync and review current character and corporation contracts.", analytics: "Snapshot history, metric widgets, exports, and the foundation for custom dashboards.", recruiting: "Configure public recruiting, review applicants, and coordinate interviews without exposing internal notes.", skills: "Review trained skills and maintain manual or fitting-generated skill plans.", fittings: "Sync saved EVE fittings, review modules, experiment in a scratchpad, and copy EFT-style text.", jump_clones: "Sync jump clones, inspect implants, and build custom implant sets for fitting experiments.", settings: "Control character visibility and sync privacy.", corporations: "Review enrolled corporations and sync corporation asset ledgers through authorized CEO or director tokens.", assets: "Track item stacks by owner, type, location, and EVE-style location flag.", industry: "Store blueprints, recipe activities, and material inputs before wiring in SDE imports.", esi: "Review dataset freshness, durable jobs, missing scopes, privacy-disabled collection, and linked-character authorization.", profile: "Manage your account and private messages.", users: "Manage Quartermaster accounts and role levels.", audit: "Review sync peeks, system events, and administrative activity." } as Record<string, string>)[tab];
+  return ({ overview: "Live status and the first useful totals from the database.", ownership: "Define the characters, corporations, manual buckets, and places assets can belong to.", characters: "Assign EVE characters to Quartermaster accounts and control public asset visibility.", roster: "A corporation-grouped character roster suitable for diplomats and prospective members.", navigation: "Plan gate routes from imported SDE map data before layering on kill checks and local threat analysis.", market: "Paste item lists and compare buy, sell, and split prices across trade hubs.", hypernet: "Plan, monitor, and reconcile HyperNet offers with seller-seeded nodes kept separate from organic participation.", calendar_events: "Plan fleets, register pilots, record attendance, and measure participation.", doctrines: "Build canonical operational doctrines with configurable priorities, fittings, and readiness plans.", srp: "Submit and review timezone-safe ship replacement requests against EQM characters and fittings.", killboard: "Discover through zKillboard, retain canonical ESI killmails, and analyze the violence over time.", notes: "Keep private working notes and destination-aware resupply lists with live asset context.", manufacturing: "Track manufacturing jobs, costs, required inputs, hub prices, and production history.", research_projects: "Monitor ESI manufacturing, research, copying, and invention queues while retaining project history for analytics.", mining: "Track persistent per-character mining yield, residue efficiency, and named fleet operations.", planetary_industry: "Monitor synchronized colonies, extractor cycles, routed production, storage, and factory health.", contracts: "Sync and review current character and corporation contracts.", analytics: "Snapshot history, metric widgets, exports, and the foundation for custom dashboards.", recruiting: "Configure public recruiting, review applicants, and coordinate interviews without exposing internal notes.", skills: "Review trained skills and maintain manual or fitting-generated skill plans.", fittings: "Sync saved EVE fittings, review modules, experiment in a scratchpad, and copy EFT-style text.", jump_clones: "Sync jump clones, inspect implants, and build custom implant sets for fitting experiments.", settings: "Control character visibility and sync privacy.", corporations: "Review enrolled corporations and sync corporation asset ledgers through authorized CEO or director tokens.", assets: "Track item stacks by owner, type, location, and EVE-style location flag.", industry: "Store blueprints, recipe activities, and material inputs before wiring in SDE imports.", esi: "Review dataset freshness, durable jobs, missing scopes, privacy-disabled collection, and linked-character authorization.", profile: "Manage your account and private messages.", users: "Manage Quartermaster accounts and role levels.", audit: "Review sync peeks, system events, and administrative activity." } as Record<string, string>)[tab];
 
 }
 

@@ -34,6 +34,7 @@ SECTION_DEFINITIONS: dict[str, dict[str, object]] = {
     "fittings": {"label": "Fittings", "default_roles": ["admin", "director", "officer", "member"]},
     "doctrines": {"label": "Doctrine Management", "default_roles": ["admin", "director", "officer", "member", "view_only"]},
     "srp": {"label": "SRP Requests", "default_roles": ["admin", "director", "officer", "member"]},
+    "killboard": {"label": "Killboard", "default_roles": ["admin", "director", "officer", "member", "view_only"]},
     "jump_clones": {"label": "Jump Clones", "default_roles": ["admin", "director", "officer", "member"]},
     "settings": {"label": "Settings", "default_roles": ["admin", "director", "officer", "member", "view_only"]},
     "corporations": {"label": "Corporations", "default_roles": ["admin", "director", "officer"]},

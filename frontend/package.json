@@ -1,6 +1,6 @@
 {
   "name": "eve-quartermaster-frontend",
-  "version": "0.1.18-beta",
+  "version": "0.1.19-beta",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,6 +9,7 @@
     "test:recruiting": "node --test --experimental-strip-types tests/recruitingPublicContent.test.ts tests/recruitingSso.test.ts",
     "test:skills": "node --test --experimental-strip-types tests/skillReport.test.ts tests/skillDogmaPresentation.test.ts",
     "test:navigation": "node --test --experimental-strip-types tests/jumpReplot.test.ts",
+    "test:sync": "node --test --experimental-strip-types tests/characterSyncPolling.test.ts",
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {

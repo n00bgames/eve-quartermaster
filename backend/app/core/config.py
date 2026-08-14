@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     access_token_minutes: int = 720
     remember_me_days: int = 30
     sde_source_path: str = "/sde"
+    killboard_enabled_default: bool = True
+    killboard_sync_period_hours_default: int = 6
+    killboard_lookback_days_default: int = 90
+    killboard_request_delay_seconds_default: float = 1.0
+    killboard_max_pages_default: int = 10
 
     @property
     def cors_origin_list(self) -> list[str]:
