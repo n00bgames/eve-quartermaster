@@ -1,6 +1,12 @@
 export type AnalyticsPoint = { date?: string | null; corporation_id?: number; corporation_name?: string; value: number };
 
 export type AnalyticsGrowth = { id?: number; name: string; value?: number; delta: number };
+export type StandingMovementGroup = { gains: AnalyticsGrowth[]; losses: AnalyticsGrowth[] };
+export type StandingMovementAnalytics = {
+  basis: "base";
+  corporations: StandingMovementGroup;
+  factions: StandingMovementGroup;
+};
 export type AnalyticsChangeBreakdown = {
   current: number;
   total_delta: number;
@@ -127,6 +133,11 @@ export type PlanetaryAnalytics = {
 };
 export type AnalyticsSummary = {
   days: number;
+  scope: {
+    mode: "all" | "mine" | "corporation";
+    corporation_id?: number | null;
+    corporations: { id: number; name: string; ticker?: string | null }[];
+  };
   latest_snapshot_at?: string | null;
   latest_snapshot_status?: string | null;
   snapshot_count: number;
@@ -158,5 +169,6 @@ export type AnalyticsSummary = {
   manufacturing: ManufacturingAnalytics;
   mining: MiningAnalytics;
   research_projects: ResearchProjectAnalytics;
+  standings_movement: StandingMovementAnalytics;
   series: { wallet_totals: AnalyticsPoint[]; member_counts: AnalyticsPoint[]; blueprint_counts: AnalyticsPoint[] };
 };

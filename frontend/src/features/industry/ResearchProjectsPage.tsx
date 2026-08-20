@@ -2,7 +2,9 @@ import { Beaker, Clock3, Copy, Factory, FlaskConical, RefreshCw } from "lucide-r
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { BlueprintHoverCard } from "../../components/BlueprintHoverCard";
+import { ModuleFinder } from "../../components/ModuleFinder";
 import { isCharacterSyncPollingAborted, resumeCharacterSyncJob, trackCharacterSyncJob } from "../../lib/characterSyncPolling";
+import { matchesSearchTerms } from "../../lib/search";
 
 import { ResearchQueuePlanner } from "./ResearchQueuePlanner";
 
@@ -52,6 +54,7 @@ export function ResearchProjectsPage({ api, formatDateTime }: { api: ApiClient; 
   const [activity, setActivity] = useState("all");
   const [sortKey, setSortKey] = useState<SortKey>("timing");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(false);
   const [syncJob, setSyncJob] = useState<SyncJob | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -107,7 +110,22 @@ export function ResearchProjectsPage({ api, formatDateTime }: { api: ApiClient; 
   const projects = useMemo(() => {
     return (data?.projects ?? []).filter((project) => {
       const statusMatches = view === "active" ? activeStatuses.has(project.status) : !activeStatuses.has(project.status);
-      return statusMatches && (activity === "all" || String(project.activity_id) === activity);
+      return statusMatches
+        && (activity === "all" || String(project.activity_id) === activity)
+        && matchesSearchTerms(query, [
+          project.blueprint_name,
+          project.product_name,
+          project.activity_name,
+          project.character_name,
+          project.corporation_name,
+          project.facility_name,
+          project.blueprint_location_name,
+          project.status,
+          project.source_type,
+          project.job_id,
+          project.blueprint_type_id,
+          project.facility_id,
+        ]);
     }).sort((left, right) => {
       const leftValue = projectSortValue(left, sortKey);
       const rightValue = projectSortValue(right, sortKey);
@@ -116,7 +134,12 @@ export function ResearchProjectsPage({ api, formatDateTime }: { api: ApiClient; 
         : String(leftValue).localeCompare(String(rightValue), undefined, { numeric: true, sensitivity: "base" });
       return sortDirection === "asc" ? result : -result;
     });
-  }, [data, view, activity, sortKey, sortDirection]);
+  }, [data, view, activity, query, sortKey, sortDirection]);
+
+  const unsearchedProjectCount = useMemo(() => (data?.projects ?? []).filter((project) => {
+    const statusMatches = view === "active" ? activeStatuses.has(project.status) : !activeStatuses.has(project.status);
+    return statusMatches && (activity === "all" || String(project.activity_id) === activity);
+  }).length, [activity, data, view]);
 
   const eligible = data?.sync_tokens.filter((token) => token.can_sync && (token.has_scope || (token.has_corporation_scope && token.has_corporation_role_scope))).length ?? 0;
   const syncPercent = syncJob && syncJob.total_count ? Math.round(syncJob.processed_count / syncJob.total_count * 100) : 0;
@@ -153,6 +176,7 @@ export function ResearchProjectsPage({ api, formatDateTime }: { api: ApiClient; 
     </div>
     <div className="research-controls">
       <div className="owner-kind-chips"><button type="button" className={view === "active" ? "active" : ""} onClick={() => setView("active")}>In progress</button><button type="button" className={view === "history" ? "active" : ""} onClick={() => setView("history")}>History</button></div>
+      <ModuleFinder query={query} onQueryChange={setQuery} label="Search industry projects" placeholder="Blueprint, product, pilot, owner, facility…" resultCount={projects.length} totalCount={unsearchedProjectCount} />
       <label>Activity<select value={activity} onChange={(event) => setActivity(event.target.value)}><option value="all">All activities</option><option value="1">Manufacturing</option><option value="4">Material Efficiency</option><option value="3">Time Efficiency</option><option value="5">Copying</option><option value="8">Invention</option></select></label>
     </div>
     <div className="table-wrap research-table-wrap">

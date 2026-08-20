@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, type ReactElement } from "react";
 import { Copy } from "lucide-react";
 
+import { ModuleFinder } from "../../components/ModuleFinder";
+import { matchesSearchTerms } from "../../lib/search";
 import { ImplantDogmaChip } from "./ImplantDogmaChip";
 import { buildImplantShoppingList } from "./implantShoppingList";
 import type { ImplantSetRecord, JumpCloneImplant, JumpClonePayload, JumpCloneRecord, JumpCloneSyncToken } from "../../types/jumpClones";
@@ -70,6 +72,7 @@ export function JumpClonesPage({ api, EveEntityIcon, formatDateTime }: JumpClone
   const [editingSetId, setEditingSetId] = useState<number | null>(null);
   const [busyTokenId, setBusyTokenId] = useState<number | null>(null);
   const [savingSet, setSavingSet] = useState(false);
+  const [query, setQuery] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -183,8 +186,49 @@ export function JumpClonesPage({ api, EveEntityIcon, formatDateTime }: JumpClone
   }, [payload.clones]);
 
   const selectedCharacter = payload.characters.find((character) => character.id === selectedCharacterId) ?? null;
-  const selectedClones = selectedCharacterId === "" ? [] : clonesByCharacter.get(selectedCharacterId) ?? [];
+  const matchingCharacterIds = useMemo(() => new Set(payload.characters.filter((character) => {
+    const clones = clonesByCharacter.get(character.id) ?? [];
+    return matchesSearchTerms(query, [
+      character.name,
+      character.character_id,
+      ...clones.flatMap((clone) => [
+        clone.name,
+        clone.location_name,
+        clone.system_name,
+        clone.location_id,
+        ...clone.implants.flatMap((implant) => [implant.name, implant.type_id, implant.slot, implant.group_name]),
+      ]),
+    ]);
+  }).map((character) => character.id)), [clonesByCharacter, payload.characters, query]);
+  const visibleCharacters = useMemo(() => payload.characters.filter((character) => matchingCharacterIds.has(character.id)), [matchingCharacterIds, payload.characters]);
+  const visibleSyncTokens = useMemo(() => payload.sync_tokens.filter((token) => {
+    if (!query.trim() || matchesSearchTerms(query, [token.character_name, token.character_id])) return true;
+    const character = payload.characters.find((candidate) => candidate.character_id === token.character_id);
+    return character ? matchingCharacterIds.has(character.id) : false;
+  }), [matchingCharacterIds, payload.characters, payload.sync_tokens, query]);
+  const selectedClones = useMemo(() => {
+    const clones = selectedCharacterId === "" ? [] : clonesByCharacter.get(selectedCharacterId) ?? [];
+    if (!query.trim() || (selectedCharacter && matchesSearchTerms(query, [selectedCharacter.name, selectedCharacter.character_id]))) return clones;
+    return clones.filter((clone) => matchesSearchTerms(query, [
+      clone.name,
+      clone.location_name,
+      clone.system_name,
+      clone.location_id,
+      ...clone.implants.flatMap((implant) => [implant.name, implant.type_id, implant.slot, implant.group_name]),
+    ]));
+  }, [clonesByCharacter, query, selectedCharacter, selectedCharacterId]);
   const selectedImplants = selectedClones.flatMap((clone) => clone.implants);
+  const visibleCustomSets = useMemo(() => payload.custom_sets.filter((set) => matchesSearchTerms(query, [
+    set.name,
+    set.description,
+    set.character_name,
+    ...set.implants.flatMap((implant) => [implant.name, implant.type_id, implant.slot, implant.group_name]),
+  ])), [payload.custom_sets, query]);
+
+  useEffect(() => {
+    if (!query.trim() || visibleCharacters.length === 0 || visibleCharacters.some((character) => character.id === selectedCharacterId)) return;
+    setSelectedCharacterId(visibleCharacters[0].id);
+  }, [query, selectedCharacterId, visibleCharacters]);
 
   return (
     <section className="panel stacked jump-clones-page">
@@ -198,8 +242,10 @@ export function JumpClonesPage({ api, EveEntityIcon, formatDateTime }: JumpClone
       {message && <div className="notice inline">{message}</div>}
       {error && <div className="mini-alert">{error}</div>}
 
+      <ModuleFinder query={query} onQueryChange={setQuery} label="Search jump clones and implant sets" placeholder="Pilot, implant, slot, clone, location, set…" resultCount={visibleCharacters.length + visibleCustomSets.length} totalCount={payload.characters.length + payload.custom_sets.length} />
+
       <section className="character-sync-grid">
-        {payload.sync_tokens.map((token) => (
+        {visibleSyncTokens.map((token) => (
           <article key={token.token_id}>
             <strong>{token.character_name}</strong>
             {token.can_sync ? <span className="scope-ok">Sync permitted</span> : <span className="scope-warn">Sync hidden by role policy</span>}
@@ -210,11 +256,12 @@ export function JumpClonesPage({ api, EveEntityIcon, formatDateTime }: JumpClone
           </article>
         ))}
         {payload.sync_tokens.length === 0 && <p className="empty">No linked clone-capable tokens are visible to this account.</p>}
+        {payload.sync_tokens.length > 0 && visibleSyncTokens.length === 0 && <p className="empty">No sync-capable pilots match this clone or implant search.</p>}
       </section>
 
       <div className="two-column jump-clone-layout">
         <aside className="character-picker-list">
-          {payload.characters.map((character) => (
+          {visibleCharacters.map((character) => (
             <button type="button" key={character.id} className={`character-picker-card ${selectedCharacterId === character.id ? "active" : ""}`} onClick={() => setSelectedCharacterId(character.id)}>
               <span className="entity-card-heading">
                 <EveEntityIcon kind="character" id={character.character_id} name={character.name} size="sm" />
@@ -223,6 +270,7 @@ export function JumpClonesPage({ api, EveEntityIcon, formatDateTime }: JumpClone
               <small>{clonesByCharacter.get(character.id)?.length ?? 0} clone record{(clonesByCharacter.get(character.id)?.length ?? 0) === 1 ? "" : "s"}</small>
             </button>
           ))}
+          {payload.characters.length > 0 && visibleCharacters.length === 0 && <p className="empty">No pilots have clones or implants matching this search.</p>}
         </aside>
         <section className="jump-clone-detail">
           <div className="section-heading compact">
@@ -252,7 +300,7 @@ export function JumpClonesPage({ api, EveEntityIcon, formatDateTime }: JumpClone
           <button type="button" disabled={savingSet} onClick={() => void saveSet()}>{savingSet ? "Saving..." : editingSetId ? "Update set" : "Create set"}</button>
         </div>
         <div className="card-list implant-set-list">
-          {payload.custom_sets.map((set) => (
+          {visibleCustomSets.map((set) => (
             <article key={set.id}>
               <div className="section-heading compact">
                 <div><strong>{set.name}</strong><span>{set.implants.length.toLocaleString()} implant{set.implants.length === 1 ? "" : "s"}{set.character_name ? ` · ${set.character_name}` : ""}{set.is_shared ? " · Shared" : ""}</span></div>
@@ -263,6 +311,7 @@ export function JumpClonesPage({ api, EveEntityIcon, formatDateTime }: JumpClone
             </article>
           ))}
           {payload.custom_sets.length === 0 && <p className="empty">No custom implant sets yet.</p>}
+          {payload.custom_sets.length > 0 && visibleCustomSets.length === 0 && <p className="empty">No custom implant sets match this search.</p>}
         </div>
       </section>
     </section>

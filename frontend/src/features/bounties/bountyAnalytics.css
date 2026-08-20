@@ -1,0 +1,38 @@
+.bounty-analytics-page { gap: 1rem; }
+.bounty-privacy-note, .bounty-definition-note { display: flex; gap: .75rem; align-items: flex-start; padding: .85rem 1rem; border: 1px solid rgba(68,191,214,.45); border-radius: 10px; background: rgba(14,62,73,.3); }
+.bounty-definition-note { border-color: rgba(239,191,74,.55); background: rgba(93,67,14,.28); }
+.bounty-privacy-note div, .bounty-definition-note div { display: grid; gap: .2rem; }
+.bounty-privacy-note span, .bounty-definition-note span { color: var(--muted); }
+.bounty-period-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.bounty-period-row button.active { border-color: var(--accent); background: rgba(68,191,214,.16); }
+.bounty-period-row > span { color: var(--muted); font-size: .9rem; }
+.bounty-filter-grid { display: grid; grid-template-columns: repeat(6, minmax(135px, 1fr)); gap: .7rem; align-items: end; }
+.bounty-filter-grid label { display: grid; gap: .3rem; color: var(--muted); }
+.bounty-filter-grid input, .bounty-filter-grid select { width: 100%; }
+.bounty-summary-grid { grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); }
+.bounty-summary-grid article { position: relative; min-height: 106px; }
+.bounty-summary-grid small { color: var(--muted); }
+.bounty-summary-grid .tax-card button { margin-top: auto; padding: .25rem .5rem; font-size: .78rem; justify-self: start; }
+.bounty-chart-card, .bounty-leaderboard { border: 1px solid var(--border); border-radius: 11px; padding: 1rem; background: rgba(7,14,21,.34); }
+.bounty-chart-shell { position: relative; min-height: 280px; }
+.bounty-chart-shell svg { width: 100%; min-height: 260px; overflow: visible; touch-action: pan-y; }
+.bounty-chart-shell svg text { fill: var(--muted); font-size: 13px; }
+.bounty-chart-legend { display: flex; flex-wrap: wrap; gap: 1rem; color: var(--muted); font-size: .85rem; }
+.bounty-chart-legend span { display: inline-flex; align-items: center; gap: .35rem; }
+.bounty-chart-legend i { width: 11px; height: 11px; border-radius: 50%; }
+.bounty-grid-line { stroke: rgba(145,169,187,.18); stroke-width: 1; }
+.bounty-crosshair { stroke: rgba(240,245,250,.55); stroke-width: 1; stroke-dasharray: 5 5; }
+.bounty-chart-tooltip { position: absolute; top: 36px; z-index: 4; min-width: 190px; display: grid; gap: .2rem; padding: .65rem; transform: translateX(-50%); border: 1px solid var(--border); border-radius: 8px; background: #0c141d; box-shadow: 0 12px 30px rgba(0,0,0,.4); pointer-events: none; }
+.bounty-chart-tooltip span { display: flex; justify-content: space-between; gap: 1rem; color: var(--muted); }
+.bounty-chart-tooltip small { color: var(--muted); }
+.bounty-leaderboard table tr[tabindex] { cursor: pointer; }
+.bounty-leaderboard table tr[tabindex]:hover { background: rgba(68,191,214,.08); }
+.bounty-leaderboard td span, .bounty-leaderboard td small, .bounty-ledger-table td span { display: block; color: var(--muted); font-size: .82rem; }
+.bounty-ledger-table details { min-width: 150px; }
+.bounty-ledger-table details div { display: grid; gap: .3rem; margin-top: .5rem; max-width: 420px; white-space: normal; }
+.bounty-ledger-table code { overflow-wrap: anywhere; color: var(--accent); }
+.unknown-value { color: #efbf4a !important; }
+.mini-alert.neutral { border-color: rgba(239,191,74,.55); background: rgba(93,67,14,.24); color: inherit; }
+@media (max-width: 1100px) { .bounty-filter-grid { grid-template-columns: repeat(3, minmax(150px, 1fr)); } }
+@media (max-width: 650px) { .bounty-filter-grid { grid-template-columns: 1fr 1fr; } .bounty-chart-tooltip { transform: none; left: 8px !important; } }
+@media (max-width: 430px) { .bounty-filter-grid { grid-template-columns: 1fr; } }

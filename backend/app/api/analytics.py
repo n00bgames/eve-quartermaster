@@ -24,6 +24,7 @@ from app.services.analytics import (
     scoped_blueprint_records,
     set_analytics_retention_mode,
 )
+from app.services.analytics_scope import resolve_analytics_character_scope, visible_analytics_character_ids
 from app.services.audit import record_audit_event
 from app.services.metric_registry import METRIC_CATALOG
 from app.services.permissions import ROLE_RANK, can_view_section, role_rank
@@ -242,10 +243,7 @@ def can_view_character_analytics(viewer: User, character: EveCharacter, db: Sess
 
 
 def visible_character_ids(current_user: User, db: Session) -> set[int] | None:
-    if role_rank(current_user, db) >= ROLE_RANK["director"]:
-        return None
-    characters = db.scalars(select(EveCharacter).options(selectinload(EveCharacter.owner_user))).all()
-    return {character.id for character in characters if can_view_character_analytics(current_user, character, db)}
+    return visible_analytics_character_ids(current_user, db)
 
 
 
@@ -759,8 +757,94 @@ def corporation_series(
     rows = history_rows if history_rows is not None else corporation_history_rows(db, days, corporation_ids)
     return daily_corporation_series(rows, value_attr, start_cutoff(days))
 
+
+def standing_movement_rows(rows: list[SnapshotMetric], cutoff: datetime) -> dict[str, Any]:
+    """Rank baseline-backed net base-standing changes by NPC entity."""
+    by_series: dict[str, list[SnapshotMetric]] = {}
+    for row in rows:
+        if row.series_key:
+            by_series.setdefault(row.series_key, []).append(row)
+
+    movement: dict[tuple[str, int], dict[str, Any]] = {}
+    for series_rows in by_series.values():
+        series_rows.sort(key=lambda row: (aware_utc(row.recorded_at) or cutoff, int(row.id or 0)))
+        baseline = series_rows[0]
+        if (aware_utc(baseline.recorded_at) or cutoff) >= cutoff:
+            # A first observation inside the range is coverage, not standing movement.
+            continue
+        latest = series_rows[-1]
+        if latest.id == baseline.id:
+            continue
+        dimensions = latest.dimensions_json or baseline.dimensions_json or {}
+        source_type = str(dimensions.get("source_type") or "")
+        if source_type not in {"npc_corp", "faction"}:
+            continue
+        source_eve_id = int(dimensions.get("source_eve_id") or 0)
+        if source_eve_id <= 0:
+            continue
+        source_name = str(dimensions.get("source_name") or f"{source_type.replace('_', ' ').title()} {source_eve_id}")
+        key = (source_type, source_eve_id)
+        item = movement.setdefault(key, {"id": source_eve_id, "name": source_name, "delta": 0.0})
+        item["name"] = source_name
+        item["delta"] = round(
+            float(item["delta"]) + as_float(latest.metric_value) - as_float(baseline.metric_value),
+            4,
+        )
+
+    def ranked(source_type: str, *, loss: bool) -> list[dict[str, Any]]:
+        candidates = [dict(item) for (kind, _), item in movement.items() if kind == source_type]
+        if loss:
+            candidates = [{**item, "delta": abs(float(item["delta"]))} for item in candidates if float(item["delta"]) < 0]
+        else:
+            candidates = [item for item in candidates if float(item["delta"]) > 0]
+        return sorted(candidates, key=lambda item: (-float(item["delta"]), str(item["name"])))[:10]
+
+    return {
+        "basis": "base",
+        "corporations": {"gains": ranked("npc_corp", loss=False), "losses": ranked("npc_corp", loss=True)},
+        "factions": {"gains": ranked("faction", loss=False), "losses": ranked("faction", loss=True)},
+    }
+
+
+def standing_movement_analytics(db: Session, days: int, character_ids: set[int] | None) -> dict[str, Any]:
+    cutoff = start_cutoff(days)
+    if character_ids is not None and not character_ids:
+        return standing_movement_rows([], cutoff)
+
+    filters = [
+        SnapshotMetric.metric_key == "standings.base",
+        SnapshotMetric.owner_type == "character",
+        SnapshotMetric.series_key.is_not(None),
+    ]
+    ranked_baselines = select(
+        SnapshotMetric.id.label("id"),
+        func.row_number().over(
+            partition_by=SnapshotMetric.series_key,
+            order_by=(SnapshotMetric.recorded_at.desc(), SnapshotMetric.id.desc()),
+        ).label("position"),
+    ).where(*filters, SnapshotMetric.recorded_at < cutoff)
+    if character_ids is not None:
+        ranked_baselines = ranked_baselines.where(SnapshotMetric.owner_id.in_(character_ids))
+    ranked = ranked_baselines.subquery()
+    baseline_ids = select(ranked.c.id).where(ranked.c.position == 1)
+
+    query = select(SnapshotMetric).where(
+        *filters,
+        or_(SnapshotMetric.id.in_(baseline_ids), SnapshotMetric.recorded_at >= cutoff),
+    )
+    if character_ids is not None:
+        query = query.where(SnapshotMetric.owner_id.in_(character_ids))
+    rows = list(db.scalars(query.order_by(SnapshotMetric.recorded_at, SnapshotMetric.id)).all())
+    return standing_movement_rows(rows, cutoff)
+
 @router.get("/summary")
-def analytics_summary(days: int = Query(30, ge=1, le=3660), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+def analytics_summary(
+    days: int = Query(30, ge=1, le=3660),
+    scope: str = Query("all"),
+    corporation_id: int | None = Query(None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
     require_analytics(current_user, db)
     cutoff = start_cutoff(days)
     now = datetime.now(timezone.utc)
@@ -772,9 +856,25 @@ def analytics_summary(days: int = Query(30, ge=1, le=3660), current_user: User =
     covered_from = max(cutoff, first_metric_at) if first_metric_at else None
     covered_to = min(now, observed_through) if observed_through else None
     coverage_seconds = max(0, int((covered_to - covered_from).total_seconds())) if covered_from and covered_to else 0
-    character_ids = visible_character_ids(current_user, db)
-    corporation_ids = visible_corporation_ids(current_user, db, character_ids)
+    character_ids, scope_options = resolve_analytics_character_scope(
+        current_user,
+        db,
+        scope=scope,
+        corporation_id=corporation_id,
+    )
+    allowed_corporation_ids = visible_corporation_ids(current_user, db, visible_character_ids(current_user, db))
+    if scope == "corporation" and corporation_id is not None:
+        corporation_ids = allowed_corporation_ids & {corporation_id}
+    elif scope == "mine":
+        corporation_ids = set()
+    else:
+        corporation_ids = allowed_corporation_ids
     ownership_entity_ids = visible_ownership_entity_ids(current_user, db)
+    if scope != "all":
+        owner_query = select(OwnershipEntity.id).where(OwnershipEntity.id.in_(ownership_entity_ids))
+        character_owner_filter = OwnershipEntity.character_id.in_(character_ids or set())
+        corporation_owner_filter = OwnershipEntity.corporation_id.in_(corporation_ids)
+        ownership_entity_ids = set(db.scalars(owner_query.where(or_(character_owner_filter, corporation_owner_filter))).all())
     character_rows = character_history_rows(db, days, character_ids, categorized=False)
     character_category_rows = character_history_rows(db, days, character_ids, categorized=True)
     corporation_rows = corporation_history_rows(db, days, corporation_ids)
@@ -800,6 +900,11 @@ def analytics_summary(days: int = Query(30, ge=1, le=3660), current_user: User =
         "snapshot_count": snapshot_count,
         "observation_count": observation_count,
         "retention_mode": analytics_retention_mode(db),
+        "scope": {
+            "mode": scope,
+            "corporation_id": corporation_id if scope == "corporation" else None,
+            "corporations": scope_options,
+        },
         "coverage": {
             "requested_from": iso(cutoff),
             "requested_to": iso(now),
@@ -826,6 +931,7 @@ def analytics_summary(days: int = Query(30, ge=1, le=3660), current_user: User =
         "manufacturing": manufacturing_analytics(db, days),
         "mining": mining_analytics(db, days, character_ids),
         "research_projects": research_project_analytics(db, days, character_ids),
+        "standings_movement": standing_movement_analytics(db, days, character_ids),
         "series": {
             "wallet_totals": corporation_series(db, days, "wallet_balance", corporation_ids, corporation_rows),
             "member_counts": corporation_series(db, days, "member_count", corporation_ids, corporation_rows),

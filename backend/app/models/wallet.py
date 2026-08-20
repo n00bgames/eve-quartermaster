@@ -46,6 +46,8 @@ class CharacterWalletJournalEntry(Base):
     is_buy: Mapped[bool | None] = mapped_column(Boolean)
     tax: Mapped[Decimal | None] = mapped_column(Numeric(24, 2))
     tax_receiver_id: Mapped[int | None] = mapped_column(BigInteger)
+    corporation_eve_id_at_import: Mapped[int | None] = mapped_column(BigInteger, index=True)
+    corporation_name_at_import: Mapped[str | None] = mapped_column(String(255))
     last_synced_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     character = relationship("EveCharacter")

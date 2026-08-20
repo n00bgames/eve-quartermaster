@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -16,7 +16,7 @@ class CharacterJumpClone(Base):
     clone_kind: Mapped[str] = mapped_column(String(32), default="jump_clone", nullable=False, index=True)
     jump_clone_id: Mapped[int | None] = mapped_column(Integer, index=True)
     name: Mapped[str | None] = mapped_column(String(255))
-    location_id: Mapped[int | None] = mapped_column(Integer, index=True)
+    location_id: Mapped[int | None] = mapped_column(BigInteger, index=True)
     location_type: Mapped[str | None] = mapped_column(String(32))
     last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

@@ -26,6 +26,7 @@ SECTION_DEFINITIONS: dict[str, dict[str, object]] = {
     "market": {"label": "Market", "default_roles": ["admin", "director", "officer", "member", "view_only"]},
     "exchange": {"label": "Corporate Exchange", "default_roles": ["admin", "director", "officer", "member", "view_only"]},
     "hypernet": {"label": "HyperNet Tracker", "default_roles": ["admin", "director", "officer", "member", "view_only"]},
+    "bounty_analytics": {"label": "Bounty Analytics", "default_roles": ["admin", "director", "officer", "member"]},
     "calendar_events": {"label": "Calendar & Events", "default_roles": ["admin", "director", "officer", "member", "view_only"]},
     "notes": {"label": "Notes & Lists", "default_roles": ["admin", "director", "officer", "member", "view_only"]},
     "contracts": {"label": "Contracts", "default_roles": ["admin", "director", "officer", "member"]},

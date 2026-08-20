@@ -51,6 +51,10 @@ class EsiClient:
         result, _headers = await self.request("PUT", path, payload=payload, params=params)
         return result
 
+    async def delete(self, path: str, params: dict[str, Any] | None = None) -> Any:
+        result, _headers = await self.request("DELETE", path, params=params)
+        return result
+
     async def close(self) -> None:
         return None
 

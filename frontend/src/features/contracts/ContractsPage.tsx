@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState, type ReactElement } from "react";
 
+import { ModuleFinder } from "../../components/ModuleFinder";
 import { formatDateTime, preferredTimeZone } from "../../lib/time";
 import { iskFormatter } from "../../lib/market";
+import { matchesSearchTerms } from "../../lib/search";
 import type { CharacterHoverNameProps } from "../characters/CharacterHoverName";
 import type { ContractToken, EqmContract } from "../../types/contracts";
 
@@ -70,6 +72,7 @@ export function ContractsPage({ currentUser, api, CharacterHoverName }: Contract
   const [sortKey, setSortKey] = useState<ContractSortKey>("dates");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [statusFilter, setStatusFilter] = useState<ContractStatusFilter>("active");
+  const [query, setQuery] = useState("");
 
   async function loadContracts() {
     const [tokenRows, contractRows] = await Promise.all([
@@ -128,7 +131,19 @@ export function ContractsPage({ currentUser, api, CharacterHoverName }: Contract
   const contractSortMark = (key: ContractSortKey) => sortKey === key ? (sortDirection === "asc" ? "^" : "v") : "";
 
   const visibleContracts = useMemo(() => {
-    return contracts.filter((contract) => contractStatusMatches(contract, statusFilter)).sort((left, right) => {
+    return contracts.filter((contract) => contractStatusMatches(contract, statusFilter) && matchesSearchTerms(query, [
+      contract.title,
+      contract.contract_id,
+      contract.contract_type,
+      contract.status,
+      contract.availability,
+      contract.scope_type,
+      contractOwner(contract),
+      contract.character_name,
+      contract.corporation_name,
+      contract.start_location_name,
+      contract.end_location_name,
+    ])).sort((left, right) => {
       const leftValue = contractSortValue(left, sortKey);
       const rightValue = contractSortValue(right, sortKey);
       const result = typeof leftValue === "number" && typeof rightValue === "number"
@@ -137,7 +152,12 @@ export function ContractsPage({ currentUser, api, CharacterHoverName }: Contract
 
       return sortDirection === "asc" ? result : -result;
     });
-  }, [contracts, sortKey, sortDirection, statusFilter]);
+  }, [contracts, query, sortKey, sortDirection, statusFilter]);
+
+  const statusFilteredCount = useMemo(
+    () => contracts.filter((contract) => contractStatusMatches(contract, statusFilter)).length,
+    [contracts, statusFilter],
+  );
 
   return (
     <section className="panel stacked contracts-page">
@@ -162,7 +182,7 @@ export function ContractsPage({ currentUser, api, CharacterHoverName }: Contract
         {tokens.length === 0 && <p className="empty">No ESI-linked characters with contract access are visible to this account.</p>}
       </div>
 
-      <div className="section-heading compact"><h4>Current contracts</h4><label className="compact-field">Status<select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as ContractStatusFilter)}>{CONTRACT_STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label></div>
+      <div className="section-heading compact"><h4>Current contracts</h4><div className="button-row compact"><ModuleFinder query={query} onQueryChange={setQuery} label="Search contracts" placeholder="Title, pilot, corporation, route, ID…" resultCount={visibleContracts.length} totalCount={statusFilteredCount} /><label className="compact-field">Status<select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as ContractStatusFilter)}>{CONTRACT_STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label></div></div>
       <div className="table-wrap contracts-table-wrap">
         <table className="contracts-table">
           <thead><tr><th><button className="sort-header" type="button" onClick={() => toggleContractSort("contract")}>Contract <span>{contractSortMark("contract")}</span></button></th><th><button className="sort-header" type="button" onClick={() => toggleContractSort("scope")}>Scope <span>{contractSortMark("scope")}</span></button></th><th><button className="sort-header" type="button" onClick={() => toggleContractSort("status")}>Status <span>{contractSortMark("status")}</span></button></th><th><button className="sort-header" type="button" onClick={() => toggleContractSort("route")}>Route <span>{contractSortMark("route")}</span></button></th><th><button className="sort-header" type="button" onClick={() => toggleContractSort("money")}>Money <span>{contractSortMark("money")}</span></button></th><th><button className="sort-header" type="button" onClick={() => toggleContractSort("dates")}>Dates <span>{contractSortMark("dates")}</span></button></th></tr></thead>
@@ -180,7 +200,7 @@ export function ContractsPage({ currentUser, api, CharacterHoverName }: Contract
               </tr>;
             })}
             {contracts.length === 0 && <tr><td colSpan={6}>No contracts synced yet.</td></tr>}
-            {contracts.length > 0 && visibleContracts.length === 0 && <tr><td colSpan={6}>No contracts match this status filter.</td></tr>}
+            {contracts.length > 0 && visibleContracts.length === 0 && <tr><td colSpan={6}>No contracts match the current search and status filters.</td></tr>}
           </tbody>
         </table>
       </div>

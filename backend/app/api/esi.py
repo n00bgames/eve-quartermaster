@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import asyncio
+import json
 import secrets
 import urllib.parse
 import uuid
@@ -48,6 +49,7 @@ router = APIRouter(prefix="/esi", tags=["esi"])
 
 SKILL_SYNC_JOBS: dict[str, dict[str, Any]] = {}
 CHARACTER_SYNC_ALL_JOBS: dict[str, dict[str, Any]] = {}
+CONTACT_SYNC_TASKS: set[asyncio.Task[Any]] = set()
 
 
 PUBLIC_SCOPES = [
@@ -128,6 +130,12 @@ SKILL_SYNC_SCOPES = [
 ]
 CHARACTER_STANDINGS_SCOPES = ["esi-characters.read_standings.v1"]
 CHARACTER_WALLET_SCOPES = ["esi-wallet.read_character_wallet.v1"]
+POSTGRES_BIND_PARAMETER_LIMIT = 65_535
+CHARACTER_WALLET_JOURNAL_BOUND_COLUMNS = 22
+CHARACTER_WALLET_JOURNAL_UPSERT_BATCH_SIZE = min(
+    1_000,
+    POSTGRES_BIND_PARAMETER_LIMIT // CHARACTER_WALLET_JOURNAL_BOUND_COLUMNS,
+)
 CORPORATION_RESEARCH_SCOPES = [
     "esi-industry.read_corporation_jobs.v1",
     "esi-characters.read_corporation_roles.v1",
@@ -138,6 +146,8 @@ CONTACT_SYNC_SCOPES = [
     "esi-characters.read_contacts.v1",
     "esi-characters.write_contacts.v1",
 ]
+CONTACT_DELETE_BATCH_SIZE = 20
+CONTACT_SYNC_JOB_MESSAGE_PREFIX = "contact-sync-json:"
 
 MAIL_SYNC_SCOPES = [
     "esi-mail.read_mail.v1",
@@ -904,6 +914,7 @@ def sync_freshness(current_user: User = Depends(get_current_user), db: Session =
 
     latest_by_dataset: dict[tuple[int, str], EsiSyncJob] = {}
     recent_jobs: list[EsiSyncJob] = []
+    active_contact_jobs: list[EsiSyncJob] = []
     if token_ids:
         latest_job_ids = (
             select(func.max(EsiSyncJob.id))
@@ -916,6 +927,15 @@ def sync_freshness(current_user: User = Depends(get_current_user), db: Session =
             .where(EsiSyncJob.token_id.in_(token_ids))
             .order_by(EsiSyncJob.finished_at.desc().nullslast(), EsiSyncJob.started_at.desc().nullslast(), EsiSyncJob.created_at.desc())
             .limit(25)
+        ).all())
+        active_contact_jobs = list(db.scalars(
+            select(EsiSyncJob)
+            .where(
+                EsiSyncJob.token_id.in_(token_ids),
+                EsiSyncJob.sync_type == "character_contact_sync",
+                EsiSyncJob.status.in_([SyncStatus.QUEUED, SyncStatus.RUNNING]),
+            )
+            .order_by(EsiSyncJob.created_at.desc())
         ).all())
         for job in jobs:
             if job.token_id is not None and job.sync_type in sync_types:
@@ -982,6 +1002,23 @@ def sync_freshness(current_user: User = Depends(get_current_user), db: Session =
                     "updated_at": job.get("updated_at"),
                 }
             )
+    for contact_job in active_contact_jobs:
+        contact_state = contact_sync_job_state(contact_job)
+        active_batches.append(
+            {
+                "job_id": str(contact_job.id),
+                "job_kind": "Character contacts",
+                "status": contact_job.status.value,
+                "total_count": int(contact_state.get("total_count", 0)),
+                "processed_count": int(contact_state.get("processed_count", 0)),
+                "success_count": int(contact_state.get("success_count", 0)),
+                "failed_count": int(contact_state.get("failed_count", 0)),
+                "skipped_count": 0,
+                "current_character_name": contact_state.get("current_character_name"),
+                "current_sync_kind": "exact match" if contact_state.get("exact_match") else "contact copy",
+                "updated_at": contact_state.get("updated_at"),
+            }
+        )
 
     attention_count = counts["stale"] + counts["failed"] + counts["never_synced"]
     return {
@@ -1007,7 +1044,7 @@ def sync_freshness(current_user: User = Depends(get_current_user), db: Session =
                 "status": job.status.value,
                 "started_at": job.started_at.isoformat() if job.started_at else None,
                 "finished_at": job.finished_at.isoformat() if job.finished_at else None,
-                "message": job.message[:500] if job.message else None,
+                "message": contact_sync_job_summary(job) if job.sync_type == "character_contact_sync" else (job.message[:500] if job.message else None),
             }
             for job in recent_jobs
         ],
@@ -1465,8 +1502,10 @@ def upsert_character_wallet_journal_rows(
     transactions: dict[int, dict[str, Any]],
     transaction_names: dict[int, str],
     synced_at: datetime,
+    corporation_eve_id_at_import: int | None = None,
+    corporation_name_at_import: str | None = None,
 ) -> int:
-    """Deduplicate ESI pages and atomically refresh journal rows by reference ID."""
+    """Deduplicate ESI pages and atomically refresh journal rows in bounded batches."""
     values_by_reference: dict[int, dict[str, Any]] = {}
     for row in journal_rows:
         reference_id = row.get("id")
@@ -1500,46 +1539,55 @@ def upsert_character_wallet_journal_rows(
             "is_buy": bool(transaction.get("is_buy")) if transaction is not None else None,
             "tax": row.get("tax"),
             "tax_receiver_id": row.get("tax_receiver_id"),
+            "corporation_eve_id_at_import": corporation_eve_id_at_import,
+            "corporation_name_at_import": corporation_name_at_import,
             "last_synced_at": synced_at,
         }
     if not values_by_reference:
         return 0
 
-    statement = pg_insert(CharacterWalletJournalEntry).values(list(values_by_reference.values()))
-    update_columns = {
-        column: getattr(statement.excluded, column)
-        for column in (
-            "occurred_at",
-            "reference_type",
-            "amount",
-            "balance",
-            "description",
-            "reason",
-            "first_party_id",
-            "second_party_id",
-            "context_id",
-            "context_id_type",
-            "item_type_id",
-            "item_name",
-            "quantity",
-            "unit_price",
-            "is_buy",
-            "tax",
-            "tax_receiver_id",
-            "last_synced_at",
+    values = list(values_by_reference.values())
+    for offset in range(0, len(values), CHARACTER_WALLET_JOURNAL_UPSERT_BATCH_SIZE):
+        statement = pg_insert(CharacterWalletJournalEntry).values(
+            values[offset : offset + CHARACTER_WALLET_JOURNAL_UPSERT_BATCH_SIZE]
         )
-    }
-    db.execute(
-        statement.on_conflict_do_update(
-            constraint="uq_character_wallet_journal_reference",
-            set_=update_columns,
+        update_columns = {
+            column: getattr(statement.excluded, column)
+            for column in (
+                "occurred_at",
+                "reference_type",
+                "amount",
+                "balance",
+                "description",
+                "reason",
+                "first_party_id",
+                "second_party_id",
+                "context_id",
+                "context_id_type",
+                "item_type_id",
+                "item_name",
+                "quantity",
+                "unit_price",
+                "is_buy",
+                "tax",
+                "tax_receiver_id",
+                "last_synced_at",
+            )
+        }
+        db.execute(
+            statement.on_conflict_do_update(
+                constraint="uq_character_wallet_journal_reference",
+                set_=update_columns,
+            )
         )
-    )
     return len(values_by_reference)
 
 
 def compact_wallet_sync_error(exc: Exception) -> str:
-    message = str(exc).split("\n[parameters:", 1)[0].strip()
+    message = str(exc)
+    for marker in ("\n[SQL:", "\n[parameters:", "\n(Background on this error"):
+        message = message.split(marker, 1)[0]
+    message = message.strip()
     return message[:2000] or exc.__class__.__name__
 
 
@@ -1577,6 +1625,8 @@ async def sync_character_wallet_for_token(token_id: int, current_user: User, db:
             transactions=transactions,
             transaction_names=transaction_names,
             synced_at=now,
+            corporation_eve_id_at_import=character.corporation.corporation_id if character.corporation else None,
+            corporation_name_at_import=character.corporation.name if character.corporation else None,
         )
         character.current_wallet_balance = Decimal(str(balance_payload))
         character.wallet_synced_at = now
@@ -2032,7 +2082,9 @@ async def run_character_sync_all_job(job_id: str, work_items: list[dict[str, Any
                     )
                 except Exception as exc:
                     job["failed_count"] += 1
-                    detail = getattr(exc, "detail", None) or str(exc)
+                    detail = getattr(exc, "detail", None) or (
+                        compact_wallet_sync_error(exc) if sync_kind == "wallet" else str(exc)
+                    )
                     job["errors"].append(f"{display_name} {sync_kind}: {detail}")
                 finally:
                     job["processed_count"] += 1
@@ -2360,7 +2412,13 @@ def contact_write_groups(rows: list[dict[str, Any]]) -> dict[tuple[float, bool],
     return groups
 
 
-def build_contact_plan(source_contacts: list[dict[str, Any]], target_contacts: list[dict[str, Any]], overwrite_existing: bool) -> dict[str, Any]:
+def build_contact_plan(
+    source_contacts: list[dict[str, Any]],
+    target_contacts: list[dict[str, Any]],
+    overwrite_existing: bool,
+    exact_match: bool = False,
+) -> dict[str, Any]:
+    source_ids = {int(contact["contact_id"]) for contact in source_contacts}
     target_by_id = {int(contact["contact_id"]): contact for contact in target_contacts}
     create: list[dict[str, Any]] = []
     update: list[dict[str, Any]] = []
@@ -2375,11 +2433,12 @@ def build_contact_plan(source_contacts: list[dict[str, Any]], target_contacts: l
             continue
         target_standing = float(target.get("standing", 0))
         target_watched = bool(target.get("is_watched", False))
-        if overwrite_existing and (target_standing != source_standing or target_watched != source_watched):
+        if (overwrite_existing or exact_match) and (target_standing != source_standing or target_watched != source_watched):
             update.append(source)
         else:
             skip.append(source)
-    return {"create": create, "update": update, "skip": skip}
+    delete_rows = [contact for contact in target_contacts if int(contact["contact_id"]) not in source_ids] if exact_match else []
+    return {"create": create, "update": update, "delete": delete_rows, "skip": skip}
 
 
 def contact_summary_rows(rows: list[dict[str, Any]], names: dict[int, str], limit: int = 20) -> list[dict[str, Any]]:
@@ -2395,7 +2454,7 @@ def contact_summary_rows(rows: list[dict[str, Any]], names: dict[int, str], limi
     ]
 
 
-def parse_contact_sync_payload(payload: dict[str, Any]) -> tuple[int, list[int], bool]:
+def parse_contact_sync_payload(payload: dict[str, Any]) -> tuple[int, list[int], bool, bool]:
     source_token_id = payload.get("source_token_id")
     target_token_ids = payload.get("target_token_ids")
     if not isinstance(source_token_id, int):
@@ -2405,7 +2464,8 @@ def parse_contact_sync_payload(payload: dict[str, Any]) -> tuple[int, list[int],
     clean_targets = [int(token_id) for token_id in target_token_ids if int(token_id) != source_token_id]
     if not clean_targets:
         raise HTTPException(status_code=400, detail="Choose at least one target character different from the source")
-    return source_token_id, clean_targets, bool(payload.get("overwrite_existing", False))
+    exact_match = bool(payload.get("exact_match", False))
+    return source_token_id, clean_targets, bool(payload.get("overwrite_existing", False)) or exact_match, exact_match
 
 
 @router.get("/standings/{token_id}")
@@ -2428,21 +2488,24 @@ async def character_contacts(token_id: int, current_user: User = Depends(get_cur
 @router.post("/standings/preview")
 @router.post("/contacts/preview")
 async def preview_contact_sync(payload: dict[str, Any], current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
-    source_token_id, target_token_ids, overwrite_existing = parse_contact_sync_payload(payload)
+    source_token_id, target_token_ids, overwrite_existing, exact_match = parse_contact_sync_payload(payload)
     source_token, source_character = get_linked_token(db, source_token_id)
     require_token_access(source_token, current_user, db)
     source_contacts = await fetch_character_contacts(db, source_token, source_character)
     access_token = await refresh_access_token(source_token)
-    names = await resolve_contact_names(EsiClient(access_token=access_token), {int(contact["contact_id"]) for contact in source_contacts})
+    name_client = EsiClient(access_token=access_token)
+    names = await resolve_contact_names(name_client, {int(contact["contact_id"]) for contact in source_contacts})
 
     targets = []
-    totals = {"create": 0, "update": 0, "skip": 0}
+    totals = {"create": 0, "update": 0, "delete": 0, "skip": 0}
     for target_token_id in target_token_ids:
         target_token, target_character = get_linked_token(db, target_token_id)
         require_token_access(target_token, current_user, db)
         require_scope(target_token, "esi-characters.write_contacts.v1", f"Writing contacts for {target_character.name}")
         target_contacts = await fetch_character_contacts(db, target_token, target_character)
-        plan = build_contact_plan(source_contacts, target_contacts, overwrite_existing)
+        plan = build_contact_plan(source_contacts, target_contacts, overwrite_existing, exact_match)
+        if plan["delete"]:
+            names.update(await resolve_contact_names(name_client, {int(contact["contact_id"]) for contact in plan["delete"]}))
         for key in totals:
             totals[key] += len(plan[key])
         targets.append(
@@ -2452,9 +2515,11 @@ async def preview_contact_sync(payload: dict[str, Any], current_user: User = Dep
                 "character_name": target_character.name,
                 "create_count": len(plan["create"]),
                 "update_count": len(plan["update"]),
+                "delete_count": len(plan["delete"]),
                 "skip_count": len(plan["skip"]),
                 "create_sample": contact_summary_rows(plan["create"], names),
                 "update_sample": contact_summary_rows(plan["update"], names),
+                "delete_sample": contact_summary_rows(plan["delete"], names),
             }
         )
     db.commit()
@@ -2462,69 +2527,329 @@ async def preview_contact_sync(payload: dict[str, Any], current_user: User = Dep
         "source_character_name": source_character.name,
         "source_contact_count": len(source_contacts),
         "overwrite_existing": overwrite_existing,
+        "exact_match": exact_match,
         "totals": totals,
         "targets": targets,
     }
 
 
+def contact_sync_job_state(job: EsiSyncJob) -> dict[str, Any]:
+    message = job.message or ""
+    if message.startswith(CONTACT_SYNC_JOB_MESSAGE_PREFIX):
+        try:
+            parsed = json.loads(message[len(CONTACT_SYNC_JOB_MESSAGE_PREFIX):])
+            if isinstance(parsed, dict):
+                return parsed
+        except (TypeError, ValueError):
+            pass
+    return {
+        "source_character_name": "Linked character",
+        "exact_match": False,
+        "total_count": 0,
+        "processed_count": 0,
+        "success_count": 0,
+        "failed_count": 0,
+        "current_character_name": None,
+        "created": 0,
+        "updated": 0,
+        "deleted": 0,
+        "targets": [],
+        "errors": [message] if message else [],
+    }
+
+
+def persist_contact_sync_job_state(job: EsiSyncJob, state: dict[str, Any]) -> None:
+    state["updated_at"] = utc_job_iso()
+    job.message = CONTACT_SYNC_JOB_MESSAGE_PREFIX + json.dumps(state, separators=(",", ":"), ensure_ascii=False)
+
+
+def contact_sync_job_payload(job: EsiSyncJob) -> dict[str, Any]:
+    state = contact_sync_job_state(job)
+    status = job.status.value if isinstance(job.status, SyncStatus) else str(job.status)
+    if status == SyncStatus.SUCCESS.value:
+        status = "complete"
+    return {
+        "job_id": str(job.id),
+        "status": status,
+        "created_at": job.created_at.isoformat() if job.created_at else None,
+        "updated_at": state.get("updated_at"),
+        "completed_at": job.finished_at.isoformat() if job.finished_at else None,
+        "source_character_name": state.get("source_character_name", "Linked character"),
+        "exact_match": bool(state.get("exact_match", False)),
+        "total_count": int(state.get("total_count", 0)),
+        "processed_count": int(state.get("processed_count", 0)),
+        "success_count": int(state.get("success_count", 0)),
+        "failed_count": int(state.get("failed_count", 0)),
+        "current_character_name": state.get("current_character_name"),
+        "created": int(state.get("created", 0)),
+        "updated": int(state.get("updated", 0)),
+        "deleted": int(state.get("deleted", 0)),
+        "targets": state.get("targets", []),
+        "errors": state.get("errors", [])[-12:],
+    }
+
+
+def contact_sync_job_summary(job: EsiSyncJob) -> str | None:
+    state = contact_sync_job_state(job)
+    source = state.get("source_character_name", "linked character")
+    processed = int(state.get("processed_count", 0))
+    total = int(state.get("total_count", 0))
+    created = int(state.get("created", 0))
+    updated = int(state.get("updated", 0))
+    deleted = int(state.get("deleted", 0))
+    return f"Contacts from {source}: {processed}/{total} targets; {created} created, {updated} updated, {deleted} deleted."
+
+
+def contact_sync_error_text(exc: Exception) -> str:
+    detail = getattr(exc, "detail", None)
+    if isinstance(detail, (dict, list)):
+        return json.dumps(detail, ensure_ascii=False)
+    return str(detail or exc)
+
+
+async def run_contact_sync_job(
+    job_id: int,
+    source_token_id: int,
+    target_token_ids: list[int],
+    overwrite_existing: bool,
+    exact_match: bool,
+    user_id: int,
+) -> None:
+    with SessionLocal() as db:
+        job = db.get(EsiSyncJob, job_id)
+        if job is None:
+            return
+        state = contact_sync_job_state(job)
+        job.status = SyncStatus.RUNNING
+        job.started_at = job.started_at or datetime.now(timezone.utc)
+        persist_contact_sync_job_state(job, state)
+        db.commit()
+        try:
+            user = db.get(User, user_id)
+            if user is None:
+                raise RuntimeError("The user that queued this contact sync no longer exists.")
+            source_token, source_character = get_linked_token(db, source_token_id)
+            require_token_access(source_token, user, db)
+            source_contacts = await fetch_character_contacts(db, source_token, source_character)
+            db.commit()
+
+            completed_target_ids = {
+                int(target["token_id"])
+                for target in state.get("targets", [])
+                if target.get("token_id") is not None
+            }
+            for target_token_id in target_token_ids:
+                if target_token_id in completed_target_ids:
+                    continue
+                created = 0
+                updated = 0
+                deleted = 0
+                skipped = 0
+                target_name = f"Token {target_token_id}"
+                target_result: dict[str, Any] | None = None
+                try:
+                    target_token, target_character = get_linked_token(db, target_token_id)
+                    target_name = target_character.name
+                    state["current_character_name"] = target_name
+                    persist_contact_sync_job_state(job, state)
+                    db.commit()
+
+                    require_token_access(target_token, user, db)
+                    require_scope(target_token, "esi-characters.write_contacts.v1", f"Writing contacts for {target_character.name}")
+                    target_contacts = await fetch_character_contacts(db, target_token, target_character)
+                    plan = build_contact_plan(source_contacts, target_contacts, overwrite_existing, exact_match)
+                    skipped = len(plan["skip"])
+                    access_token = await refresh_access_token(target_token)
+                    client = EsiClient(access_token=access_token)
+
+                    for (standing, watched), contact_ids in contact_write_groups(plan["create"]).items():
+                        for batch in chunked(contact_ids, 100):
+                            await client.post(f"/characters/{target_character.character_id}/contacts/", batch, params={"standing": standing, "watched": watched})
+                            created += len(batch)
+
+                    for (standing, watched), contact_ids in contact_write_groups(plan["update"]).items():
+                        for batch in chunked(contact_ids, 100):
+                            await client.put(f"/characters/{target_character.character_id}/contacts/", batch, params={"standing": standing, "watched": watched})
+                            updated += len(batch)
+
+                    for batch in chunked([int(row["contact_id"]) for row in plan["delete"]], CONTACT_DELETE_BATCH_SIZE):
+                        await client.delete(f"/characters/{target_character.character_id}/contacts/", params={"contact_ids": batch})
+                        deleted += len(batch)
+
+                    state["success_count"] = int(state.get("success_count", 0)) + 1
+                    target_result = {
+                        "token_id": target_token.id,
+                        "character_id": target_character.character_id,
+                        "character_name": target_name,
+                        "status": "complete",
+                        "created": created,
+                        "updated": updated,
+                        "deleted": deleted,
+                        "skipped": skipped,
+                    }
+                except Exception as exc:
+                    state["failed_count"] = int(state.get("failed_count", 0)) + 1
+                    error = contact_sync_error_text(exc)
+                    state.setdefault("errors", []).append(f"{target_name}: {error}")
+                    target_result = {
+                        "token_id": target_token_id,
+                        "character_name": target_name,
+                        "status": "failed",
+                        "created": created,
+                        "updated": updated,
+                        "deleted": deleted,
+                        "skipped": skipped,
+                        "error": error,
+                    }
+                finally:
+                    state["created"] = int(state.get("created", 0)) + created
+                    state["updated"] = int(state.get("updated", 0)) + updated
+                    state["deleted"] = int(state.get("deleted", 0)) + deleted
+                    state["processed_count"] = int(state.get("processed_count", 0)) + 1
+                    if target_result is not None:
+                        state.setdefault("targets", []).append(target_result)
+                    persist_contact_sync_job_state(job, state)
+                    db.commit()
+                await asyncio.sleep(0)
+
+            state["current_character_name"] = None
+            job.status = SyncStatus.FAILED if int(state.get("failed_count", 0)) else SyncStatus.SUCCESS
+            job.finished_at = datetime.now(timezone.utc)
+            persist_contact_sync_job_state(job, state)
+            db.commit()
+        except Exception as exc:
+            state["current_character_name"] = None
+            state["failed_count"] = max(1, int(state.get("failed_count", 0)))
+            state.setdefault("errors", []).append(f"Contact sync worker stopped unexpectedly: {contact_sync_error_text(exc)}")
+            job.status = SyncStatus.FAILED
+            job.finished_at = datetime.now(timezone.utc)
+            persist_contact_sync_job_state(job, state)
+            db.commit()
+
+
+def schedule_contact_sync_task(
+    job_id: int,
+    source_token_id: int,
+    target_token_ids: list[int],
+    overwrite_existing: bool,
+    exact_match: bool,
+    user_id: int,
+) -> None:
+    task = asyncio.create_task(run_contact_sync_job(job_id, source_token_id, target_token_ids, overwrite_existing, exact_match, user_id))
+    CONTACT_SYNC_TASKS.add(task)
+    task.add_done_callback(CONTACT_SYNC_TASKS.discard)
+
+
+def resume_pending_contact_sync_jobs() -> int:
+    resumed = 0
+    with SessionLocal() as db:
+        jobs = db.scalars(
+            select(EsiSyncJob)
+            .where(
+                EsiSyncJob.sync_type == "character_contact_sync",
+                EsiSyncJob.status.in_([SyncStatus.QUEUED, SyncStatus.RUNNING]),
+            )
+            .order_by(EsiSyncJob.created_at)
+        ).all()
+        for job in jobs:
+            state = contact_sync_job_state(job)
+            try:
+                source_token_id = int(state["source_token_id"])
+                target_token_ids = [int(token_id) for token_id in state["target_token_ids"]]
+                user_id = int(state["user_id"])
+                if not target_token_ids:
+                    raise ValueError("No target characters remain in the queued job.")
+            except (KeyError, TypeError, ValueError) as exc:
+                state.setdefault("errors", []).append(f"Queued contact sync could not be resumed: {exc}")
+                state["current_character_name"] = None
+                job.status = SyncStatus.FAILED
+                job.finished_at = datetime.now(timezone.utc)
+                persist_contact_sync_job_state(job, state)
+                continue
+            job.status = SyncStatus.QUEUED
+            persist_contact_sync_job_state(job, state)
+            schedule_contact_sync_task(
+                job.id,
+                source_token_id,
+                target_token_ids,
+                bool(state.get("overwrite_existing", False)),
+                bool(state.get("exact_match", False)),
+                user_id,
+            )
+            resumed += 1
+        db.commit()
+    return resumed
+
+
 @router.post("/standings/apply")
 @router.post("/contacts/apply")
-async def apply_contact_sync(payload: dict[str, Any], current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
-    source_token_id, target_token_ids, overwrite_existing = parse_contact_sync_payload(payload)
+async def apply_contact_sync(payload: dict[str, Any], response: Response, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+    source_token_id, target_token_ids, overwrite_existing, exact_match = parse_contact_sync_payload(payload)
     source_token, source_character = get_linked_token(db, source_token_id)
     require_token_access(source_token, current_user, db)
-    source_contacts = await fetch_character_contacts(db, source_token, source_character)
-
-    targets = []
-    total_created = 0
-    total_updated = 0
+    require_scope(source_token, "esi-characters.read_contacts.v1", f"Reading contacts for {source_character.name}")
     for target_token_id in target_token_ids:
         target_token, target_character = get_linked_token(db, target_token_id)
         require_token_access(target_token, current_user, db)
+        require_scope(target_token, "esi-characters.read_contacts.v1", f"Reading contacts for {target_character.name}")
         require_scope(target_token, "esi-characters.write_contacts.v1", f"Writing contacts for {target_character.name}")
-        target_contacts = await fetch_character_contacts(db, target_token, target_character)
-        plan = build_contact_plan(source_contacts, target_contacts, overwrite_existing)
-        access_token = await refresh_access_token(target_token)
-        client = EsiClient(access_token=access_token)
 
-        created = 0
-        for (standing, watched), contact_ids in contact_write_groups(plan["create"]).items():
-            for batch in chunked(contact_ids, 100):
-                await client.post(f"/characters/{target_character.character_id}/contacts/", batch, params={"standing": standing, "watched": watched})
-                created += len(batch)
-
-        updated = 0
-        for (standing, watched), contact_ids in contact_write_groups(plan["update"]).items():
-            for batch in chunked(contact_ids, 100):
-                await client.put(f"/characters/{target_character.character_id}/contacts/", batch, params={"standing": standing, "watched": watched})
-                updated += len(batch)
-
-        total_created += created
-        total_updated += updated
-        targets.append(
-            {
-                "token_id": target_token.id,
-                "character_id": target_character.character_id,
-                "character_name": target_character.name,
-                "created": created,
-                "updated": updated,
-                "skipped": len(plan["skip"]),
-            }
+    active_job = db.scalar(
+        select(EsiSyncJob)
+        .where(
+            EsiSyncJob.token_id == source_token.id,
+            EsiSyncJob.sync_type == "character_contact_sync",
+            EsiSyncJob.status.in_([SyncStatus.QUEUED, SyncStatus.RUNNING]),
         )
+        .order_by(EsiSyncJob.created_at.desc())
+        .limit(1)
+    )
+    if active_job is not None:
+        response.status_code = 202
+        return contact_sync_job_payload(active_job)
 
     owner = ensure_owner(db, OwnerKind.CHARACTER, source_character.name, character_id=source_character.id)
-    job = EsiSyncJob(token_id=source_token.id, ownership_entity_id=owner.id, sync_type="character_contact_sync", status=SyncStatus.SUCCESS, started_at=datetime.now(timezone.utc), finished_at=datetime.now(timezone.utc))
-    job.message = f"Copied contacts from {source_character.name}: created {total_created}, updated {total_updated}."
+    now = utc_job_iso()
+    state = {
+        "source_character_name": source_character.name,
+        "user_id": current_user.id,
+        "source_token_id": source_token_id,
+        "target_token_ids": target_token_ids,
+        "overwrite_existing": overwrite_existing,
+        "exact_match": exact_match,
+        "total_count": len(target_token_ids),
+        "processed_count": 0,
+        "success_count": 0,
+        "failed_count": 0,
+        "current_character_name": None,
+        "created": 0,
+        "updated": 0,
+        "deleted": 0,
+        "targets": [],
+        "errors": [],
+        "updated_at": now,
+    }
+    job = EsiSyncJob(token_id=source_token.id, ownership_entity_id=owner.id, sync_type="character_contact_sync", status=SyncStatus.QUEUED)
+    persist_contact_sync_job_state(job, state)
     db.add(job)
     db.commit()
-    return {
-        "status": "synced",
-        "source_character_name": source_character.name,
-        "created": total_created,
-        "updated": total_updated,
-        "targets": targets,
-        "job_id": job.id,
-    }
+    db.refresh(job)
+
+    schedule_contact_sync_task(job.id, source_token_id, target_token_ids, overwrite_existing, exact_match, current_user.id)
+    response.status_code = 202
+    return contact_sync_job_payload(job)
+
+
+@router.get("/contact-sync/jobs/{job_id:int}")
+def get_contact_sync_job(job_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+    job = db.get(EsiSyncJob, job_id)
+    if job is None or job.sync_type != "character_contact_sync" or job.token_id is None:
+        raise HTTPException(status_code=404, detail="Contact sync job was not found")
+    source_token = db.get(EsiToken, job.token_id)
+    if source_token is None:
+        raise HTTPException(status_code=404, detail="The source character link for this contact sync no longer exists")
+    require_token_access(source_token, current_user, db)
+    return contact_sync_job_payload(job)
 @router.get("/config")
 def esi_config() -> dict[str, Any]:
     settings = get_settings()

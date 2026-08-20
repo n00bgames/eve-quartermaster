@@ -1,0 +1,70 @@
+.module-finder {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: min(100%, 320px);
+}
+
+.module-finder > label {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 280px;
+  min-width: 220px;
+}
+
+.module-finder > label > svg {
+  position: absolute;
+  left: 11px;
+  color: #4fb3c7;
+  pointer-events: none;
+}
+
+.module-finder input {
+  padding-left: 36px;
+  padding-right: 38px;
+}
+
+.module-finder .module-finder-clear {
+  position: absolute;
+  right: 5px;
+  min-width: 30px;
+  width: 30px;
+  min-height: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #aab4c2;
+}
+
+.module-finder > small {
+  color: #8b98a8;
+  white-space: nowrap;
+  font-size: .78rem;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 620px) {
+  .module-finder {
+    align-items: stretch;
+    display: grid;
+    width: 100%;
+  }
+
+  .module-finder > label {
+    min-width: 100%;
+  }
+}
+

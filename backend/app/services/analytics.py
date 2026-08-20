@@ -17,6 +17,7 @@ from app.models import (
     CharacterSkill,
     CharacterSkillQueueEntry,
     CharacterSkillSnapshot,
+    CharacterStanding,
     CharacterWalletSnapshot,
     CorporationSnapshot,
     CorporationWalletDivision,
@@ -221,13 +222,17 @@ def create_snapshot(
         if scope_type == "global":
             snapshot_character_wallets(db, run, **retention_kwargs)
             snapshot_character_skills(db, run, **retention_kwargs)
+            snapshot_character_standings(db, run, **retention_kwargs)
             snapshot_corporations(db, run, **retention_kwargs)
             snapshot_blueprints(db, run, **retention_kwargs)
         elif scope_type == "character" and scope_id is not None:
-            snapshot_character_wallets(db, run, {scope_id}, **retention_kwargs)
+            if source == "character_standings":
+                snapshot_character_standings(db, run, {scope_id}, **retention_kwargs)
+            else:
+                snapshot_character_wallets(db, run, {scope_id}, **retention_kwargs)
             if source == "character_assets":
                 snapshot_character_assets(db, run, scope_id, **retention_kwargs)
-            elif source != "character_wallet":
+            elif source not in {"character_wallet", "character_standings"}:
                 snapshot_character_skills(db, run, {scope_id}, **retention_kwargs)
         elif scope_type == "corporation" and scope_id is not None:
             snapshot_corporations(db, run, {scope_id}, **retention_kwargs)
@@ -237,6 +242,7 @@ def create_snapshot(
         else:
             snapshot_character_wallets(db, run, **retention_kwargs)
             snapshot_character_skills(db, run, **retention_kwargs)
+            snapshot_character_standings(db, run, **retention_kwargs)
             snapshot_corporations(db, run, **retention_kwargs)
             snapshot_blueprints(db, run, **retention_kwargs)
         db.flush()
@@ -369,6 +375,71 @@ def snapshot_character_wallets(db: Session, run: SnapshotRun, character_ids: set
                     balance=decimal_value(character.current_wallet_balance),
                 )
             )
+
+
+def snapshot_character_standings(db: Session, run: SnapshotRun, character_ids: set[int] | None = None, *, retention_mode: str = RETENTION_MODE_FULL) -> None:
+    character_query = select(EveCharacter).where(EveCharacter.standings_synced_at.is_not(None))
+    if character_ids is not None:
+        if not character_ids:
+            return
+        character_query = character_query.where(EveCharacter.id.in_(character_ids))
+    characters = db.scalars(character_query.order_by(EveCharacter.name)).all()
+    if not characters:
+        return
+
+    eligible_ids = {int(character.id) for character in characters}
+    character_names = {int(character.id): character.name for character in characters}
+    current_series: set[str] = set()
+    standings = db.scalars(
+        select(CharacterStanding)
+        .where(CharacterStanding.character_id.in_(eligible_ids))
+        .order_by(CharacterStanding.character_id, CharacterStanding.source_type, CharacterStanding.source_name)
+    ).all()
+    for standing in standings:
+        dimensions = {
+            "source_type": standing.source_type,
+            "source_eve_id": int(standing.source_eve_id),
+            "source_name": standing.source_name,
+        }
+        current_series.add(
+            metric_series_key(
+                owner_type="character",
+                owner_id=int(standing.character_id),
+                metric_key="standings.base",
+                metric_version=1,
+                dimensions=dimensions,
+            )
+        )
+        add_metric(
+            db,
+            run,
+            owner_type="character",
+            owner_id=int(standing.character_id),
+            owner_name=character_names[int(standing.character_id)],
+            metric_key="standings.base",
+            metric_value=standing.standing,
+            dimensions=dimensions,
+            retention_mode=retention_mode,
+        )
+
+    # ESI omits a standing once it returns to neutral. Preserve that transition as
+    # an explicit zero so a removed current-state row remains analytically visible.
+    previous = _latest_metric_rows(db, run, "standings.base")
+    for series_key, prior in list(previous.items()):
+        if prior.owner_id not in eligible_ids or series_key in current_series:
+            continue
+        dimensions = dict(prior.dimensions_json or {})
+        add_metric(
+            db,
+            run,
+            owner_type="character",
+            owner_id=prior.owner_id,
+            owner_name=character_names.get(int(prior.owner_id or 0), prior.owner_name),
+            metric_key="standings.base",
+            metric_value=0,
+            dimensions=dimensions,
+            retention_mode=retention_mode,
+        )
 
 
 def skill_category_name(skill: CharacterSkill) -> str:

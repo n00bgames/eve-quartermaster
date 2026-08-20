@@ -331,7 +331,12 @@ async def sync_jump_clones(token_id: int, current_user: User = Depends(get_curre
         job = EsiSyncJob(token_id=token.id, sync_type="character_jump_clones", status=SyncStatus.FAILED, started_at=datetime.now(timezone.utc), finished_at=datetime.now(timezone.utc), message=str(exc))
         db.add(job)
         db.commit()
-        raise
+        if isinstance(exc, HTTPException):
+            raise
+        raise HTTPException(
+            status_code=500,
+            detail=f"Jump clone sync failed for {character.name}. Previously synced clone data was preserved.",
+        ) from exc
 
 
 def require_set_access(row: ImplantSet, current_user: User, db: Session) -> None:

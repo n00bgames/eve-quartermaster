@@ -19,6 +19,7 @@ from app.db.session import get_db
 from app.models import EsiSyncJob, User
 from app.models.enums import SyncStatus
 from app.services.audit import notify_if_other_user_synced_character
+from app.services.analytics import create_snapshot
 from app.services.esi_client import EsiClient
 from app.services.standings import upsert_character_standings
 
@@ -58,6 +59,13 @@ async def sync_character_standings_for_token(
         source_ids = {int(row["from_id"]) for row in rows if row.get("from_id") is not None}
         names = await resolve_contact_names(client, source_ids)
         counts = upsert_character_standings(db, character, rows, names)
+        snapshot = create_snapshot(
+            db,
+            scope_type="character",
+            scope_id=character.id,
+            source="character_standings",
+            message=f"Automatic standings snapshot for {character.name}",
+        )
         now = datetime.now(timezone.utc)
         job.status = SyncStatus.SUCCESS
         job.finished_at = now
@@ -78,6 +86,7 @@ async def sync_character_standings_for_token(
             "character_name": character.name,
             "standing_count": counts["total"],
             "job_id": job.id,
+            "snapshot_run_id": snapshot.id,
         }
     except Exception as exc:
         job.status = SyncStatus.FAILED

@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.models import Base, EsiSyncJob, EsiToken, EveAlliance, EveCharacter, EveCorporation, OwnershipEntity, User
 from app.models.enums import OwnerKind, SyncStatus
 from app.services.analytics import analytics_corporation_ids, privileged_analytics_corporation_ids
+from app.services.analytics_scope import resolve_analytics_character_scope
 
 
 class AnalyticsCorporationScopeTests(unittest.TestCase):
@@ -101,6 +102,31 @@ class AnalyticsCorporationScopeTests(unittest.TestCase):
             {included.id, hidden.id, excluded.id},
         )
         self.assertEqual(analytics_corporation_ids(self.db), {included.id})
+
+    def test_pilot_scope_filters_owned_and_accessible_corporation_characters(self) -> None:
+        corporation = EveCorporation(corporation_id=9_900_001, name="Scope Pilots", ticker="SCP")
+        outsider_corporation = EveCorporation(corporation_id=9_900_002, name="Other Pilots", ticker="OTH")
+        member = User(email="member@example.com", display_name="Member", role="member")
+        outsider = User(email="outsider@example.com", display_name="Outsider", role="member")
+        self.db.add_all([corporation, outsider_corporation, member, outsider])
+        self.db.flush()
+        owned = EveCharacter(character_id=91_000_001, name="Owned", corporation_id=corporation.id, owner_user_id=member.id)
+        alt = EveCharacter(character_id=91_000_002, name="Alt", corporation_id=corporation.id, owner_user_id=member.id)
+        hidden = EveCharacter(character_id=91_000_003, name="Hidden", corporation_id=outsider_corporation.id, owner_user_id=outsider.id)
+        self.db.add_all([owned, alt, hidden])
+        self.db.commit()
+
+        mine, options = resolve_analytics_character_scope(member, self.db, scope="mine", corporation_id=None)
+        corporation_scope, _ = resolve_analytics_character_scope(
+            member,
+            self.db,
+            scope="corporation",
+            corporation_id=corporation.id,
+        )
+
+        self.assertEqual(mine, {owned.id, alt.id})
+        self.assertEqual(corporation_scope, {owned.id, alt.id})
+        self.assertEqual(options, [{"id": corporation.id, "name": corporation.name, "ticker": corporation.ticker}])
 
 
 if __name__ == "__main__":

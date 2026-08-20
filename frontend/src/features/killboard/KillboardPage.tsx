@@ -92,12 +92,12 @@ export function KillboardPage({ api }: { api: ApiClient }) {
   }
 
   const syncProgress = useMemo(() => sync?.target_count ? Math.min(100, Math.round(sync.target_index / sync.target_count * 100)) : 0, [sync]);
-  if (loading && !context) return <section className="panel"><p>Opening Steihl’s Violence Ledger…</p></section>;
+  if (loading && !context) return <section className="panel"><p>Opening EQM Violence Ledger…</p></section>;
   if (!context) return <section className="panel"><div className="alert">{error ?? "Killboard is unavailable."}</div></section>;
 
   return <div className="killboard-page">
     <section className="killboard-command panel">
-      <div><span className="eyebrow">Canonical ESI records · zKill discovery</span><h2 style={{ fontSize: "clamp(1.45rem, 3cqi, 2rem)", lineHeight: 1.1 }}><Skull size={24} /> Steihl’s Violence Ledger</h2><p>Ships converted into content, cached locally for useful historical analysis.</p></div>
+      <div><span className="eyebrow">Canonical ESI records · zKill discovery</span><h2 style={{ fontSize: "clamp(1.45rem, 3cqi, 2rem)", lineHeight: 1.1 }}><Skull size={24} /> EQM Violence Ledger</h2><p>Ships converted into content, cached locally for useful historical analysis.</p></div>
       <div className="killboard-controls">
         <label>Scope<select value={scope ? `${scope.scope_type}:${scope.scope_id}` : ""} onChange={(event) => setScope(context.scopes.find((item) => `${item.scope_type}:${item.scope_id}` === event.target.value) ?? null)}>{context.scopes.map((item) => <option key={`${item.scope_type}:${item.scope_id}`} value={`${item.scope_type}:${item.scope_id}`}>{item.label}</option>)}</select></label>
         <div className="button-row">{[7, 30, 90].map((value) => <button key={value} type="button" className={days === value ? "active" : ""} onClick={() => setDays(value)}>{value}D</button>)}</div>

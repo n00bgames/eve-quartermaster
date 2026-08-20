@@ -8,6 +8,18 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Added
 
+- Added a permission-aware Character Skills finder with comma-separated multi-skill search, All/Any matching, minimum trained-level filtering, pilot result counts, and concise matched-skill badges.
+- Added consistent record finders for research and manufacturing projects, contracts, HyperNet offers, and jump-clone implants/custom sets; existing Standings and Corporate Exchange search remain available.
+
+- Added four baseline-aware Analytics widgets for the selected reporting range: top 10 NPC corporation standing gains, NPC corporation standing losses, faction standing gains, and faction standing losses. Rankings use four-decimal unmodified ESI base standings, sum net movement across pilots visible to the viewer, exclude first-observation coverage, and begin accruing through automatic standings snapshots.
+- Added a permission-aware Analytics pilot-scope selector for **All visible pilots**, **My data**, or an accessible corporation. The selection filters pilot history, standings, skills, mining, research, planetary, blueprint, and eligible corporation widgets without weakening Financial Analytics privacy boundaries.
+
+- Added a private, account-scoped Bounty Analytics module backed by retained character wallet journals, with authoritative NPC bounty classification, deterministic payout ticks, 1/7/30/90-day and all-history views, tick/hour/day charts, pilot and historical-corporation filters, summary metrics, traceable leaderboards, paged ledger evidence, and CSV export.
+- Added corporate-tax analytics to bounty history. Each tick preserves ESI's original net wallet amount and first-import corporation identity; gross bounty, corporate tax, and effective rate are calculated only from authoritative tax fields, missing evidence remains Unknown, and tax cards, charts, leaderboards, filters, drilldowns, and exports expose reconciliation coverage without applying current corporation tax rates retroactively.
+
+- Added an explicit **Exact Match** option to Character Contacts Sync. Its preview identifies destination-only contacts by name and character, then the confirmed apply operation creates missing contacts, updates changed standings/watch states, and deletes extras in ESI-safe batches so selected characters match the source one-for-one.
+- Moved Character Contacts Sync apply operations into durable background jobs so long multi-character copies and Exact Match runs return immediately instead of timing out, report per-target progress in the Sync & Freshness Center, resume their status after navigation, preserve completed targets when another fails, and recover queued/running work after a backend restart.
+
 - Added the EQM Killboard: polite incremental zKillboard discovery, authoritative ESI killmail retrieval, normalized victim/attacker/item storage, raw source payload retention, deduplication by killmail ID, durable resumable cursors, direct zKill links, and account/character/corporation combat analytics across configurable 7/30/90-day views.
 
 - Added combat analytics for kills, losses, zKill-estimated ISK destroyed/lost and efficiency, solo/fleet participation, final blows, damage contribution, hull usage/destruction/loss, system/region/security activity, recurring opponents, streaks, inactivity, and characters frequently appearing together. Registered Killboard gauges also feed EQM's existing snapshot infrastructure.
@@ -20,7 +32,15 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Fixed
 
+- Fixed Jump Clone sync failures for clones located in Upwell structures by storing EVE location IDs as 64-bit integers; failed refreshes now explicitly confirm that previously synced clone data was preserved.
+
+- Character summary hover cards now render through a viewport-level overlay, automatically flip above their trigger near the bottom edge, remain constrained to the visible window, and track scrolling or resizing instead of being clipped by card lists, tables, and other overflow panes.
+
+- Character wallet journal synchronization now writes large histories in bounded, transaction-safe batches instead of exceeding PostgreSQL's 65,535-parameter statement limit. Aggregate Character Sync failures also suppress generated SQL and parameter dumps so the review placard remains concise and useful.
+
 - Killboard opponents and other public combatants now resolve through ESI into a dedicated, refreshable entity-name cache instead of remaining as raw `Character 123456789` or corporation/alliance ID labels. Deleted or inaccessible entities continue to show an explicit ID fallback without breaking analytics.
+
+- Replaced the Killboard's leftover personalized ledger heading with the generic **EQM Violence Ledger** label used by every installation.
 
 ## [0.1.18-beta] - 2026-08-06
 

@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from types import SimpleNamespace
 
-from app.api.analytics import change_breakdown, daily_corporation_series
+from app.api.analytics import change_breakdown, daily_corporation_series, standing_movement_rows
 
 
 class AnalyticsSeriesTests(unittest.TestCase):
@@ -60,6 +60,38 @@ class AnalyticsSeriesTests(unittest.TestCase):
         self.assertEqual(result["total_delta"], 215)
         self.assertEqual(result["newly_tracked_count"], 1)
         self.assertEqual(result["newly_tracked"][0]["name"], "New")
+
+    def test_standing_movement_ranks_net_corporation_and_faction_changes(self) -> None:
+        cutoff = datetime(2026, 8, 1, tzinfo=timezone.utc)
+
+        def row(row_id: int, series: str, recorded_at: datetime, value: str, source_type: str, source_id: int, source_name: str):
+            return SimpleNamespace(
+                id=row_id,
+                series_key=series,
+                recorded_at=recorded_at,
+                metric_value=Decimal(value),
+                dimensions_json={"source_type": source_type, "source_eve_id": source_id, "source_name": source_name},
+            )
+
+        rows = [
+            row(1, "corp-a-pilot-1", datetime(2026, 7, 31, tzinfo=timezone.utc), "1.00", "npc_corp", 10, "Caldari Navy"),
+            row(2, "corp-a-pilot-1", datetime(2026, 8, 5, tzinfo=timezone.utc), "1.50", "npc_corp", 10, "Caldari Navy"),
+            row(3, "corp-a-pilot-2", datetime(2026, 7, 30, tzinfo=timezone.utc), "2.00", "npc_corp", 10, "Caldari Navy"),
+            row(4, "corp-a-pilot-2", datetime(2026, 8, 6, tzinfo=timezone.utc), "2.25", "npc_corp", 10, "Caldari Navy"),
+            row(5, "corp-b", datetime(2026, 7, 30, tzinfo=timezone.utc), "1.00", "npc_corp", 20, "Republic Fleet"),
+            row(6, "corp-b", datetime(2026, 8, 6, tzinfo=timezone.utc), "0.40", "npc_corp", 20, "Republic Fleet"),
+            row(7, "faction-a", datetime(2026, 7, 30, tzinfo=timezone.utc), "-1.00", "faction", 30, "Amarr Empire"),
+            row(8, "faction-a", datetime(2026, 8, 7, tzinfo=timezone.utc), "-1.30", "faction", 30, "Amarr Empire"),
+            # This source was first observed inside the window and is coverage, not movement.
+            row(9, "new-faction", datetime(2026, 8, 2, tzinfo=timezone.utc), "4.00", "faction", 40, "Newly Tracked"),
+            row(10, "new-faction", datetime(2026, 8, 8, tzinfo=timezone.utc), "4.50", "faction", 40, "Newly Tracked"),
+        ]
+
+        result = standing_movement_rows(rows, cutoff)
+        self.assertEqual(result["corporations"]["gains"], [{"id": 10, "name": "Caldari Navy", "delta": 0.75}])
+        self.assertEqual(result["corporations"]["losses"], [{"id": 20, "name": "Republic Fleet", "delta": 0.6}])
+        self.assertEqual(result["factions"]["losses"], [{"id": 30, "name": "Amarr Empire", "delta": 0.3}])
+        self.assertEqual(result["factions"]["gains"], [])
 
 
 if __name__ == "__main__":

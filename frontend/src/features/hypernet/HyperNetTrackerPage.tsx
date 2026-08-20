@@ -1,6 +1,8 @@
 import { BarChart3, Calculator, Clock3, Coins, History, LayoutGrid, List, Plus, RefreshCw, TicketCheck } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { ModuleFinder } from "../../components/ModuleFinder";
+import { matchesSearchTerms } from "../../lib/search";
 import type { ApiClient, HyperNetMeta, HyperNetOffer, HyperNetSummary } from "../../types/hypernet";
 import { HyperNetOfferDetail } from "./HyperNetOfferDetail";
 import { HyperNetOfferForm } from "./HyperNetOfferForm";
@@ -42,6 +44,7 @@ export function HyperNetTrackerPage({ api }: { api: ApiClient }) {
   const [selected, setSelected] = useState<HyperNetOffer | null>(null);
   const [status, setStatus] = useState("active");
   const [mode, setMode] = useState<"cards" | "table">("cards");
+  const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -76,10 +79,24 @@ export function HyperNetTrackerPage({ api }: { api: ApiClient }) {
   useEffect(() => { if (route.kind === "board") void loadBoard(); else if (route.kind === "detail") void loadDetail(route.id); }, [route.kind, route.kind === "detail" ? route.id : status]);
   useEffect(() => { if (!meta) void api<HyperNetMeta>("/hypernet/meta").then(setMeta).catch((err) => setError(err instanceof Error ? err.message : "Unable to load HyperNet setup")); }, [meta, api]);
 
-  const sortedOffers = useMemo(() => [...offers].sort((a, b) => {
+  const sortedOffers = useMemo(() => offers.filter((offer) => matchesSearchTerms(query, [
+    offer.id,
+    offer.item.type_id,
+    offer.item.name,
+    offer.item.group,
+    offer.item.category,
+    offer.seller.name,
+    offer.location.name,
+    offer.status,
+    offer.notes,
+    offer.source,
+    offer.source_reference,
+    offer.winner,
+    ...(offer.participants ?? []).map((participant) => participant.participant_name),
+  ])).sort((a, b) => {
     if (["active", "awaiting_reconciliation"].includes(a.status) && ["active", "awaiting_reconciliation"].includes(b.status)) return a.remaining_seconds - b.remaining_seconds;
     return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
-  }), [offers]);
+  }), [offers, query]);
 
   if (route.kind === "new") return meta ? <HyperNetOfferForm api={api} meta={meta} onCancel={() => navigate()} onSaved={(offer) => { setSelected(offer); navigate(`hypernet/offers/${offer.id}`); }} /> : <section className="panel"><p className="muted">Loading HyperNet setup…</p>{error && <div className="mini-alert">{error}</div>}</section>;
   if (route.kind === "detail") return selected?.id === route.id ? <HyperNetOfferDetail api={api} offer={selected} onBack={() => navigate()} onChanged={(offer) => { setSelected(offer); void loadBoard(); }} /> : <section className="panel"><p className="muted">Loading HyperNet offer…</p>{error && <div className="mini-alert">{error}</div>}</section>;
@@ -101,7 +118,7 @@ export function HyperNetTrackerPage({ api }: { api: ApiClient }) {
     </>}
 
     <section className="panel hypernet-board">
-      <div className="section-heading"><div><h3>{status === "active" ? "Active Offers" : status === "all" ? "Offer History" : status.replace(/_/g, " ")}</h3><p>{sortedOffers.length} manual record{sortedOffers.length === 1 ? "" : "s"}</p></div><div className="hypernet-board-controls"><label>Status<select value={status} onChange={(event) => setStatus(event.target.value)}><option value="active">Active</option><option value="all">All history</option>{meta?.statuses.map((value) => <option key={value} value={value}>{value.replace(/_/g, " ")}</option>)}</select></label><div className="hypernet-view-toggle"><button type="button" className={mode === "cards" ? "active" : ""} title="Card view" onClick={() => setMode("cards")}><LayoutGrid size={16} /></button><button type="button" className={mode === "table" ? "active" : ""} title="Dense table view" onClick={() => setMode("table")}><List size={16} /></button></div></div></div>
+      <div className="section-heading"><div><h3>{status === "active" ? "Active Offers" : status === "all" ? "Offer History" : status.replace(/_/g, " ")}</h3><p>{sortedOffers.length} manual record{sortedOffers.length === 1 ? "" : "s"}</p></div><div className="hypernet-board-controls"><ModuleFinder query={query} onQueryChange={setQuery} label="Search HyperNet offers" placeholder="Item, seller, location, participant…" resultCount={sortedOffers.length} totalCount={offers.length} /><label>Status<select value={status} onChange={(event) => setStatus(event.target.value)}><option value="active">Active</option><option value="all">All history</option>{meta?.statuses.map((value) => <option key={value} value={value}>{value.replace(/_/g, " ")}</option>)}</select></label><div className="hypernet-view-toggle"><button type="button" className={mode === "cards" ? "active" : ""} title="Card view" onClick={() => setMode("cards")}><LayoutGrid size={16} /></button><button type="button" className={mode === "table" ? "active" : ""} title="Dense table view" onClick={() => setMode("table")}><List size={16} /></button></div></div></div>
       {mode === "cards" ? <div className="hypernet-offer-grid">{sortedOffers.map((offer) => <OfferCard key={offer.id} offer={offer} onOpen={() => navigate(`hypernet/offers/${offer.id}`)} />)}</div> : <div className="table-scroll"><table className="hypernet-table"><thead><tr><th>Offer</th><th>Status</th><th>Progress</th><th>Gross</th><th>Core cost</th><th>Profit/result</th><th>Remaining</th></tr></thead><tbody>{sortedOffers.map((offer) => <tr key={offer.id} onClick={() => navigate(`hypernet/offers/${offer.id}`)}><td><strong>{offer.item.name}</strong><small>{offer.seller.name} · {offer.location.name}</small></td><td><Status value={offer.status} /></td><td>{offer.nodes_sold}/{offer.total_nodes}<small>{offer.organic_nodes_sold} organic · {offer.seller_owned_nodes} seeded</small></td><td>{formatIsk(offer.total_offer_price, true)}</td><td>{formatIsk(offer.calculations.financials.hypercore_cost, true)}</td><td className={profitClass(offer.final_profit ?? offer.calculations.financials.profit)}>{formatIsk(offer.final_profit ?? offer.calculations.financials.profit, true)}</td><td>{["active", "awaiting_reconciliation"].includes(offer.status) ? countdown(offer.remaining_seconds) : "—"}</td></tr>)}</tbody></table></div>}
       {sortedOffers.length === 0 && !busy && <div className="hypernet-empty"><Calculator size={28} /><strong>No matching HyperNet offers</strong><p>Use the calculator to plan one or record an offer already running in EVE.</p><button type="button" onClick={() => navigate("hypernet/new")}><Plus size={17} /> Plan first offer</button></div>}
     </section>

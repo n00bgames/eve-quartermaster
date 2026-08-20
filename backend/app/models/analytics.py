@@ -36,7 +36,7 @@ class SnapshotMetric(Base):
     metric_key: Mapped[str] = mapped_column(String(120), nullable=False, index=True)
     series_key: Mapped[str | None] = mapped_column(String(64), index=True)
     metric_version: Mapped[int] = mapped_column(Integer, default=1, nullable=False, index=True)
-    metric_value: Mapped[Decimal] = mapped_column(Numeric(24, 2), default=0, nullable=False)
+    metric_value: Mapped[Decimal] = mapped_column(Numeric(24, 4), default=0, nullable=False)
     dimensions_json: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
 

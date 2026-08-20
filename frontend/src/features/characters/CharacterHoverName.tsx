@@ -1,5 +1,6 @@
 import { X } from "lucide-react";
-import { useEffect, useState, type ReactElement } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactElement } from "react";
+import { createPortal } from "react-dom";
 
 import { PilotSecurityStatus } from "./PilotSecurityStatus";
 import type { CharacterFocus, CharacterSummary } from "../../types/characters";
@@ -27,6 +28,43 @@ export function CharacterHoverName({ characterId, name, className = "", href, ap
   const [summary, setSummary] = useState<CharacterSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [position, setPosition] = useState({ left: 12, top: 12 });
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  const positionCard = useCallback(() => {
+    if (!triggerRef.current || !cardRef.current) return;
+
+    const anchor = triggerRef.current.getBoundingClientRect();
+    const card = cardRef.current.getBoundingClientRect();
+    const gutter = 12;
+    const offset = 8;
+    const left = Math.max(gutter, Math.min(anchor.left, window.innerWidth - card.width - gutter));
+    const below = anchor.bottom + offset;
+    const above = anchor.top - card.height - offset;
+    const top = below + card.height <= window.innerHeight - gutter
+      ? below
+      : above >= gutter
+        ? above
+        : Math.max(gutter, Math.min(below, window.innerHeight - card.height - gutter));
+    setPosition({ left, top });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+
+    positionCard();
+    const resizeObserver = new ResizeObserver(positionCard);
+    if (triggerRef.current) resizeObserver.observe(triggerRef.current);
+    if (cardRef.current) resizeObserver.observe(cardRef.current);
+    window.addEventListener("resize", positionCard);
+    window.addEventListener("scroll", positionCard, true);
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", positionCard);
+      window.removeEventListener("scroll", positionCard, true);
+    };
+  }, [open, positionCard]);
 
   useEffect(() => {
     if (!characterId) return;
@@ -80,7 +118,7 @@ export function CharacterHoverName({ characterId, name, className = "", href, ap
 
   const topCategories = summary?.skill_categories.slice(0, 5) ?? [];
   const nameControl = (
-    <button type="button" className={`character-hover-name ${className}`} onMouseEnter={showSummary} onFocus={showSummary} onClick={openCharacterPage} title="Open character dossier">
+    <button ref={triggerRef} type="button" className={`character-hover-name ${className}`} onMouseEnter={showSummary} onFocus={showSummary} onClick={openCharacterPage} title="Open character dossier" aria-expanded={open}>
       {name}
     </button>
   );
@@ -88,8 +126,14 @@ export function CharacterHoverName({ characterId, name, className = "", href, ap
   return (
     <span className="character-hover-wrap">
       {nameControl}
-      {open && (
-        <div className="character-hover-card" role="dialog" aria-label={`${summary?.character.name ?? name} character summary`}>
+      {open && createPortal(
+        <div
+          ref={cardRef}
+          className="character-hover-card"
+          style={{ left: position.left, top: position.top, right: "auto", position: "fixed", zIndex: 10_000, width: "min(380px, calc(100vw - 24px))" }}
+          role="dialog"
+          aria-label={`${summary?.character.name ?? name} character summary`}
+        >
           <button
             type="button"
             className="character-hover-close"
@@ -135,7 +179,8 @@ export function CharacterHoverName({ characterId, name, className = "", href, ap
             <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={openCharacterPage}>Open character</button>
             {href && <a className="character-hover-external" href={href} target="_blank" rel="noreferrer" onMouseDown={(event) => event.preventDefault()} onClick={(event) => event.stopPropagation()}>zKill</a>}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </span>
   );

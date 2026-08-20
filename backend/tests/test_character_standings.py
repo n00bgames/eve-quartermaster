@@ -6,7 +6,8 @@ import unittest
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
-from app.models import Base, CharacterStanding, EveCharacter
+from app.models import Base, CharacterStanding, EveCharacter, SnapshotMetric, SnapshotRun
+from app.services.analytics import snapshot_character_standings
 from app.services.standings import effective_npc_standing, upsert_character_standings
 
 
@@ -85,6 +86,46 @@ class CharacterStandingPersistenceTests(unittest.TestCase):
             db.commit()
             self.assertEqual(result["total"], 1)
             self.assertEqual(db.query(CharacterStanding).count(), 1)
+
+    def test_snapshots_record_current_values_and_removed_sources_as_neutral(self) -> None:
+        Base.metadata.create_all(
+            self.engine,
+            tables=[SnapshotRun.__table__, SnapshotMetric.__table__],
+        )
+        with Session(self.engine) as db:
+            character = EveCharacter(
+                character_id=90000003,
+                name="Snapshot Pilot",
+                standings_synced_at=datetime(2026, 8, 1, tzinfo=timezone.utc),
+            )
+            db.add(character)
+            db.flush()
+            db.add(CharacterStanding(
+                character_id=character.id,
+                source_type="faction",
+                source_eve_id=500003,
+                source_name="Snapshot Faction",
+                standing=2.5,
+                last_synced_at=datetime(2026, 8, 1, tzinfo=timezone.utc),
+            ))
+            first_run = SnapshotRun(scope_type="character", scope_id=character.id, source="test", status="running")
+            db.add(first_run)
+            db.flush()
+            snapshot_character_standings(db, first_run, {character.id})
+            db.flush()
+            first = db.scalar(select(SnapshotMetric).where(SnapshotMetric.snapshot_run_id == first_run.id))
+            self.assertIsNotNone(first)
+            self.assertEqual(float(first.metric_value), 2.5)
+
+            db.query(CharacterStanding).delete()
+            second_run = SnapshotRun(scope_type="character", scope_id=character.id, source="test", status="running")
+            db.add(second_run)
+            db.flush()
+            snapshot_character_standings(db, second_run, {character.id})
+            db.flush()
+            removed = db.scalar(select(SnapshotMetric).where(SnapshotMetric.snapshot_run_id == second_run.id))
+            self.assertIsNotNone(removed)
+            self.assertEqual(float(removed.metric_value), 0.0)
 
 
 
