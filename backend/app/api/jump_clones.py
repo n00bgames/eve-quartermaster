@@ -267,12 +267,19 @@ def list_jump_clones(current_user: User = Depends(get_current_user), db: Session
     }
 
 
-@router.post("/sync/{token_id:int}")
-async def sync_jump_clones(token_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+async def sync_jump_clones_for_token(
+    token_id: int,
+    current_user: User,
+    db: Session,
+    *,
+    allow_opt_out_override: bool = True,
+) -> dict[str, Any]:
     require_jump_clone_view(current_user, db)
     token, character = get_linked_token(db, token_id)
     if not can_sync_character_data(current_user, character, token, db):
         raise HTTPException(status_code=403, detail="You cannot sync jump clones for this character")
+    if character.sync_opt_out and not allow_opt_out_override:
+        return {"status": "skipped", "character_name": character.name, "reason": "Character opted out"}
     require_scope(token, CLONE_SCOPE, f"Reading jump clones for {character.name}")
     require_scope(token, IMPLANT_SCOPE, f"Reading implants for {character.name}")
 
@@ -337,6 +344,11 @@ async def sync_jump_clones(token_id: int, current_user: User = Depends(get_curre
             status_code=500,
             detail=f"Jump clone sync failed for {character.name}. Previously synced clone data was preserved.",
         ) from exc
+
+
+@router.post("/sync/{token_id:int}")
+async def sync_jump_clones(token_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+    return await sync_jump_clones_for_token(token_id, current_user, db)
 
 
 def require_set_access(row: ImplantSet, current_user: User, db: Session) -> None:

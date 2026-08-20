@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/n00bgames/eve-quartermaster"><img alt="Project" src="https://img.shields.io/badge/project-eve--quartermaster-e8b84d?style=for-the-badge"></a>
-  <img alt="Version" src="https://img.shields.io/badge/version-0.1.19--beta-4fb3c7?style=for-the-badge">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.20.0--beta-4fb3c7?style=for-the-badge">
   <img alt="License" src="https://img.shields.io/badge/license-AGPL--3.0--or--later-70c894?style=for-the-badge">
 </p>
 
@@ -519,7 +519,7 @@ Navigation, route maps, recipes, blueprint activity, fitting simulation, station
 5. After the callback returns to EQM, the linked character appears on the ESI Sync page and on character-aware pages.
 6. If a page shows missing scopes, return to **ESI Sync** and re-authorize that character after adding the missing scope to the EVE developer application. Existing linked characters must also reauthorize when a newly added feature, such as Planetary Industry, needs a scope their stored token predates.
 7. Use **Authorize contact sync** only for characters that should read/write EVE contacts for standing propagation.
-8. Use **Sync assets**, **Sync wallet**, **Sync skills**, **Sync fittings**, and **Sync contracts** from character-aware pages when you want fresh data. **Sync all eligible** includes wallet collection when the character has `esi-wallet.read_character_wallet.v1`; wallet hard opt-outs are skipped while the character's other eligible data can still sync.
+8. Use the individual sync controls from character-aware pages when you only need one dataset refreshed. **Sync all eligible** is the one-stop character refresh: for every accessible, non-opted-out character it queues every scope-authorized collector registered in the Sync & Freshness Center—assets, skills and queue, fittings, wallet history, contracts, industry jobs, mining history, planetary colonies, standings, jump clones, and active implants—plus eligible corporation industry projects. If multiple active authorizations exist for one character, EQM uses the newest token eligible for each dataset. Wallet hard opt-outs skip wallet collection while allowing the character's other eligible datasets to sync.
 9. Use **Corporations** for corporation asset, blueprint, and wallet syncs. Corporation sync requires a linked CEO/director-style character with the relevant corporation scopes.
 10. If an ESI token cannot be decrypted after moving environments or changing `TOKEN_ENCRYPTION_KEY`, re-link the affected character through EVE SSO.
 

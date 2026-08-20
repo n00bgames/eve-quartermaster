@@ -15,7 +15,8 @@ type UserAccount = { id: number; email: string; display_name: string; role: stri
 type EveEntityKind = "character" | "corporation" | "alliance";
 type EveIconSize = "tiny" | "sm" | "md" | "lg";
 type SyncKind = "assets" | "skills" | "standings" | "wallet" | "fittings" | "contracts" | "implants";
-type CharacterSyncAllJob = { job_id: string; status: "queued" | "running" | "complete" | "failed" | "cancelled"; created_at: string; updated_at?: string | null; completed_at?: string | null; total_count: number; processed_count: number; success_count: number; failed_count: number; skipped_count: number; current_character_name?: string | null; current_sync_kind?: SyncKind | null; results: { character_name: string; sync_kind: SyncKind; status: string }[]; errors: string[] };
+type BulkSyncKind = "assets" | "skills" | "standings" | "wallet" | "fittings" | "contracts" | "research" | "mining" | "planets" | "jump_clones" | "corporation_research";
+type CharacterSyncAllJob = { job_id: string; status: "queued" | "running" | "complete" | "failed" | "cancelled"; created_at: string; updated_at?: string | null; completed_at?: string | null; total_count: number; processed_count: number; success_count: number; failed_count: number; skipped_count: number; current_character_name?: string | null; current_sync_kind?: BulkSyncKind | null; current_sync_label?: string | null; results: { character_name: string; sync_kind: BulkSyncKind; status: string }[]; errors: string[] };
 
 type MetricComponent = (props: { icon: ReactNode; label: string; value: number | string; delta?: string }) => ReactElement;
 type EveEntityIconComponent = (props: { kind: EveEntityKind; id?: number | null; name?: string | null; size?: EveIconSize }) => ReactElement;
@@ -163,7 +164,7 @@ export function CharactersPage({
     if (syncAllPollingRef.current) return;
     syncAllPollingRef.current = true;
     setCharacterError(null);
-    setMessage("Queued every available character data sync, including NPC standings...");
+    setMessage("Queued every eligible character dataset, including optional collectors such as industry, mining, planetary colonies, standings, and jump clones...");
     try {
       const initialJob = await api<CharacterSyncAllJob>("/esi/sync/characters/all", { method: "POST", body: "{}" });
       setSyncAllJob(initialJob);
@@ -203,7 +204,7 @@ export function CharactersPage({
 
   const selectedCharacter = characters.find((character) => character.id === selectedCharacterId) ?? null;
   const selectedJumpClones = jumpClonePayload.clones.filter((clone) => clone.character_id === selectedCharacterId);
-  const syncAllStatus = syncAllJob?.status === "complete" ? "Character sync complete" : syncAllJob?.status === "failed" ? "Character sync needs review" : syncAllJob?.current_character_name ? `Syncing ${syncAllJob.current_sync_kind ?? "data"} for ${syncAllJob.current_character_name}` : "Character sync queued";
+  const syncAllStatus = syncAllJob?.status === "complete" ? "Character sync complete" : syncAllJob?.status === "failed" ? "Character sync needs review" : syncAllJob?.current_character_name ? `Syncing ${syncAllJob.current_sync_label ?? syncAllJob.current_sync_kind ?? "data"} for ${syncAllJob.current_character_name}` : "Character sync queued";
   const summary = dossier?.summary;
   const canManage = Boolean(dossier?.permissions.can_manage);
   const canAssign = Boolean(dossier?.permissions.can_assign);

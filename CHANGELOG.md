@@ -4,7 +4,17 @@ All notable changes to EVE Quartermaster are tracked here.
 
 This project is moving quickly during beta. Version sections are written as user-facing release notes first, with implementation detail included where it helps operators understand deployment or testing impact.
 
-## [0.1.19-beta] - Unreleased
+## [0.20.0-beta] - Unreleased
+
+### Fixed
+
+- **Sync all eligible** on Characters now queues every scope-authorized character dataset registered in the Sync & Freshness Center, including the previously omitted Jump Clones and active implants collector. When a character has multiple active authorizations, EQM selects the newest eligible token per dataset instead of allowing one partial-scope token to hide another usable authorization. Bulk progress reports the current dataset by its user-facing name, while character and wallet privacy opt-outs remain hard exclusions.
+
+### Changed
+
+- Bumped the visible application, package, backend API, Android wrapper, export metadata, README badge, and outbound service user-agent versions to 0.20.0-beta for the next development cycle.
+
+## [0.1.19-beta] - 2026-08-20
 
 ### Added
 

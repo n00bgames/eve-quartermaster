@@ -133,6 +133,7 @@ export type SyncFreshnessPayload = {
     skipped_count: number;
     current_character_name?: string | null;
     current_sync_kind?: string | null;
+    current_sync_label?: string | null;
     updated_at?: string | null;
   }[];
   recent_jobs: {

@@ -130,6 +130,26 @@ SKILL_SYNC_SCOPES = [
 ]
 CHARACTER_STANDINGS_SCOPES = ["esi-characters.read_standings.v1"]
 CHARACTER_WALLET_SCOPES = ["esi-wallet.read_character_wallet.v1"]
+CHARACTER_SYNC_KIND_BY_DATASET = {
+    "character_assets": "assets",
+    "character_skills": "skills",
+    "character_fittings": "fittings",
+    "character_wallet": "wallet",
+    "character_contracts": "contracts",
+    "character_research_projects": "research",
+    "character_mining_ledger": "mining",
+    "character_planetary_industry": "planets",
+    "character_standings": "standings",
+    "character_jump_clones": "jump_clones",
+}
+CHARACTER_SYNC_REQUIRED_SCOPES = {
+    CHARACTER_SYNC_KIND_BY_DATASET[dataset.key]: list(dataset.required_scopes)
+    for dataset in CHARACTER_SYNC_DATASETS
+}
+CHARACTER_SYNC_KIND_LABELS = {
+    CHARACTER_SYNC_KIND_BY_DATASET[dataset.key]: dataset.label
+    for dataset in CHARACTER_SYNC_DATASETS
+}
 POSTGRES_BIND_PARAMETER_LIMIT = 65_535
 CHARACTER_WALLET_JOURNAL_BOUND_COLUMNS = 22
 CHARACTER_WALLET_JOURNAL_UPSERT_BATCH_SIZE = min(
@@ -999,6 +1019,7 @@ def sync_freshness(current_user: User = Depends(get_current_user), db: Session =
                     "skipped_count": job["skipped_count"],
                     "current_character_name": job.get("current_character_name"),
                     "current_sync_kind": job.get("current_sync_kind") or ("skills" if job_kind == "Character skills" else None),
+                    "current_sync_label": job.get("current_sync_label"),
                     "updated_at": job.get("updated_at"),
                 }
             )
@@ -1016,6 +1037,7 @@ def sync_freshness(current_user: User = Depends(get_current_user), db: Session =
                 "skipped_count": 0,
                 "current_character_name": contact_state.get("current_character_name"),
                 "current_sync_kind": "exact match" if contact_state.get("exact_match") else "contact copy",
+                "current_sync_label": None,
                 "updated_at": contact_state.get("updated_at"),
             }
         )
@@ -1908,6 +1930,7 @@ def character_sync_all_job_payload(job: dict[str, Any]) -> dict[str, Any]:
         "skipped_count": job["skipped_count"],
         "current_character_name": job.get("current_character_name"),
         "current_sync_kind": job.get("current_sync_kind"),
+        "current_sync_label": job.get("current_sync_label"),
         "results": job["results"][-16:],
         "errors": job["errors"][-16:],
     }
@@ -1954,22 +1977,65 @@ async def prechecked_corporation_research_tokens(
     return eligible, skipped
 
 
+def character_sync_token_work_items(
+    rows: list[Any],
+    current_user: User,
+    db: Session,
+    required_scopes: dict[str, list[str]],
+    *,
+    research_requested: bool,
+) -> tuple[list[dict[str, Any]], dict[int, list[int]], int]:
+    """Choose the newest accessible token that can actually run each character dataset."""
+    grouped: dict[int, tuple[EveCharacter, list[EsiToken]]] = {}
+    for token, character in rows:
+        if character.id not in grouped:
+            grouped[character.id] = (character, [])
+        grouped[character.id][1].append(token)
+
+    work_items: list[dict[str, Any]] = []
+    corporation_tokens: dict[int, list[int]] = {}
+    skipped = 0
+    for character, tokens in grouped.values():
+        if character.sync_opt_out:
+            skipped += len(required_scopes)
+            continue
+        accessible_tokens = [
+            token
+            for token in tokens
+            if can_force_sync_character_token(token, character, current_user, db)
+        ]
+        if not accessible_tokens:
+            skipped += len(required_scopes)
+            continue
+
+        for kind, scopes in required_scopes.items():
+            if kind == "wallet" and character.wallet_history_opt_out:
+                skipped += 1
+                continue
+            eligible_token = next(
+                (token for token in accessible_tokens if not missing_scopes(token, scopes)),
+                None,
+            )
+            if eligible_token is None:
+                skipped += 1
+                continue
+            work_items.append({"token_id": eligible_token.id, "sync_kind": kind})
+
+        if research_requested and character.corporation_id:
+            for token in accessible_tokens:
+                if missing_scopes(token, CORPORATION_RESEARCH_SCOPES):
+                    continue
+                corporation_tokens.setdefault(character.corporation_id, []).append(token.id)
+
+    return work_items, corporation_tokens, skipped
+
+
 async def character_sync_all_work_items(
     db: Session,
     current_user: User,
     requested_kinds: set[str] | None = None,
 ) -> tuple[list[dict[str, Any]], int]:
-    required_scopes = {
-        "assets": ["esi-assets.read_assets.v1"],
-        "skills": SKILL_SYNC_SCOPES,
-        "standings": CHARACTER_STANDINGS_SCOPES,
-        "wallet": CHARACTER_WALLET_SCOPES,
-        "fittings": ["esi-fittings.read_fittings.v1"],
-        "contracts": ["esi-contracts.read_character_contracts.v1"],
-        "research": ["esi-industry.read_character_jobs.v1"],
-        "mining": ["esi-industry.read_character_mining.v1"],
-        "planets": ["esi-planets.manage_planets.v1"],
-    }
+    required_scopes = CHARACTER_SYNC_REQUIRED_SCOPES
     if requested_kinds is not None:
         required_scopes = {kind: scopes for kind, scopes in required_scopes.items() if kind in requested_kinds}
     research_requested = requested_kinds is None or "research" in requested_kinds
@@ -1979,28 +2045,13 @@ async def character_sync_all_work_items(
         .where(EsiToken.revoked_at.is_(None))
         .order_by(EveCharacter.name, EsiToken.created_at.desc())
     ).all()
-    work_items: list[dict[str, Any]] = []
-    corporation_tokens: dict[int, list[int]] = {}
-    skipped = 0
-    seen_characters: set[int] = set()
-    for token, character in rows:
-        if character.id in seen_characters:
-            skipped += len(required_scopes)
-            continue
-        seen_characters.add(character.id)
-        if character.sync_opt_out or not can_force_sync_character_token(token, character, current_user, db):
-            skipped += len(required_scopes)
-            continue
-        for kind, scopes in required_scopes.items():
-            if kind == "wallet" and character.wallet_history_opt_out:
-                skipped += 1
-                continue
-            if missing_scopes(token, scopes):
-                skipped += 1
-                continue
-            work_items.append({"token_id": token.id, "sync_kind": kind})
-        if research_requested and character.corporation_id and not missing_scopes(token, CORPORATION_RESEARCH_SCOPES):
-            corporation_tokens.setdefault(character.corporation_id, []).append(token.id)
+    work_items, corporation_tokens, skipped = character_sync_token_work_items(
+        rows,
+        current_user,
+        db,
+        required_scopes,
+        research_requested=research_requested,
+    )
 
     corporation_tokens, corporation_skipped = await prechecked_corporation_research_tokens(
         db,
@@ -2021,6 +2072,7 @@ async def character_sync_all_work_items(
 
 async def run_character_sync_all_job(job_id: str, work_items: list[dict[str, Any]], user_id: int) -> None:
     from app.api.character_standings import sync_character_standings_for_token
+    from app.api.jump_clones import sync_jump_clones_for_token
     from app.api.planetary_industry import sync_planetary_industry_for_token
 
     job = CHARACTER_SYNC_ALL_JOBS[job_id]
@@ -2036,6 +2088,7 @@ async def run_character_sync_all_job(job_id: str, work_items: list[dict[str, Any
         "research": sync_character_research_for_token,
         "mining": sync_character_mining_for_token,
         "planets": sync_planetary_industry_for_token,
+        "jump_clones": sync_jump_clones_for_token,
     }
     try:
         for item in work_items:
@@ -2055,6 +2108,10 @@ async def run_character_sync_all_job(job_id: str, work_items: list[dict[str, Any
                     display_name = corporation.name if corporation else f"Corporation {item['corporation_id']}"
                 job["current_character_name"] = display_name
                 job["current_sync_kind"] = sync_kind
+                job["current_sync_label"] = CHARACTER_SYNC_KIND_LABELS.get(
+                    sync_kind,
+                    "Corporation Industry" if sync_kind == "corporation_research" else sync_kind,
+                )
                 job["updated_at"] = utc_job_iso()
                 try:
                     if sync_kind == "corporation_research":
@@ -2092,12 +2149,14 @@ async def run_character_sync_all_job(job_id: str, work_items: list[dict[str, Any
             await asyncio.sleep(0)
         job["current_character_name"] = None
         job["current_sync_kind"] = None
+        job["current_sync_label"] = None
         job["status"] = "complete" if job["failed_count"] == 0 else "failed"
         job["completed_at"] = utc_job_iso()
         job["updated_at"] = job["completed_at"]
     except Exception as exc:
         job["current_character_name"] = None
         job["current_sync_kind"] = None
+        job["current_sync_label"] = None
         job["status"] = "failed"
         job["failed_count"] += max(0, job["total_count"] - job["processed_count"])
         job["errors"].append(f"Character sync worker stopped unexpectedly: {exc}")
@@ -2107,7 +2166,7 @@ async def run_character_sync_all_job(job_id: str, work_items: list[dict[str, Any
 @router.post("/sync/characters/all")
 async def start_characters_sync_all(sync_kind: str | None = Query(None), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
     requested_kinds = {sync_kind} if sync_kind else None
-    if requested_kinds and not requested_kinds.issubset({"assets", "skills", "standings", "wallet", "fittings", "contracts", "research", "mining", "planets"}):
+    if requested_kinds and not requested_kinds.issubset(set(CHARACTER_SYNC_REQUIRED_SCOPES)):
         raise HTTPException(status_code=400, detail="Unsupported character sync kind")
     work_items, skipped = await character_sync_all_work_items(db, current_user, requested_kinds)
     if not work_items:
@@ -2128,6 +2187,7 @@ async def start_characters_sync_all(sync_kind: str | None = Query(None), current
         "skipped_count": skipped,
         "current_character_name": None,
         "current_sync_kind": None,
+        "current_sync_label": None,
         "results": [],
         "errors": [],
     }

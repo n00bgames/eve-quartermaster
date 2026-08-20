@@ -353,7 +353,7 @@ function SyncFreshnessCenter({ payload, busy, error, onRefresh, Metric, Characte
       </div>
       {payload.active_batches.map((job) => {
         const percent = job.total_count ? Math.round(job.processed_count / job.total_count * 100) : 0;
-        return <div className="queue-badge queue-running" key={job.job_id} role="status" aria-live="polite"><strong>{job.processed_count.toLocaleString()} / {job.total_count.toLocaleString()}</strong><span>{job.current_character_name ? `${job.job_kind}: ${job.current_sync_kind ?? "data"} for ${job.current_character_name}` : `${job.job_kind} sync ${job.status}`} · {job.success_count.toLocaleString()} synced · {job.failed_count.toLocaleString()} failed · {job.skipped_count.toLocaleString()} skipped</span><i style={{ width: `${percent}%` }} /></div>;
+        return <div className="queue-badge queue-running" key={job.job_id} role="status" aria-live="polite"><strong>{job.processed_count.toLocaleString()} / {job.total_count.toLocaleString()}</strong><span>{job.current_character_name ? `${job.job_kind}: ${job.current_sync_label ?? job.current_sync_kind ?? "data"} for ${job.current_character_name}` : `${job.job_kind} sync ${job.status}`} · {job.success_count.toLocaleString()} synced · {job.failed_count.toLocaleString()} failed · {job.skipped_count.toLocaleString()} skipped</span><i style={{ width: `${percent}%` }} /></div>;
       })}
       <div className="sync-freshness-characters">
         {payload.characters.map((character) => {
