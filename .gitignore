@@ -23,3 +23,7 @@ android-eqm/.kotlin/
 *.jks
 *.keystore
 .env.local
+
+# Local Codex operating context
+AGENTS.md
+docs/l4-pilot-profile.md

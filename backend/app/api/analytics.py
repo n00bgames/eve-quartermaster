@@ -24,7 +24,7 @@ from app.services.analytics import (
     scoped_blueprint_records,
     set_analytics_retention_mode,
 )
-from app.services.analytics_scope import resolve_analytics_character_scope, visible_analytics_character_ids
+from app.services.analytics_scope import apply_anonymous_analytics_privacy, resolve_analytics_character_scope, visible_analytics_character_ids
 from app.services.audit import record_audit_event
 from app.services.metric_registry import METRIC_CATALOG
 from app.services.permissions import ROLE_RANK, can_view_section, role_rank
@@ -156,7 +156,7 @@ def manufacturing_analytics(db: Session, days: int) -> dict[str, Any]:
     return {**totals, "top_items": top_items}
 
 
-def mining_analytics(db: Session, days: int, character_ids: set[int] | None) -> dict[str, Any]:
+def mining_analytics(db: Session, days: int, character_ids: set[int] | None, anonymous_ids: set[int] | None = None) -> dict[str, Any]:
     query = (
         select(MiningLedgerEntry)
         .options(selectinload(MiningLedgerEntry.character))
@@ -175,13 +175,15 @@ def mining_analytics(db: Session, days: int, character_ids: set[int] | None) -> 
         recovered += volume
         residue += residue_volume
         net_value += as_float(entry.estimated_price)
-        row = by_character.setdefault(entry.character.name, {"volume": 0.0, "measured_recovered": 0.0, "measured_residue": 0.0})
-        row["volume"] += volume
+        row = None if entry.character_id in (anonymous_ids or set()) else by_character.setdefault(entry.character.name, {"volume": 0.0, "measured_recovered": 0.0, "measured_residue": 0.0})
+        if row is not None:
+            row["volume"] += volume
         if entry.has_residue_data:
             measured_recovered += volume
             measured_residue += residue_volume
-            row["measured_recovered"] += volume
-            row["measured_residue"] += residue_volume
+            if row is not None:
+                row["measured_recovered"] += volume
+                row["measured_residue"] += residue_volume
     measured_gross = measured_recovered + measured_residue
     volume_rows = [{"name": name, "volume": round(values["volume"], 2)} for name, values in by_character.items()]
     efficiency_rows = [
@@ -198,7 +200,7 @@ def mining_analytics(db: Session, days: int, character_ids: set[int] | None) -> 
         "top_by_efficiency": sorted(efficiency_rows, key=lambda row: (-row["efficiency"], row["name"]))[:8],
     }
 
-def research_project_analytics(db: Session, days: int, character_ids: set[int] | None) -> dict[str, Any]:
+def research_project_analytics(db: Session, days: int, character_ids: set[int] | None, anonymous_ids: set[int] | None = None) -> dict[str, Any]:
     cutoff = start_cutoff(days)
     query = select(ResearchProject).options(
         selectinload(ResearchProject.character),
@@ -220,9 +222,10 @@ def research_project_analytics(db: Session, days: int, character_ids: set[int] |
     by_character: dict[str, int] = {}
     for project in projects:
         activity = RESEARCH_ACTIVITY_NAMES.get(project.activity_id, f"Activity {project.activity_id}")
-        character = project.character.name if project.character else project.installer_name or f"Character {project.installer_character_id or 'unknown'}"
         by_activity[activity] = by_activity.get(activity, 0) + 1
-        by_character[character] = by_character.get(character, 0) + 1
+        if project.character_id not in (anonymous_ids or set()):
+            character = project.character.name if project.character else project.installer_name or f"Character {project.installer_character_id or 'unknown'}"
+            by_character[character] = by_character.get(character, 0) + 1
     return {
         "project_count": len(projects),
         "active_count": sum(project.status in active_statuses for project in projects),
@@ -249,7 +252,7 @@ def visible_character_ids(current_user: User, db: Session) -> set[int] | None:
 
 def visible_corporation_ids(current_user: User, db: Session, character_ids: set[int] | None) -> set[int]:
     included_ids = analytics_corporation_ids(db)
-    if role_rank(current_user, db) >= ROLE_RANK["officer"]:
+    if role_rank(current_user, db) >= ROLE_RANK["admin"]:
         return included_ids
     if not character_ids:
         return set()
@@ -842,6 +845,7 @@ def analytics_summary(
     days: int = Query(30, ge=1, le=3660),
     scope: str = Query("all"),
     corporation_id: int | None = Query(None),
+    alliance_id: int | None = Query(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
@@ -861,8 +865,13 @@ def analytics_summary(
         db,
         scope=scope,
         corporation_id=corporation_id,
+        alliance_id=alliance_id,
     )
-    allowed_corporation_ids = visible_corporation_ids(current_user, db, visible_character_ids(current_user, db))
+    character_ids, anonymous_character_ids = apply_anonymous_analytics_privacy(
+        current_user, db, scope=scope, character_ids=character_ids
+    )
+    identified_character_ids = character_ids - anonymous_character_ids
+    allowed_corporation_ids = visible_corporation_ids(current_user, db, character_ids)
     if scope == "corporation" and corporation_id is not None:
         corporation_ids = allowed_corporation_ids & {corporation_id}
     elif scope == "mine":
@@ -875,12 +884,20 @@ def analytics_summary(
         character_owner_filter = OwnershipEntity.character_id.in_(character_ids or set())
         corporation_owner_filter = OwnershipEntity.corporation_id.in_(corporation_ids)
         ownership_entity_ids = set(db.scalars(owner_query.where(or_(character_owner_filter, corporation_owner_filter))).all())
+    anonymous_owner_ids = set(db.scalars(select(OwnershipEntity.id).where(
+        OwnershipEntity.character_id.in_(anonymous_character_ids)
+    )).all()) if anonymous_character_ids else set()
+    identified_ownership_entity_ids = ownership_entity_ids - anonymous_owner_ids
     character_rows = character_history_rows(db, days, character_ids, categorized=False)
     character_category_rows = character_history_rows(db, days, character_ids, categorized=True)
+    identified_character_rows = character_history_rows(db, days, identified_character_ids, categorized=False)
     corporation_rows = corporation_history_rows(db, days, corporation_ids)
     latest_characters, earliest_characters = latest_and_earliest_character_rows(db, days, character_ids, character_rows)
     latest_corps, earliest_corps = latest_and_earliest_corp_rows(db, days, corporation_ids, corporation_rows)
-    sp_gainers = delta_rows(latest_characters, earliest_characters, "character_id", "total_skill_points", "character_name")[:12]
+    latest_identified, earliest_identified = latest_and_earliest_character_rows(
+        db, days, identified_character_ids, identified_character_rows
+    )
+    sp_gainers = delta_rows(latest_identified, earliest_identified, "character_id", "total_skill_points", "character_name")[:12]
     wallet_growth = delta_rows(latest_corps, earliest_corps, "corporation_id", "wallet_balance", "corporation_name")[:12]
     member_growth = delta_rows(latest_corps, earliest_corps, "corporation_id", "member_count", "corporation_name")[:12]
     blueprint_growth = delta_rows(latest_corps, earliest_corps, "corporation_id", "blueprint_count", "corporation_name")[:12]
@@ -893,6 +910,11 @@ def analytics_summary(
         "members": change_breakdown(corporation_rows, key="corporation_id", value_attr="member_count", name_attr="corporation_name", cutoff=cutoff),
         "blueprints": change_breakdown(corporation_rows, key="corporation_id", value_attr="blueprint_count", name_attr="corporation_name", cutoff=cutoff),
     }
+    if anonymous_character_ids:
+        change_composition["skill_points"]["newly_tracked"] = [
+            row for row in change_composition["skill_points"]["newly_tracked"]
+            if row["id"] not in anonymous_character_ids
+        ]
     return {
         "days": days,
         "latest_snapshot_at": iso(latest_run.completed_at or latest_run.started_at) if latest_run else None,
@@ -903,7 +925,10 @@ def analytics_summary(
         "scope": {
             "mode": scope,
             "corporation_id": corporation_id if scope == "corporation" else None,
-            "corporations": scope_options,
+            "alliance_id": alliance_id if scope == "alliance" else None,
+            "corporations": scope_options["corporations"],
+            "alliances": scope_options["alliances"],
+            "anonymous_cohort_included": bool(anonymous_character_ids),
         },
         "coverage": {
             "requested_from": iso(cutoff),
@@ -921,16 +946,16 @@ def analytics_summary(
         },
         "change_composition": change_composition,
         "top_sp_gainers": sp_gainers,
-        "top_sp_losses": skill_point_losses(db, days, character_ids, character_rows),
+        "top_sp_losses": skill_point_losses(db, days, identified_character_ids, identified_character_rows),
         "top_skill_category_gainers": category_deltas(db, days, character_ids, character_category_rows),
         "top_skill_category_losses": skill_category_losses(db, days, character_ids, character_category_rows),
         "wallet_growth": wallet_growth,
         "member_growth": member_growth,
         "blueprint_growth": blueprint_growth,
-        "duplicate_blueprints": duplicate_blueprints(db, ownership_entity_ids),
+        "duplicate_blueprints": duplicate_blueprints(db, identified_ownership_entity_ids),
         "manufacturing": manufacturing_analytics(db, days),
-        "mining": mining_analytics(db, days, character_ids),
-        "research_projects": research_project_analytics(db, days, character_ids),
+        "mining": mining_analytics(db, days, character_ids, anonymous_character_ids),
+        "research_projects": research_project_analytics(db, days, character_ids, anonymous_character_ids),
         "standings_movement": standing_movement_analytics(db, days, character_ids),
         "series": {
             "wallet_totals": corporation_series(db, days, "wallet_balance", corporation_ids, corporation_rows),

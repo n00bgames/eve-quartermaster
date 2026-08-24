@@ -18,8 +18,8 @@ android {
         applicationId = "app.evequartermaster.mobile"
         minSdk = 26
         targetSdk = targetSdkVersion
-        versionCode = 11
-        versionName = "0.20.0-beta"
+        versionCode = 13
+        versionName = "0.1.21.3-beta"
         buildConfigField "String", "EQM_URL", "\"${eqmUrl}\""
     }
 }

@@ -145,3 +145,20 @@ class KillboardEntityName(Base):
     resolution_status: Mapped[str] = mapped_column(String(24), default="resolved", nullable=False, index=True)
     last_attempt_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class BattleReportShare(Base):
+    """Immutable public snapshot of a generated battle report."""
+
+    __tablename__ = "battle_report_shares"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    share_token: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
+    created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
+    selected_character_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
+    selected_character_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    report_payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    view_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
+    last_viewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)

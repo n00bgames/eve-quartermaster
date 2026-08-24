@@ -18,7 +18,7 @@ from app.models.manufacturing import ManufacturingJob, ManufacturingJobItem
 from app.models.mining import MiningLedgerEntry, MiningOperation, MiningOperationParticipant, MiningSettlement, MiningSettlementDeduction, MiningSettlementLedgerEntry, MiningSettlementOutput, MiningSettlementParticipant
 from app.models.industry import Blueprint, IndustryActivity, IndustryActivityInput, ProcurementSource, ProductionPlan, ProductionPlanInput
 from app.models.jump_clones import CharacterJumpClone, ImplantSet, ImplantSetImplant, JumpCloneImplant
-from app.models.killboard import KillboardEntityName, KillboardSyncRun, Killmail, KillmailAttacker, KillmailDiscovery, KillmailItem, ZkillEnrichment
+from app.models.killboard import BattleReportShare, KillboardEntityName, KillboardSyncRun, Killmail, KillmailAttacker, KillmailDiscovery, KillmailItem, ZkillEnrichment
 from app.models.navigation import SystemIndustrialKillObservation, SystemJumpObservation, SystemKillFetchCache, SystemPvpKillObservation
 from app.models.notes import Note, NoteItem
 from app.models.planetary_industry import PlanetaryColony, PlanetaryLink, PlanetaryPin, PlanetaryRoute
@@ -34,6 +34,7 @@ __all__ = [
     "Asset",
     "AuditEvent",
     "Base",
+    "BattleReportShare",
     "Blueprint",
     "BlueprintSnapshot",
     "CharacterFitting",

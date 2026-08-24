@@ -134,9 +134,12 @@ export type PlanetaryAnalytics = {
 export type AnalyticsSummary = {
   days: number;
   scope: {
-    mode: "all" | "mine" | "corporation";
+    mode: "all" | "mine" | "corporation" | "alliance";
     corporation_id?: number | null;
+    alliance_id?: number | null;
     corporations: { id: number; name: string; ticker?: string | null }[];
+    alliances: { id: number; name: string; ticker?: string | null }[];
+    anonymous_cohort_included?: boolean;
   };
   latest_snapshot_at?: string | null;
   latest_snapshot_status?: string | null;

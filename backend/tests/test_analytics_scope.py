@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.models import Base, EsiSyncJob, EsiToken, EveAlliance, EveCharacter, EveCorporation, OwnershipEntity, User
 from app.models.enums import OwnerKind, SyncStatus
 from app.services.analytics import analytics_corporation_ids, privileged_analytics_corporation_ids
-from app.services.analytics_scope import resolve_analytics_character_scope
+from app.services.analytics_scope import apply_anonymous_analytics_privacy, resolve_analytics_character_scope
 
 
 class AnalyticsCorporationScopeTests(unittest.TestCase):
@@ -126,7 +126,55 @@ class AnalyticsCorporationScopeTests(unittest.TestCase):
 
         self.assertEqual(mine, {owned.id, alt.id})
         self.assertEqual(corporation_scope, {owned.id, alt.id})
-        self.assertEqual(options, [{"id": corporation.id, "name": corporation.name, "ticker": corporation.ticker}])
+        self.assertEqual(options, {
+            "corporations": [{"id": corporation.id, "name": corporation.name, "ticker": corporation.ticker}],
+            "alliances": [],
+        })
+
+    def test_director_is_limited_to_owned_affiliations_and_alliance_scope(self) -> None:
+        alliance = EveAlliance(alliance_id=9_900_100, name="Scope Alliance", ticker="SCA")
+        self.db.add(alliance)
+        self.db.flush()
+        corporation = EveCorporation(corporation_id=9_900_101, name="Director Corp", ticker="DIR", alliance_id=alliance.id)
+        allied_corporation = EveCorporation(corporation_id=9_900_102, name="Allied Corp", ticker="ALLY", alliance_id=alliance.id)
+        outside_corporation = EveCorporation(corporation_id=9_900_103, name="Outside Corp", ticker="OUT")
+        director = User(email="director@example.com", display_name="Director", role="director")
+        member = User(email="allied@example.com", display_name="Allied", role="member")
+        self.db.add_all([corporation, allied_corporation, outside_corporation, director, member])
+        self.db.flush()
+        owned = EveCharacter(character_id=92_000_001, name="Owned Director", corporation_id=corporation.id, alliance_id=alliance.id, owner_user_id=director.id)
+        ally = EveCharacter(character_id=92_000_002, name="Alliance Member", corporation_id=allied_corporation.id, alliance_id=alliance.id, owner_user_id=member.id)
+        outsider = EveCharacter(character_id=92_000_003, name="Outside Member", corporation_id=outside_corporation.id, owner_user_id=member.id)
+        self.db.add_all([owned, ally, outsider])
+        self.db.commit()
+
+        alliance_scope, options = resolve_analytics_character_scope(
+            director, self.db, scope="alliance", corporation_id=None, alliance_id=alliance.id
+        )
+
+        self.assertEqual(alliance_scope, {owned.id, ally.id})
+        self.assertEqual({row["id"] for row in options["corporations"]}, {corporation.id, allied_corporation.id})
+        self.assertEqual(options["alliances"], [{"id": alliance.id, "name": alliance.name, "ticker": alliance.ticker}])
+
+    def test_opted_out_pilots_require_global_minimum_cohort(self) -> None:
+        corporation = EveCorporation(corporation_id=9_900_200, name="Privacy Corp", ticker="PRV")
+        self.db.add(corporation)
+        self.db.flush()
+        rows = [
+            EveCharacter(character_id=93_000_000 + index, name=f"Private {index}", corporation_id=corporation.id, sync_opt_out=True)
+            for index in range(1, 4)
+        ]
+        self.db.add_all(rows)
+        self.db.commit()
+        ids = {row.id for row in rows}
+
+        global_ids, anonymous = apply_anonymous_analytics_privacy(self.user, self.db, scope="all", character_ids=ids)
+        corporation_ids, corporation_anonymous = apply_anonymous_analytics_privacy(self.user, self.db, scope="corporation", character_ids=ids)
+
+        self.assertEqual(global_ids, ids)
+        self.assertEqual(anonymous, ids)
+        self.assertEqual(corporation_ids, set())
+        self.assertEqual(corporation_anonymous, set())
 
 
 if __name__ == "__main__":

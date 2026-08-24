@@ -1,14 +1,13 @@
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.auth import get_current_user
 from app.db.session import get_db
-from app.models import EveCharacter, User
+from app.models import User
 from app.services.permissions import can_view_section
-from app.services.analytics_scope import resolve_analytics_character_scope
+from app.services.analytics_scope import apply_anonymous_analytics_privacy, resolve_analytics_character_scope
 from app.services.planetary_analytics import planetary_analytics_summary
 
 
@@ -20,6 +19,7 @@ def planetary_industry_analytics(
     days: int = Query(30, ge=1, le=3660),
     scope: str = Query("all"),
     corporation_id: int | None = Query(None),
+    alliance_id: int | None = Query(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
@@ -32,6 +32,9 @@ def planetary_industry_analytics(
         db,
         scope=scope,
         corporation_id=corporation_id,
+        alliance_id=alliance_id,
     )
-    character_ids = set(db.scalars(select(EveCharacter.id)).all()) if resolved_ids is None else resolved_ids
-    return planetary_analytics_summary(db, days, character_ids)
+    character_ids, anonymous_ids = apply_anonymous_analytics_privacy(
+        current_user, db, scope=scope, character_ids=resolved_ids
+    )
+    return planetary_analytics_summary(db, days, character_ids, anonymous_ids)

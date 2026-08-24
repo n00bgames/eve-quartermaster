@@ -237,6 +237,7 @@ def planetary_analytics_summary(
     db: Session,
     days: int,
     character_ids: set[int],
+    anonymous_character_ids: set[int] | None = None,
 ) -> dict[str, Any]:
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
     if not character_ids:
@@ -285,6 +286,7 @@ def planetary_analytics_summary(
         item["current_units_per_day"] += row.projected_units_per_day
         item["current_volume_per_day"] += row.projected_units_per_day * row.unit_volume
 
+    anonymous_character_ids = anonymous_character_ids or set()
     character_products = sorted(
         aggregates.values(),
         key=lambda item: (item["estimated_volume"], item["current_volume_per_day"]),
@@ -328,7 +330,7 @@ def planetary_analytics_summary(
             product[field] += item[field]
             tiers[item["tier"]][field] += item[field]
         score = item["estimated_units"] or item["current_units_per_day"]
-        if score > product["_top_score"]:
+        if item["character_id"] not in anonymous_character_ids and score > product["_top_score"]:
             product["_top_score"] = score
             product["top_character"] = item["character_name"]
         tiers[item["tier"]]["products"].add(item["product_type_id"])
@@ -362,7 +364,9 @@ def planetary_analytics_summary(
         },
         "tiers": tier_rows,
         "products": product_rows,
-        "character_products": character_products,
+        "character_products": [
+            item for item in character_products if item["character_id"] not in anonymous_character_ids
+        ],
     }
 
 

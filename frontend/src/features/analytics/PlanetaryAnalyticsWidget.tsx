@@ -62,7 +62,7 @@ export function PlanetaryAnalyticsWidget({
     setProductId("all");
   }
 
-  return <article className="analytics-widget planetary-analytics-widget">
+  return <article id="analytics-planetary" className="analytics-widget planetary-analytics-widget analytics-category-anchor">
     <header>
       <div><Factory size={18} /><div><h4>Planetary Production</h4><small>Projected extractor and routed factory output</small></div></div>
       <span>{summary.days}-day history</span>

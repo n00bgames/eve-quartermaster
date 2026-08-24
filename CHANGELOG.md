@@ -4,15 +4,30 @@ All notable changes to EVE Quartermaster are tracked here.
 
 This project is moving quickly during beta. Version sections are written as user-facing release notes first, with implementation detail included where it helps operators understand deployment or testing impact.
 
-## [0.20.0-beta] - Unreleased
+## [0.1.21.3-beta] - 2026-08-24
+
+### Added
+
+- Added dynamic Battle Reports built from the existing Killboard cache. Select a permission-visible pilot to reconstruct their latest engagement using a configurable inactivity gap, deterministic affiliation connectivity, and explicit third-party/ambiguous handling; Involved, Summary, Timeline, Damage, and Composition views expose team efficiency, organizations, pilots, hulls, losses, damage, and direct zKill evidence links without duplicating canonical ESI killmail storage.
+- Added revocable public Battle Report snapshot links. Shared reports use unguessable tokens, open without an EQM account, retain the exact generated report rather than silently changing with later syncs, and expose creator-side copy and view-count controls.
+- Added canonical SDE ship classes to Battle Report Composition, including groups such as Battleship, Marauder, and Combat Battlecruiser, with an explicit unresolved fallback when SDE data is unavailable.
+- Linked Battle Report pilot names directly to their zKillboard character pages in authenticated and public views.
+- Added pilot portraits, corporation and alliance names/logos, and ship imagery throughout Battle Report participant, team, timeline, and composition views.
+- Added retained Battle Report history browsing with stable engagement seed IDs, a dated system-aware selector, and Older/Newer controls. Public sharing now captures whichever historical engagement is selected instead of always reverting to the latest report.
+- Added an **Edit teams** mode to Battle Reports. Drag alliance and corporation chips between the selected pilot's side, the opposing side, and third parties/ambiguous, or reclassify individual non-anchor pilots with a selector. Corporation choices can refine a broader alliance move, individual pilot choices take final precedence, EQM rebuilds all dependent analytics from canonical killmails, and public snapshots preserve every manual classification.
+
+- Added a separate Battle Reports section permission and transparent coverage placards that distinguish canonical ESI facts from zKillboard discovery/value estimates and disclose the active grouping rule rather than presenting best-effort public history as complete.
+- Added role-aware Analytics scopes for My Pilots, All Pilots, corporations, and alliances, with Director affiliation limits and convenient category jump links.
+- Added privacy-preserving Analytics aggregation: ordinary opt-outs may contribute only as a global cohort of at least three without identifying drilldowns, while HARD STOP data remains excluded for every role. The README now documents these guarantees and the subtraction-attack protection explicitly.
 
 ### Fixed
 
+- Fixed Battle Reports classifying the selected pilot and their alliance as third-party/ambiguous when a friendly pilot appeared among the attackers on an allied loss. Friendly-fire records and missing alliance IDs now use linked character/corporation/alliance identity without creating a false opposing-team edge, while the selected pilot's affiliation remains the report anchor.
 - **Sync all eligible** on Characters now queues every scope-authorized character dataset registered in the Sync & Freshness Center, including the previously omitted Jump Clones and active implants collector. When a character has multiple active authorizations, EQM selects the newest eligible token per dataset instead of allowing one partial-scope token to hide another usable authorization. Bulk progress reports the current dataset by its user-facing name, while character and wallet privacy opt-outs remain hard exclusions.
 
 ### Changed
 
-- Bumped the visible application, package, backend API, Android wrapper, export metadata, README badge, and outbound service user-agent versions to 0.20.0-beta for the next development cycle.
+- Bumped the visible application, package, backend API, Android wrapper, export metadata, README badge, and outbound service user-agent versions to 0.1.21.3-beta for release.
 
 ## [0.1.19-beta] - 2026-08-20
 

@@ -1509,3 +1509,10 @@
     grid-template-columns: 1fr;
   }
 }
+
+.analytics-jump-nav{position:sticky;top:8px;z-index:8;display:flex;flex-wrap:wrap;align-items:center;gap:7px;background:#10171ff2;border:1px solid #3a4653;border-radius:9px;padding:9px 11px;backdrop-filter:blur(8px)}
+.analytics-jump-nav span{color:#8b98a8;font-size:.75rem;font-weight:900;text-transform:uppercase;letter-spacing:.06em}
+.analytics-jump-nav a{color:#cfeef5;background:#17313a;border:1px solid #3f6975;border-radius:999px;padding:5px 9px;font-size:.78rem;font-weight:800;text-decoration:none}
+.analytics-jump-nav a:hover,.analytics-jump-nav a:focus-visible{color:#ffe8aa;border-color:#e8b84d;outline:none}
+.analytics-category-anchor{scroll-margin-top:76px}
+.analytics-scroll-anchor{grid-column:1/-1;height:0;scroll-margin-top:76px}

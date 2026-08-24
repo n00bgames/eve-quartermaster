@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.api.analytics import router as analytics_router
 from app.api.auth import router as auth_router
 from app.api.bounty_analytics import router as bounty_analytics_router
+from app.api.battle_reports import router as battle_reports_router
 from app.api.characters import router as characters_router
 from app.api.contracts import router as contracts_router
 from app.api.corporate_exchange import router as corporate_exchange_router
@@ -42,6 +43,7 @@ api_router = APIRouter()
 api_router.include_router(analytics_router)
 api_router.include_router(auth_router)
 api_router.include_router(bounty_analytics_router)
+api_router.include_router(battle_reports_router)
 api_router.include_router(characters_router)
 api_router.include_router(corporations_router)
 api_router.include_router(contracts_router)

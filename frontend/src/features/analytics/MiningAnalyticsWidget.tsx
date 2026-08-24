@@ -7,7 +7,7 @@ const number = new Intl.NumberFormat(undefined, { notation: "compact", maximumFr
 export function MiningAnalyticsWidget({ summary, days }: { summary: MiningAnalytics; days: number }) {
   const maxVolume = Math.max(1, ...summary.top_by_volume.map((row) => row.volume));
   return <>
-    <article className="analytics-widget mining-analytics-widget">
+    <article id="analytics-mining" className="analytics-widget mining-analytics-widget analytics-category-anchor">
       <header><Pickaxe size={18} /><div><h4>Mining Output</h4><small>{days}-day persistent ledger</small></div></header>
       <div className="manufacturing-kpi-grid">
         <div><span>Recovered</span><strong>{number.format(summary.recovered_volume)} m3</strong></div>
