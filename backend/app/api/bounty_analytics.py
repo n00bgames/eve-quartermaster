@@ -14,13 +14,13 @@ from app.api.auth import get_current_user
 from app.db.session import get_db
 from app.models import CharacterWalletJournalEntry, EsiToken, EveCharacter, EveCorporation, User
 from app.services.bounty_analytics import BOUNTY_REFERENCE_TYPE, build_bounty_ticks, json_value, leaderboard, summarize_ticks, timeline
-from app.services.permissions import can_view_section
+from app.services.permissions import base_role_for, can_view_section
 
 
 router = APIRouter(prefix="/bounty-analytics", tags=["bounty-analytics"])
 PERIOD_DAYS = {"1d": 1, "7d": 7, "30d": 30, "90d": 90}
 EXPORT_SCHEMA_VERSION = "eqm.bounty-analytics.v1"
-EXPORT_APP_VERSION = "0.1.21.3-beta"
+EXPORT_APP_VERSION = "0.1.22-beta"
 
 
 def require_access(current_user: User, db: Session) -> None:
@@ -50,16 +50,23 @@ def local_bounds(
     return current.astimezone(timezone.utc) - timedelta(days=days), None, period
 
 
+def can_view_all_pilots(db: Session, current_user: User) -> bool:
+    return base_role_for(db, current_user.role) in {"host", "admin"}
+
+
 def eligible_characters(db: Session, current_user: User) -> list[EveCharacter]:
+    filters = [
+        EveCharacter.owner_user_id.is_not(None),
+        EveCharacter.wallet_history_opt_out.is_(False),
+        EveCharacter.sync_opt_out.is_(False),
+    ]
+    if not can_view_all_pilots(db, current_user):
+        filters.append(EveCharacter.owner_user_id == current_user.id)
     return list(
         db.scalars(
             select(EveCharacter)
             .options(selectinload(EveCharacter.corporation))
-            .where(
-                EveCharacter.owner_user_id == current_user.id,
-                EveCharacter.wallet_history_opt_out.is_(False),
-                EveCharacter.sync_opt_out.is_(False),
-            )
+            .where(*filters)
             .order_by(EveCharacter.name)
         ).all()
     )
@@ -68,15 +75,15 @@ def eligible_characters(db: Session, current_user: User) -> list[EveCharacter]:
 def token_statuses(db: Session, current_user: User, characters: list[EveCharacter]) -> dict[int, str]:
     if not characters:
         return {}
-    tokens = list(
-        db.scalars(
-            select(EsiToken)
-            .where(EsiToken.user_id == current_user.id, EsiToken.character_id.in_([row.id for row in characters]))
-            .order_by(EsiToken.character_id, EsiToken.created_at.desc())
-        ).all()
-    )
+    query = select(EsiToken).where(EsiToken.character_id.in_([row.id for row in characters]))
+    if not can_view_all_pilots(db, current_user):
+        query = query.where(EsiToken.user_id == current_user.id)
+    tokens = list(db.scalars(query.order_by(EsiToken.character_id, EsiToken.created_at.desc())).all())
+    owner_by_character_id = {row.id: row.owner_user_id for row in characters}
     latest: dict[int, EsiToken] = {}
     for token in tokens:
+        if token.user_id != owner_by_character_id.get(token.character_id):
+            continue
         latest.setdefault(token.character_id, token)
     result: dict[int, str] = {}
     for character in characters:
@@ -196,7 +203,7 @@ def bounty_analytics(
         "date_to_exclusive_utc": end,
         "grouping": grouping,
         "reporting_timezone": timezone_name,
-        "scope": "current_user_connected_characters",
+        "scope": "all_enrolled_pilots" if can_view_all_pilots(db, current_user) else "current_user_connected_characters",
         "summary": summarize_ticks(ticks),
         "timeline": timeline(ticks, grouping, timezone_name),
         "leaderboard": leaderboard(ticks),

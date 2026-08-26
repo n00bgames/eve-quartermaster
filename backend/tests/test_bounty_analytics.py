@@ -4,7 +4,9 @@ import unittest
 from datetime import datetime, timezone
 from decimal import Decimal
 from types import SimpleNamespace
+from unittest.mock import patch
 
+from app.api.bounty_analytics import can_view_all_pilots
 from app.services.bounty_analytics import build_bounty_ticks, leaderboard, summarize_ticks, timeline
 
 
@@ -40,6 +42,16 @@ def journal(
 
 
 class BountyAnalyticsTests(unittest.TestCase):
+    def test_host_and_admin_roles_can_view_all_enrolled_pilots(self) -> None:
+        for role in ("host", "admin"):
+            with self.subTest(role=role), patch("app.api.bounty_analytics.base_role_for", return_value=role):
+                self.assertTrue(can_view_all_pilots(SimpleNamespace(), SimpleNamespace(role=role)))
+
+    def test_non_admin_roles_remain_account_scoped(self) -> None:
+        for role in ("director", "officer", "member", "view_only"):
+            with self.subTest(role=role), patch("app.api.bounty_analytics.base_role_for", return_value=role):
+                self.assertFalse(can_view_all_pilots(SimpleNamespace(), SimpleNamespace(role=role)))
+
     def test_tick_groups_only_exact_pilot_and_authoritative_timestamp(self) -> None:
         rows = [
             journal(101, amount="950", tax="50"),

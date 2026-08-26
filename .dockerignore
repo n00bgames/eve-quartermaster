@@ -1,0 +1,11 @@
+.git
+.pnpm-store
+_publish
+
+frontend/node_modules
+frontend/dist
+frontend/dist-check
+frontend/npm-debug.log
+
+**/__pycache__
+**/*.pyc

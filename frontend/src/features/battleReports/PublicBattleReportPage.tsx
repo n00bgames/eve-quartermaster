@@ -32,11 +32,11 @@ export function PublicBattleReportPage({ api, shareToken, onBack }: { api: ApiCl
   const report = payload?.report ?? null;
   const damageRows = useMemo(() => report ? [...report.participants].sort((a, b) => b.damage_done - a.damage_done) : [], [report]);
 
-  if (error) return <main className="battle-public-shell"><section className="panel battle-public-error"><Swords size={34} /><h1>Battle report unavailable</h1><p>{error}</p><button type="button" onClick={onBack}>Return to EQM</button></section></main>;
+  if (error) return <main className="battle-public-shell"><section className="panel battle-public-error"><Swords size={34} /><h1>Battle Report Unavailable</h1><p>{error}</p><button type="button" onClick={onBack}>Return to EQM</button></section></main>;
   if (!payload || !report) return <main className="battle-public-shell"><section className="panel"><p>Reconstructing the battlefield…</p></section></main>;
 
   return <main className="battle-public-shell"><div className="battle-page">
-    <header className="battle-public-brand"><button type="button" onClick={onBack}><img src="/eqm-logo.png" alt="" /> EVE Quartermaster</button><span>Public battle report snapshot</span></header>
+    <header className="battle-public-brand"><button type="button" onClick={onBack}><img src="/eqm-logo.webp" alt="" /> EVE Quartermaster</button><span>Public Battle Report Snapshot</span></header>
     <section className="panel battle-header">
       <div><span className="eyebrow">Latest engagement for <a className="battle-pilot-link" href={zkillCharacterUrl(payload.pilot.character_id)} target="_blank" rel="noreferrer">{payload.pilot.name}<ExternalLink size={12} aria-hidden="true" /></a></span><h1>{report.systems.map((system) => system.system_name).join(" · ")}</h1><p>{report.regions.join(" · ") || "Region unresolved"} · {new Date(report.start_time).toLocaleString()} — {new Date(report.end_time).toLocaleTimeString()}</p></div>
       <div className="battle-head-kpis"><span><strong>{compactIsk(report.estimated_total_value)}</strong> destroyed{report.unknown_value_killmails ? ` · ${report.unknown_value_killmails} unknown` : ""}</span><span><strong>{report.killmail_count}</strong> killmails</span><span><strong>{report.pilot_count}</strong> pilots</span><span><strong>{duration(report.duration_seconds)}</strong> duration</span></div>

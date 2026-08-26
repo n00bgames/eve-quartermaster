@@ -601,7 +601,7 @@ function App() {
   const publicExchangeId = locationHash.startsWith("#exchange/") ? locationHash.slice("#exchange/".length) : null;
   const publicBattleReportToken = locationHash.startsWith("#battle-report/") ? locationHash.slice("#battle-report/".length) : null;
 
-  if (!authReady) return <main className="auth-shell"><section className="panel"><img className="auth-logo" src="/eqm-logo.png" alt="EVE Quartermaster" /><p className="muted">Checking account session...</p></section></main>;
+  if (!authReady) return <main className="auth-shell"><section className="panel"><img className="auth-logo" src="/eqm-logo.webp" alt="EVE Quartermaster" /><p className="muted">Checking account session...</p></section></main>;
 
   if (publicBattleReportToken) return <PublicBattleReportPage api={api} shareToken={publicBattleReportToken} onBack={() => { window.location.hash = ""; window.location.reload(); }} />;
 
@@ -621,7 +621,7 @@ function App() {
 
       <aside className="sidebar">
 
-        <img className="brand-logo" src="/eqm-logo.png" alt="EVE Quartermaster" />
+        <img className="brand-logo" src="/eqm-logo.webp" alt="EVE Quartermaster" />
 
         <div>
 
@@ -965,7 +965,7 @@ function AuthScreen({ bootstrap, onAuth }: { bootstrap: BootstrapStatus | null; 
 
       <section className="panel auth-panel">
 
-        <img className="auth-logo" src="/eqm-logo.png" alt="EVE Quartermaster" />
+        <img className="auth-logo" src="/eqm-logo.webp" alt="EVE Quartermaster" />
 
         <span className="status-badge version-badge auth-version">v{APP_VERSION}</span>
 
@@ -1025,7 +1025,7 @@ function InviteScreen({ token, onAuth }: { token: string; onAuth: (path: string,
 
       <section className="panel auth-panel">
 
-        <img className="auth-logo" src="/eqm-logo.png" alt="EVE Quartermaster" />
+        <img className="auth-logo" src="/eqm-logo.webp" alt="EVE Quartermaster" />
 
         <span className="status-badge version-badge auth-version">v{APP_VERSION}</span>
 

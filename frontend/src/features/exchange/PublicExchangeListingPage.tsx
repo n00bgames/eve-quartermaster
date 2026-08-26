@@ -179,7 +179,7 @@ export function PublicExchangeListingPage({ api, publicId, onBack }: Props) {
     <main className="exchange-public-shell">
       <section className="exchange-public-card">
         <header className="exchange-public-header">
-          <div className="exchange-public-brand"><img src="/eqm-logo.png" alt="EVE Quartermaster" /><span>Corporate Exchange</span></div>
+          <div className="exchange-public-brand"><img src="/eqm-logo.webp" alt="EVE Quartermaster" /><span>Corporate Exchange</span></div>
           <span className={`exchange-status exchange-status-${listing.status}`}>{statusLabel(listing.status)}</span>
         </header>
 
