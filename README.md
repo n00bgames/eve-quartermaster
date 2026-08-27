@@ -63,7 +63,7 @@ See [CHANGELOG.md](CHANGELOG.md) for version-by-version release notes.
 - Persistent Mining Ledger with per-character ESI history, detailed residue-aware imports, named mining operations, production/value graphs, and honest residue-measured efficiency rankings.
 - Private Bounty Analytics with retained NPC payout ticks, net/gross/corporate-tax reconciliation, pilot leaderboards, time grouping, historical corporation context, evidence drilldowns, and CSV export.
 - Mining Op Settlement workflow with saved-operation or date-range sourcing, actual refined-output entry, hub price snapshots, operation reserves, expenses, support-role compensation, weighted shares, reconciled ISK payouts, editable drafts, and immutable finalized history.
-- Navigation suite with SDE-backed route planning, gatecheck summaries, operational starmap rendering, and security-status color coding.
+- Navigation suite with SDE-backed route planning, gatecheck summaries, operational starmap rendering, security-status color coding, and last-hour jump, ship-kill, and pod-kill traffic on every route system.
 - Hauling intelligence widgets for industrial kill heat, PvP system intel, smartbomb indicators, and Local Threat analysis with background queue progress for large systems.
 - Jump Capable Ship Plotter with automatic routing through ordered, required cyno waypoints, JDC/JFC fuel math, mapped alternate jump points, explicit station-risk warnings, nearby operational map context, and kill/activity intel per jump.
 - Sideloadable Android WebView wrapper build script that outputs `EQM.apk`.
@@ -80,13 +80,17 @@ See [CHANGELOG.md](CHANGELOG.md) for version-by-version release notes.
 
 ## Screenshots
 
-A quick tour of the current beta surface, ordered roughly the way a new Quartermaster operator would encounter the tool. Release screenshots are sanitized documentation captures: identities, corporations, locations, operations, loss records, and aggregate values are replaced with clearly fictitious demo data.
+A quick tour of the current beta surface, ordered roughly the way a new Quartermaster operator would encounter the tool. Private identities and operational data are excluded or replaced with clearly fictitious demo data; public EVE system names and traffic telemetry may come from the live service.
 
 ### Command Center
 
 | Overview | Navigation |
 | --- | --- |
 | ![Quartermaster overview](static/ss/eqm-overview.png) | ![Navigation and threat tools](static/ss/eqm-navigation.png) |
+
+| Route Traffic Intel | PvP Traffic Intel |
+| --- | --- |
+| ![Route systems with last-hour jumps, ship kills, and pod kills](static/ss/eqm-route-hourly-intel.png) | ![PvP report with last-hour traffic telemetry](static/ss/eqm-pvp-hourly-intel.png) |
 
 | Analytics Platform | Audit Log |
 | --- | --- |
@@ -553,7 +557,7 @@ A HARD STOP privacy action is different: data covered by a destructive opt-out i
 ## Using EQM Sections
 
 - **Overview:** quick health, totals, recent assets, and a lightweight blueprint preview. Use this as the command-center landing page, not as the full industry workspace.
-- **Navigation:** route checker, operational maps, industrial system threat, PvP intel, local threat analysis, Uedama scout status, and the Jump Capable Ship Plotter. The plotter can auto-route through ordered systems where the pilot already has cynos, filling valid station-backed jumps between each required waypoint; every leg also exposes reachable alternate systems on the map and identifies candidates with no station or only red-risk stations. Select an alternate and use **Replot via…** to rebuild the complete route through it while retaining the initial ship, skill, safety, avoidance, intel, and feasible required-cyno constraints. If a required cyno cannot be retained, the new plot remains visible with an explicit warning naming the omitted system.
+- **Navigation:** route checker, operational maps, industrial system threat, PvP intel, local threat analysis, Uedama scout status, and the Jump Capable Ship Plotter. Route rows and PvP summaries display the latest hourly jumps, ship kills, and pod kills alongside longer-window kill intelligence. The plotter can auto-route through ordered systems where the pilot already has cynos, filling valid station-backed jumps between each required waypoint; every leg also exposes reachable alternate systems on the map and identifies candidates with no station or only red-risk stations. Select an alternate and use **Replot via…** to rebuild the complete route through it while retaining the initial ship, skill, safety, avoidance, intel, and feasible required-cyno constraints. If a required cyno cannot be retained, the new plot remains visible with an explicit warning naming the omitted system.
 - **Characters:** assign EVE characters to EQM accounts, review character dossiers, inspect assets/skills/queues, control visibility, and use character hover cards for quick context. NPC standing rows display the ESI base value beside the skill-modified effective value and name the active Diplomacy, Connections, or Criminal Connections level used; Social changes future standing gains and is therefore not added to the current value.
 - **Character Skills:** expand/collapse skill groups, refresh displayed skills, sync one character, or queue **Sync all skills** for every eligible non-opted-out character.
 - **Skill Plans:** switch to the Skill Plans tab to create a manual plan or generate minimum requirements from a doctrine or fitting. Generation reads the imported EVE SDE; if requirement data is missing, EQM warns and never fabricates a skill. Generated plans remain fully editable and are only regenerated when explicitly requested. Saved plans can be copied or downloaded as an ordered, level-by-level EVE clipboard list for the client’s **Import Skills from Clipboard** action; EQM warns when an expanded plan exceeds EVE’s 150-level personal-plan limit.
