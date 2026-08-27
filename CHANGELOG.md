@@ -8,6 +8,7 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Added
 
+- Added last-hour ESI traffic intelligence to the Jump Capable Ship Plotter, Route Checker/Gatecheck, and PvP Intel Report. Route systems and jump alternates now display ship jumps, ship kills, and pod kills from a shared five-minute cache backed by hourly observations rather than scraping Dotlan.
 - Added supercapital-aware docking targets to the Jump Capable Ship Plotter. Supercarriers and titans now route only through known Keepstar-class structures, exclude NPC stations from their destination details, and warn operators that structure eligibility does not guarantee docking or tether access. Character and corporation structure syncs retain ESI structure types so accessible allied and public Keepstars can participate after refresh.
 - Added dynamic Battle Reports built from the existing Killboard cache. Select a permission-visible pilot to reconstruct their latest engagement using a configurable inactivity gap, deterministic affiliation connectivity, and explicit third-party/ambiguous handling; Involved, Summary, Timeline, Damage, and Composition views expose team efficiency, organizations, pilots, hulls, losses, damage, and direct zKill evidence links without duplicating canonical ESI killmail storage.
 - Added revocable public Battle Report snapshot links. Shared reports use unguessable tokens, open without an EQM account, retain the exact generated report rather than silently changing with later syncs, and expose creator-side copy and view-count controls.

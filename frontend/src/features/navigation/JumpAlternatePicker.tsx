@@ -56,7 +56,7 @@ export function JumpAlternatePicker({
         <div><dt>Jump</dt><dd>{selected.distance_ly} LY</dd></div>
         <div><dt>Fuel</dt><dd>{numberFormatter.format(selected.fuel_units)} {fuelTypeName}</dd></div>
         <div><dt>24h kills</dt><dd>{selected.kills_24h.count.toLocaleString()}</dd></div>
-        <div><dt>Observed activity</dt><dd>{selected.jump_activity ? `${selected.jump_activity.activity_label} · ${selected.jump_activity.total_jumps.toLocaleString()} / ${selected.jump_activity.hours}h · ${selected.jump_activity.confidence}` : "No samples"}</dd></div>
+        <div><dt>Last-hour traffic</dt><dd>{selected.jump_activity?.observations ? `${selected.jump_activity.jumps_last_hour.toLocaleString()} jumps · ${selected.jump_activity.ship_kills_last_hour.toLocaleString()} ship kills · ${selected.jump_activity.pod_kills_last_hour.toLocaleString()} pod kills` : "Unavailable"}</dd></div>
         <div><dt>{selected.can_rejoin ? "To next waypoint" : "From planned destination"}</dt><dd>{selected.can_rejoin ? `${selected.rejoin_distance_ly ?? 0} LY` : `${selected.distance_to_planned_ly} LY`}</dd></div>
       </dl>
       <button type="button" className="jf-replot-alternate" disabled={busy} onClick={() => onReplot(selected.system.system_id)}><MapIcon size={17} /> {busy ? "Replotting" : `Replot via ${selected.system.name}`}</button>

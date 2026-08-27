@@ -20,6 +20,7 @@ LIGHT_YEAR_METERS = 9_460_730_472_580_800
 JDC_RANGE_BONUS_PER_LEVEL = 0.2
 JFC_FUEL_REDUCTION_PER_LEVEL = 0.1
 ESI_SYSTEM_JUMPS_URL = "https://esi.evetech.net/latest/universe/system_jumps/?datasource=tranquility"
+ESI_SYSTEM_KILLS_URL = "https://esi.evetech.net/latest/universe/system_kills/?datasource=tranquility"
 USER_AGENT = "EVE-Quartermaster/0.1.22-beta jump-capable-route-intel"
 
 FUEL_TYPE_NAMES = {
@@ -665,16 +666,48 @@ def _fetch_system_jump_counts() -> dict[int, int]:
     return counts
 
 
+def _fetch_system_kill_counts() -> dict[int, dict[str, int]]:
+    try:
+        with httpx.Client(headers={"User-Agent": USER_AGENT}, timeout=12.0, follow_redirects=True) as client:
+            response = client.get(ESI_SYSTEM_KILLS_URL)
+            response.raise_for_status()
+            payload = response.json()
+    except (httpx.HTTPError, ValueError):
+        return {}
+    counts: dict[int, dict[str, int]] = {}
+    for row in payload if isinstance(payload, list) else []:
+        try:
+            counts[int(row["system_id"])] = {
+                "ship_kills": int(row.get("ship_kills") or 0),
+                "pod_kills": int(row.get("pod_kills") or 0),
+                "npc_kills": int(row.get("npc_kills") or 0),
+            }
+        except (KeyError, TypeError, ValueError):
+            continue
+    return counts
+
+
 def refresh_system_jump_observations(db: Session, system_ids: list[int]) -> dict[str, Any]:
     unique_ids = sorted({int(system_id) for system_id in system_ids if system_id})
     if not unique_ids:
         return {"refreshed": False, "observed_at": None, "system_count": 0}
 
+    observed_at = _jump_observation_bucket()
+    fresh_after = datetime.now(UTC) - timedelta(minutes=5)
+    fresh_rows = db.scalars(
+        select(SystemJumpObservation)
+        .where(SystemJumpObservation.system_id.in_(unique_ids))
+        .where(SystemJumpObservation.observed_at == observed_at)
+        .where(SystemJumpObservation.cached_at >= fresh_after)
+    ).all()
+    if len(fresh_rows) == len(unique_ids):
+        return {"refreshed": False, "cached": True, "observed_at": observed_at.isoformat(), "system_count": len(fresh_rows)}
+
     counts = _fetch_system_jump_counts()
-    if not counts:
+    kill_counts = _fetch_system_kill_counts()
+    if not counts and not kill_counts:
         return {"refreshed": False, "observed_at": None, "system_count": 0}
 
-    observed_at = _jump_observation_bucket()
     existing = {
         row.system_id: row
         for row in db.scalars(
@@ -686,12 +719,26 @@ def refresh_system_jump_observations(db: Session, system_ids: list[int]) -> dict
     written = 0
     for system_id in unique_ids:
         ship_jumps = int(counts.get(system_id, 0))
+        kills = kill_counts.get(system_id, {})
         row = existing.get(system_id)
         if row:
-            row.ship_jumps = ship_jumps
+            if counts:
+                row.ship_jumps = ship_jumps
+            if kill_counts:
+                row.ship_kills = int(kills.get("ship_kills", 0))
+                row.pod_kills = int(kills.get("pod_kills", 0))
+                row.npc_kills = int(kills.get("npc_kills", 0))
             row.cached_at = datetime.now(UTC)
         else:
-            db.add(SystemJumpObservation(system_id=system_id, observed_at=observed_at, ship_jumps=ship_jumps))
+            db.add(SystemJumpObservation(
+                system_id=system_id,
+                observed_at=observed_at,
+                ship_jumps=ship_jumps,
+                ship_kills=int(kills.get("ship_kills", 0)),
+                pod_kills=int(kills.get("pod_kills", 0)),
+                npc_kills=int(kills.get("npc_kills", 0)),
+                source="esi_system_activity",
+            ))
         written += 1
     db.commit()
     return {"refreshed": True, "observed_at": observed_at.isoformat(), "system_count": written}
@@ -699,7 +746,8 @@ def refresh_system_jump_observations(db: Session, system_ids: list[int]) -> dict
 
 def jump_activity_summary(db: Session, system_id: int, hours: int = 6) -> dict[str, Any]:
     window_hours = _jump_activity_hours(hours)
-    since = datetime.now(UTC) - timedelta(hours=window_hours)
+    now = datetime.now(UTC)
+    since = now - timedelta(hours=window_hours)
     rows = db.scalars(
         select(SystemJumpObservation)
         .where(SystemJumpObservation.system_id == system_id)
@@ -707,6 +755,9 @@ def jump_activity_summary(db: Session, system_id: int, hours: int = 6) -> dict[s
         .order_by(SystemJumpObservation.observed_at.desc())
     ).all()
     total_jumps = sum(row.ship_jumps for row in rows)
+    jumps_last_hour = sum(row.ship_jumps for row in rows if row.observed_at >= now - timedelta(hours=1))
+    ship_kills_last_hour = sum(row.ship_kills for row in rows if row.observed_at >= now - timedelta(hours=1))
+    pod_kills_last_hour = sum(row.pod_kills for row in rows if row.observed_at >= now - timedelta(hours=1))
     observations = len(rows)
     coverage = observations / max(1, window_hours)
     if observations == 0:
@@ -729,6 +780,9 @@ def jump_activity_summary(db: Session, system_id: int, hours: int = 6) -> dict[s
     return {
         "hours": window_hours,
         "total_jumps": total_jumps,
+        "jumps_last_hour": jumps_last_hour,
+        "ship_kills_last_hour": ship_kills_last_hour,
+        "pod_kills_last_hour": pod_kills_last_hour,
         "jumps_per_hour": round(total_jumps / max(1, window_hours), 1),
         "observations": observations,
         "confidence": confidence,

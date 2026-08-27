@@ -816,17 +816,18 @@ export function JumpFreighterPlanner({
                         : "industrial kills"}{" "}
                       / 24h
                     </span>
-                    {jump.jump_activity && (
+                    {jump.jump_activity && jump.jump_activity.observations > 0 && (
                       <span
                         className={`intel-badge intel-${(jump.jump_activity.activity_label ?? "unknown").replace(/\s+/g, "-").toLowerCase()}`}
                         title={`Observed Activity (${jump.jump_activity.hours}h): ${jump.jump_activity.total_jumps.toLocaleString()} jumps, ${jump.jump_activity.jumps_per_hour.toLocaleString()} jumps/hr, confidence ${jump.jump_activity.confidence} from ${jump.jump_activity.observations} observations`}
                       >
-                        {jump.jump_activity.activity_label} ·{" "}
-                        {jump.jump_activity.total_jumps.toLocaleString()} jumps
-                        / {jump.jump_activity.hours}h ·{" "}
-                        {jump.jump_activity.confidence}
+                        {jump.jump_activity.jumps_last_hour.toLocaleString()} jumps ·{" "}
+                        {jump.jump_activity.ship_kills_last_hour.toLocaleString()} ship kills ·{" "}
+                        {jump.jump_activity.pod_kills_last_hour.toLocaleString()} pod kills / last hour ·{" "}
+                        {jump.jump_activity.activity_label} over {jump.jump_activity.hours}h
                       </span>
                     )}
+                    {jump.jump_activity && jump.jump_activity.observations === 0 && <span className="intel-badge">Last-hour traffic unavailable</span>}
                   </button>
                   <div className="jf-jump-actions">
                     {isUedamaSystem(jump.to_system) && (

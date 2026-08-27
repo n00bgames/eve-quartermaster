@@ -32,6 +32,9 @@ class SystemJumpObservation(Base):
     system_id: Mapped[int] = mapped_column(ForeignKey("eve_systems.system_id", ondelete="CASCADE"), nullable=False, index=True)
     observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     ship_jumps: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    ship_kills: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    pod_kills: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    npc_kills: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     source: Mapped[str] = mapped_column(String(40), default="esi_system_jumps", nullable=False, index=True)
     cached_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
 

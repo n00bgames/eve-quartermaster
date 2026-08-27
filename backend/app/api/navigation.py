@@ -13,7 +13,7 @@ from app.api.auth import get_current_user
 from app.db.session import SessionLocal, get_db
 from app.models import EveStargate, EveStation, EveSystem, User
 from app.services.gatecheck import LOCAL_THREAT_JOB_MAX_PILOTS, gatecheck_route, local_threat_analysis, local_threat_names, system_industrial_threat, system_pvp_intel
-from app.services.jump_freighter import JUMP_FREIGHTERS, plan_jump_freighter_route
+from app.services.jump_freighter import JUMP_FREIGHTERS, jump_activity_summary, plan_jump_freighter_route, refresh_system_jump_observations
 from app.services.navigation import plan_gate_route, resolve_system, search_systems
 from app.services.twitch import uedama_scout_status
 from app.services.permissions import can_view_section
@@ -142,6 +142,17 @@ def resolve_avoid_system_ids(db: Session, avoid_systems: str) -> set[int]:
     return resolved
 
 
+def attach_last_hour_jump_activity(db: Session, payload: dict[str, Any], systems: list[dict[str, Any]]) -> dict[str, Any]:
+    system_ids = [int(system["system_id"]) for system in systems if system.get("system_id")]
+    cache = refresh_system_jump_observations(db, system_ids)
+    for system in systems:
+        system_id = system.get("system_id")
+        if system_id:
+            system["jump_activity"] = jump_activity_summary(db, int(system_id), 1)
+    payload["jump_activity"] = {"hours": 1, "cache": cache}
+    return payload
+
+
 @router.get("/route")
 def route(
     origin: str = Query(..., min_length=1),
@@ -154,7 +165,7 @@ def route(
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     try:
-        return plan_gate_route(
+        result = plan_gate_route(
             db,
             origin,
             destination,
@@ -163,6 +174,7 @@ def route(
             avoid_system_ids=resolve_avoid_system_ids(db, avoid_systems),
             context_gate_hops=context_gate_hops,
         )
+        return attach_last_hour_jump_activity(db, result, result.get("systems", []))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -179,7 +191,7 @@ async def gatecheck(
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     try:
-        return await gatecheck_route(
+        result = await gatecheck_route(
             db,
             origin,
             destination,
@@ -189,6 +201,7 @@ async def gatecheck(
             hours=hours,
             industrial_only=industrial_only,
         )
+        return attach_last_hour_jump_activity(db, result, result.get("systems", []))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -218,7 +231,10 @@ async def pvp_intel(
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     try:
-        return await system_pvp_intel(db, system, refresh_hours=refresh_hours, days=days, force_refresh=force_refresh)
+        result = await system_pvp_intel(db, system, refresh_hours=refresh_hours, days=days, force_refresh=force_refresh)
+        attach_last_hour_jump_activity(db, result, [result["system"]])
+        result["system_jump_activity"] = result["system"].pop("jump_activity")
+        return result
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

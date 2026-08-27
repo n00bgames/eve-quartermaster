@@ -8,6 +8,7 @@ from app.services.jump_freighter import (
     LIGHT_YEAR_METERS,
     _alternate_jump_candidates,
     _alternate_station_status,
+    _fetch_system_kill_counts,
     _waypoint_assisted_jump_path,
     _station_profiles,
     ship_config,
@@ -28,6 +29,20 @@ def system(system_id: int, name: str, x_ly: float, security: float = 0.1) -> Eve
 
 
 class JumpFreighterAlternateTests(unittest.TestCase):
+    @patch("app.services.jump_freighter.httpx.Client")
+    def test_system_kill_counts_parse_hourly_ship_and_pod_activity(self, client_factory) -> None:
+        response = client_factory.return_value.__enter__.return_value.get.return_value
+        response.json.return_value = [
+            {"system_id": 30_000_142, "ship_kills": 12, "pod_kills": 4, "npc_kills": 90},
+            {"system_id": "bad", "ship_kills": 99},
+        ]
+
+        self.assertEqual(
+            _fetch_system_kill_counts(),
+            {30_000_142: {"ship_kills": 12, "pod_kills": 4, "npc_kills": 90}},
+        )
+        response.raise_for_status.assert_called_once_with()
+
     def test_station_status_calls_out_missing_and_red_only_stations(self) -> None:
         self.assertEqual(_alternate_station_status(None), "no_station")
         self.assertEqual(_alternate_station_status({"station_count": 2, "risks": {"dangerous"}}), "red_only")
