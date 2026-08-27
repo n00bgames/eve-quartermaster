@@ -466,7 +466,7 @@ async def apply_location_names(client: EsiClient, db: Session, location_ids: set
 
     for location_id in ids:
         location = ensure_location(db, location_id, location_types.get(location_id))
-        if location is None or location.location_kind != LocationKind.STRUCTURE or not location.name.startswith("Location "):
+        if location is None or location.location_kind != LocationKind.STRUCTURE:
             continue
         try:
             structure = await client.get(f"/universe/structures/{location_id}/")
@@ -474,6 +474,7 @@ async def apply_location_names(client: EsiClient, db: Session, location_ids: set
             continue
         location.name = structure.get("name", location.name)
         location.system_id = structure.get("solar_system_id")
+        location.type_id = structure.get("type_id")
         updated += 1
     db.flush()
     return updated

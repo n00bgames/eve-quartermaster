@@ -11,7 +11,8 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app.models import EveCharacter, EveConstellation, EveStargate, EveStation, EveSystem
+from app.models import EveCharacter, EveConstellation, EveStargate, EveStation, EveSystem, Location
+from app.models.enums import LocationKind
 from app.models.navigation import SystemIndustrialKillObservation, SystemJumpObservation, SystemPvpKillObservation
 from app.services.navigation import resolve_system, security_band, serialize_system
 
@@ -19,7 +20,7 @@ LIGHT_YEAR_METERS = 9_460_730_472_580_800
 JDC_RANGE_BONUS_PER_LEVEL = 0.2
 JFC_FUEL_REDUCTION_PER_LEVEL = 0.1
 ESI_SYSTEM_JUMPS_URL = "https://esi.evetech.net/latest/universe/system_jumps/?datasource=tranquility"
-USER_AGENT = "EVE-Quartermaster/0.1.21.3-beta jump-capable-route-intel"
+USER_AGENT = "EVE-Quartermaster/0.1.22-beta jump-capable-route-intel"
 
 FUEL_TYPE_NAMES = {
     16274: "Helium Isotopes",
@@ -27,6 +28,9 @@ FUEL_TYPE_NAMES = {
     17888: "Nitrogen Isotopes",
     17889: "Hydrogen Isotopes",
 }
+
+SUPER_DOCKING_SHIP_CLASSES = {"Supercarrier", "Titan"}
+KEEPSTAR_TYPE_IDS = {35834, 40340}
 
 
 @dataclass(frozen=True)
@@ -214,7 +218,31 @@ def _npc_station_system_ids(db: Session) -> set[int]:
     return set(db.scalars(select(EveStation.system_id).where(EveStation.system_id.is_not(None)).distinct()).all())
 
 
-def _station_profiles(db: Session) -> dict[int, dict[str, Any]]:
+def requires_keepstar(ship: JumpFreighterShip | None) -> bool:
+    return bool(ship and ship.ship_class in SUPER_DOCKING_SHIP_CLASSES)
+
+
+def _keepstar_locations(db: Session, system_ids: list[int] | None = None) -> list[Location]:
+    query = select(Location).where(
+        Location.location_kind == LocationKind.STRUCTURE,
+        Location.system_id.is_not(None),
+        Location.type_id.in_(KEEPSTAR_TYPE_IDS),
+    )
+    if system_ids is not None:
+        if not system_ids:
+            return []
+        query = query.where(Location.system_id.in_(system_ids))
+    return list(db.scalars(query.order_by(Location.system_id, Location.name)).all())
+
+
+def _station_profiles(db: Session, ship: JumpFreighterShip | None = None) -> dict[int, dict[str, Any]]:
+    if requires_keepstar(ship):
+        profiles: dict[int, dict[str, Any]] = {}
+        for structure in _keepstar_locations(db):
+            profile = profiles.setdefault(structure.system_id, {"station_count": 0, "risks": set()})
+            profile["station_count"] += 1
+            profile["risks"].add("safer")
+        return profiles
     stations = db.scalars(
         select(EveStation)
         .options(selectinload(EveStation.station_type))
@@ -238,7 +266,9 @@ def _alternate_station_status(profile: dict[str, Any] | None) -> str:
     return "station_available"
 
 
-def _station_safety_system_ids(db: Session, station_safety: str) -> set[int]:
+def _station_safety_system_ids(db: Session, station_safety: str, ship: JumpFreighterShip | None = None) -> set[int]:
+    if requires_keepstar(ship):
+        return set(_station_profiles(db, ship))
     mode = station_safety.strip().lower()
     if mode == "any":
         return _npc_station_system_ids(db)
@@ -254,7 +284,9 @@ def _station_safety_system_ids(db: Session, station_safety: str) -> set[int]:
     return {system_id for system_id, risks in risks_by_system.items() if risks - {"dangerous"}}
 
 
-def _station_safety_label(station_safety: str) -> str:
+def _station_safety_label(station_safety: str, ship: JumpFreighterShip | None = None) -> str:
+    if requires_keepstar(ship):
+        return "Known Keepstars only"
     return {
         "any": "Any NPC station",
         "avoid_red_only": "Avoid red-only systems",
@@ -276,17 +308,19 @@ def _neighbor_systems(system: EveSystem, grid: dict[tuple[int, int, int], list[E
     return candidates
 
 
-def _jump_path(db: Session, origin: EveSystem, destination: EveSystem, max_range_ly: float, station_safety: str = "any", avoid_system_ids: set[int] | None = None, *, allow_unstationed_destination: bool = False) -> list[int]:
+def _jump_path(db: Session, origin: EveSystem, destination: EveSystem, max_range_ly: float, station_safety: str = "any", avoid_system_ids: set[int] | None = None, *, allow_unstationed_destination: bool = False, ship: JumpFreighterShip | None = None) -> list[int]:
     if origin.system_id == destination.system_id:
         return [origin.system_id]
     if not cyno_eligible(destination):
         raise ValueError("Jump freighter destination must be lowsec/nullsec for a cyno. Use a nearby cyno system, then plan the gate leg separately.")
-    station_system_ids = _npc_station_system_ids(db)
+    station_system_ids = _station_safety_system_ids(db, "any", ship)
     if not allow_unstationed_destination and destination.system_id not in station_system_ids:
-        raise ValueError(f"{destination.name} has no imported NPC stations. Jump freighter cyno targets must have an NPC station; choose a nearby station system and gate the final leg.")
-    allowed_station_system_ids = _station_safety_system_ids(db, station_safety)
+        if requires_keepstar(ship):
+            raise ValueError(f"{destination.name} has no known Keepstar. Supercarriers and titans can only use known Keepstar-class structures as docking destinations.")
+        raise ValueError(f"{destination.name} has no imported NPC stations. Jump-capable cyno targets must have an NPC station; choose a nearby station system and gate the final leg.")
+    allowed_station_system_ids = _station_safety_system_ids(db, station_safety, ship)
     if not allow_unstationed_destination and destination.system_id not in allowed_station_system_ids:
-        raise ValueError(f"{destination.name} has NPC stations, but none match the station safety filter: {_station_safety_label(station_safety)}.")
+        raise ValueError(f"{destination.name} has docking locations, but none match the filter: {_station_safety_label(station_safety, ship)}.")
     avoid_system_ids = set(avoid_system_ids or set())
     avoid_system_ids.discard(origin.system_id)
     avoid_system_ids.discard(destination.system_id)
@@ -352,6 +386,7 @@ def _waypoint_assisted_jump_path(
     max_range_ly: float,
     station_safety: str,
     avoid_system_ids: set[int],
+    ship: JumpFreighterShip | None = None,
 ) -> list[int]:
     checkpoints = [*waypoints, destination]
     required_ids = {system.system_id for system in checkpoints}
@@ -371,6 +406,7 @@ def _waypoint_assisted_jump_path(
                 station_safety,
                 effective_avoid_ids,
                 allow_unstationed_destination=is_required_waypoint,
+                ship=ship,
             )
         except ValueError as exc:
             role = "required cyno waypoint" if is_required_waypoint else "destination"
@@ -500,9 +536,32 @@ def serialize_station(station: EveStation) -> dict[str, Any]:
     }
 
 
-def stations_by_system(db: Session, system_ids: list[int]) -> dict[int, list[dict[str, Any]]]:
+def stations_by_system(db: Session, system_ids: list[int], ship: JumpFreighterShip | None = None) -> dict[int, list[dict[str, Any]]]:
     if not system_ids:
         return {}
+    if requires_keepstar(ship):
+        result: dict[int, list[dict[str, Any]]] = {}
+        for structure in _keepstar_locations(db, system_ids):
+            type_name = "Upwell Palatine Keepstar" if structure.type_id == 40340 else "Keepstar"
+            result.setdefault(structure.system_id, []).append(
+                {
+                    "station_id": structure.eve_location_id or structure.id,
+                    "name": structure.name,
+                    "type_id": structure.type_id,
+                    "type_name": type_name,
+                    "operation_id": None,
+                    "operation_name": "Player structure",
+                    "orbit_id": None,
+                    "location_kind": "structure",
+                    "cyno_guidance": {
+                        "risk": "safer",
+                        "range_km": None,
+                        "note": "Keepstar-class structure can dock supercarriers and titans. Verify docking access, tether eligibility, and a practiced cyno before jumping.",
+                        "reference_links": [],
+                    },
+                }
+            )
+        return result
     stations = db.scalars(
         select(EveStation)
         .options(selectinload(EveStation.station_type), selectinload(EveStation.system))
@@ -805,9 +864,10 @@ def plan_jump_freighter_route(
             max_range,
             station_safety,
             {system.system_id for system in avoid_systems},
+            ship,
         )
     else:
-        path_ids = _jump_path(db, origin, destination, max_range, station_safety, {system.system_id for system in avoid_systems})
+        path_ids = _jump_path(db, origin, destination, max_range, station_safety, {system.system_id for system in avoid_systems}, ship=ship)
 
     systems = db.scalars(
         select(EveSystem)
@@ -818,7 +878,7 @@ def plan_jump_freighter_route(
     ordered = [systems_by_id.get(system_id) or db.get(EveSystem, system_id) for system_id in path_ids]
     ordered = [system for system in ordered if system is not None]
 
-    station_profiles = _station_profiles(db)
+    station_profiles = _station_profiles(db, ship)
     known_systems = _known_space_systems(db)
     excluded_ids = set(path_ids) | {system.system_id for system in avoid_systems}
     alternatives_by_index: dict[int, list[dict[str, Any]]] = {}
@@ -838,7 +898,7 @@ def plan_jump_freighter_route(
         for rows in alternatives_by_index.values()
         for row in rows
     }
-    station_map = stations_by_system(db, [system.system_id for system in ordered])
+    station_map = stations_by_system(db, [system.system_id for system in ordered], ship)
     jump_activity_cache = refresh_system_jump_observations(
         db,
         [system.system_id for system in ordered] + sorted(alternate_system_ids),
@@ -895,14 +955,22 @@ def plan_jump_freighter_route(
         (
             f"Required cyno routing active through {len(manual_waypoints)} supplied system{'' if len(manual_waypoints) == 1 else 's'}; EQM automatically fills valid jumps between them."
             if route_mode == "waypoint_assisted"
-            else "Highsec origins are allowed; automatic jump targets are low/null systems with imported NPC stations."
+            else (
+                "Highsec origins are allowed; automatic jump targets are low/null systems with known Keepstar-class structures."
+                if requires_keepstar(ship)
+                else "Highsec origins are allowed; automatic jump targets are low/null systems with imported NPC stations."
+            )
         ),
-        f"Station safety filter: {_station_safety_label(station_safety)}; supplied cyno waypoints are honored even without a station.",
+        f"Docking target filter: {_station_safety_label(station_safety, ship)}; supplied cyno waypoints are honored even without a docking location.",
         f"Kill display: {_kill_filter_label(kill_filter)}.",
         f"Observed activity window: {jump_activity_hours}h; confidence depends on hourly samples collected by EQM.",
         f"Avoiding {len(avoid_systems)} system{'' if len(avoid_systems) == 1 else 's'}; required waypoints cannot be avoided.",
         "Alternates are informational candidates and do not change the plotted route until you add one as a required waypoint or replot around it.",
-        "Station guidance is operational reference data. Verify bookmarks and station geometry before risking a live jump.",
+        (
+            "Keepstar eligibility does not guarantee access. Verify docking rights, tether, bookmarks, and cyno placement before moving a supercapital."
+            if requires_keepstar(ship)
+            else "Station guidance is operational reference data. Verify bookmarks and station geometry before risking a live jump."
+        ),
     ]
 
     return {
@@ -927,7 +995,7 @@ def plan_jump_freighter_route(
         "jump_count": len(jumps),
         "total_distance_ly": round(total_distance, 3),
         "total_fuel_units": total_fuel,
-        "station_safety": {"mode": station_safety, "label": _station_safety_label(station_safety), "applied": True},
+        "station_safety": {"mode": station_safety, "label": _station_safety_label(station_safety, ship), "applied": True},
         "kill_filter": {"mode": kill_filter, "label": _kill_filter_label(kill_filter)},
         "jump_activity": {"hours": jump_activity_hours, "cache": jump_activity_cache},
         "avoided_systems": [serialize_system(system) for system in avoid_systems],

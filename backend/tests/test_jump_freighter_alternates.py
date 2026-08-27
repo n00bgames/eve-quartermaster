@@ -1,12 +1,17 @@
 import unittest
 from unittest.mock import patch
 
+from app.models.assets import Location
+from app.models.enums import LocationKind
 from app.models.eve_static import EveSystem
 from app.services.jump_freighter import (
     LIGHT_YEAR_METERS,
     _alternate_jump_candidates,
     _alternate_station_status,
     _waypoint_assisted_jump_path,
+    _station_profiles,
+    ship_config,
+    stations_by_system,
 )
 
 
@@ -72,6 +77,36 @@ class JumpFreighterAlternateTests(unittest.TestCase):
         self.assertEqual(path, [1, 10, 2, 11, 3])
         self.assertTrue(route_segment.call_args_list[0].kwargs["allow_unstationed_destination"])
         self.assertFalse(route_segment.call_args_list[1].kwargs["allow_unstationed_destination"])
+
+    def test_supercapital_profiles_only_known_keepstars(self) -> None:
+        keepstar = Location(
+            id=1,
+            location_kind=LocationKind.STRUCTURE,
+            eve_location_id=1_000_000_000_001,
+            type_id=35834,
+            name="Friendly Keepstar",
+            system_id=30_000_001,
+        )
+        with patch("app.services.jump_freighter._keepstar_locations", return_value=[keepstar]):
+            profiles = _station_profiles(None, ship_config("Nyx"))  # type: ignore[arg-type]
+
+        self.assertEqual(profiles, {30_000_001: {"station_count": 1, "risks": {"safer"}}})
+
+    def test_supercapital_station_list_serializes_keepstars_only(self) -> None:
+        keepstar = Location(
+            id=1,
+            location_kind=LocationKind.STRUCTURE,
+            eve_location_id=1_000_000_000_001,
+            type_id=35834,
+            name="Friendly Keepstar",
+            system_id=30_000_001,
+        )
+        with patch("app.services.jump_freighter._keepstar_locations", return_value=[keepstar]):
+            rows = stations_by_system(None, [30_000_001], ship_config("Nyx"))  # type: ignore[arg-type]
+
+        self.assertEqual([row["name"] for row in rows[30_000_001]], ["Friendly Keepstar"])
+        self.assertEqual(rows[30_000_001][0]["location_kind"], "structure")
+        self.assertEqual(rows[30_000_001][0]["type_name"], "Keepstar")
 
 
 

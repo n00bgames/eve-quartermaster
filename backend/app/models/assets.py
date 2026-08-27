@@ -14,6 +14,7 @@ class Location(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     location_kind: Mapped[LocationKind] = mapped_column(default=LocationKind.UNKNOWN, nullable=False)
     eve_location_id: Mapped[int | None] = mapped_column(BigInteger, index=True)
+    type_id: Mapped[int | None] = mapped_column(ForeignKey("eve_types.type_id"), index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     system_id: Mapped[int | None] = mapped_column(ForeignKey("eve_systems.system_id"), index=True)
     parent_location_id: Mapped[int | None] = mapped_column(ForeignKey("locations.id"))

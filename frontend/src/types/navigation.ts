@@ -10,7 +10,7 @@ export type NavigationRoute = { origin: NavigationSystem; destination: Navigatio
 
 export type NavigationGatecheckRoute = NavigationRoute & { gatecheck: NavigationGatecheck };
 
-export type JumpFreighterStation = { station_id: number; name: string; type_id?: number | null; type_name?: string | null; operation_name?: string | null; cyno_guidance: { risk: string; range_km?: number | null; note: string; reference_links?: { label: string; url: string }[] } };
+export type JumpFreighterStation = { station_id: number; name: string; type_id?: number | null; type_name?: string | null; operation_name?: string | null; location_kind?: "station" | "structure"; cyno_guidance: { risk: string; range_km?: number | null; note: string; reference_links?: { label: string; url: string }[] } };
 
 export type JumpActivity = { hours: number; total_jumps: number; jumps_per_hour: number; observations: number; confidence: "none" | "low" | "medium" | "high" | string; activity_label: "quiet" | "moderate" | "active" | "very active" | string; latest_observed_at?: string | null };
 

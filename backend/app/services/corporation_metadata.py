@@ -102,6 +102,7 @@ async def sync_corporation_structure_names(
             location.location_kind = LocationKind.STRUCTURE
             location.name = str(name)
         location.system_id = row.get("system_id")
+        location.type_id = row.get("type_id")
         updated += 1
     db.flush()
     return updated, None

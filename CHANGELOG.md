@@ -4,10 +4,11 @@ All notable changes to EVE Quartermaster are tracked here.
 
 This project is moving quickly during beta. Version sections are written as user-facing release notes first, with implementation detail included where it helps operators understand deployment or testing impact.
 
-## [0.1.21.3-beta] - 2026-08-24
+## [0.1.22-beta] - 2026-08-27
 
 ### Added
 
+- Added supercapital-aware docking targets to the Jump Capable Ship Plotter. Supercarriers and titans now route only through known Keepstar-class structures, exclude NPC stations from their destination details, and warn operators that structure eligibility does not guarantee docking or tether access. Character and corporation structure syncs retain ESI structure types so accessible allied and public Keepstars can participate after refresh.
 - Added dynamic Battle Reports built from the existing Killboard cache. Select a permission-visible pilot to reconstruct their latest engagement using a configurable inactivity gap, deterministic affiliation connectivity, and explicit third-party/ambiguous handling; Involved, Summary, Timeline, Damage, and Composition views expose team efficiency, organizations, pilots, hulls, losses, damage, and direct zKill evidence links without duplicating canonical ESI killmail storage.
 - Added revocable public Battle Report snapshot links. Shared reports use unguessable tokens, open without an EQM account, retain the exact generated report rather than silently changing with later syncs, and expose creator-side copy and view-count controls.
 - Added canonical SDE ship classes to Battle Report Composition, including groups such as Battleship, Marauder, and Combat Battlecruiser, with an explicit unresolved fallback when SDE data is unavailable.
@@ -27,7 +28,7 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Changed
 
-- Bumped the visible application, package, backend API, Android wrapper, export metadata, README badge, and outbound service user-agent versions to 0.1.21.3-beta for release.
+- Bumped the visible application, package, backend API, Android wrapper, export metadata, README badge, and outbound service user-agent versions to 0.1.22-beta for release.
 
 ## [0.1.19-beta] - 2026-08-20
 
