@@ -25,6 +25,16 @@ function cargoBayUsageText(bay: Pick<FittingCargoBay, "used" | "capacity">): str
   return `${formatVolumeM3(bay.used)} / ${bay.capacity == null ? "?" : formatVolumeM3(bay.capacity)}`;
 }
 
+function fittingEngineLabel(simulation: FittingSimulation | null): string {
+  if (!simulation) return "Hybrid engine";
+  if (simulation.resource_engine_used === "rust") return "Hybrid · Rust resources + Python stats";
+  if (simulation.resource_engine_used === "python-fallback") return "Python fallback · resources + stats";
+  if (simulation.resource_engine_used?.startsWith("python-shadow")) {
+    return `Hybrid shadow · Python served${simulation.resource_engine_shadow_match === false ? " · mismatch" : " · Rust matched"}`;
+  }
+  return "Python resources + stats";
+}
+
 type FittingsPageProps = {
   currentUser: FittingsUser;
   assets: FittingsAsset[];
@@ -1076,7 +1086,7 @@ export function FittingsPage({ currentUser, assets, seed, onOpenAssets, onOpenMa
 
           </div>}
 
-          <div className="fitting-sim-toolbar"><label>Simulate as<select value={simulationCharacterId} onChange={(event) => setSimulationCharacterId(event.target.value ? Number(event.target.value) : "")}><option value="">Choose character</option>{simulationCharacterOptions.map((token) => <option key={token.character_id} value={token.character_id}>{token.character_name}</option>)}</select></label><label>Implants<select value={simulationImplantChoice} onChange={(event) => setSimulationImplantChoice(event.target.value)}><option value="">No implants</option>{implantOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label><div className="segmented-control compact"><button type="button" className={!simulationHeat ? "active" : ""} onClick={() => setSimulationHeat(false)}>Cold</button><button type="button" className={simulationHeat ? "active hot" : ""} onClick={() => setSimulationHeat(true)}>Hot</button></div><span className="fitting-dev-warning">In development · values may be inaccurate</span><span className={`fitting-sim-status sim-${simulation?.status ?? "unknown"}`}>{simulationBusy ? "Simulating" : simulation?.status === "pass" ? "Ready" : simulation?.status === "warning" ? "Needs attention" : "Dogma pending"}</span></div>
+          <div className="fitting-sim-toolbar"><label>Simulate as<select value={simulationCharacterId} onChange={(event) => setSimulationCharacterId(event.target.value ? Number(event.target.value) : "")}><option value="">Choose character</option>{simulationCharacterOptions.map((token) => <option key={token.character_id} value={token.character_id}>{token.character_name}</option>)}</select></label><label>Implants<select value={simulationImplantChoice} onChange={(event) => setSimulationImplantChoice(event.target.value)}><option value="">No implants</option>{implantOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label><div className="segmented-control compact"><button type="button" className={!simulationHeat ? "active" : ""} onClick={() => setSimulationHeat(false)}>Cold</button><button type="button" className={simulationHeat ? "active hot" : ""} onClick={() => setSimulationHeat(true)}>Hot</button></div><span className="fitting-dev-warning">{fittingEngineLabel(simulation)} · values still in development</span><span className={`fitting-sim-status sim-${simulation?.status ?? "unknown"}`}>{simulationBusy ? "Simulating" : simulation?.status === "pass" ? "Ready" : simulation?.status === "warning" ? "Needs attention" : "Dogma pending"}</span></div>
 
           <div className="fitting-summary-row">{Object.entries(selected.summary).map(([key, value]) => <span key={key}>{key}: <strong>{value}</strong></span>)}<span>{selected.is_draft ? "Draft" : "ESI synced"}</span><span>{selected.is_shared ? "Shared" : "Private"}</span>{selected.source_fitting_name && <span>From {selected.source_fitting_name}</span>}{selected.last_synced_at && <span>Synced {formatDateTime(selected.last_synced_at, preferredTimeZone(currentUser))}</span>}{selected.updated_at && <span>Edited {formatDateTime(selected.updated_at, preferredTimeZone(currentUser))}</span>}</div>
 

@@ -665,6 +665,21 @@ docker compose --profile test run --rm eqm-core-tests
 docker compose --profile test run --rm backend-tests python -m pytest -q tests/test_planetary_simulation.py tests/test_planetary_simulation_engine.py
 ```
 
+### Fitting Rust resource engine
+
+Fitting simulation now runs as a hybrid while combat-stat parity is expanded. `EQM_FITTING_ENGINE` controls the completed resource slice: CPU, powergrid, calibration, slot limits, subsystem fitting modifiers, and the module set allowed to affect stats.
+
+- `python` keeps all fitting resource calculations in Python.
+- `shadow` serves Python while comparing the Rust resource result.
+- `rust` serves the Rust resource result and automatically falls back to Python on any binary error or timeout.
+
+Docker Compose defaults to `rust`; combat, tank, capacitor, mobility, targeting, and cargo statistics remain Python. The Fittings page labels this as a hybrid result. Set `EQM_FITTING_ENGINE=python` and rebuild the backend to roll the resource slice back independently of Planetary Industry.
+
+```powershell
+docker compose --profile test run --rm eqm-core-tests
+docker compose --profile test run --rm backend-tests python -m pytest -q tests/test_fitting_math_parity.py tests/test_fitting_resources_parity.py tests/test_fitting_resources_engine.py
+```
+
 The test image is built from the dedicated Docker `test` stage and includes the repository's backend tests. The normal backend and worker continue to use the final `runtime` stage without pytest.
 
 Fitting reference evidence lives under `backend/tests/fixtures/fittings/evidence/`. Every external capture records its simulator/profile version, module and drone state, heat/implant/booster assumptions, and display-rounded expected values. The current fleet includes cold All-V and exported Steihl Lianul skill-profile captures from Pyfa 2.68.0 for a Rail Moa, Rapid Light Caracal, Active Armor Vexor, and command-burst Absolution, with the Absolution also cross-checked in the EVE fitting simulator. EQM uses the currently imported CCP SDE as authoritative when a versioned Pyfa capture contains older module attributes; such source-version differences are documented in the evidence instead of being hidden with hard-coded corrections.

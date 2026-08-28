@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models import CharacterFitting, CharacterFittingItem, CharacterSkill, EveCharacter, EveDogmaAttribute, EveDogmaEffect, EveGroup, EveType, EveTypeDogmaAttribute, EveTypeDogmaEffect
+from app.services.fitting_resources_engine import evaluate_fitting_resources_with_engine
 from app.services.ship_capacity import resolved_ship_capacity
 
 FITTED_SLOT_PREFIXES = {"HiSlot", "MedSlot", "LoSlot", "RigSlot", "SubSystemSlot", "ServiceSlot"}
@@ -528,6 +529,34 @@ def item_resource_usage(item: CharacterFittingItem, attrs: dict[str, float], gro
         "cpu": cpu * quantity,
         "powergrid": powergrid * quantity,
         "calibration": float(attr_value(attrs, "upgradeCost") or 0) * quantity if slot == "RigSlot" else 0.0,
+    }
+
+
+def fitting_resources_payload(
+    base_ship_attrs: dict[str, float],
+    skill_levels: dict[int, int],
+    items: list[CharacterFittingItem],
+    dogma: dict[int, dict[str, float]],
+    names: dict[int, str],
+    group_names: dict[int, str],
+) -> dict[str, Any]:
+    return {
+        "schema_version": "eqm.fitting-resources-input.v1",
+        "ship_attrs": base_ship_attrs,
+        "skill_levels": skill_levels,
+        "items": [
+            {
+                "id": int(item.id or 0),
+                "type_id": item.type_id,
+                "flag": item.flag,
+                "quantity": int(item.quantity or 1),
+                "simulation_state": item_state(item),
+                "name": names.get(item.type_id, f"Type {item.type_id}"),
+                "group_name": group_names.get(item.type_id, ""),
+                "attrs": dogma.get(item.type_id, {}),
+            }
+            for item in items
+        ],
     }
 
 def safe_number(value: float | None, default: float = 0.0) -> float:
@@ -1400,6 +1429,7 @@ def compute_fitting_stats(
     implant_type_ids: set[int] | None = None,
     type_group_ids: dict[int, int] | None = None,
     heat: bool = False,
+    stats_item_ids: set[int] | None = None,
 ) -> dict[str, Any]:
     ship_attrs = effective_ship_attrs_with_subsystems(dogma.get(fitting.ship_type_id, {}), fitting.items, dogma)
     implant_mobility = selected_implant_mobility_multipliers(
@@ -1414,7 +1444,11 @@ def compute_fitting_stats(
     shield_recharge_ms = attr_value(ship_attrs, "shieldRechargeRate")
 
     fitted_items = [item for item in fitting.items if slot_prefix(item.flag) in FITTED_SLOT_PREFIXES]
-    effect_fitted_items = fitted_items_within_slot_capacity(fitted_items, ship_attrs)
+    effect_fitted_items = (
+        [item for item in fitted_items if int(item.id or 0) in stats_item_ids]
+        if stats_item_ids is not None
+        else fitted_items_within_slot_capacity(fitted_items, ship_attrs)
+    )
     active_fitted_items = [item for item in effect_fitted_items if item_is_online(item)]
     bay_items = [item for item in fitting.items if slot_prefix(item.flag) in {"DroneBay", "FighterBay"}]
     cargo_items = [item for item in fitting.items if slot_prefix(item.flag) == "Cargo"]
@@ -2088,6 +2122,69 @@ def simulate_fitting(db: Session, fitting: CharacterFitting, character: EveChara
         else:
             row["percent"] = None
 
+    python_resource_result = {
+        "schema_version": "eqm.fitting-resources-output.v1",
+        "effective_ship_attrs": {
+            name: attr_value(ship_attrs, name)
+            for name in (
+                "cpuOutput",
+                "powerOutput",
+                "hiSlots",
+                "subsystemMHTFittingReduction",
+                "subsystemMMissileFittingReduction",
+            )
+        },
+        "resources": resources,
+        "slots": [
+            {key: value for key, value in row.items() if key != "label"}
+            for row in slots
+        ],
+        "item_usage": [
+            {
+                "id": row["item_id"],
+                "cpu": row["cpu"],
+                "powergrid": row["powergrid"],
+                "calibration": row["calibration"],
+            }
+            for row in item_checks
+        ],
+        "stats_item_ids": [
+            int(item.id or 0)
+            for item in fitted_items_within_slot_capacity(fitting.items, ship_attrs)
+        ],
+    }
+    resource_evaluation = evaluate_fitting_resources_with_engine(
+        payload=fitting_resources_payload(
+            base_ship_attrs,
+            skill_levels,
+            fitting.items,
+            dogma,
+            names,
+            group_names,
+        ),
+        python_result=python_resource_result,
+    )
+    resources = resource_evaluation["resources"]
+    slots = [
+        {
+            **row,
+            "label": SLOT_CAPACITY_ATTRS[row["key"]][1],
+        }
+        for row in resource_evaluation["slots"]
+    ]
+    usage_by_item_id = {
+        int(row["id"]): row
+        for row in resource_evaluation["item_usage"]
+    }
+    for row in item_checks:
+        usage = usage_by_item_id.get(int(row["item_id"] or 0))
+        if usage:
+            row.update(
+                cpu=usage["cpu"],
+                powergrid=usage["powergrid"],
+                calibration=usage["calibration"],
+            )
+
     missing_skills = [row for row in required_skill_rows if not row["met"]]
     slot_failures = [row for row in slots if not row["ok"]]
     resource_failures = [key for key, row in resources.items() if not row["ok"]]
@@ -2098,6 +2195,10 @@ def simulate_fitting(db: Session, fitting: CharacterFitting, character: EveChara
         notes.append(f"Implant set selected: {implant_context.get('name', 'Implants')} ({implant_context.get('implant_count', 0)} implant{'' if implant_context.get('implant_count', 0) == 1 else 's'}). Supported agility and warp-speed Dogma effects are applied.")
     if dogma_loaded and not dogma_effects_loaded:
         notes.append("Dogma effects are not imported yet. Re-import SDE dogma to unlock effect-graph based simulation passes.")
+    if resource_evaluation.get("engine_used") == "python-fallback":
+        notes.append("Rust fitting resources were unavailable, so CPU, powergrid, calibration, and slot checks used the Python fallback.")
+    elif resource_evaluation.get("engine_shadow_match") is False:
+        notes.append("Rust fitting resource shadow output differed from Python; Python remains authoritative in shadow mode.")
     stats = compute_fitting_stats(
         fitting,
         dogma,
@@ -2112,6 +2213,7 @@ def simulate_fitting(db: Session, fitting: CharacterFitting, character: EveChara
         implant_type_ids=implant_type_ids,
         type_group_ids=group_ids,
         heat=heat,
+        stats_item_ids={int(item_id) for item_id in resource_evaluation["stats_item_ids"]},
     ) if dogma_loaded else None
 
     return {
@@ -2120,6 +2222,10 @@ def simulate_fitting(db: Session, fitting: CharacterFitting, character: EveChara
         "character_name": character.name,
         "dogma_loaded": dogma_loaded,
         "dogma_effects_loaded": dogma_effects_loaded,
+        "resource_engine_requested": resource_evaluation.get("engine_requested", "python"),
+        "resource_engine_used": resource_evaluation.get("engine_used", "python"),
+        "resource_engine_shadow_match": resource_evaluation.get("engine_shadow_match"),
+        "stats_engine_used": "python",
         "status": status,
         "summary": {
             "missing_skills": len(missing_skills),
