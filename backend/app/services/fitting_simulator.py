@@ -1663,22 +1663,75 @@ def compute_fitting_stats(
                 if values:
                     direct_resonance_mods[layer_name][damage_type].extend([float(value) for value in values for _ in range(qty)])
 
+    stacking_inputs = [
+        {"name": "shield hp", "unpenalized_multipliers": [1 + float(value) / 100.0 for value in shield_hp_pct_mods]},
+        {"name": "armor hp", "unpenalized_multipliers": [1 + float(value) / 100.0 for value in armor_hp_pct_mods]},
+        {"name": "structure hp percent", "unpenalized_multipliers": [1 + float(value) / 100.0 for value in structure_hp_pct_mods]},
+        {"name": "structure hp multiplier", "unpenalized_multipliers": structure_multipliers},
+        {"name": "shield repair", "raw_multipliers": shield_repair_multipliers},
+        {"name": "armor repair", "raw_multipliers": armor_repair_multipliers},
+        {"name": "armor repair cycle", "raw_multipliers": armor_repair_cycle_multipliers},
+        {"name": "structure repair", "raw_multipliers": structure_repair_multipliers},
+        {"name": "missile damage", "dogma_values": missile_damage_mods},
+        {"name": "missile rate of fire", "raw_multipliers": missile_rof_mods},
+        {"name": "missile velocity", "raw_multipliers": missile_velocity_mods},
+        {"name": "missile flight time", "raw_multipliers": missile_flight_time_mods},
+        {"name": "missile range", "raw_multipliers": missile_range_mods},
+        {"name": "turret damage", "dogma_values": turret_damage_mods},
+        {"name": "turret rate of fire", "raw_multipliers": turret_rof_mods},
+        {"name": "turret range", "raw_multipliers": turret_range_mods},
+        {"name": "drone damage", "dogma_values": drone_damage_mods},
+        {"name": "velocity", "raw_multipliers": velocity_multipliers},
+        {"name": "agility", "raw_multipliers": agility_multipliers},
+        {"name": "implant agility", "unpenalized_multipliers": implant_mobility["agility"]},
+        {"name": "implant warp speed", "unpenalized_multipliers": implant_mobility["warp_speed"]},
+        {"name": "capacitor capacity", "raw_multipliers": capacitor_multipliers},
+        {"name": "capacitor recharge", "unpenalized_multipliers": capacitor_recharge_multipliers},
+        {"name": "capacitor recharge rig", "unpenalized_multipliers": capacitor_recharge_rig_multipliers},
+        {"name": "signature", "raw_multipliers": signature_multipliers},
+    ]
+    python_stacking_results = []
+    for case in stacking_inputs:
+        python_stacking_results.append({
+            "name": case["name"],
+            "raw_multiplier": stacking_raw_multiplier(case.get("raw_multipliers", [])),
+            "unpenalized_multiplier": unpenalized_multiplier(case.get("unpenalized_multipliers", [])),
+            "dogma_multiplier": stacking_multiplier(case.get("dogma_values", [])),
+            "percent_bonus_multiplier": percent_bonus_multiplier(case.get("percent_bonuses", [])),
+        })
+    stacking_evaluation = evaluate_fitting_math_with_engine(
+        payload={
+            "schema_version": "eqm.fitting-math-input.v1",
+            "stacking_cases": stacking_inputs,
+            "capacitor_cases": [],
+        },
+        python_result={
+            "schema_version": "eqm.fitting-math-output.v1",
+            "stacking_cases": python_stacking_results,
+            "capacitor_cases": [],
+        },
+    )
+    stacking_results = {
+        case["name"]: case
+        for case in stacking_evaluation["stacking_cases"]
+    }
+
     shield_hp *= 1 + 0.05 * skill_level(skill_levels, SHIELD_MANAGEMENT_TYPE_ID)
     armor_hp *= 1 + 0.05 * skill_level(skill_levels, HULL_UPGRADES_TYPE_ID)
     structure_hp *= 1 + 0.05 * skill_level(skill_levels, MECHANICS_TYPE_ID)
-    shield_hp *= unpenalized_multiplier([1 + float(value) / 100.0 for value in shield_hp_pct_mods])
-    armor_hp *= unpenalized_multiplier([1 + float(value) / 100.0 for value in armor_hp_pct_mods])
-    structure_hp *= unpenalized_multiplier([1 + float(value) / 100.0 for value in structure_hp_pct_mods])
-    structure_hp *= unpenalized_multiplier(structure_multipliers)
-    shield_repair_hps *= stacking_raw_multiplier(shield_repair_multipliers) * ship_shield_boost_multiplier(ship_attrs, skill_name_levels)
-    armor_repair_hps *= stacking_raw_multiplier(armor_repair_multipliers)
+    shield_hp *= stacking_results["shield hp"]["unpenalized_multiplier"]
+    armor_hp *= stacking_results["armor hp"]["unpenalized_multiplier"]
+    structure_hp *= stacking_results["structure hp percent"]["unpenalized_multiplier"]
+    structure_hp *= stacking_results["structure hp multiplier"]["unpenalized_multiplier"]
+    shield_repair_hps *= stacking_results["shield repair"]["raw_multiplier"] * ship_shield_boost_multiplier(ship_attrs, skill_name_levels)
+    armor_repair_hps *= stacking_results["armor repair"]["raw_multiplier"]
     repair_systems_cycle = named_skill_dogma_multiplier(
         dogma, names, skill_name_levels, "Repair Systems", "durationSkillBonus"
     )
-    armor_repair_cycle_multiplier = stacking_raw_multiplier(armor_repair_cycle_multipliers) * repair_systems_cycle
+    armor_repair_cycle_multiplier = stacking_results["armor repair cycle"]["raw_multiplier"] * repair_systems_cycle
     if armor_repair_cycle_multiplier > 0:
         armor_repair_hps /= armor_repair_cycle_multiplier
-    structure_repair_hps *= stacking_raw_multiplier(structure_repair_multipliers)
+    structure_repair_hps *= stacking_results["structure repair"]["raw_multiplier"]
     apply_resistance_modifiers(resonances, layer_bonus_mods, direct_resonance_mods)
     shield_resists = resistance_profile_from_resonance(resonances["shield"])
     armor_resists = resistance_profile_from_resonance(resonances["armor"])
@@ -1703,21 +1756,21 @@ def compute_fitting_stats(
         if row:
             charges.append(row)
 
-    missile_damage_multiplier = stacking_multiplier(missile_damage_mods)
-    missile_rof_multiplier = stacking_raw_multiplier(missile_rof_mods)
-    missile_velocity_multiplier = stacking_raw_multiplier(missile_velocity_mods) * missile_skill_velocity_multiplier(skill_name_levels)
-    missile_flight_time_multiplier = stacking_raw_multiplier(missile_flight_time_mods) * missile_skill_flight_time_multiplier(skill_name_levels)
-    missile_range_multiplier = stacking_raw_multiplier(missile_range_mods)
-    turret_damage_multiplier = stacking_multiplier(turret_damage_mods)
-    turret_rof_multiplier = stacking_raw_multiplier(turret_rof_mods)
+    missile_damage_multiplier = stacking_results["missile damage"]["dogma_multiplier"]
+    missile_rof_multiplier = stacking_results["missile rate of fire"]["raw_multiplier"]
+    missile_velocity_multiplier = stacking_results["missile velocity"]["raw_multiplier"] * missile_skill_velocity_multiplier(skill_name_levels)
+    missile_flight_time_multiplier = stacking_results["missile flight time"]["raw_multiplier"] * missile_skill_flight_time_multiplier(skill_name_levels)
+    missile_range_multiplier = stacking_results["missile range"]["raw_multiplier"]
+    turret_damage_multiplier = stacking_results["turret damage"]["dogma_multiplier"]
+    turret_rof_multiplier = stacking_results["turret rate of fire"]["raw_multiplier"]
     turret_damage_multiplier *= named_skill_dogma_multiplier(
         dogma, names, skill_name_levels, "Surgical Strike", "damageMultiplierBonus"
     )
     turret_rof_multiplier *= named_skill_dogma_multiplier(
         dogma, names, skill_name_levels, "Rapid Firing", "rofBonus"
     )
-    turret_range_multiplier = stacking_raw_multiplier(turret_range_mods)
-    drone_damage_multiplier = stacking_multiplier(drone_damage_mods) * (1 + 0.1 * named_skill_level(skill_name_levels, "Drone Interfacing"))
+    turret_range_multiplier = stacking_results["turret range"]["raw_multiplier"]
+    drone_damage_multiplier = stacking_results["drone damage"]["dogma_multiplier"] * (1 + 0.1 * named_skill_level(skill_name_levels, "Drone Interfacing"))
     drone_control_range = drone_control_range_m(
         skill_name_levels,
         drone_control_bonus_m,
@@ -1878,7 +1931,7 @@ def compute_fitting_stats(
             ]
             if calculated_propulsion_bonuses:
                 max_velocity *= 1 + max(calculated_propulsion_bonuses)
-        max_velocity *= stacking_raw_multiplier(velocity_multipliers)
+        max_velocity *= stacking_results["velocity"]["raw_multiplier"]
     mass = ship_mass if ship_mass is not None else attr_value(ship_attrs, "mass")
     if mass is not None:
         mass = float(mass) + mass_addition
@@ -1886,17 +1939,17 @@ def compute_fitting_stats(
     if inertia is not None:
         inertia = float(inertia)
         inertia *= character_agility_multiplier(ship_attrs, dogma, skill_levels)
-        inertia *= stacking_raw_multiplier(agility_multipliers)
-        inertia *= unpenalized_multiplier(implant_mobility["agility"])
+        inertia *= stacking_results["agility"]["raw_multiplier"]
+        inertia *= stacking_results["implant agility"]["unpenalized_multiplier"]
     align_time = None
     if mass and inertia:
         align_time = 1.38629436112 * float(mass) * float(inertia) / 1_000_000.0
     warp_speed = attr_value(ship_attrs, "warpSpeedMultiplier", "baseWarpSpeed")
     if warp_speed is not None:
-        warp_speed = float(warp_speed) * unpenalized_multiplier(implant_mobility["warp_speed"])
+        warp_speed = float(warp_speed) * stacking_results["implant warp speed"]["unpenalized_multiplier"]
     capacitor_capacity = attr_value(ship_attrs, "capacitorCapacity")
     if capacitor_capacity is not None:
-        capacitor_capacity = float(capacitor_capacity) * stacking_raw_multiplier(capacitor_multipliers)
+        capacitor_capacity = float(capacitor_capacity) * stacking_results["capacitor capacity"]["raw_multiplier"]
         capacity_bonus = attr_value(dogma.get(CAPACITOR_MANAGEMENT_TYPE_ID, {}), "capacitorCapacityBonus")
         if capacity_bonus is not None:
             capacitor_capacity *= per_level_bonus_multiplier(
@@ -1913,8 +1966,8 @@ def compute_fitting_stats(
             skill_level(skill_levels, CAPACITOR_SYSTEMS_OPERATION_TYPE_ID),
         )
     if capacitor_recharge_seconds is not None:
-        capacitor_recharge_seconds *= unpenalized_multiplier(capacitor_recharge_multipliers)
-        capacitor_recharge_seconds *= unpenalized_multiplier(capacitor_recharge_rig_multipliers)
+        capacitor_recharge_seconds *= stacking_results["capacitor recharge"]["unpenalized_multiplier"]
+        capacitor_recharge_seconds *= stacking_results["capacitor recharge rig"]["unpenalized_multiplier"]
     if capacitor_capacity and capacitor_recharge_seconds:
         capacitor_peak_recharge = float(capacitor_capacity) / capacitor_recharge_seconds * 2.5
     capacitor_draw, capacitor_modules = active_capacitor_use_per_second(
@@ -1945,7 +1998,7 @@ def compute_fitting_stats(
             )
     elif capacitor_draw <= 0:
         python_stable_percent = 100.0
-    math_evaluation = evaluate_fitting_math_with_engine(
+    capacitor_evaluation = evaluate_fitting_math_with_engine(
         payload={
             "schema_version": "eqm.fitting-math-input.v1",
             "stacking_cases": [],
@@ -1972,10 +2025,28 @@ def compute_fitting_stats(
             }],
         },
     )
-    capacitor_result = math_evaluation["capacitor_cases"][0]
+    capacitor_result = capacitor_evaluation["capacitor_cases"][0]
     stable_percent = capacitor_result["stable_percent"]
     depletion_seconds = capacitor_result["depletion_seconds"]
     cap_stable = stable_percent is not None
+    math_evaluations = (stacking_evaluation, capacitor_evaluation)
+    math_engine_requested = stacking_evaluation.get("engine_requested", "python")
+    math_engine_states = {evaluation.get("engine_used", "python") for evaluation in math_evaluations}
+    if "python-fallback" in math_engine_states:
+        math_engine_used = "python-fallback"
+    elif "python-shadow-error" in math_engine_states:
+        math_engine_used = "python-shadow-error"
+    elif math_engine_states == {"rust"}:
+        math_engine_used = "rust"
+    elif math_engine_states == {"python-shadow"}:
+        math_engine_used = "python-shadow"
+    else:
+        math_engine_used = "python"
+    math_engine_shadow_match = (
+        all(evaluation.get("engine_shadow_match") is True for evaluation in math_evaluations)
+        if math_engine_requested == "shadow"
+        else None
+    )
     shield_peak_recharge = None
     if shield_hp and shield_recharge_ms:
         shield_recharge_multiplier = named_skill_dogma_multiplier(
@@ -1987,7 +2058,7 @@ def compute_fitting_stats(
         signature_radius = float(signature_radius)
         for item in active_fitted_items:
             signature_radius += safe_number(attr_value(dogma.get(item.type_id, {}), "signatureRadiusAdd")) * module_quantity(item)
-        signature_radius *= stacking_raw_multiplier(signature_multipliers)
+        signature_radius *= stacking_results["signature"]["raw_multiplier"]
 
     cargo_capacity = effective_cargo_capacity(ship_attrs, skill_levels, cargo_capacity_multipliers, ship_capacity)
 
@@ -2005,9 +2076,9 @@ def compute_fitting_stats(
     )
 
     return {
-        "math_engine_requested": math_evaluation.get("engine_requested", "python"),
-        "math_engine_used": math_evaluation.get("engine_used", "python"),
-        "math_engine_shadow_match": math_evaluation.get("engine_shadow_match"),
+        "math_engine_requested": math_engine_requested,
+        "math_engine_used": math_engine_used,
+        "math_engine_shadow_match": math_engine_shadow_match,
         "offense": {
             "turret_dps": turret_dps,
             "launcher_dps": launcher_dps,
@@ -2065,19 +2136,19 @@ def compute_fitting_stats(
         "notes": [
             f"Combat stats are SDE-derived {'hot' if heat else 'cold'} estimates with common fitted module modifiers, character skills, selected hull role bonuses, supported implant mobility effects, capacitor draw, and stacking penalties. Script modifiers and remaining effect-graph coverage are still being refined.",
             *(
-                ["Rust capacitor math was unavailable, so recharge stability and depletion used the Python fallback."]
-                if math_evaluation.get("engine_used") == "python-fallback"
+                ["Rust fitting math was unavailable, so affected stacking or capacitor calculations used the Python fallback."]
+                if math_engine_used == "python-fallback"
                 else []
             ),
             *(
-                ["Rust capacitor math shadow execution failed; Python remained authoritative."]
-                if math_evaluation.get("engine_used") == "python-shadow-error"
+                ["Rust fitting math shadow execution failed; Python remained authoritative."]
+                if math_engine_used == "python-shadow-error"
                 else []
             ),
             *(
-                ["Rust capacitor math shadow output differed from Python; Python remains authoritative in shadow mode."]
-                if math_evaluation.get("engine_shadow_match") is False
-                and math_evaluation.get("engine_used") != "python-shadow-error"
+                ["Rust fitting math shadow output differed from Python; Python remains authoritative in shadow mode."]
+                if math_engine_shadow_match is False
+                and math_engine_used != "python-shadow-error"
                 else []
             ),
         ],

@@ -28,7 +28,7 @@ function cargoBayUsageText(bay: Pick<FittingCargoBay, "used" | "capacity">): str
 function fittingEngineLabel(simulation: FittingSimulation | null): string {
   if (!simulation) return "Hybrid engine";
   if (simulation.resource_engine_used === "rust" && simulation.math_engine_used === "rust") {
-    return "Hybrid · Rust resources/capacitor + Python combat";
+    return "Hybrid · Rust resources/math + Python effect graph";
   }
   if (simulation.resource_engine_used === "python-fallback" || simulation.math_engine_used === "python-fallback") {
     return "Hybrid fallback · some fitting math used Python";

@@ -667,13 +667,13 @@ docker compose --profile test run --rm backend-tests python -m pytest -q tests/t
 
 ### Fitting Rust hybrid engine
 
-Fitting simulation now runs as a hybrid while combat-stat parity is expanded. `EQM_FITTING_ENGINE` controls the completed Rust slices: CPU, powergrid, calibration, slot limits, subsystem fitting modifiers, the module set allowed to affect stats, and capacitor recharge stability/depletion math.
+Fitting simulation now runs as a hybrid while combat-stat parity is expanded. `EQM_FITTING_ENGINE` controls the completed Rust slices: CPU, powergrid, calibration, slot limits, subsystem fitting modifiers, the module set allowed to affect stats, capacitor recharge stability/depletion, and the shared stacking or unpenalized reductions used by weapon, repair, mobility, signature, and capacitor modifiers.
 
 - `python` keeps all migrated fitting calculations in Python.
 - `shadow` serves Python while comparing the Rust results.
 - `rust` serves the Rust results and automatically falls back to Python on any binary error or timeout.
 
-Docker Compose defaults to `rust`. Python still prepares capacitor capacity, recharge modifiers, and active-module draw; Rust resolves the nonlinear recharge curve, stable percentage, and depletion duration. Combat, tank, mobility, targeting, and cargo statistics remain Python. The Fittings page labels this as a hybrid result. Set `EQM_FITTING_ENGINE=python` and rebuild the backend to roll all fitting Rust slices back independently of Planetary Industry.
+Docker Compose defaults to `rust`. Python still prepares the EVE effect graph and the modifier lists; Rust reduces the migrated modifiers and resolves the nonlinear capacitor curve. Final combat, tank, mobility, targeting, and cargo assembly remains Python. The Fittings page labels this boundary as `Rust resources/math + Python effect graph`. Set `EQM_FITTING_ENGINE=python` and rebuild the backend to roll all fitting Rust slices back independently of Planetary Industry.
 
 ```powershell
 docker compose --profile test run --rm eqm-core-tests
