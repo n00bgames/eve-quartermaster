@@ -650,6 +650,21 @@ Run only the fitting regression fleet while refining fitting calculations:
 docker compose --profile test run --rm backend-tests python -m pytest -q tests/test_fitting_regression_fleet.py tests/test_fitting_reference_fleet.py tests/test_fitting_eft_import.py
 ```
 
+### Planetary Industry Rust engine
+
+The backend image includes the release build of `eqm-core`. `EQM_PI_ENGINE` controls colony projection execution:
+
+- `python` uses the original Python simulator.
+- `shadow` serves Python while running Rust and logging parity mismatches.
+- `rust` serves Rust results and automatically falls back to Python on any binary error or timeout.
+
+Docker Compose defaults to `rust`. Set `EQM_PI_ENGINE=python` in `.env` and rebuild the backend for an immediate rollback. The PI page displays the engine that served each projection.
+
+```powershell
+docker compose --profile test run --rm eqm-core-tests
+docker compose --profile test run --rm backend-tests python -m pytest -q tests/test_planetary_simulation.py tests/test_planetary_simulation_engine.py
+```
+
 The test image is built from the dedicated Docker `test` stage and includes the repository's backend tests. The normal backend and worker continue to use the final `runtime` stage without pytest.
 
 Fitting reference evidence lives under `backend/tests/fixtures/fittings/evidence/`. Every external capture records its simulator/profile version, module and drone state, heat/implant/booster assumptions, and display-rounded expected values. The current fleet includes cold All-V and exported Steihl Lianul skill-profile captures from Pyfa 2.68.0 for a Rail Moa, Rapid Light Caracal, Active Armor Vexor, and command-burst Absolution, with the Absolution also cross-checked in the EVE fitting simulator. EQM uses the currently imported CCP SDE as authoritative when a versioned Pyfa capture contains older module attributes; such source-version differences are documented in the evidence instead of being hidden with hard-coded corrections.

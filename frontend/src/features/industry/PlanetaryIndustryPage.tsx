@@ -300,19 +300,26 @@ function ColonyRow({
   formatDateTime: (value?: string | null) => string;
 }) {
   const attention = colony.summary.expired_extractors + colony.summary.expiring_extractors + colony.summary.starved_factories;
+  const engineLabel = colony.projection.engine_used === "rust"
+    ? "Rust core"
+    : colony.projection.engine_used === "python-fallback"
+      ? "Python fallback"
+      : colony.projection.engine_used?.startsWith("python-shadow")
+        ? `Python + Rust shadow${colony.projection.engine_shadow_match === false ? " mismatch" : ""}`
+        : "Python core";
   return <article className={`planetary-colony ${attention ? "needs-attention" : ""}`}>
     <button type="button" className="planetary-colony-heading" onClick={onToggle}>
       <img src={colony.character_portrait_url || `https://images.evetech.net/characters/${colony.character_eve_id}/portrait?size=64`} alt="" />
       <span><strong>{colony.planet_name}</strong><small>{colony.solar_system_name ?? `System ${colony.solar_system_id ?? "unknown"}`} · Sec {securityLabel(colony.security_status)} · {colony.planet_type ?? "Unknown type"}</small></span>
       <span><b>{colony.character_name}</b><small>Command Center {colony.upgrade_level}</small></span>
       <span><b>{colony.num_pins} pins</b><small>{colony.link_count} links · {colony.route_count} routes</small></span>
-      <span className={attention ? "planetary-attention" : "planetary-healthy"}><b>{attention ? `${attention} alerts` : "Healthy"}</b><small>Projected {formatDateTime(colony.projection.projected_at)} · ESI {formatDateTime(colony.projection.checkpoint_at)}</small></span>
+      <span className={attention ? "planetary-attention" : "planetary-healthy"}><b>{attention ? `${attention} alerts` : "Healthy"}</b><small>Projected {formatDateTime(colony.projection.projected_at)} · ESI {formatDateTime(colony.projection.checkpoint_at)} · {engineLabel}</small></span>
       <ChevronDown size={18} className={expanded ? "rotated" : ""} />
     </button>
     {expanded && <div className="planetary-colony-detail">
       <div className="planetary-projection-note">
         <Timer size={16} />
-        <span><strong>{colony.projection.is_projection ? "Calculated to now" : "Observed inventory"}</strong> from ESI checkpoint {formatDateTime(colony.projection.checkpoint_at)} · {number.format(colony.projection.events_processed)} production events simulated</span>
+        <span><strong>{colony.projection.is_projection ? "Calculated to now" : "Observed inventory"}</strong> from ESI checkpoint {formatDateTime(colony.projection.checkpoint_at)} · {number.format(colony.projection.events_processed)} production events simulated · {engineLabel}</span>
       </div>
       {colony.projection.warning && <div className="notice warning planetary-projection-warning"><AlertTriangle size={16} /><span>{colony.projection.warning}</span></div>}
       <div className="planetary-detail-summary">

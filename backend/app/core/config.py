@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     killboard_lookback_days_default: int = 90
     killboard_request_delay_seconds_default: float = 1.0
     killboard_max_pages_default: int = 10
+    eqm_pi_engine: str = "python"
+    eqm_core_binary: str = "/usr/local/bin/eqm-core"
+    eqm_core_timeout_seconds: float = 5.0
 
     @property
     def cors_origin_list(self) -> list[str]:

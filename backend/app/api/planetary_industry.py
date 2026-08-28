@@ -49,8 +49,8 @@ from app.services.planetary_simulation import (
     SimulationRoute,
     SimulationSchematic,
     known_pin_capacity_m3,
-    simulate_colony,
 )
+from app.services.planetary_simulation_engine import simulate_colony_with_engine
 
 router = APIRouter(prefix="/planetary-industry", tags=["planetary-industry"])
 
@@ -197,7 +197,7 @@ def serialize_colony(db: Session, colony: PlanetaryColony) -> dict[str, Any]:
                 extractor_noise_factor=noise_factor,
             )
         )
-    simulation = simulate_colony(
+    simulation = simulate_colony_with_engine(
         checkpoint_at=colony.esi_last_update,
         projected_at=now,
         pins=simulation_pins,
@@ -323,6 +323,8 @@ def serialize_colony(db: Session, colony: PlanetaryColony) -> dict[str, Any]:
         projection_warning = "Projection stopped at its safety limit; sync the colony for a newer checkpoint."
     elif checkpoint_age_minutes is not None and checkpoint_age_minutes >= 24 * 60:
         projection_warning = "This projection begins from an ESI checkpoint more than 24 hours old; manual transfers may not be reflected."
+    if simulation.get("engine_used") == "python-fallback":
+        projection_warning = "Rust projection was unavailable, so this result used the Python fallback."
 
     return {
         "id": colony.id,
@@ -350,6 +352,9 @@ def serialize_colony(db: Session, colony: PlanetaryColony) -> dict[str, Any]:
             "truncated": simulation["truncated"],
             "checkpoint_age_minutes": checkpoint_age_minutes,
             "warning": projection_warning,
+            "engine_requested": simulation.get("engine_requested", "python"),
+            "engine_used": simulation.get("engine_used", "python"),
+            "engine_shadow_match": simulation.get("engine_shadow_match"),
         },
         "summary": {
             "extractors": sum(1 for pin in colony.pins if pin.extractor_cycle_time is not None),

@@ -1,4 +1,4 @@
-use std::{env, fs, process};
+use std::{env, fs, io, process};
 
 use eqm_core::colony_simulation::{simulate_colony, ColonySimulationInput};
 use eqm_core::fitting_math::{evaluate_fitting_math, FittingMathInput};
@@ -23,8 +23,13 @@ fn run() -> Result<(), String> {
     let command = args.first().map(String::as_str).unwrap_or_else(|| usage());
     let input_path =
         value_after(&args, "--input").ok_or_else(|| "--input is required".to_string())?;
-    let input_text = fs::read_to_string(&input_path)
-        .map_err(|error| format!("unable to read {input_path}: {error}"))?;
+    let input_text = if input_path == "-" {
+        io::read_to_string(io::stdin())
+            .map_err(|error| format!("unable to read standard input: {error}"))?
+    } else {
+        fs::read_to_string(&input_path)
+            .map_err(|error| format!("unable to read {input_path}: {error}"))?
+    };
     let output = match command {
         "pi-shortage" => {
             let target_type_id = value_after(&args, "--target-type-id")

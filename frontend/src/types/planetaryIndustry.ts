@@ -92,6 +92,9 @@ export type PlanetaryColony = {
     truncated: boolean;
     checkpoint_age_minutes?: number | null;
     warning?: string | null;
+    engine_requested?: "python" | "shadow" | "rust";
+    engine_used?: "python" | "python-shadow" | "python-shadow-error" | "python-fallback" | "rust";
+    engine_shadow_match?: boolean | null;
   };
   summary: {
     extractors: number;

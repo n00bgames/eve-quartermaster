@@ -23,7 +23,9 @@ services:
       - "6379:6379"
 
   backend:
-    build: ./backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     environment:
       APP_NAME: eve-quartermaster
       DATABASE_URL: postgresql+psycopg://eve:eve@postgres:5432/eve_quartermaster
@@ -44,6 +46,9 @@ services:
       KILLBOARD_LOOKBACK_DAYS_DEFAULT: ${KILLBOARD_LOOKBACK_DAYS_DEFAULT:-90}
       KILLBOARD_REQUEST_DELAY_SECONDS_DEFAULT: ${KILLBOARD_REQUEST_DELAY_SECONDS_DEFAULT:-1.0}
       KILLBOARD_MAX_PAGES_DEFAULT: ${KILLBOARD_MAX_PAGES_DEFAULT:-10}
+      EQM_PI_ENGINE: ${EQM_PI_ENGINE:-rust}
+      EQM_CORE_BINARY: ${EQM_CORE_BINARY:-/usr/local/bin/eqm-core}
+      EQM_CORE_TIMEOUT_SECONDS: ${EQM_CORE_TIMEOUT_SECONDS:-5}
     ports:
       - "8000:8000"
     volumes:
@@ -55,7 +60,9 @@ services:
         condition: service_started
 
   worker:
-    build: ./backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     command: rq worker --url redis://redis:6379/0 eve-quartermaster
     environment:
       APP_NAME: eve-quartermaster
@@ -74,7 +81,8 @@ services:
   backend-tests:
     profiles: ["test"]
     build:
-      context: ./backend
+      context: .
+      dockerfile: backend/Dockerfile
       target: test
 
   eqm-core-tests:
