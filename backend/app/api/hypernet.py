@@ -20,6 +20,7 @@ from app.models import (
     HyperNetOffer,
     HyperNetOfferSnapshot,
     HyperNetParticipant,
+    HyperNetParticipation,
     Location,
     User,
 )
@@ -29,6 +30,8 @@ from app.schemas.hypernet import (
     HyperNetOfferPatch,
     HyperNetReconcileRequest,
     HyperNetSnapshotCreate,
+    HyperNetParticipationCreate,
+    HyperNetParticipationResolve,
 )
 from app.services.audit import record_audit_event
 from app.services.hypernet import data_source, money, offer_financials, progress_metrics, seeded_node_scenario
@@ -70,12 +73,62 @@ def owned_offer(db: Session, offer_id: int, user: User) -> HyperNetOffer:
     return row
 
 
+def participation_options() -> tuple[Any, ...]:
+    return (
+        selectinload(HyperNetParticipation.character),
+        selectinload(HyperNetParticipation.item_type).selectinload(EveType.group).selectinload(EveGroup.category),
+        selectinload(HyperNetParticipation.location),
+    )
+
+
+def owned_participation(db: Session, participation_id: int, user: User) -> HyperNetParticipation:
+    row = db.scalar(
+        select(HyperNetParticipation)
+        .options(*participation_options())
+        .where(HyperNetParticipation.id == participation_id, HyperNetParticipation.user_id == user.id)
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail="HyperNet bid not found")
+    return row
+
+
 def as_number(value: Decimal | int | float | None) -> float | None:
     return float(value) if value is not None else None
 
 
 def financial_payload(values: dict[str, Decimal | None]) -> dict[str, float | None]:
     return {key: as_number(value) for key, value in values.items()}
+
+
+def serialize_participation(row: HyperNetParticipation) -> dict[str, Any]:
+    probability = Decimal(row.nodes_purchased) / Decimal(row.total_nodes) * Decimal("100")
+    return {
+        "id": row.id,
+        "character": {"id": row.character_id, "name": row.character.name if row.character else f"Character {row.character_id}"},
+        "item": {
+            "type_id": row.item_type_id,
+            "name": row.item_type.name if row.item_type else f"Type {row.item_type_id}",
+            "group": row.item_type.group.name if row.item_type and row.item_type.group else None,
+        },
+        "seller_name": row.seller_name,
+        "location": {
+            "id": row.location_id,
+            "name": row.location.name if row.location else (row.location_name_snapshot or "Unspecified"),
+        },
+        "external_offer_reference": row.external_offer_reference,
+        "total_nodes": row.total_nodes,
+        "nodes_purchased": row.nodes_purchased,
+        "win_probability_percent": round(float(probability), 4),
+        "node_price": as_number(row.node_price),
+        "total_spent": as_number(row.total_spent),
+        "outcome": row.outcome,
+        "won": row.won,
+        "item_value_at_completion": as_number(row.item_value_at_completion),
+        "profit_loss": as_number(row.profit_loss),
+        "created_at": row.created_at.isoformat(),
+        "completed_at": row.completed_at.isoformat() if row.completed_at else None,
+        "notes": row.notes,
+    }
 
 
 def current_market_values(offer: HyperNetOffer) -> tuple[Decimal | None, Decimal | None]:
@@ -322,6 +375,11 @@ def hypernet_summary(user: User = Depends(require_hypernet), db: Session = Depen
         .where(HyperNetOffer.owner_user_id == user.id)
         .order_by(HyperNetOffer.created_offer_at.desc())
     ).unique().all()
+    participations = db.scalars(
+        select(HyperNetParticipation)
+        .where(HyperNetParticipation.user_id == user.id)
+        .order_by(HyperNetParticipation.created_at.desc())
+    ).all()
     now = datetime.now(timezone.utc)
     active = [row for row in offers if row.status in ACTIVE_STATUSES]
     completed = [row for row in offers if row.status == "completed"]
@@ -341,6 +399,14 @@ def hypernet_summary(user: User = Depends(require_hypernet), db: Session = Depen
     lifetime_profit = sum((row.final_profit or Decimal("0")) for row in resolved)
     completed_profit = sum((row.final_profit or Decimal("0")) for row in completed)
     next_expiring = min(active, key=lambda row: row.expires_at, default=None)
+    pending_bids = [row for row in participations if row.outcome == "pending"]
+    resolved_bids = [row for row in participations if row.outcome in {"won", "lost"}]
+    won_bids = [row for row in resolved_bids if row.outcome == "won"]
+    lost_bids = [row for row in resolved_bids if row.outcome == "lost"]
+    bid_spend = sum((row.total_spent for row in resolved_bids), Decimal("0"))
+    bid_result = sum((row.profit_loss or Decimal("0") for row in resolved_bids), Decimal("0"))
+    expected_wins = sum((Decimal(row.nodes_purchased) / Decimal(row.total_nodes) for row in resolved_bids), Decimal("0"))
+    item_value_won = sum((row.item_value_at_completion or Decimal("0") for row in won_bids), Decimal("0"))
     return {
         "active_offers": len(active),
         "nearing_expiration": sum(row.expires_at <= now + timedelta(hours=12) for row in active),
@@ -360,6 +426,22 @@ def hypernet_summary(user: User = Depends(require_hypernet), db: Session = Depen
         "average_hours_to_completion": mean(completion_hours) if completion_hours else None,
         "capital_tied_up": sum(calculations[row.id]["seeded_scenario"]["capital_tied_up"] or 0 for row in active),
         "next_expiring_offer": serialize_offer(next_expiring) if next_expiring else None,
+        "participation": {
+            "active_bids": len(pending_bids),
+            "active_nodes": sum(row.nodes_purchased for row in pending_bids),
+            "active_spend": as_number(sum((row.total_spent for row in pending_bids), Decimal("0"))),
+            "resolved_bids": len(resolved_bids),
+            "won_bids": len(won_bids),
+            "lost_bids": len(lost_bids),
+            "win_rate_percent": round(len(won_bids) / len(resolved_bids) * 100, 2) if resolved_bids else None,
+            "expected_wins": round(float(expected_wins), 4),
+            "luck_delta_wins": round(float(Decimal(len(won_bids)) - expected_wins), 4),
+            "total_spent": as_number(bid_spend),
+            "item_value_won": as_number(item_value_won),
+            "realized_profit_loss": as_number(bid_result),
+            "return_on_spend_percent": round(float(bid_result / bid_spend * 100), 2) if bid_spend else None,
+        },
+        "combined_lifetime_result": as_number(lifetime_profit + bid_result),
     }
 
 
@@ -389,6 +471,102 @@ def list_hypernet_offers(
         query = query.where(HyperNetOffer.created_offer_at <= to_date)
     offers = db.scalars(query.order_by(HyperNetOffer.expires_at.desc()).limit(limit)).unique().all()
     return [serialize_offer(row) for row in offers]
+
+
+@router.get("/participations")
+def list_hypernet_participations(
+    outcome: str = "all",
+    limit: int = Query(500, ge=1, le=1000),
+    user: User = Depends(require_hypernet),
+    db: Session = Depends(get_db),
+) -> list[dict[str, Any]]:
+    query = (
+        select(HyperNetParticipation)
+        .options(*participation_options())
+        .where(HyperNetParticipation.user_id == user.id)
+    )
+    if outcome != "all":
+        if outcome not in {"pending", "won", "lost", "cancelled"}:
+            raise HTTPException(status_code=400, detail="Unsupported bid outcome filter")
+        query = query.where(HyperNetParticipation.outcome == outcome)
+    rows = db.scalars(query.order_by(HyperNetParticipation.created_at.desc()).limit(limit)).unique().all()
+    return [serialize_participation(row) for row in rows]
+
+
+@router.post("/participations")
+def create_hypernet_participation(
+    payload: HyperNetParticipationCreate,
+    user: User = Depends(require_hypernet),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    character = validate_character(db, payload.character_id, user)
+    item_type = db.get(EveType, payload.item_type_id)
+    if item_type is None:
+        raise HTTPException(status_code=400, detail="Item type was not found in the imported SDE")
+    location = db.get(Location, payload.location_id) if payload.location_id else None
+    if payload.location_id and location is None:
+        raise HTTPException(status_code=400, detail="Location was not found")
+    row = HyperNetParticipation(
+        user_id=user.id,
+        character_id=character.id,
+        external_offer_reference=(payload.external_offer_reference or "").strip() or None,
+        item_type_id=item_type.type_id,
+        seller_name=payload.seller_name,
+        location_id=location.id if location else None,
+        location_name_snapshot=location.name if location else (payload.location_name or "").strip() or None,
+        total_nodes=payload.total_nodes,
+        nodes_purchased=payload.nodes_purchased,
+        node_price=money(payload.node_price),
+        total_spent=money(payload.node_price * payload.nodes_purchased),
+        outcome="pending",
+        created_at=payload.created_at,
+        notes=payload.notes,
+    )
+    db.add(row)
+    record_audit_event(
+        db,
+        event_kind="hypernet_bid_created",
+        title=f"HyperNet bid recorded: {item_type.name}",
+        body=f"{payload.nodes_purchased}/{payload.total_nodes} nodes · {row.total_spent} ISK",
+        actor_user=user,
+    )
+    db.commit()
+    return serialize_participation(owned_participation(db, row.id, user))
+
+
+@router.post("/participations/{participation_id}/resolve")
+def resolve_hypernet_participation(
+    participation_id: int,
+    payload: HyperNetParticipationResolve,
+    user: User = Depends(require_hypernet),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    row = owned_participation(db, participation_id, user)
+    if row.outcome != "pending":
+        raise HTTPException(status_code=409, detail="HyperNet bid is already resolved")
+    if payload.completed_at < row.created_at:
+        raise HTTPException(status_code=400, detail="Completion time cannot precede the bid")
+    row.outcome = payload.outcome
+    row.completed_at = payload.completed_at
+    row.won = True if payload.outcome == "won" else False if payload.outcome == "lost" else None
+    row.item_value_at_completion = money(payload.item_value_at_completion) if payload.item_value_at_completion is not None else None
+    if payload.outcome == "won":
+        row.profit_loss = money((row.item_value_at_completion or Decimal("0")) - row.total_spent)
+    elif payload.outcome == "lost":
+        row.profit_loss = money(-row.total_spent)
+    else:
+        row.profit_loss = money(0)
+    if payload.notes:
+        row.notes = "\n\n".join(value for value in [row.notes, payload.notes.strip()] if value)
+    record_audit_event(
+        db,
+        event_kind="hypernet_bid_resolved",
+        title=f"HyperNet bid {payload.outcome}: {row.item_type.name if row.item_type else row.item_type_id}",
+        body=f"Result: {row.profit_loss} ISK",
+        actor_user=user,
+    )
+    db.commit()
+    return serialize_participation(owned_participation(db, row.id, user))
 
 
 @router.post("/offers")

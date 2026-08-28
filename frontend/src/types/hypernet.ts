@@ -121,6 +121,47 @@ export type HyperNetSummary = {
   average_hours_to_completion: number | null;
   capital_tied_up: number;
   next_expiring_offer?: HyperNetOffer | null;
+  participation: HyperNetParticipationSummary;
+  combined_lifetime_result: number;
+};
+
+export type HyperNetParticipationOutcome = "pending" | "won" | "lost" | "cancelled";
+
+export type HyperNetParticipation = {
+  id: number;
+  character: { id: number; name: string };
+  item: { type_id: number; name: string; group?: string | null };
+  seller_name: string;
+  location: { id?: number | null; name: string };
+  external_offer_reference?: string | null;
+  total_nodes: number;
+  nodes_purchased: number;
+  win_probability_percent: number;
+  node_price: number;
+  total_spent: number;
+  outcome: HyperNetParticipationOutcome;
+  won?: boolean | null;
+  item_value_at_completion?: number | null;
+  profit_loss?: number | null;
+  created_at: string;
+  completed_at?: string | null;
+  notes?: string | null;
+};
+
+export type HyperNetParticipationSummary = {
+  active_bids: number;
+  active_nodes: number;
+  active_spend: number;
+  resolved_bids: number;
+  won_bids: number;
+  lost_bids: number;
+  win_rate_percent: number | null;
+  expected_wins: number;
+  luck_delta_wins: number;
+  total_spent: number;
+  item_value_won: number;
+  realized_profit_loss: number;
+  return_on_spend_percent: number | null;
 };
 
 export type HyperNetMeta = {

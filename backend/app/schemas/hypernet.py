@@ -149,3 +149,51 @@ class HyperNetReconcileRequest(BaseModel):
         if self.status == "completed" and self.winner == "unknown":
             raise ValueError("Completed offers require the winner classification")
         return self
+
+
+class HyperNetParticipationCreate(BaseModel):
+    character_id: int = Field(gt=0)
+    external_offer_reference: str | None = Field(default=None, max_length=255)
+    item_type_id: int = Field(gt=0)
+    seller_name: str = Field(min_length=1, max_length=255)
+    location_id: int | None = Field(default=None, gt=0)
+    location_name: str | None = Field(default=None, max_length=500)
+    total_nodes: int = Field(gt=0, le=512)
+    nodes_purchased: int = Field(gt=0)
+    node_price: Decimal = Field(ge=0)
+    created_at: datetime
+    notes: str | None = None
+
+    @field_validator("created_at")
+    @classmethod
+    def participation_timezone_required(cls, value: datetime):
+        return require_aware(value, "created_at")
+
+    @field_validator("seller_name")
+    @classmethod
+    def clean_seller_name(cls, value: str):
+        return value.strip()
+
+    @model_validator(mode="after")
+    def validate_nodes(self) -> "HyperNetParticipationCreate":
+        if self.nodes_purchased > self.total_nodes:
+            raise ValueError("nodes_purchased cannot exceed total_nodes")
+        return self
+
+
+class HyperNetParticipationResolve(BaseModel):
+    outcome: Literal["won", "lost", "cancelled"]
+    completed_at: datetime
+    item_value_at_completion: Decimal | None = Field(default=None, ge=0)
+    notes: str | None = None
+
+    @field_validator("completed_at")
+    @classmethod
+    def resolve_timezone_required(cls, value: datetime):
+        return require_aware(value, "completed_at")
+
+    @model_validator(mode="after")
+    def validate_outcome(self) -> "HyperNetParticipationResolve":
+        if self.outcome == "won" and self.item_value_at_completion is None:
+            raise ValueError("Won bids require the item value at completion")
+        return self

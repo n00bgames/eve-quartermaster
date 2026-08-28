@@ -112,6 +112,11 @@ class HyperNetParticipant(Base):
 
 class HyperNetParticipation(Base):
     __tablename__ = "hypernet_participation"
+    __table_args__ = (
+        CheckConstraint("total_nodes > 0", name="ck_hypernet_participation_total_nodes"),
+        CheckConstraint("nodes_purchased > 0 AND nodes_purchased <= total_nodes", name="ck_hypernet_participation_nodes"),
+        CheckConstraint("node_price >= 0 AND total_spent >= 0", name="ck_hypernet_participation_spend"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -120,6 +125,8 @@ class HyperNetParticipation(Base):
     item_type_id: Mapped[int] = mapped_column(ForeignKey("eve_types.type_id", ondelete="RESTRICT"), nullable=False, index=True)
     seller_name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     location_id: Mapped[int | None] = mapped_column(ForeignKey("locations.id", ondelete="SET NULL"), index=True)
+    location_name_snapshot: Mapped[str | None] = mapped_column(String(500))
+    total_nodes: Mapped[int] = mapped_column(Integer, nullable=False)
     nodes_purchased: Mapped[int] = mapped_column(Integer, nullable=False)
     node_price: Mapped[Decimal] = mapped_column(Numeric(24, 2), nullable=False)
     total_spent: Mapped[Decimal] = mapped_column(Numeric(24, 2), nullable=False)

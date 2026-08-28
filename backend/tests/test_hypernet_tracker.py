@@ -5,7 +5,12 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from types import SimpleNamespace
 
-from app.schemas.hypernet import HyperNetOfferCreate, HyperNetSnapshotCreate
+from app.schemas.hypernet import (
+    HyperNetOfferCreate,
+    HyperNetParticipationCreate,
+    HyperNetParticipationResolve,
+    HyperNetSnapshotCreate,
+)
 from app.services.hypernet import data_source, offer_financials, progress_metrics, seeded_node_scenario
 
 
@@ -95,6 +100,32 @@ class HyperNetSchemaTests(unittest.TestCase):
                 nodes_sold=1,
                 seller_owned_nodes=2,
             )
+
+    def test_participation_requires_valid_node_odds(self) -> None:
+        with self.assertRaises(ValueError):
+            HyperNetParticipationCreate(
+                character_id=1,
+                item_type_id=23919,
+                seller_name="Definitely Not A Trap",
+                total_nodes=8,
+                nodes_purchased=9,
+                node_price=50_000_000,
+                created_at=datetime.now(timezone.utc),
+            )
+
+    def test_won_participation_requires_completion_value(self) -> None:
+        with self.assertRaises(ValueError):
+            HyperNetParticipationResolve(
+                outcome="won",
+                completed_at=datetime.now(timezone.utc),
+            )
+
+        resolved = HyperNetParticipationResolve(
+            outcome="won",
+            completed_at=datetime.now(timezone.utc),
+            item_value_at_completion=1_000_000_000,
+        )
+        self.assertEqual(resolved.item_value_at_completion, Decimal("1000000000"))
 
 
 if __name__ == "__main__":

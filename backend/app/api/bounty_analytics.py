@@ -20,7 +20,7 @@ from app.services.permissions import base_role_for, can_view_section
 router = APIRouter(prefix="/bounty-analytics", tags=["bounty-analytics"])
 PERIOD_DAYS = {"1d": 1, "7d": 7, "30d": 30, "90d": 90}
 EXPORT_SCHEMA_VERSION = "eqm.bounty-analytics.v1"
-EXPORT_APP_VERSION = "0.1.22-beta"
+EXPORT_APP_VERSION = "0.1.23-beta"
 
 
 def require_access(current_user: User, db: Session) -> None:
