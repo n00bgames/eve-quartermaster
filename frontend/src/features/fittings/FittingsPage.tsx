@@ -27,6 +27,15 @@ function cargoBayUsageText(bay: Pick<FittingCargoBay, "used" | "capacity">): str
 
 function fittingEngineLabel(simulation: FittingSimulation | null): string {
   if (!simulation) return "Hybrid engine";
+  if (simulation.stats_engine_used === "rust") {
+    return "Rust fitting engine";
+  }
+  if (simulation.stats_engine_used === "python-fallback") {
+    return "Rust fitting fallback · Python served";
+  }
+  if (simulation.stats_engine_used?.startsWith("python-shadow")) {
+    return `Full-engine shadow · Python served${simulation.stats_engine_shadow_match === false ? " · mismatch" : " · Rust matched"}`;
+  }
   if (simulation.resource_engine_used === "rust" && simulation.math_engine_used === "rust") {
     return "Hybrid · Rust resources/math + Python effect graph";
   }

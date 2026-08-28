@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.models import CharacterFitting, CharacterFittingItem, CharacterSkill, EveCharacter, EveDogmaAttribute, EveDogmaEffect, EveGroup, EveType, EveTypeDogmaAttribute, EveTypeDogmaEffect
 from app.services.fitting_math_engine import evaluate_fitting_math_with_engine
 from app.services.fitting_resources_engine import evaluate_fitting_resources_with_engine
+from app.services.fitting_stats_engine import evaluate_fitting_stats_with_engine
 from app.services.ship_capacity import resolved_ship_capacity
 
 FITTED_SLOT_PREFIXES = {"HiSlot", "MedSlot", "LoSlot", "RigSlot", "SubSystemSlot", "ServiceSlot"}
@@ -560,6 +561,54 @@ def fitting_resources_payload(
         ],
     }
 
+
+def fitting_stats_payload(
+    fitting: CharacterFitting,
+    ship_attrs: dict[str, float],
+    dogma: dict[int, dict[str, float]],
+    dogma_effects: dict[int, list[dict[str, Any]]],
+    names: dict[int, str],
+    group_names: dict[int, str],
+    group_ids: dict[int, int],
+    skill_levels: dict[int, int],
+    skill_name_levels: dict[str, int],
+    volumes: dict[int, float],
+    ship_capacity: float | None,
+    ship_mass: float | None,
+    implant_type_ids: set[int],
+    heat: bool,
+    stats_item_ids: set[int],
+) -> dict[str, Any]:
+    return {
+        "schema_version": "eqm.fitting-stats-input.v1",
+        "ship_type_id": fitting.ship_type_id,
+        "ship_attrs": ship_attrs,
+        "items": [
+            {
+                "id": int(item.id or 0),
+                "type_id": item.type_id,
+                "charge_type_id": item.charge_type_id,
+                "flag": item.flag,
+                "quantity": int(item.quantity or 1),
+                "simulation_state": item_state(item),
+            }
+            for item in fitting.items
+        ],
+        "dogma": dogma,
+        "dogma_effects": dogma_effects,
+        "names": names,
+        "group_names": group_names,
+        "group_ids": group_ids,
+        "skill_levels": skill_levels,
+        "skill_name_levels": skill_name_levels,
+        "volumes": volumes,
+        "ship_capacity": ship_capacity,
+        "ship_mass": ship_mass,
+        "implant_type_ids": sorted(implant_type_ids),
+        "stats_item_ids": sorted(stats_item_ids),
+        "heat": heat,
+    }
+
 def safe_number(value: float | None, default: float = 0.0) -> float:
     return float(value) if value is not None else default
 
@@ -753,7 +802,8 @@ def cycle_seconds(attrs: dict[str, float]) -> float | None:
 
 
 def is_launcher_group(group_name: str) -> bool:
-    return "launcher" in group_name.lower()
+    normalized = group_name.lower()
+    return "launcher" in normalized and "rig launcher" not in normalized
 
 
 def is_turret_group(group_name: str) -> bool:
@@ -2328,7 +2378,8 @@ def simulate_fitting(db: Session, fitting: CharacterFitting, character: EveChara
         notes.append("Rust fitting resources were unavailable, so CPU, powergrid, calibration, and slot checks used the Python fallback.")
     elif resource_evaluation.get("engine_shadow_match") is False:
         notes.append("Rust fitting resource shadow output differed from Python; Python remains authoritative in shadow mode.")
-    stats = compute_fitting_stats(
+    stats_item_ids = {int(item_id) for item_id in resource_evaluation["stats_item_ids"]}
+    python_stats = compute_fitting_stats(
         fitting,
         dogma,
         names,
@@ -2342,8 +2393,28 @@ def simulate_fitting(db: Session, fitting: CharacterFitting, character: EveChara
         implant_type_ids=implant_type_ids,
         type_group_ids=group_ids,
         heat=heat,
-        stats_item_ids={int(item_id) for item_id in resource_evaluation["stats_item_ids"]},
+        stats_item_ids=stats_item_ids,
     ) if dogma_loaded else None
+    stats = evaluate_fitting_stats_with_engine(
+        payload=fitting_stats_payload(
+            fitting,
+            effective_ship_attrs_with_subsystems(dogma.get(fitting.ship_type_id, {}), fitting.items, dogma),
+            dogma,
+            dogma_effects,
+            names,
+            group_names,
+            group_ids,
+            skill_levels,
+            skill_name_levels,
+            volumes,
+            capacities.get(fitting.ship_type_id),
+            masses.get(fitting.ship_type_id),
+            implant_type_ids,
+            heat,
+            stats_item_ids,
+        ),
+        python_result=python_stats,
+    ) if python_stats else None
 
     return {
         "fitting_id": fitting.id,
@@ -2354,10 +2425,12 @@ def simulate_fitting(db: Session, fitting: CharacterFitting, character: EveChara
         "resource_engine_requested": resource_evaluation.get("engine_requested", "python"),
         "resource_engine_used": resource_evaluation.get("engine_used", "python"),
         "resource_engine_shadow_match": resource_evaluation.get("engine_shadow_match"),
-        "math_engine_requested": stats.get("math_engine_requested", "python") if stats else "python",
-        "math_engine_used": stats.get("math_engine_used", "python") if stats else "python",
+        "math_engine_requested": stats.get("math_engine_requested", "rust" if stats.get("engine_used") == "rust" else "python") if stats else "python",
+        "math_engine_used": stats.get("math_engine_used", "rust" if stats.get("engine_used") == "rust" else "python") if stats else "python",
         "math_engine_shadow_match": stats.get("math_engine_shadow_match") if stats else None,
-        "stats_engine_used": "hybrid" if stats and stats.get("math_engine_used") == "rust" else "python",
+        "stats_engine_requested": stats.get("engine_requested", "python") if stats else "python",
+        "stats_engine_used": stats.get("engine_used", "python") if stats else "python",
+        "stats_engine_shadow_match": stats.get("engine_shadow_match") if stats else None,
         "status": status,
         "summary": {
             "missing_skills": len(missing_skills),

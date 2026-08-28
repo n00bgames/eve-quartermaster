@@ -1,0 +1,140 @@
+{
+  "schema_version": "eqm.fitting-stats-input.v1",
+  "ship_type_id": 100,
+  "ship_attrs": {
+    "shieldCapacity": 1000,
+    "armorHP": 800,
+    "hp": 500,
+    "shieldEmDamageResonance": 0.8,
+    "shieldThermalDamageResonance": 0.7,
+    "shieldKineticDamageResonance": 0.6,
+    "shieldExplosiveDamageResonance": 0.5,
+    "armorEmDamageResonance": 0.5,
+    "armorThermalDamageResonance": 0.5,
+    "armorKineticDamageResonance": 0.5,
+    "armorExplosiveDamageResonance": 0.5,
+    "emDamageResonance": 0.6,
+    "thermalDamageResonance": 0.6,
+    "kineticDamageResonance": 0.6,
+    "explosiveDamageResonance": 0.6,
+    "mass": 1000000,
+    "agility": 0.5,
+    "maxVelocity": 100,
+    "warpSpeedMultiplier": 3,
+    "signatureRadius": 100,
+    "capacitorCapacity": 1000,
+    "rechargeRate": 100000,
+    "capacity": 100,
+    "droneCapacity": 50,
+    "maxLockedTargets": 5,
+    "maxTargetRange": 100000,
+    "scanResolution": 200,
+    "scanRadarStrength": 10
+  },
+  "items": [
+    {
+      "id": 1,
+      "type_id": 200,
+      "charge_type_id": null,
+      "flag": "Cargo",
+      "quantity": 10,
+      "simulation_state": "online"
+    },
+    {
+      "id": 2,
+      "type_id": 201,
+      "charge_type_id": null,
+      "flag": "DroneBay",
+      "quantity": 3,
+      "simulation_state": "active"
+    },
+    {
+      "id": 3,
+      "type_id": 300,
+      "charge_type_id": null,
+      "flag": "MedSlot0",
+      "quantity": 1,
+      "simulation_state": "online"
+    },
+    {
+      "id": 4,
+      "type_id": 301,
+      "charge_type_id": null,
+      "flag": "MedSlot1",
+      "quantity": 1,
+      "simulation_state": "active"
+    },
+    {
+      "id": 5,
+      "type_id": 302,
+      "charge_type_id": null,
+      "flag": "LoSlot0",
+      "quantity": 1,
+      "simulation_state": "active"
+    },
+    {
+      "id": 6,
+      "type_id": 303,
+      "charge_type_id": null,
+      "flag": "LoSlot1",
+      "quantity": 1,
+      "simulation_state": "online"
+    },
+    {
+      "id": 7,
+      "type_id": 304,
+      "charge_type_id": null,
+      "flag": "LoSlot2",
+      "quantity": 1,
+      "simulation_state": "online"
+    },
+    {
+      "id": 8,
+      "type_id": 400,
+      "charge_type_id": 401,
+      "flag": "HiSlot0",
+      "quantity": 1,
+      "simulation_state": "active"
+    }
+  ],
+  "dogma": {
+    "3417": {"capRechargeBonus": -5},
+    "3418": {"capacitorCapacityBonus": 5},
+    "300": {"capacityBonus": 200, "shieldCapacityBonus": 10},
+    "301": {"speedFactor": 100, "speedBoostFactor": 1000000, "massAddition": 100000, "capacitorNeed": 10, "duration": 10000, "signatureRadiusBonus": 20},
+    "302": {"armorDamageAmount": 120, "capacitorNeed": 12, "duration": 12000},
+    "303": {"cargoCapacityMultiplier": 1.2},
+    "304": {"armorEmDamageResistanceBonus": 20, "armorThermalDamageResistanceBonus": 20, "armorKineticDamageResistanceBonus": 20, "armorExplosiveDamageResistanceBonus": 20},
+    "201": {"emDamage": 5, "damageMultiplier": 2, "speed": 2000, "maxRange": 15000},
+    "400": {"damageMultiplier": 2, "speed": 4000, "maxRange": 10000, "falloff": 5000, "capacitorNeed": 4},
+    "401": {"emDamage": 10, "thermalDamage": 10, "rangeMultiplier": 1.5},
+    "500": {"damageMultiplierBonus": 3},
+    "501": {"rofBonus": -4}
+  },
+  "dogma_effects": {},
+  "names": {"100": "Contract Hull", "200": "Cargo Item", "201": "Test Drone", "300": "Contract Shield Extender", "301": "Contract Afterburner", "302": "Contract Armor Repairer", "303": "Expanded Cargohold", "304": "Energized Adaptive Membrane", "400": "Contract Beam Laser", "401": "Contract Frequency Crystal", "500": "Surgical Strike", "501": "Rapid Firing"},
+  "group_names": {"200": "Commodity", "201": "Combat Drone", "300": "Shield Extender", "301": "Propulsion Module", "302": "Armor Repair Unit", "303": "Cargo Upgrade", "304": "Armor Coating", "400": "Energy Weapon", "401": "Frequency Crystal"},
+  "group_ids": {"200": 1, "201": 2, "300": 3, "301": 4, "302": 5, "303": 6, "304": 7, "400": 8, "401": 9},
+  "skill_levels": {
+    "3416": 4,
+    "3394": 5,
+    "3392": 3,
+    "3449": 5,
+    "3417": 5,
+    "3418": 4
+  },
+  "skill_name_levels": {
+    "Long Range Targeting": 4,
+    "Signature Analysis": 5,
+    "Radar Sensor Compensation": 5,
+    "Surgical Strike": 5,
+    "Rapid Firing": 5,
+    "Drone Interfacing": 5
+  },
+  "volumes": {"200": 2, "201": 5},
+  "ship_capacity": 100,
+  "ship_mass": 1000000,
+  "implant_type_ids": [],
+  "stats_item_ids": [3, 4, 5, 6, 7, 8],
+  "heat": false
+}
