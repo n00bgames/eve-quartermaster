@@ -31,6 +31,7 @@ from app.schemas.hypernet import (
     HyperNetReconcileRequest,
     HyperNetSnapshotCreate,
     HyperNetParticipationCreate,
+    HyperNetParticipationPatch,
     HyperNetParticipationResolve,
 )
 from app.services.audit import record_audit_event
@@ -530,6 +531,73 @@ def create_hypernet_participation(
         body=f"{payload.nodes_purchased}/{payload.total_nodes} nodes · {row.total_spent} ISK",
         actor_user=user,
     )
+    db.commit()
+    return serialize_participation(owned_participation(db, row.id, user))
+
+
+@router.patch("/participations/{participation_id}")
+def patch_hypernet_participation(
+    participation_id: int,
+    payload: HyperNetParticipationPatch,
+    user: User = Depends(require_hypernet),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    row = owned_participation(db, participation_id, user)
+    changes = payload.model_dump(exclude_unset=True)
+
+    if "character_id" in changes:
+        row.character_id = validate_character(db, changes["character_id"], user).id
+    if "item_type_id" in changes:
+        item_type = db.get(EveType, changes["item_type_id"])
+        if item_type is None:
+            raise HTTPException(status_code=400, detail="Item type was not found in the imported SDE")
+        row.item_type_id = item_type.type_id
+    if "location_id" in changes or "location_name" in changes:
+        location_id = changes.get("location_id")
+        location = db.get(Location, location_id) if location_id else None
+        if location_id and location is None:
+            raise HTTPException(status_code=400, detail="Location was not found")
+        row.location_id = location.id if location else None
+        row.location_name_snapshot = location.name if location else (changes.get("location_name") or "").strip() or None
+
+    for field in ("external_offer_reference", "seller_name", "total_nodes", "nodes_purchased", "created_at", "outcome", "completed_at", "notes"):
+        if field in changes:
+            value = changes[field]
+            if field in {"external_offer_reference", "notes"} and isinstance(value, str):
+                value = value.strip() or None
+            setattr(row, field, value)
+    if "node_price" in changes:
+        row.node_price = money(changes["node_price"])
+    if "item_value_at_completion" in changes:
+        row.item_value_at_completion = money(changes["item_value_at_completion"]) if changes["item_value_at_completion"] is not None else None
+
+    if row.nodes_purchased > row.total_nodes:
+        raise HTTPException(status_code=400, detail="nodes_purchased cannot exceed total_nodes")
+    if row.outcome == "pending":
+        row.completed_at = None
+        row.won = None
+        row.item_value_at_completion = None
+        row.profit_loss = None
+    else:
+        if row.completed_at is None:
+            raise HTTPException(status_code=400, detail="Resolved bids require a completion time")
+        if row.completed_at < row.created_at:
+            raise HTTPException(status_code=400, detail="Completion time cannot precede the bid")
+        if row.outcome == "won" and row.item_value_at_completion is None:
+            raise HTTPException(status_code=400, detail="Won bids require the item value at completion")
+        row.won = True if row.outcome == "won" else False if row.outcome == "lost" else None
+
+    row.total_spent = money(row.node_price * row.nodes_purchased)
+    if row.outcome == "won":
+        row.profit_loss = money((row.item_value_at_completion or Decimal("0")) - row.total_spent)
+    elif row.outcome == "lost":
+        row.item_value_at_completion = None
+        row.profit_loss = money(-row.total_spent)
+    elif row.outcome == "cancelled":
+        row.item_value_at_completion = None
+        row.profit_loss = money(0)
+
+    record_audit_event(db, event_kind="hypernet_bid_edited", title=f"HyperNet bid edited: {row.item_type.name if row.item_type else row.item_type_id}", body=f"{row.nodes_purchased}/{row.total_nodes} nodes · {row.outcome} · result {row.profit_loss} ISK", actor_user=user)
     db.commit()
     return serialize_participation(owned_participation(db, row.id, user))
 

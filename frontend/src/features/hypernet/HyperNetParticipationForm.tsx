@@ -5,11 +5,11 @@ import type { ApiClient, HyperNetLocationCandidate, HyperNetMeta, HyperNetPartic
 import { localInputValue } from "./hypernetPresentation";
 
 
-export function HyperNetParticipationForm({ api, meta, onSaved, onCancel }: { api: ApiClient; meta: HyperNetMeta; onSaved: (bid: HyperNetParticipation) => void; onCancel: () => void }) {
+export function HyperNetParticipationForm({ api, meta, bid, onSaved, onCancel }: { api: ApiClient; meta: HyperNetMeta; bid?: HyperNetParticipation; onSaved: (bid: HyperNetParticipation) => void; onCancel: () => void }) {
   const [draft, setDraft] = useState({
-    characterId: meta.seller_characters[0]?.id ?? 0, typeId: 0, itemName: "", sellerName: "",
-    locationId: null as number | null, locationName: "", reference: "", totalNodes: 8, nodesPurchased: 1,
-    nodePrice: 0, createdAt: localInputValue(new Date()), notes: "",
+    characterId: bid?.character.id ?? meta.seller_characters[0]?.id ?? 0, typeId: bid?.item.type_id ?? 0, itemName: bid?.item.name ?? "", sellerName: bid?.seller_name ?? "",
+    locationId: bid?.location.id ?? null as number | null, locationName: bid?.location.name === "Unspecified" ? "" : bid?.location.name ?? "", reference: bid?.external_offer_reference ?? "", totalNodes: bid?.total_nodes ?? 8, nodesPurchased: bid?.nodes_purchased ?? 1,
+    nodePrice: bid?.node_price ?? 0, createdAt: localInputValue(bid ? new Date(bid.created_at) : new Date()), outcome: bid?.outcome ?? "pending", completedAt: bid?.completed_at ? localInputValue(new Date(bid.completed_at)) : localInputValue(new Date()), itemValue: bid?.item_value_at_completion ?? 0, notes: bid?.notes ?? "",
   });
   const [types, setTypes] = useState<HyperNetTypeCandidate[]>([]);
   const [locations, setLocations] = useState<HyperNetLocationCandidate[]>([]);
@@ -35,14 +35,16 @@ export function HyperNetParticipationForm({ api, meta, onSaved, onCancel }: { ap
     if (draft.nodesPurchased > draft.totalNodes) { setError("Nodes purchased cannot exceed total nodes."); return; }
     setBusy(true);
     try {
-      const bid = await api<HyperNetParticipation>("/hypernet/participations", { method: "POST", body: JSON.stringify({
+      const payload = {
         character_id: draft.characterId, item_type_id: draft.typeId, seller_name: draft.sellerName,
         location_id: draft.locationId, location_name: draft.locationName || null,
         external_offer_reference: draft.reference || null, total_nodes: draft.totalNodes,
         nodes_purchased: draft.nodesPurchased, node_price: draft.nodePrice,
         created_at: new Date(draft.createdAt).toISOString(), notes: draft.notes || null,
-      }) });
-      onSaved(bid);
+        ...(bid ? { outcome: draft.outcome, completed_at: draft.outcome === "pending" ? null : new Date(draft.completedAt).toISOString(), item_value_at_completion: draft.outcome === "won" ? draft.itemValue : null } : {}),
+      };
+      const saved = await api<HyperNetParticipation>(bid ? `/hypernet/participations/${bid.id}` : "/hypernet/participations", { method: bid ? "PATCH" : "POST", body: JSON.stringify(payload) });
+      onSaved(saved);
     } catch (err) { setError(err instanceof Error ? err.message : "Unable to save HyperNet bid"); }
     finally { setBusy(false); }
   }
@@ -50,7 +52,7 @@ export function HyperNetParticipationForm({ api, meta, onSaved, onCancel }: { ap
   const total = draft.nodePrice * draft.nodesPurchased;
   const odds = draft.totalNodes ? draft.nodesPurchased / draft.totalNodes * 100 : 0;
   return <section className="panel hypernet-offer-form">
-    <div className="section-heading"><div><span className="eyebrow">Buyer-side tracking</span><h3>Record HyperNet nodes purchased</h3><p>Track a bid you made on another pilot’s offer and reconcile it as won or lost.</p></div><button type="button" className="icon-button" onClick={onCancel}><X size={18} /></button></div>
+    <div className="section-heading"><div><span className="eyebrow">Buyer-side tracking</span><h3>{bid ? `Edit ${bid.item.name} bid` : "Record HyperNet nodes purchased"}</h3><p>{bid ? "Correct the bid details or outcome; statistics will be recalculated immediately." : "Track a bid you made on another pilot’s offer and reconcile it as won or lost."}</p></div><button type="button" className="icon-button" onClick={onCancel}><X size={18} /></button></div>
     <form onSubmit={submit}>
       <div className="hypernet-form-fields">
         <div className="form-grid three">
@@ -63,12 +65,15 @@ export function HyperNetParticipationForm({ api, meta, onSaved, onCancel }: { ap
           <label>Total offer nodes<input type="number" min="1" max="512" value={draft.totalNodes} onChange={(event) => update("totalNodes", Number(event.target.value))} required /></label>
           <label>Nodes purchased<input type="number" min="1" max={draft.totalNodes} value={draft.nodesPurchased} onChange={(event) => update("nodesPurchased", Number(event.target.value))} required /></label>
           <label>Price per node (ISK)<input type="number" min="0" step="0.01" value={draft.nodePrice || ""} onChange={(event) => update("nodePrice", Number(event.target.value))} required /></label>
+          {bid && <label>Outcome<select value={draft.outcome} onChange={(event) => update("outcome", event.target.value as typeof draft.outcome)}><option value="pending">Pending</option><option value="won">Won</option><option value="lost">Lost</option><option value="cancelled">Cancelled</option></select></label>}
+          {bid && draft.outcome !== "pending" && <label>Completed at<input type="datetime-local" value={draft.completedAt} onChange={(event) => update("completedAt", event.target.value)} required /></label>}
+          {bid && draft.outcome === "won" && <label>Item value when won (ISK)<input type="number" min="0" step="0.01" value={draft.itemValue || ""} onChange={(event) => update("itemValue", Number(event.target.value))} required /></label>}
         </div>
         <div className="hypernet-bid-preview"><span><small>Total committed</small><strong>{total.toLocaleString()} ISK</strong></span><span><small>Chance to win</small><strong>{odds.toFixed(2)}%</strong></span><span><small>Loss if unsuccessful</small><strong className="hypernet-loss">−{total.toLocaleString()} ISK</strong></span></div>
         <label>Notes<textarea rows={4} value={draft.notes} onChange={(event) => update("notes", event.target.value)} /></label>
       </div>
       {error && <div className="mini-alert">{error}</div>}
-      <div className="button-row"><button type="button" onClick={onCancel}>Cancel</button><button type="submit" disabled={busy || !draft.typeId || !draft.characterId}><Plus size={17} /> {busy ? "Saving" : "Record bid"}</button></div>
+      <div className="button-row"><button type="button" onClick={onCancel}>Cancel</button><button type="submit" disabled={busy || !draft.typeId || !draft.characterId}><Plus size={17} /> {busy ? "Saving" : bid ? "Save corrections" : "Record bid"}</button></div>
     </form>
   </section>;
 }

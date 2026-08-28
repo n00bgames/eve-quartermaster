@@ -197,3 +197,30 @@ class HyperNetParticipationResolve(BaseModel):
         if self.outcome == "won" and self.item_value_at_completion is None:
             raise ValueError("Won bids require the item value at completion")
         return self
+
+
+class HyperNetParticipationPatch(BaseModel):
+    character_id: int | None = Field(default=None, gt=0)
+    external_offer_reference: str | None = Field(default=None, max_length=255)
+    item_type_id: int | None = Field(default=None, gt=0)
+    seller_name: str | None = Field(default=None, min_length=1, max_length=255)
+    location_id: int | None = Field(default=None, gt=0)
+    location_name: str | None = Field(default=None, max_length=500)
+    total_nodes: int | None = Field(default=None, gt=0, le=512)
+    nodes_purchased: int | None = Field(default=None, gt=0)
+    node_price: Decimal | None = Field(default=None, ge=0)
+    created_at: datetime | None = None
+    outcome: Literal["pending", "won", "lost", "cancelled"] | None = None
+    completed_at: datetime | None = None
+    item_value_at_completion: Decimal | None = Field(default=None, ge=0)
+    notes: str | None = None
+
+    @field_validator("created_at", "completed_at")
+    @classmethod
+    def patch_timezone_required(cls, value: datetime | None, info):
+        return require_aware(value, info.field_name) if value else None
+
+    @field_validator("seller_name")
+    @classmethod
+    def clean_patch_seller_name(cls, value: str | None):
+        return value.strip() if value is not None else None

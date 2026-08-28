@@ -8,6 +8,7 @@ from types import SimpleNamespace
 from app.schemas.hypernet import (
     HyperNetOfferCreate,
     HyperNetParticipationCreate,
+    HyperNetParticipationPatch,
     HyperNetParticipationResolve,
     HyperNetSnapshotCreate,
 )
@@ -126,6 +127,10 @@ class HyperNetSchemaTests(unittest.TestCase):
             item_value_at_completion=1_000_000_000,
         )
         self.assertEqual(resolved.item_value_at_completion, Decimal("1000000000"))
+
+    def test_participation_patch_accepts_corrected_won_item_value(self) -> None:
+        corrected = HyperNetParticipationPatch(outcome="won", completed_at=datetime.now(timezone.utc), item_value_at_completion=31_500_000_000)
+        self.assertEqual(corrected.item_value_at_completion, Decimal("31500000000"))
 
 
 if __name__ == "__main__":
