@@ -1,0 +1,194 @@
+{
+  "as_of": "2026-08-28T12:00:00Z",
+  "characters": [],
+  "sync_tokens": [],
+  "schematics": [
+    {
+      "id": 9001,
+      "name": "Organic Mortar Applicators",
+      "cycle_time": 3600,
+      "output": { "type_id": 2870, "name": "Organic Mortar Applicators", "quantity": 1, "volume": 100 },
+      "inputs": [
+        { "type_id": 9832, "name": "Coolant", "quantity": 20, "volume": 1.5 },
+        { "type_id": 2393, "name": "Bacteria", "quantity": 40, "volume": 0.38 }
+      ]
+    },
+    {
+      "id": 9002,
+      "name": "Coolant",
+      "cycle_time": 3600,
+      "output": { "type_id": 9832, "name": "Coolant", "quantity": 5, "volume": 1.5 },
+      "inputs": [
+        { "type_id": 3645, "name": "Water", "quantity": 40, "volume": 0.38 },
+        { "type_id": 2390, "name": "Electrolytes", "quantity": 40, "volume": 0.38 }
+      ]
+    },
+    {
+      "id": 9003,
+      "name": "Bacteria",
+      "cycle_time": 1800,
+      "output": { "type_id": 2393, "name": "Bacteria", "quantity": 20, "volume": 0.38 },
+      "inputs": [
+        { "type_id": 2073, "name": "Microorganisms", "quantity": 3000, "volume": 0.01 }
+      ]
+    },
+    {
+      "id": 9004,
+      "name": "Water",
+      "cycle_time": 1800,
+      "output": { "type_id": 3645, "name": "Water", "quantity": 20, "volume": 0.38 },
+      "inputs": [
+        { "type_id": 2268, "name": "Aqueous Liquids", "quantity": 3000, "volume": 0.01 }
+      ]
+    },
+    {
+      "id": 9005,
+      "name": "Electrolytes",
+      "cycle_time": 1800,
+      "output": { "type_id": 2390, "name": "Electrolytes", "quantity": 20, "volume": 0.38 },
+      "inputs": [
+        { "type_id": 2309, "name": "Ionic Solutions", "quantity": 3000, "volume": 0.01 }
+      ]
+    }
+  ],
+  "colonies": [
+    {
+      "id": 1,
+      "character_id": 7,
+      "character_eve_id": 90000001,
+      "character_name": "PI Pilot",
+      "planet_id": 40000001,
+      "planet_name": "Factory Prime",
+      "upgrade_level": 5,
+      "num_pins": 4,
+      "last_synced_at": "2026-08-28T12:00:00Z",
+      "link_count": 0,
+      "route_count": 0,
+      "projection": {
+        "projected_at": "2026-08-28T12:00:00Z",
+        "is_projection": true,
+        "events_processed": 0,
+        "truncated": false
+      },
+      "summary": {
+        "extractors": 0,
+        "expired_extractors": 0,
+        "expiring_extractors": 0,
+        "factories": 3,
+        "starved_factories": 0,
+        "stored_volume": 0,
+        "observed_stored_volume": 0,
+        "projected_daily_output": 0
+      },
+      "routes": [],
+      "pins": [
+        {
+          "pin_id": 100,
+          "type_id": 2474,
+          "type_name": "Advanced Industry Facility",
+          "status": "online",
+          "projected_status": "idle",
+          "content_source": "projected",
+          "is_factory": true,
+          "is_extractor": false,
+          "has_inbound_route": false,
+          "stored_volume": 0,
+          "observed_stored_volume": 0,
+          "contents": [],
+          "observed_contents": [],
+          "projected_produced": [],
+          "projected_blocked": [],
+          "schematic_id": 9001,
+          "schematic": {
+            "id": 9001,
+            "name": "Organic Mortar Applicators",
+            "cycle_time": 3600,
+            "output": { "type_id": 2870, "name": "Organic Mortar Applicators", "quantity": 1, "volume": 100 },
+            "inputs": [
+              { "type_id": 9832, "name": "Coolant", "quantity": 20, "volume": 1.5 },
+              { "type_id": 2393, "name": "Bacteria", "quantity": 40, "volume": 0.38 }
+            ]
+          }
+        },
+        {
+          "pin_id": 101,
+          "type_id": 2473,
+          "type_name": "Basic Industry Facility",
+          "status": "online",
+          "projected_status": "running",
+          "content_source": "projected",
+          "is_factory": true,
+          "is_extractor": false,
+          "has_inbound_route": true,
+          "stored_volume": 0,
+          "observed_stored_volume": 0,
+          "contents": [],
+          "observed_contents": [],
+          "projected_produced": [],
+          "projected_blocked": [],
+          "schematic_id": 9002,
+          "schematic": {
+            "id": 9002,
+            "name": "Coolant",
+            "cycle_time": 3600,
+            "output": { "type_id": 9832, "name": "Coolant", "quantity": 5, "volume": 1.5 },
+            "inputs": []
+          }
+        },
+        {
+          "pin_id": 102,
+          "type_id": 2473,
+          "type_name": "Basic Industry Facility",
+          "status": "online",
+          "projected_status": "running",
+          "content_source": "projected",
+          "is_factory": true,
+          "is_extractor": false,
+          "has_inbound_route": true,
+          "stored_volume": 0,
+          "observed_stored_volume": 0,
+          "contents": [],
+          "observed_contents": [],
+          "projected_produced": [],
+          "projected_blocked": [],
+          "schematic_id": 9003,
+          "schematic": {
+            "id": 9003,
+            "name": "Bacteria",
+            "cycle_time": 1800,
+            "output": { "type_id": 2393, "name": "Bacteria", "quantity": 20, "volume": 0.38 },
+            "inputs": []
+          }
+        },
+        {
+          "pin_id": 103,
+          "type_id": 2541,
+          "type_name": "Barren Storage Facility",
+          "status": "online",
+          "projected_status": "online",
+          "content_source": "projected",
+          "is_factory": false,
+          "is_extractor": false,
+          "has_inbound_route": false,
+          "stored_volume": 0,
+          "observed_stored_volume": 0,
+          "contents": [
+            { "type_id": 9832, "name": "Coolant", "amount": 240, "volume": 1.5 },
+            { "type_id": 2393, "name": "Bacteria", "amount": 1920, "volume": 0.38 }
+          ],
+          "observed_contents": [],
+          "projected_produced": [],
+          "projected_blocked": []
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "colonies": 1,
+    "characters": 1,
+    "expired_extractors": 0,
+    "expiring_extractors": 0,
+    "starved_factories": 0,
+    "stored_volume": 0
+  }
+}

@@ -100,6 +100,7 @@ test("JSON export preserves complete colony and facility details", () => {
 
   assert.equal(result.filename, "planetary-industry-2026-08-28T12-34-56Z.json");
   assert.equal(exported.schema_version, "eqm.planetary-industry.v1");
+  assert.deepEqual(exported.schematics, []);
   assert.equal(exported.summary.facility_count, 1);
   assert.equal(exported.colonies[0].pins[0].extractor.projected_remaining_output, 25_000);
 });

@@ -89,6 +89,29 @@ def type_map(db: Session, type_ids: set[int]) -> dict[int, EveType]:
     }
 
 
+def serialize_schematic(schematic: EvePlanetSchematic) -> dict[str, Any]:
+    return {
+        "id": schematic.schematic_id,
+        "name": schematic.name,
+        "cycle_time": schematic.cycle_time,
+        "output": {
+            "type_id": schematic.output_type_id,
+            "name": schematic.output_type.name,
+            "quantity": schematic.output_quantity,
+            "volume": float(schematic.output_type.volume or 0),
+        },
+        "inputs": [
+            {
+                "type_id": item.type_id,
+                "name": item.item_type.name,
+                "quantity": item.quantity,
+                "volume": float(item.item_type.volume or 0),
+            }
+            for item in sorted(schematic.inputs, key=lambda row: row.item_type.name)
+        ],
+    }
+
+
 def pin_status(pin: PlanetaryPin, now: datetime) -> str:
     if pin.expiry_time is None:
         return "online"
@@ -262,26 +285,7 @@ def serialize_colony(db: Session, colony: PlanetaryColony) -> dict[str, Any]:
                 "projected_status": projected_status,
                 "content_source": "projected" if simulation["is_projection"] else "observed",
                 "schematic_id": pin.schematic_id,
-                "schematic": {
-                    "id": schematic.schematic_id,
-                    "name": schematic.name,
-                    "cycle_time": schematic.cycle_time,
-                    "output": {
-                        "type_id": schematic.output_type_id,
-                        "name": schematic.output_type.name,
-                        "quantity": schematic.output_quantity,
-                        "volume": float(schematic.output_type.volume or 0),
-                    },
-                    "inputs": [
-                        {
-                            "type_id": item.type_id,
-                            "name": item.item_type.name,
-                            "quantity": item.quantity,
-                            "volume": float(item.item_type.volume or 0),
-                        }
-                        for item in sorted(schematic.inputs, key=lambda row: row.item_type.name)
-                    ],
-                } if schematic else None,
+                "schematic": serialize_schematic(schematic) if schematic else None,
                 "is_factory": is_factory,
                 "is_extractor": is_extractor,
                 "has_inbound_route": pin.pin_id in inbound_pins,
@@ -419,6 +423,14 @@ def list_planetary_industry(
         .order_by(PlanetaryColony.planet_name)
     ).all()
     payload = [serialize_colony(db, colony) for colony in colonies]
+    schematic_catalog = db.scalars(
+        select(EvePlanetSchematic)
+        .options(
+            selectinload(EvePlanetSchematic.output_type),
+            selectinload(EvePlanetSchematic.inputs).selectinload(EvePlanetSchematicInput.item_type),
+        )
+        .order_by(EvePlanetSchematic.name, EvePlanetSchematic.schematic_id)
+    ).all()
     return {
         "as_of": datetime.now(timezone.utc).isoformat(),
         "characters": [
@@ -426,6 +438,7 @@ def list_planetary_industry(
             for row in characters
         ],
         "sync_tokens": sync_token_payload(db, current_user, character_ids),
+        "schematics": [serialize_schematic(row) for row in schematic_catalog],
         "colonies": payload,
         "summary": {
             "colonies": len(payload),

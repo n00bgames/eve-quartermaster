@@ -1,0 +1,157 @@
+{
+  "schema_version": "eqm.planetary-shortage-report.v1",
+  "generated_at": "2026-08-28T12:30:00.000Z",
+  "source_as_of": "2026-08-28T12:00:00Z",
+  "methodology": "configured-throughput-with-projected-inventory",
+  "scope": {
+    "target_type_id": 2870,
+    "target_name": "Organic Mortar Applicators",
+    "configured_target_factories": 1,
+    "configured_target_output_per_day": 24,
+    "commodity_count": 5
+  },
+  "summary": {
+    "critical_shortages": 4,
+    "shortages": 0,
+    "watch_items": 0,
+    "covered_items": 1
+  },
+  "commodities": [
+    {
+      "type_id": 2390,
+      "name": "Electrolytes",
+      "projected_inventory": 0,
+      "configured_supply_per_day": 0,
+      "configured_demand_per_day": 960,
+      "net_shortfall_per_day": 960,
+      "coverage": 0,
+      "inventory_days_at_demand": 0,
+      "runway_days_at_net_shortfall": 0,
+      "configured_producers": 0,
+      "configured_consumers": 1,
+      "running_producers": 0,
+      "starved_producers": 0,
+      "producer_output_per_day": 960,
+      "additional_processors_to_balance": 1,
+      "base_components": [
+        {
+          "type_id": 2309,
+          "name": "Ionic Solutions",
+          "quantity_per_day": 144000,
+          "planet_types": ["Gas", "Storm"]
+        }
+      ],
+      "severity": "critical"
+    },
+    {
+      "type_id": 2073,
+      "name": "Microorganisms",
+      "projected_inventory": 0,
+      "configured_supply_per_day": 0,
+      "configured_demand_per_day": 144000,
+      "net_shortfall_per_day": 144000,
+      "coverage": 0,
+      "inventory_days_at_demand": 0,
+      "runway_days_at_net_shortfall": 0,
+      "configured_producers": 0,
+      "configured_consumers": 1,
+      "running_producers": 0,
+      "starved_producers": 0,
+      "producer_output_per_day": null,
+      "additional_processors_to_balance": null,
+      "base_components": [
+        {
+          "type_id": 2073,
+          "name": "Microorganisms",
+          "quantity_per_day": 144000,
+          "planet_types": ["Barren", "Ice", "Oceanic", "Temperate"]
+        }
+      ],
+      "severity": "critical"
+    },
+    {
+      "type_id": 3645,
+      "name": "Water",
+      "projected_inventory": 0,
+      "configured_supply_per_day": 0,
+      "configured_demand_per_day": 960,
+      "net_shortfall_per_day": 960,
+      "coverage": 0,
+      "inventory_days_at_demand": 0,
+      "runway_days_at_net_shortfall": 0,
+      "configured_producers": 0,
+      "configured_consumers": 1,
+      "running_producers": 0,
+      "starved_producers": 0,
+      "producer_output_per_day": 960,
+      "additional_processors_to_balance": 1,
+      "base_components": [
+        {
+          "type_id": 2268,
+          "name": "Aqueous Liquids",
+          "quantity_per_day": 144000,
+          "planet_types": ["Barren", "Gas", "Ice", "Oceanic", "Storm", "Temperate"]
+        }
+      ],
+      "severity": "critical"
+    },
+    {
+      "type_id": 9832,
+      "name": "Coolant",
+      "projected_inventory": 240,
+      "configured_supply_per_day": 120,
+      "configured_demand_per_day": 480,
+      "net_shortfall_per_day": 360,
+      "coverage": 0.25,
+      "inventory_days_at_demand": 0.5,
+      "runway_days_at_net_shortfall": 0.666667,
+      "configured_producers": 1,
+      "configured_consumers": 1,
+      "running_producers": 1,
+      "starved_producers": 0,
+      "producer_output_per_day": 120,
+      "additional_processors_to_balance": 3,
+      "base_components": [
+        {
+          "type_id": 2268,
+          "name": "Aqueous Liquids",
+          "quantity_per_day": 432000,
+          "planet_types": ["Barren", "Gas", "Ice", "Oceanic", "Storm", "Temperate"]
+        },
+        {
+          "type_id": 2309,
+          "name": "Ionic Solutions",
+          "quantity_per_day": 432000,
+          "planet_types": ["Gas", "Storm"]
+        }
+      ],
+      "severity": "critical"
+    },
+    {
+      "type_id": 2393,
+      "name": "Bacteria",
+      "projected_inventory": 1920,
+      "configured_supply_per_day": 960,
+      "configured_demand_per_day": 960,
+      "net_shortfall_per_day": 0,
+      "coverage": 1,
+      "inventory_days_at_demand": 2,
+      "runway_days_at_net_shortfall": null,
+      "configured_producers": 1,
+      "configured_consumers": 1,
+      "running_producers": 1,
+      "starved_producers": 0,
+      "producer_output_per_day": 960,
+      "additional_processors_to_balance": 0,
+      "base_components": [],
+      "severity": "covered"
+    }
+  ],
+  "caveats": [
+    "Configured throughput counts every configured factory at full-cycle capacity, including idle or not-yet-started factories.",
+    "Projected inventory is network-wide and may be stranded on another character or planet until hauled.",
+    "Manual transfers, expedited routes, and unsubmitted colony edits remain unknown until ESI publishes a newer checkpoint.",
+    "Additional processor counts are throughput equivalents and do not validate a planet's CPU or powergrid fit.",
+    "Planet types show where a raw resource can occur, not the density or quality of a specific planet."
+  ]
+}

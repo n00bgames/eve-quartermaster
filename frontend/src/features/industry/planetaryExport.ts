@@ -168,6 +168,7 @@ export function buildPlanetaryExport(
         facility_count: facilityCount,
         amount_row_count: rows.length,
       },
+      schematics: data.schematics ?? [],
       colonies: data.colonies,
     };
     return {

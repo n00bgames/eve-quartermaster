@@ -119,6 +119,7 @@ export type PlanetaryIndustryPayload = {
   as_of: string;
   characters: { id: number; name: string; portrait_url?: string | null }[];
   sync_tokens: PlanetarySyncToken[];
+  schematics?: PlanetarySchematic[];
   colonies: PlanetaryColony[];
   summary: {
     colonies: number;

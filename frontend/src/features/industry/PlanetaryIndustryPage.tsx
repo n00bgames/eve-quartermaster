@@ -1,8 +1,13 @@
-import { AlertTriangle, ChevronDown, Download, Factory, Globe2, RefreshCw, Timer, Warehouse } from "lucide-react";
+import { AlertTriangle, BarChart3, ChevronDown, Download, Factory, Globe2, RefreshCw, Timer, Warehouse } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { pollCharacterSyncJob } from "../../lib/characterSyncPolling";
 import { buildPlanetaryExport, type PlanetaryExportFormat } from "./planetaryExport";
+import {
+  availablePlanetaryShortageTargets,
+  buildPlanetaryShortageReport,
+  type PlanetaryShortageReport,
+} from "./planetaryShortageReport";
 
 import type {
   CharacterSyncJob,
@@ -46,6 +51,7 @@ export function PlanetaryIndustryPage({
   const [character, setCharacter] = useState("all");
   const [system, setSystem] = useState("all");
   const [planetType, setPlanetType] = useState("all");
+  const [reportTarget, setReportTarget] = useState("all");
   const [expanded, setExpanded] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [syncJob, setSyncJob] = useState<CharacterSyncJob | null>(null);
@@ -113,6 +119,24 @@ export function PlanetaryIndustryPage({
     URL.revokeObjectURL(url);
   }
 
+  function downloadShortageReport() {
+    if (!shortageReport) return;
+    const stamp = shortageReport.generated_at.replace(/:/g, "-").replace(/\.\d{3}Z$/, "Z");
+    const target = shortageReport.scope.target_name
+      ? `-${shortageReport.scope.target_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}`
+      : "";
+    const url = URL.createObjectURL(new Blob([`${JSON.stringify(shortageReport, null, 2)}\n`], {
+      type: "application/json;charset=utf-8",
+    }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `planetary-shortage-report${target}-${stamp}.json`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  }
+
   useEffect(() => {
     const refreshProjection = () => void load().catch((reason) => setError(reason instanceof Error ? reason.message : "Unable to load Planetary Industry"));
     refreshProjection();
@@ -137,6 +161,10 @@ export function PlanetaryIndustryPage({
     )),
     [data, character, system, planetType],
   );
+  const reportTargets = useMemo(() => data ? availablePlanetaryShortageTargets(data) : [], [data]);
+  const shortageReport = useMemo(() => data ? buildPlanetaryShortageReport(data, {
+    targetTypeId: reportTarget === "all" ? null : Number(reportTarget),
+  }) : null, [data, reportTarget]);
   const eligible = data?.sync_tokens.filter((token) => token.can_sync && token.has_scope).length ?? 0;
   const missingScope = data?.sync_tokens.filter((token) => token.can_sync && !token.has_scope) ?? [];
   const syncPercent = syncJob?.total_count
@@ -147,6 +175,7 @@ export function PlanetaryIndustryPage({
     <div className="section-heading">
       <div><h3>Planetary Industry</h3><p>Colony layouts, extractor cycles, routed production, storage, and factory health from ESI.</p></div>
       <div className="button-row compact">
+        <button type="button" disabled={!shortageReport} onClick={downloadShortageReport}><BarChart3 size={16} />Export supply report</button>
         <button type="button" disabled={!data} onClick={() => downloadExport("csv")}><Download size={16} />Export CSV</button>
         <button type="button" disabled={!data} onClick={() => downloadExport("json")}><Download size={16} />Export JSON</button>
         <button type="button" disabled={busy || eligible === 0} onClick={() => void syncAll()}><RefreshCw size={16} />{busy ? "Syncing" : "Sync all eligible"}</button>
@@ -181,6 +210,13 @@ export function PlanetaryIndustryPage({
       <label>System<select value={system} onChange={(event) => setSystem(event.target.value)}><option value="all">All systems</option>{systems.map((value) => <option key={value} value={value!}>{value}</option>)}</select></label>
       <label>Planet type<select value={planetType} onChange={(event) => setPlanetType(event.target.value)}><option value="all">All types</option>{planetTypes.map((value) => <option key={value} value={value!}>{value}</option>)}</select></label>
     </div>
+    {shortageReport && <PlanetaryShortageReportPanel
+      report={shortageReport}
+      targets={reportTargets}
+      selectedTarget={reportTarget}
+      onTargetChange={setReportTarget}
+      onDownload={downloadShortageReport}
+    />}
     <div className="planetary-token-row">
       {data?.sync_tokens.map((token) => <button type="button" key={token.token_id} disabled={busy || !token.can_sync || !token.has_scope} onClick={() => void syncCharacter(token.token_id)} title={!token.has_scope ? "Reauthorize ESI to grant the PI scope" : `Sync ${token.character_name}`}>{token.character_name}<small>{token.has_scope ? "PI ready" : "Reauth required"}</small></button>)}
     </div>
@@ -189,6 +225,66 @@ export function PlanetaryIndustryPage({
       {data && colonies.length === 0 && <p className="empty">No colonies match these filters.</p>}
       {!data && !error && <p className="empty">Loading planetary colonies...</p>}
     </div>
+  </section>;
+}
+
+function percent(value: number | null) {
+  return value == null ? "—" : `${number.format(value * 100)}%`;
+}
+
+function days(value: number | null) {
+  return value == null ? "Balanced" : `${number.format(value)}d`;
+}
+
+function PlanetaryShortageReportPanel({
+  report,
+  targets,
+  selectedTarget,
+  onTargetChange,
+  onDownload,
+}: {
+  report: PlanetaryShortageReport;
+  targets: ReturnType<typeof availablePlanetaryShortageTargets>;
+  selectedTarget: string;
+  onTargetChange: (value: string) => void;
+  onDownload: () => void;
+}) {
+  const shortages = report.commodities.filter((row) => row.net_shortfall_per_day > 0);
+  return <section className="planetary-shortage-report">
+    <div className="section-heading compact">
+      <div>
+        <h3><BarChart3 size={18} />PI supply report</h3>
+        <p>Configured throughput versus projected inventory. Idle and unstarted factories count as planned demand.</p>
+      </div>
+      <div className="planetary-report-actions">
+        <label>Focus chain<select value={selectedTarget} onChange={(event) => onTargetChange(event.target.value)}><option value="all">All configured production</option>{targets.map((target) => <option key={target.type_id} value={target.type_id}>{target.name} · {number.format(target.configured_output_per_day)}/day</option>)}</select></label>
+        <button type="button" onClick={onDownload}><Download size={16} />Download JSON</button>
+      </div>
+    </div>
+    <div className="status-grid planetary-report-summary">
+      <article><span>Focus</span><strong>{report.scope.target_name ?? "All production"}</strong><small>{report.scope.target_name ? `${report.scope.configured_target_factories} factories · ${number.format(report.scope.configured_target_output_per_day)}/day planned` : `${report.scope.commodity_count} consumed commodities`}</small></article>
+      <article><span>Critical</span><strong>{report.summary.critical_shortages}</strong><small>Below 50% configured coverage</small></article>
+      <article><span>Other gaps</span><strong>{report.summary.shortages + report.summary.watch_items}</strong><small>50% to below 100% coverage</small></article>
+      <article><span>Covered</span><strong>{report.summary.covered_items}</strong><small>At least 100% configured coverage</small></article>
+    </div>
+    <div className="table-wrap planetary-report-table-wrap"><table className="planetary-report-table">
+      <thead><tr><th>Commodity</th><th>Coverage</th><th>Supply / day</th><th>Demand / day</th><th>Net gap / day</th><th>Projected stock</th><th>Runway at gap</th><th>Base materials / planets</th><th>Added processors</th></tr></thead>
+      <tbody>{shortages.slice(0, 20).map((row) => <tr key={row.type_id} className={`shortage-${row.severity}`}>
+        <td><strong>{row.name}</strong><small>{row.configured_producers} producers · {row.configured_consumers} consumers</small></td>
+        <td><strong>{percent(row.coverage)}</strong><small>{row.severity}</small></td>
+        <td>{number.format(row.configured_supply_per_day)}</td>
+        <td>{number.format(row.configured_demand_per_day)}</td>
+        <td>{number.format(row.net_shortfall_per_day)}</td>
+        <td>{number.format(row.projected_inventory)}</td>
+        <td>{days(row.runway_days_at_net_shortfall)}</td>
+        <td className="planetary-base-components">{row.base_components.length
+          ? row.base_components.map((component) => <span key={component.type_id}><strong>{component.name} · {number.format(component.quantity_per_day)}/day</strong><small>{component.planet_types.join(", ")}</small></span>)
+          : <span>—</span>}</td>
+        <td>{row.additional_processors_to_balance == null ? "Extractor capacity" : number.format(row.additional_processors_to_balance)}</td>
+      </tr>)}</tbody>
+    </table></div>
+    {shortages.length === 0 && <p className="empty">No configured throughput gaps were found for this scope.</p>}
+    <small className="planetary-report-caveat">Projected stock is network-wide and may need hauling. Processor counts are throughput equivalents; confirm CPU and powergrid in-game.</small>
   </section>;
 }
 
