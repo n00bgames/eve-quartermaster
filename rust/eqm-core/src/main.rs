@@ -1,6 +1,7 @@
 use std::{env, fs, process};
 
 use eqm_core::colony_simulation::{simulate_colony, ColonySimulationInput};
+use eqm_core::fitting_math::{evaluate_fitting_math, FittingMathInput};
 use eqm_core::pi_shortage::{build_planetary_shortage_report, PlanetaryIndustryPayload};
 
 fn value_after(args: &[String], flag: &str) -> Option<String> {
@@ -11,7 +12,7 @@ fn value_after(args: &[String], flag: &str) -> Option<String> {
 
 fn usage() -> ! {
     eprintln!(
-        "Usage:\n  eqm-core pi-shortage --input <payload.json> [--target-type-id <id>] [--generated-at <ISO-8601>]\n  eqm-core colony-simulation --input <payload.json>"
+        "Usage:\n  eqm-core pi-shortage --input <payload.json> [--target-type-id <id>] [--generated-at <ISO-8601>]\n  eqm-core colony-simulation --input <payload.json>\n  eqm-core fitting-math --input <payload.json>"
     );
     process::exit(2);
 }
@@ -46,6 +47,11 @@ fn run() -> Result<(), String> {
             let payload: ColonySimulationInput = serde_json::from_str(&input_text)
                 .map_err(|error| format!("invalid colony simulation payload: {error}"))?;
             serde_json::to_value(simulate_colony(payload)?)
+        }
+        "fitting-math" => {
+            let payload: FittingMathInput = serde_json::from_str(&input_text)
+                .map_err(|error| format!("invalid fitting math payload: {error}"))?;
+            serde_json::to_value(evaluate_fitting_math(payload)?)
         }
         _ => usage(),
     }

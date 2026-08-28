@@ -1,0 +1,35 @@
+{
+  "schema_version": "eqm.fitting-math-input.v1",
+  "stacking_cases": [
+    {
+      "name": "mixed fitting modifiers",
+      "raw_multipliers": [1.275, 1.275, 0.82, 0.8, 0, 1],
+      "unpenalized_multipliers": [1.275, 1.275, 0.82, 0],
+      "dogma_values": [27.5, -20, 1.1, 0],
+      "percent_bonuses": [27.5, 27.5, -20]
+    }
+  ],
+  "capacitor_cases": [
+    {
+      "name": "stable freighter capacitor",
+      "capacity": 3000,
+      "recharge_seconds": 184800,
+      "sample_percent": 25,
+      "drain_per_second": 0.02
+    },
+    {
+      "name": "finite depletion",
+      "capacity": 3000,
+      "recharge_seconds": 184800,
+      "sample_percent": 25,
+      "drain_per_second": 0.2
+    },
+    {
+      "name": "no active drain",
+      "capacity": 3000,
+      "recharge_seconds": 184800,
+      "sample_percent": 25,
+      "drain_per_second": 0
+    }
+  ]
+}
