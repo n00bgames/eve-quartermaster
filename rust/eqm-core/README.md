@@ -7,7 +7,8 @@
 - `pi-shortage`: configured PI throughput, projected inventory, target-chain traversal, net deficits, processor equivalents, raw P0 expansion, and eligible planet types.
 - `colony-simulation`: deterministic event scheduling, routed factory inputs and outputs, storage capacity, extractor decay/noise, blocked output, and truncation safeguards.
 - `fitting-math`: dogma multiplier normalization, stacking penalties, capacitor recharge, stability, and finite depletion simulation.
-- Cross-language contracts: `eqm.planetary-shortage-report.v1`, `eqm.planetary-colony-simulation-input.v1`, and `eqm.fitting-math-input.v1`.
+- `fitting-resources`: ship and subsystem CPU/powergrid/calibration capacity, module usage, fitting reductions, slot validation, and the stat-eligible item set.
+- Cross-language contracts: `eqm.planetary-shortage-report.v1`, `eqm.planetary-colony-simulation-input.v1`, `eqm.fitting-math-input.v1`, and `eqm.fitting-resources-input.v1`.
 - Shared fixtures: `frontend/tests/fixtures/planetary-shortage-*.v1.json` and `backend/tests/fixtures/planetary-colony-simulation-*.v1.json`.
 
 ## Docker test
@@ -41,8 +42,13 @@ cargo run -- fitting-math \
   --input ../../backend/tests/fixtures/fitting-math-input.v1.json
 ```
 
+```sh
+cargo run -- fitting-resources \
+  --input ../../backend/tests/fixtures/fitting-resources-input.v1.json
+```
+
 ## Migration rule
 
 Rust does not access PostgreSQL, ESI, authentication, or permissions. Application layers assemble a bounded JSON input, call the deterministic core, and retain their existing authorization and persistence responsibilities.
 
-The next fitting slice is resource-envelope validation: ship CPU, powergrid, calibration, slot capacity, skill reductions, and subsystem fitting modifiers.
+The next fitting slice is defensive and mobility statistics: effective hitpoints, resistances, cargo modifiers, velocity, mass, and align time.

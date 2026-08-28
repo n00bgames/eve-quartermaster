@@ -1,0 +1,133 @@
+{
+  "schema_version": "eqm.fitting-resources-input.v1",
+  "ship_attrs": {
+    "cpuOutput": 100,
+    "powerOutput": 500,
+    "upgradeCapacity": 400,
+    "hiSlots": 2,
+    "medSlots": 1,
+    "lowSlots": 1,
+    "rigSlots": 2,
+    "subSystemSlot": 1,
+    "serviceSlots": 0,
+    "roleBonusT3ProbeCPU": -99,
+    "cpuNeedBonus": -100
+  },
+  "skill_levels": {
+    "3426": 5,
+    "3413": 5,
+    "3318": 5,
+    "11207": 5,
+    "22578": 5
+  },
+  "items": [
+    {
+      "id": 100,
+      "type_id": 1000,
+      "flag": "SubSystemSlot0",
+      "quantity": 1,
+      "simulation_state": "online",
+      "name": "Hybrid Propulsion Subsystem",
+      "group_name": "Subsystem",
+      "attrs": {
+        "hiSlotModifier": 1,
+        "cpuOutput": 20,
+        "powerOutput": 50,
+        "cpuOutputBonus2": 10,
+        "powerEngineeringOutputBonus": 20,
+        "subsystemMHTFittingReduction": -25,
+        "subsystemMMissileFittingReduction": -20
+      }
+    },
+    {
+      "id": 200,
+      "type_id": 2000,
+      "flag": "HiSlot0",
+      "quantity": 1,
+      "simulation_state": "online",
+      "name": "Medium Hybrid Turret",
+      "group_name": "Hybrid Turret",
+      "attrs": { "cpu": 30, "power": 100, "requiredSkill1": 3304 }
+    },
+    {
+      "id": 201,
+      "type_id": 2001,
+      "flag": "HiSlot1",
+      "quantity": 1,
+      "simulation_state": "online",
+      "name": "Heavy Missile Launcher",
+      "group_name": "Missile Launcher",
+      "attrs": { "cpu": 40, "power": 80 }
+    },
+    {
+      "id": 202,
+      "type_id": 2002,
+      "flag": "HiSlot2",
+      "quantity": 1,
+      "simulation_state": "online",
+      "name": "Expanded Probe Launcher",
+      "group_name": "Scan Probe Launcher",
+      "attrs": { "cpu": 50, "power": 20 }
+    },
+    {
+      "id": 203,
+      "type_id": 2003,
+      "flag": "HiSlot3",
+      "quantity": 1,
+      "simulation_state": "online",
+      "name": "Extra Medium Hybrid Turret",
+      "group_name": "Hybrid Turret",
+      "attrs": { "cpu": 10, "power": 10, "requiredSkill1": 3304 }
+    },
+    {
+      "id": 300,
+      "type_id": 3000,
+      "flag": "MedSlot0",
+      "quantity": 1,
+      "simulation_state": "offline",
+      "name": "Offline Test Module",
+      "group_name": "Electronic Warfare",
+      "attrs": { "cpu": 999, "power": 999 }
+    },
+    {
+      "id": 400,
+      "type_id": 4000,
+      "flag": "LoSlot0",
+      "quantity": 1,
+      "simulation_state": "online",
+      "name": "Reinforced Bulkheads II",
+      "group_name": "Reinforced Bulkhead",
+      "attrs": { "cpu": 40, "power": 1 }
+    },
+    {
+      "id": 401,
+      "type_id": 4001,
+      "flag": "LoSlot1",
+      "quantity": 1,
+      "simulation_state": "online",
+      "name": "Mining Laser Upgrade II",
+      "group_name": "Mining Upgrade",
+      "attrs": { "cpu": 20, "power": 0 }
+    },
+    {
+      "id": 500,
+      "type_id": 5000,
+      "flag": "RigSlot0",
+      "quantity": 1,
+      "simulation_state": "online",
+      "name": "Calibration Rig I",
+      "group_name": "Rig",
+      "attrs": { "upgradeCost": 100 }
+    },
+    {
+      "id": 501,
+      "type_id": 5001,
+      "flag": "RigSlot1",
+      "quantity": 1,
+      "simulation_state": "online",
+      "name": "Calibration Rig II",
+      "group_name": "Rig",
+      "attrs": { "upgradeCost": 200 }
+    }
+  ]
+}

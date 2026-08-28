@@ -1,0 +1,36 @@
+{
+  "schema_version": "eqm.fitting-resources-output.v1",
+  "effective_ship_attrs": {
+    "cpuOutput": 132.0,
+    "powerOutput": 660.0,
+    "hiSlots": 3.0,
+    "subsystemMHTFittingReduction": -25.0,
+    "subsystemMMissileFittingReduction": -20.0
+  },
+  "resources": {
+    "cpu": { "used": 61.8, "capacity": 165.0, "ok": true, "percent": 37.45454545454545 },
+    "powergrid": { "used": 147.25, "capacity": 825.0, "ok": true, "percent": 17.84848484848485 },
+    "calibration": { "used": 300.0, "capacity": 400.0, "ok": true, "percent": 75.0 }
+  },
+  "slots": [
+    { "key": "HiSlot", "used": 4, "capacity": 3, "ok": false },
+    { "key": "MedSlot", "used": 1, "capacity": 1, "ok": true },
+    { "key": "LoSlot", "used": 2, "capacity": 1, "ok": false },
+    { "key": "RigSlot", "used": 2, "capacity": 2, "ok": true },
+    { "key": "SubSystemSlot", "used": 1, "capacity": 1, "ok": true },
+    { "key": "ServiceSlot", "used": 0, "capacity": 0, "ok": true }
+  ],
+  "item_usage": [
+    { "id": 100, "cpu": 0.0, "powergrid": 0.0, "calibration": 0.0 },
+    { "id": 200, "cpu": 16.875, "powergrid": 67.5, "calibration": 0.0 },
+    { "id": 201, "cpu": 24.0, "powergrid": 57.6, "calibration": 0.0 },
+    { "id": 202, "cpu": 0.30000000000000027, "powergrid": 14.4, "calibration": 0.0 },
+    { "id": 203, "cpu": 5.625, "powergrid": 6.75, "calibration": 0.0 },
+    { "id": 300, "cpu": 0.0, "powergrid": 0.0, "calibration": 0.0 },
+    { "id": 400, "cpu": 0.0, "powergrid": 1.0, "calibration": 0.0 },
+    { "id": 401, "cpu": 15.0, "powergrid": 0.0, "calibration": 0.0 },
+    { "id": 500, "cpu": 0.0, "powergrid": 0.0, "calibration": 100.0 },
+    { "id": 501, "cpu": 0.0, "powergrid": 0.0, "calibration": 200.0 }
+  ],
+  "stats_item_ids": [200, 201, 202, 400, 300, 500, 501, 100]
+}
