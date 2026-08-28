@@ -1,7 +1,8 @@
-import { AlertTriangle, ChevronDown, Factory, Globe2, RefreshCw, Timer, Warehouse } from "lucide-react";
+import { AlertTriangle, ChevronDown, Download, Factory, Globe2, RefreshCw, Timer, Warehouse } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { pollCharacterSyncJob } from "../../lib/characterSyncPolling";
+import { buildPlanetaryExport, type PlanetaryExportFormat } from "./planetaryExport";
 
 import type {
   CharacterSyncJob,
@@ -99,6 +100,19 @@ export function PlanetaryIndustryPage({
     }
   }
 
+  function downloadExport(format: PlanetaryExportFormat) {
+    if (!data) return;
+    const result = buildPlanetaryExport(data, format);
+    const url = URL.createObjectURL(new Blob([result.text], { type: result.mimeType }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = result.filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  }
+
   useEffect(() => {
     const refreshProjection = () => void load().catch((reason) => setError(reason instanceof Error ? reason.message : "Unable to load Planetary Industry"));
     refreshProjection();
@@ -133,6 +147,8 @@ export function PlanetaryIndustryPage({
     <div className="section-heading">
       <div><h3>Planetary Industry</h3><p>Colony layouts, extractor cycles, routed production, storage, and factory health from ESI.</p></div>
       <div className="button-row compact">
+        <button type="button" disabled={!data} onClick={() => downloadExport("csv")}><Download size={16} />Export CSV</button>
+        <button type="button" disabled={!data} onClick={() => downloadExport("json")}><Download size={16} />Export JSON</button>
         <button type="button" disabled={busy || eligible === 0} onClick={() => void syncAll()}><RefreshCw size={16} />{busy ? "Syncing" : "Sync all eligible"}</button>
         <button type="button" disabled={busy} onClick={() => void load()}><RefreshCw size={16} />Refresh</button>
       </div>
