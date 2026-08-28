@@ -270,7 +270,11 @@ fn base_components_for(
         let name = names
             .get(&current_type_id)
             .cloned()
-            .or_else(|| recipes.get(&current_type_id).map(|recipe| recipe.output.name.clone()))
+            .or_else(|| {
+                recipes
+                    .get(&current_type_id)
+                    .map(|recipe| recipe.output.name.clone())
+            })
             .unwrap_or_else(|| format!("Type {current_type_id}"));
         let planet_types = planet_types_for(&name);
         if !planet_types.is_empty() {
@@ -293,12 +297,14 @@ fn base_components_for(
     );
     let mut rows: Vec<BaseComponent> = totals
         .into_iter()
-        .map(|(type_id, (name, quantity_per_day, planet_types))| BaseComponent {
-            type_id,
-            name,
-            quantity_per_day: rounded(quantity_per_day),
-            planet_types,
-        })
+        .map(
+            |(type_id, (name, quantity_per_day, planet_types))| BaseComponent {
+                type_id,
+                name,
+                quantity_per_day: rounded(quantity_per_day),
+                planet_types,
+            },
+        )
         .collect();
     rows.sort_by(|left, right| {
         left.name
@@ -339,14 +345,14 @@ pub fn available_planetary_shortage_targets(
                 continue;
             };
             let output_per_day = per_day(schematic.output.quantity, schematic.cycle_time);
-            let target = targets
-                .entry(schematic.output.type_id)
-                .or_insert_with(|| PlanetaryShortageTarget {
+            let target = targets.entry(schematic.output.type_id).or_insert_with(|| {
+                PlanetaryShortageTarget {
                     type_id: schematic.output.type_id,
                     name: schematic.output.name.clone(),
                     configured_factories: 0,
                     configured_output_per_day: 0.0,
-                });
+                }
+            });
             target.configured_factories += 1;
             target.configured_output_per_day += output_per_day;
         }
@@ -382,7 +388,8 @@ pub fn build_planetary_shortage_report(
     for colony in &data.colonies {
         for pin in &colony.pins {
             for content in &pin.contents {
-                row_for(&mut aggregates, content.type_id, &content.name).inventory += content.amount;
+                row_for(&mut aggregates, content.type_id, &content.name).inventory +=
+                    content.amount;
             }
 
             if let Some(extractor) = &pin.extractor {
@@ -428,7 +435,8 @@ pub fn build_planetary_shortage_report(
 
             for input in &configured_schematic.inputs {
                 let aggregate = row_for(&mut aggregates, input.type_id, &input.name);
-                aggregate.demand_per_day += per_day(input.quantity, configured_schematic.cycle_time);
+                aggregate.demand_per_day +=
+                    per_day(input.quantity, configured_schematic.cycle_time);
                 aggregate.consumers += 1;
             }
         }
@@ -437,10 +445,8 @@ pub fn build_planetary_shortage_report(
     for recipe in recipes.values() {
         if let Some(aggregate) = aggregates.get_mut(&recipe.output.type_id) {
             if aggregate.producer_output_per_day.is_none() {
-                aggregate.producer_output_per_day = Some(per_day(
-                    recipe.output.quantity,
-                    recipe.cycle_time,
-                ));
+                aggregate.producer_output_per_day =
+                    Some(per_day(recipe.output.quantity, recipe.cycle_time));
             }
         }
     }
@@ -497,9 +503,7 @@ pub fn build_planetary_shortage_report(
             configured_demand_per_day: rounded(aggregate.demand_per_day),
             net_shortfall_per_day: rounded(net_shortfall),
             coverage: Some(rounded(coverage)),
-            inventory_days_at_demand: Some(rounded(
-                aggregate.inventory / aggregate.demand_per_day,
-            )),
+            inventory_days_at_demand: Some(rounded(aggregate.inventory / aggregate.demand_per_day)),
             runway_days_at_net_shortfall: if net_shortfall > 0.0 {
                 Some(rounded(aggregate.inventory / net_shortfall))
             } else {

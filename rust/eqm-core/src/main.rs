@@ -1,5 +1,6 @@
 use std::{env, fs, process};
 
+use eqm_core::colony_simulation::{simulate_colony, ColonySimulationInput};
 use eqm_core::pi_shortage::{build_planetary_shortage_report, PlanetaryIndustryPayload};
 
 fn value_after(args: &[String], flag: &str) -> Option<String> {
@@ -10,32 +11,46 @@ fn value_after(args: &[String], flag: &str) -> Option<String> {
 
 fn usage() -> ! {
     eprintln!(
-        "Usage: eqm-core pi-shortage --input <payload.json> [--target-type-id <id>] [--generated-at <ISO-8601>]"
+        "Usage:\n  eqm-core pi-shortage --input <payload.json> [--target-type-id <id>] [--generated-at <ISO-8601>]\n  eqm-core colony-simulation --input <payload.json>"
     );
     process::exit(2);
 }
 
 fn run() -> Result<(), String> {
     let args: Vec<String> = env::args().skip(1).collect();
-    if args.first().map(String::as_str) != Some("pi-shortage") {
-        usage();
-    }
-
-    let input_path = value_after(&args, "--input").ok_or_else(|| "--input is required".to_string())?;
-    let target_type_id = value_after(&args, "--target-type-id")
-        .map(|value| value.parse::<u64>().map_err(|_| format!("invalid target type ID: {value}")))
-        .transpose()?;
+    let command = args.first().map(String::as_str).unwrap_or_else(|| usage());
+    let input_path =
+        value_after(&args, "--input").ok_or_else(|| "--input is required".to_string())?;
     let input_text = fs::read_to_string(&input_path)
         .map_err(|error| format!("unable to read {input_path}: {error}"))?;
-    let payload: PlanetaryIndustryPayload = serde_json::from_str(&input_text)
-        .map_err(|error| format!("invalid PI payload: {error}"))?;
-    let generated_at = value_after(&args, "--generated-at").unwrap_or_else(|| payload.as_of.clone());
-    let report = build_planetary_shortage_report(&payload, target_type_id, &generated_at);
-    println!(
-        "{}",
-        serde_json::to_string_pretty(&report)
-            .map_err(|error| format!("unable to serialize report: {error}"))?
-    );
+    let output = match command {
+        "pi-shortage" => {
+            let target_type_id = value_after(&args, "--target-type-id")
+                .map(|value| {
+                    value
+                        .parse::<u64>()
+                        .map_err(|_| format!("invalid target type ID: {value}"))
+                })
+                .transpose()?;
+            let payload: PlanetaryIndustryPayload = serde_json::from_str(&input_text)
+                .map_err(|error| format!("invalid PI payload: {error}"))?;
+            let generated_at =
+                value_after(&args, "--generated-at").unwrap_or_else(|| payload.as_of.clone());
+            serde_json::to_value(build_planetary_shortage_report(
+                &payload,
+                target_type_id,
+                &generated_at,
+            ))
+        }
+        "colony-simulation" => {
+            let payload: ColonySimulationInput = serde_json::from_str(&input_text)
+                .map_err(|error| format!("invalid colony simulation payload: {error}"))?;
+            serde_json::to_value(simulate_colony(payload)?)
+        }
+        _ => usage(),
+    }
+    .map_err(|error| format!("unable to serialize report: {error}"))?;
+    println!("{}", serde_json::to_string_pretty(&output).unwrap());
     Ok(())
 }
 

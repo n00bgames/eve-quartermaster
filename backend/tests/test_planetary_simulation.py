@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 import unittest
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 from app.services.planetary_simulation import (
     SimulationPin,
@@ -16,6 +18,56 @@ UTC = timezone.utc
 
 
 class PlanetarySimulationTests(unittest.TestCase):
+    def test_shared_colony_fixture_matches_python_reference(self) -> None:
+        fixtures = Path(__file__).parent / "fixtures"
+        payload = json.loads(
+            (fixtures / "planetary-colony-simulation-input.v1.json").read_text()
+        )
+        expected = json.loads(
+            (fixtures / "planetary-colony-simulation-output.v1.json").read_text()
+        )
+
+        def parse_time(value: str | None) -> datetime | None:
+            return datetime.fromisoformat(value.replace("Z", "+00:00")) if value else None
+
+        pins = []
+        for item in payload["pins"]:
+            schematic = item.get("schematic")
+            pins.append(
+                SimulationPin(
+                    pin_id=item["pin_id"],
+                    kind=item["kind"],
+                    contents={int(key): value for key, value in item.get("contents", {}).items()},
+                    capacity_m3=item.get("capacity_m3"),
+                    schematic=SimulationSchematic(
+                        cycle_time=schematic["cycle_time"],
+                        inputs={int(key): value for key, value in schematic["inputs"].items()},
+                        output_type_id=schematic["output_type_id"],
+                        output_quantity=schematic["output_quantity"],
+                    ) if schematic else None,
+                    last_cycle_start=parse_time(item.get("last_cycle_start")),
+                    install_time=parse_time(item.get("install_time")),
+                    expiry_time=parse_time(item.get("expiry_time")),
+                    extractor_cycle_time=item.get("extractor_cycle_time"),
+                    extractor_product_type_id=item.get("extractor_product_type_id"),
+                    extractor_quantity_per_cycle=item.get("extractor_quantity_per_cycle"),
+                    extractor_decay_factor=item.get("extractor_decay_factor", 0.012),
+                    extractor_noise_factor=item.get("extractor_noise_factor", 0.8),
+                )
+            )
+        result = simulate_colony(
+            checkpoint_at=parse_time(payload["checkpoint_at"]),
+            projected_at=parse_time(payload["projected_at"]),
+            pins=pins,
+            routes=[SimulationRoute(**item) for item in payload["routes"]],
+            type_volumes={int(key): value for key, value in payload["type_volumes"].items()},
+            max_events=payload["max_events"],
+        )
+        result["checkpoint_at"] = result["checkpoint_at"].isoformat().replace("+00:00", "Z")
+        result["projected_at"] = result["projected_at"].isoformat().replace("+00:00", "Z")
+
+        self.assertEqual(json.loads(json.dumps(result)), expected)
+
     def test_running_factory_consumes_routed_inputs_and_projects_output(self) -> None:
         checkpoint = datetime(2026, 8, 4, 0, 30, tzinfo=UTC)
         schematic = SimulationSchematic(

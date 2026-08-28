@@ -1,0 +1,95 @@
+{
+  "schema_version": "eqm.planetary-colony-simulation-input.v1",
+  "checkpoint_at": "2026-08-04T00:30:00Z",
+  "projected_at": "2026-08-04T02:01:00Z",
+  "max_events": 100000,
+  "pins": [
+    {
+      "pin_id": 10,
+      "kind": "storage",
+      "contents": { "1": 80, "2": 80 },
+      "capacity_m3": 10000
+    },
+    {
+      "pin_id": 20,
+      "kind": "factory",
+      "schematic": {
+        "cycle_time": 3600,
+        "inputs": { "1": 40, "2": 40 },
+        "output_type_id": 3,
+        "output_quantity": 3
+      },
+      "last_cycle_start": "2026-08-04T00:00:00Z"
+    },
+    {
+      "pin_id": 30,
+      "kind": "storage",
+      "capacity_m3": 10000
+    },
+    {
+      "pin_id": 40,
+      "kind": "factory",
+      "schematic": {
+        "cycle_time": 3600,
+        "inputs": {},
+        "output_type_id": 4,
+        "output_quantity": 3
+      },
+      "last_cycle_start": "2026-08-04T00:00:00Z"
+    },
+    {
+      "pin_id": 50,
+      "kind": "storage",
+      "capacity_m3": 1
+    },
+    {
+      "pin_id": 60,
+      "kind": "extractor",
+      "install_time": "2026-08-04T00:30:00Z",
+      "expiry_time": "2026-08-04T02:30:00Z",
+      "last_cycle_start": "2026-08-04T00:30:00Z",
+      "extractor_cycle_time": 900,
+      "extractor_product_type_id": 5,
+      "extractor_quantity_per_cycle": 100,
+      "extractor_decay_factor": 0.012,
+      "extractor_noise_factor": 0.8
+    },
+    {
+      "pin_id": 70,
+      "kind": "factory",
+      "schematic": {
+        "cycle_time": 1800,
+        "inputs": { "5": 100 },
+        "output_type_id": 6,
+        "output_quantity": 2
+      }
+    },
+    {
+      "pin_id": 80,
+      "kind": "storage",
+      "capacity_m3": 10000
+    },
+    {
+      "pin_id": 90,
+      "kind": "storage",
+      "capacity_m3": 10000
+    }
+  ],
+  "routes": [
+    { "source_pin_id": 10, "destination_pin_id": 20, "content_type_id": 1, "quantity": 40 },
+    { "source_pin_id": 10, "destination_pin_id": 20, "content_type_id": 2, "quantity": 40 },
+    { "source_pin_id": 20, "destination_pin_id": 30, "content_type_id": 3, "quantity": 3 },
+    { "source_pin_id": 40, "destination_pin_id": 50, "content_type_id": 4, "quantity": 3 },
+    { "source_pin_id": 60, "destination_pin_id": 70, "content_type_id": 5, "quantity": 100 },
+    { "source_pin_id": 60, "destination_pin_id": 80, "content_type_id": 5, "quantity": 10000 },
+    { "source_pin_id": 70, "destination_pin_id": 90, "content_type_id": 6, "quantity": 2 }
+  ],
+  "type_volumes": {
+    "1": 1,
+    "2": 1,
+    "3": 6,
+    "4": 1,
+    "5": 1,
+    "6": 2
+  }
+}

@@ -1,6 +1,5 @@
 use eqm_core::pi_shortage::{
-    available_planetary_shortage_targets, build_planetary_shortage_report,
-    PlanetaryIndustryPayload,
+    available_planetary_shortage_targets, build_planetary_shortage_report, PlanetaryIndustryPayload,
 };
 use serde_json::Value;
 
@@ -43,11 +42,8 @@ fn fixture() -> PlanetaryIndustryPayload {
 
 #[test]
 fn rust_report_matches_the_typescript_golden_contract() {
-    let report = build_planetary_shortage_report(
-        &fixture(),
-        Some(2870),
-        "2026-08-28T12:30:00.000Z",
-    );
+    let report =
+        build_planetary_shortage_report(&fixture(), Some(2870), "2026-08-28T12:30:00.000Z");
     let actual = serde_json::to_value(report).expect("report serializes");
     let expected: Value = serde_json::from_str(include_str!(
         "../../../frontend/tests/fixtures/planetary-shortage-report.v1.json"
@@ -59,11 +55,8 @@ fn rust_report_matches_the_typescript_golden_contract() {
 
 #[test]
 fn idle_target_factory_remains_planned_demand() {
-    let report = build_planetary_shortage_report(
-        &fixture(),
-        Some(2870),
-        "2026-08-28T12:30:00.000Z",
-    );
+    let report =
+        build_planetary_shortage_report(&fixture(), Some(2870), "2026-08-28T12:30:00.000Z");
     assert_eq!(report.scope.configured_target_factories, 1);
     assert_eq!(report.scope.configured_target_output_per_day, 24.0);
     let coolant = report

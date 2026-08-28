@@ -1,0 +1,63 @@
+{
+  "checkpoint_at": "2026-08-04T00:30:00Z",
+  "events_processed": 11,
+  "is_projection": true,
+  "pins": {
+    "10": {
+      "blocked": {},
+      "contents": {},
+      "produced": {},
+      "status": "online"
+    },
+    "20": {
+      "blocked": {},
+      "contents": {},
+      "produced": { "3": 6 },
+      "status": "running"
+    },
+    "30": {
+      "blocked": {},
+      "contents": { "3": 6 },
+      "produced": {},
+      "status": "online"
+    },
+    "40": {
+      "blocked": { "4": 2 },
+      "contents": {},
+      "produced": { "4": 3 },
+      "status": "blocked"
+    },
+    "50": {
+      "blocked": {},
+      "contents": { "4": 1 },
+      "produced": {},
+      "status": "full"
+    },
+    "60": {
+      "blocked": {},
+      "contents": {},
+      "produced": { "5": 855 },
+      "status": "active"
+    },
+    "70": {
+      "blocked": {},
+      "contents": { "5": 300 },
+      "produced": { "6": 4 },
+      "status": "running"
+    },
+    "80": {
+      "blocked": {},
+      "contents": { "5": 255 },
+      "produced": {},
+      "status": "online"
+    },
+    "90": {
+      "blocked": {},
+      "contents": { "6": 4 },
+      "produced": {},
+      "status": "online"
+    }
+  },
+  "projected_at": "2026-08-04T02:01:00Z",
+  "truncated": false
+}

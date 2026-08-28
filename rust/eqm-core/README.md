@@ -5,8 +5,9 @@
 ## Current scope
 
 - `pi-shortage`: configured PI throughput, projected inventory, target-chain traversal, net deficits, processor equivalents, raw P0 expansion, and eligible planet types.
-- Cross-language contract: `eqm.planetary-shortage-report.v1`.
-- Shared fixtures: `frontend/tests/fixtures/planetary-shortage-*.v1.json`.
+- `colony-simulation`: deterministic event scheduling, routed factory inputs and outputs, storage capacity, extractor decay/noise, blocked output, and truncation safeguards.
+- Cross-language contracts: `eqm.planetary-shortage-report.v1` and `eqm.planetary-colony-simulation-input.v1`.
+- Shared fixtures: `frontend/tests/fixtures/planetary-shortage-*.v1.json` and `backend/tests/fixtures/planetary-colony-simulation-*.v1.json`.
 
 ## Docker test
 
@@ -29,8 +30,13 @@ cargo run -- pi-shortage \
 
 If `--generated-at` is omitted, the CLI uses the input payload's `as_of` value to remain deterministic.
 
+```sh
+cargo run -- colony-simulation \
+  --input ../../backend/tests/fixtures/planetary-colony-simulation-input.v1.json
+```
+
 ## Migration rule
 
 Rust does not access PostgreSQL, ESI, authentication, or permissions. Application layers assemble a bounded JSON input, call the deterministic core, and retain their existing authorization and persistence responsibilities.
 
-The next planned module is colony simulation. It should receive checkpoint time, projection time, pins, routes, schematics, capacities, and type volumes as JSON and match Python's `simulate_colony` output against shared fixtures before any production cutover.
+The next planned module is fitting simulation. It should start with the pure dogma/stat calculation boundary and match the TypeScript implementation against shared fixtures before any production cutover.
