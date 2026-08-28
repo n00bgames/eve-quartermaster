@@ -27,10 +27,18 @@ function cargoBayUsageText(bay: Pick<FittingCargoBay, "used" | "capacity">): str
 
 function fittingEngineLabel(simulation: FittingSimulation | null): string {
   if (!simulation) return "Hybrid engine";
-  if (simulation.resource_engine_used === "rust") return "Hybrid · Rust resources + Python stats";
-  if (simulation.resource_engine_used === "python-fallback") return "Python fallback · resources + stats";
-  if (simulation.resource_engine_used?.startsWith("python-shadow")) {
-    return `Hybrid shadow · Python served${simulation.resource_engine_shadow_match === false ? " · mismatch" : " · Rust matched"}`;
+  if (simulation.resource_engine_used === "rust" && simulation.math_engine_used === "rust") {
+    return "Hybrid · Rust resources/capacitor + Python combat";
+  }
+  if (simulation.resource_engine_used === "python-fallback" || simulation.math_engine_used === "python-fallback") {
+    return "Hybrid fallback · some fitting math used Python";
+  }
+  if (simulation.resource_engine_used === "rust") {
+    return "Hybrid · Rust resources + Python stats";
+  }
+  if (simulation.resource_engine_used?.startsWith("python-shadow") || simulation.math_engine_used?.startsWith("python-shadow")) {
+    const mismatch = simulation.resource_engine_shadow_match === false || simulation.math_engine_shadow_match === false;
+    return `Hybrid shadow · Python served${mismatch ? " · mismatch" : " · Rust matched"}`;
   }
   return "Python resources + stats";
 }

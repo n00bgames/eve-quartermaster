@@ -665,19 +665,19 @@ docker compose --profile test run --rm eqm-core-tests
 docker compose --profile test run --rm backend-tests python -m pytest -q tests/test_planetary_simulation.py tests/test_planetary_simulation_engine.py
 ```
 
-### Fitting Rust resource engine
+### Fitting Rust hybrid engine
 
-Fitting simulation now runs as a hybrid while combat-stat parity is expanded. `EQM_FITTING_ENGINE` controls the completed resource slice: CPU, powergrid, calibration, slot limits, subsystem fitting modifiers, and the module set allowed to affect stats.
+Fitting simulation now runs as a hybrid while combat-stat parity is expanded. `EQM_FITTING_ENGINE` controls the completed Rust slices: CPU, powergrid, calibration, slot limits, subsystem fitting modifiers, the module set allowed to affect stats, and capacitor recharge stability/depletion math.
 
-- `python` keeps all fitting resource calculations in Python.
-- `shadow` serves Python while comparing the Rust resource result.
-- `rust` serves the Rust resource result and automatically falls back to Python on any binary error or timeout.
+- `python` keeps all migrated fitting calculations in Python.
+- `shadow` serves Python while comparing the Rust results.
+- `rust` serves the Rust results and automatically falls back to Python on any binary error or timeout.
 
-Docker Compose defaults to `rust`; combat, tank, capacitor, mobility, targeting, and cargo statistics remain Python. The Fittings page labels this as a hybrid result. Set `EQM_FITTING_ENGINE=python` and rebuild the backend to roll the resource slice back independently of Planetary Industry.
+Docker Compose defaults to `rust`. Python still prepares capacitor capacity, recharge modifiers, and active-module draw; Rust resolves the nonlinear recharge curve, stable percentage, and depletion duration. Combat, tank, mobility, targeting, and cargo statistics remain Python. The Fittings page labels this as a hybrid result. Set `EQM_FITTING_ENGINE=python` and rebuild the backend to roll all fitting Rust slices back independently of Planetary Industry.
 
 ```powershell
 docker compose --profile test run --rm eqm-core-tests
-docker compose --profile test run --rm backend-tests python -m pytest -q tests/test_fitting_math_parity.py tests/test_fitting_resources_parity.py tests/test_fitting_resources_engine.py
+docker compose --profile test run --rm backend-tests python -m pytest -q tests/test_fitting_math_parity.py tests/test_fitting_math_engine.py tests/test_fitting_resources_parity.py tests/test_fitting_resources_engine.py
 ```
 
 The test image is built from the dedicated Docker `test` stage and includes the repository's backend tests. The normal backend and worker continue to use the final `runtime` stage without pytest.

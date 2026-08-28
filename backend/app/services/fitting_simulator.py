@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models import CharacterFitting, CharacterFittingItem, CharacterSkill, EveCharacter, EveDogmaAttribute, EveDogmaEffect, EveGroup, EveType, EveTypeDogmaAttribute, EveTypeDogmaEffect
+from app.services.fitting_math_engine import evaluate_fitting_math_with_engine
 from app.services.fitting_resources_engine import evaluate_fitting_resources_with_engine
 from app.services.ship_capacity import resolved_ship_capacity
 
@@ -1926,17 +1927,55 @@ def compute_fitting_stats(
         hull_effects["weapon"],
         type_group_ids,
     )
-    stable_percent = None
-    depletion_seconds = None
-    cap_stable = False
+    math_capacity = float(capacitor_capacity or 0.0)
+    math_recharge_seconds = float(capacitor_recharge_seconds or 0.0)
+    python_stable_percent = None
+    python_depletion_seconds = None
     if capacitor_capacity and capacitor_recharge_seconds:
-        stable_percent = capacitor_stable_percent(float(capacitor_capacity), capacitor_recharge_seconds, capacitor_draw)
-        cap_stable = stable_percent is not None
-        if stable_percent is None:
-            depletion_seconds = capacitor_depletion_seconds(float(capacitor_capacity), capacitor_recharge_seconds, capacitor_draw)
+        python_stable_percent = capacitor_stable_percent(
+            math_capacity,
+            math_recharge_seconds,
+            capacitor_draw,
+        )
+        if python_stable_percent is None:
+            python_depletion_seconds = capacitor_depletion_seconds(
+                math_capacity,
+                math_recharge_seconds,
+                capacitor_draw,
+            )
     elif capacitor_draw <= 0:
-        cap_stable = True
-        stable_percent = 100.0
+        python_stable_percent = 100.0
+    math_evaluation = evaluate_fitting_math_with_engine(
+        payload={
+            "schema_version": "eqm.fitting-math-input.v1",
+            "stacking_cases": [],
+            "capacitor_cases": [{
+                "name": "fitting capacitor",
+                "capacity": math_capacity,
+                "recharge_seconds": math_recharge_seconds,
+                "sample_percent": 25.0,
+                "drain_per_second": capacitor_draw,
+            }],
+        },
+        python_result={
+            "schema_version": "eqm.fitting-math-output.v1",
+            "stacking_cases": [],
+            "capacitor_cases": [{
+                "name": "fitting capacitor",
+                "recharge_at_sample": capacitor_recharge_at_percent(
+                    math_capacity,
+                    math_recharge_seconds,
+                    25.0,
+                ),
+                "stable_percent": python_stable_percent,
+                "depletion_seconds": python_depletion_seconds,
+            }],
+        },
+    )
+    capacitor_result = math_evaluation["capacitor_cases"][0]
+    stable_percent = capacitor_result["stable_percent"]
+    depletion_seconds = capacitor_result["depletion_seconds"]
+    cap_stable = stable_percent is not None
     shield_peak_recharge = None
     if shield_hp and shield_recharge_ms:
         shield_recharge_multiplier = named_skill_dogma_multiplier(
@@ -1966,6 +2005,9 @@ def compute_fitting_stats(
     )
 
     return {
+        "math_engine_requested": math_evaluation.get("engine_requested", "python"),
+        "math_engine_used": math_evaluation.get("engine_used", "python"),
+        "math_engine_shadow_match": math_evaluation.get("engine_shadow_match"),
         "offense": {
             "turret_dps": turret_dps,
             "launcher_dps": launcher_dps,
@@ -2022,6 +2064,22 @@ def compute_fitting_stats(
         },
         "notes": [
             f"Combat stats are SDE-derived {'hot' if heat else 'cold'} estimates with common fitted module modifiers, character skills, selected hull role bonuses, supported implant mobility effects, capacitor draw, and stacking penalties. Script modifiers and remaining effect-graph coverage are still being refined.",
+            *(
+                ["Rust capacitor math was unavailable, so recharge stability and depletion used the Python fallback."]
+                if math_evaluation.get("engine_used") == "python-fallback"
+                else []
+            ),
+            *(
+                ["Rust capacitor math shadow execution failed; Python remained authoritative."]
+                if math_evaluation.get("engine_used") == "python-shadow-error"
+                else []
+            ),
+            *(
+                ["Rust capacitor math shadow output differed from Python; Python remains authoritative in shadow mode."]
+                if math_evaluation.get("engine_shadow_match") is False
+                and math_evaluation.get("engine_used") != "python-shadow-error"
+                else []
+            ),
         ],
     }
 
@@ -2225,7 +2283,10 @@ def simulate_fitting(db: Session, fitting: CharacterFitting, character: EveChara
         "resource_engine_requested": resource_evaluation.get("engine_requested", "python"),
         "resource_engine_used": resource_evaluation.get("engine_used", "python"),
         "resource_engine_shadow_match": resource_evaluation.get("engine_shadow_match"),
-        "stats_engine_used": "python",
+        "math_engine_requested": stats.get("math_engine_requested", "python") if stats else "python",
+        "math_engine_used": stats.get("math_engine_used", "python") if stats else "python",
+        "math_engine_shadow_match": stats.get("math_engine_shadow_match") if stats else None,
+        "stats_engine_used": "hybrid" if stats and stats.get("math_engine_used") == "rust" else "python",
         "status": status,
         "summary": {
             "missing_skills": len(missing_skills),
