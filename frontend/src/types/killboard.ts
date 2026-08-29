@@ -17,6 +17,7 @@ export type KillboardRecent = {
 };
 export type KillboardAnalytics = {
   days: number;
+  engine_requested?: string | null; engine_used?: string | null; engine_shadow_match?: boolean | null; engine_fallback_reason?: string | null;
   coverage: { warning: string; record_count: number; earliest?: string | null; latest?: string | null; unknown_value_records: number };
   summary: { kills: number; losses: number; isk_destroyed: number; isk_lost: number; efficiency?: number | null; solo_kills: number; fleet_kills: number; final_blows: number; damage_done: number; damage_contribution_percent?: number | null; inactivity_days?: number | null };
   hulls: { most_used: RankedKillboardValue[]; most_killed: RankedKillboardValue[]; most_lost: RankedKillboardValue[] };

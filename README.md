@@ -720,6 +720,16 @@ Docker Compose defaults to `rust`. `/api/bounty-analytics` includes engine metad
 
 Docker Compose defaults to `rust`. Settlement previews include engine metadata and display which evaluator served the calculation. Set `EQM_SETTLEMENT_MATH_ENGINE=python` in `.env` and rebuild the backend for an independent rollback.
 
+### Killboard Analytics Rust engine
+
+`EQM_KILLBOARD_ANALYTICS_ENGINE` controls the deterministic Violence Ledger reducer. Python retains permissions, canonical killmail queries, identity matching, SDE/name enrichment, and recent-kill serialization. Rust owns combat KPIs, exact-cent ISK totals, efficiency and damage ratios, hull/geography/opponent rankings, streaks, wingmate pairs, and daily timeline aggregation.
+
+- `python` uses the reference reducer.
+- `shadow` serves Python while requiring exact normalized-contract parity from Rust.
+- `rust` serves Rust results and automatically falls back to Python on a binary error, invalid contract, or timeout.
+
+Docker Compose defaults to `rust`. Killboard analytics responses include engine metadata and the Violence Ledger displays the serving engine. Set `EQM_KILLBOARD_ANALYTICS_ENGINE=python` in `.env` and rebuild the backend for an independent rollback.
+
 ```powershell
 docker compose --profile test run --rm eqm-core-tests cargo test --locked --test analytics_summary_contract
 docker compose --profile test run --rm backend-tests python -m pytest -q tests/test_analytics_summary_engine.py tests/test_analytics_series.py
@@ -727,6 +737,8 @@ docker compose --profile test run --rm eqm-core-tests cargo test --locked --test
 docker compose --profile test run --rm backend-tests python -m pytest -q tests/test_jump_route_engine.py tests/test_jump_freighter_alternates.py
 docker compose --profile test run --rm eqm-core-tests cargo test --locked --test bounty_analytics_contract
 docker compose --profile test run --rm backend-tests python -m pytest -q tests/test_bounty_analytics.py tests/test_bounty_analytics_engine.py
+docker compose --profile test run --rm eqm-core-tests cargo test --locked --test killboard_analytics_contract
+docker compose --profile test run --rm backend-tests python -m pytest -q tests/test_killboard_analytics.py tests/test_killboard_analytics_engine.py
 ```
 
 The test image is built from the dedicated Docker `test` stage and includes the repository's backend tests. The normal backend and worker continue to use the final `runtime` stage without pytest.

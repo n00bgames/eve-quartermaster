@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     eqm_bounty_analytics_engine: str = "rust"
     eqm_jump_route_engine: str = "rust"
     eqm_settlement_math_engine: str = "rust"
+    eqm_killboard_analytics_engine: str = "rust"
     eqm_core_binary: str = "/usr/local/bin/eqm-core"
     eqm_core_timeout_seconds: float = 5.0
 

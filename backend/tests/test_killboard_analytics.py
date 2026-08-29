@@ -86,6 +86,21 @@ class KillboardAnalyticsTests(unittest.TestCase):
             data = build_killboard_analytics(db, user, days=30)
             self.assertIn("Translated Opponent", {row["name"] for row in data["opponents"]})
 
+    def test_rust_shadow_matches_the_full_normalized_combat_contract(self) -> None:
+        from app.core.config import get_settings
+
+        settings = get_settings()
+        previous = settings.eqm_killboard_analytics_engine
+        settings.eqm_killboard_analytics_engine = "shadow"
+        try:
+            with Session(self.engine) as db:
+                user = db.query(User).filter_by(email="pilot@example.test").one()
+                data = build_killboard_analytics(db, user, days=30)
+        finally:
+            settings.eqm_killboard_analytics_engine = previous
+        self.assertEqual(data["engine_used"], "python-shadow")
+        self.assertIs(data["engine_shadow_match"], True)
+
     def test_scope_and_sync_targets_translate_internal_corporation_keys(self) -> None:
         with Session(self.engine) as db:
             user = db.query(User).filter_by(email="pilot@example.test").one()

@@ -5,5 +5,6 @@ pub mod fitting_math;
 pub mod fitting_resources;
 pub mod fitting_stats;
 pub mod jump_route;
+pub mod killboard_analytics;
 pub mod pi_shortage;
 pub mod settlement_math;

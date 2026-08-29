@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal, ROUND_HALF_UP
 from itertools import combinations
 from typing import Any
 
@@ -10,7 +10,11 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.models import EveAlliance, EveCharacter, EveConstellation, EveCorporation, EveRegion, EveSystem, EveType, Killmail, KillmailAttacker, User
 from app.services.killboard_entities import cached_killboard_name_maps
+from app.services.killboard_analytics_engine import evaluate_killboard_analytics_with_engine
 from app.services.permissions import role_rank
+
+
+RATE_SCALE = Decimal("10000000000")
 
 
 def utc_now() -> datetime:
@@ -74,10 +78,6 @@ def _matching_attackers(killmail: Killmail, identities: dict[str, set[int]]) -> 
     return [row for row in killmail.attackers if row.character_id in identities["characters"] or row.corporation_id in identities["corporations"]]
 
 
-def _rank(counter: Counter[str], limit: int = 8) -> list[dict[str, Any]]:
-    return [{"name": name, "count": int(count)} for name, count in counter.most_common(limit)]
-
-
 def _entity_label(character_id: int | None, corporation_id: int | None, alliance_id: int | None, character_names: dict[int, str], corporation_names: dict[int, str], alliance_names: dict[int, str]) -> str | None:
     if character_id:
         return character_names.get(character_id, f"Character {character_id}")
@@ -92,6 +92,113 @@ def _entity_names(db: Session, model: type, id_column: Any, name_column: Any, id
     if not ids:
         return {}
     return {int(entity_id): str(name) for entity_id, name in db.execute(select(id_column, name_column).where(id_column.in_(ids))).all()}
+
+
+def _rank_rows(counter: dict[str, int], limit: int = 8) -> list[dict[str, Any]]:
+    return [{"name": name, "count": count} for name, count in sorted(counter.items(), key=lambda item: -item[1])[:limit]]
+
+
+def _rate_units(numerator: int, denominator: int) -> int | None:
+    if denominator <= 0:
+        return None
+    return int((Decimal(numerator) / Decimal(denominator) * RATE_SCALE).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+
+
+def _python_killboard_reduction(payload: dict[str, Any]) -> dict[str, Any]:
+    kills = losses = solo_kills = fleet_kills = final_blows = 0
+    isk_destroyed_cents = isk_lost_cents = unknown_values = 0
+    damage_done = total_target_damage = 0
+    used_hulls: dict[str, int] = {}
+    killed_hulls: dict[str, int] = {}
+    lost_hulls: dict[str, int] = {}
+    systems: dict[str, int] = {}
+    regions: dict[str, int] = {}
+    security_classes: dict[str, int] = {}
+    opponents: dict[str, int] = {}
+    wingmates: dict[tuple[str, str], int] = {}
+    timeline: dict[str, dict[str, int | str]] = {}
+    event_results: list[str] = []
+
+    def increment(counter: dict[Any, int], key: Any) -> None:
+        counter[key] = counter.get(key, 0) + 1
+
+    for event in payload["events"]:
+        increment(systems, event["system_name"])
+        increment(security_classes, event["security_class"])
+        if event["region_name"] is not None:
+            increment(regions, event["region_name"])
+        day = timeline.setdefault(event["date"], {"date": event["date"], "kills": 0, "losses": 0, "isk_destroyed_cents": 0, "isk_lost_cents": 0})
+        if event["is_kill"]:
+            kills += 1
+            event_results.append("kill")
+            day["kills"] += 1
+            if event["value_cents"] is None:
+                unknown_values += 1
+            else:
+                isk_destroyed_cents += event["value_cents"]
+                day["isk_destroyed_cents"] += event["value_cents"]
+            if event["solo"] is True:
+                solo_kills += 1
+            else:
+                fleet_kills += 1
+            increment(killed_hulls, event["victim_hull"])
+            participating: set[str] = set()
+            for attacker in event["matching_attackers"]:
+                increment(used_hulls, attacker["ship_name"])
+                damage_done += attacker["damage_done"]
+                final_blows += int(attacker["final_blow"])
+                if attacker["character_name"]:
+                    participating.add(attacker["character_name"])
+            total_target_damage += event["damage_taken"]
+            if event["kill_opponent"]:
+                increment(opponents, event["kill_opponent"])
+            for pair in combinations(sorted(participating), 2):
+                increment(wingmates, pair)
+        if event["is_loss"]:
+            losses += 1
+            event_results.append("loss")
+            day["losses"] += 1
+            if event["value_cents"] is None:
+                unknown_values += 1
+            else:
+                isk_lost_cents += event["value_cents"]
+                day["isk_lost_cents"] += event["value_cents"]
+            increment(lost_hulls, event["victim_hull"])
+            for opponent in event["loss_opponents"]:
+                increment(opponents, opponent)
+
+    current_kind = event_results[0] if event_results else None
+    current = next((index for index, result in enumerate(event_results) if result != current_kind), len(event_results)) if current_kind else 0
+    longest_kill = longest_loss = running_kill = running_loss = 0
+    for result in reversed(event_results):
+        running_kill = running_kill + 1 if result == "kill" else 0
+        running_loss = running_loss + 1 if result == "loss" else 0
+        longest_kill = max(longest_kill, running_kill)
+        longest_loss = max(longest_loss, running_loss)
+    inactivity_days = None
+    if payload["events"]:
+        inactivity_days = max(0, (datetime.fromisoformat(payload["as_of_date"]).date() - datetime.fromisoformat(payload["events"][0]["date"]).date()).days)
+    known_total = isk_destroyed_cents + isk_lost_cents
+    ranked_wingmates = sorted(wingmates.items(), key=lambda item: -item[1])[:10]
+    return {
+        "schema_version": "eqm.killboard-analytics-output.v1",
+        "unknown_value_records": unknown_values,
+        "summary": {
+            "kills": kills, "losses": losses,
+            "isk_destroyed_cents": isk_destroyed_cents, "isk_lost_cents": isk_lost_cents,
+            "efficiency_rate_units": _rate_units(isk_destroyed_cents, known_total),
+            "solo_kills": solo_kills, "fleet_kills": fleet_kills, "final_blows": final_blows,
+            "damage_done": damage_done,
+            "damage_contribution_rate_units": _rate_units(damage_done, total_target_damage),
+            "inactivity_days": inactivity_days,
+        },
+        "hulls": {"most_used": _rank_rows(used_hulls), "most_killed": _rank_rows(killed_hulls), "most_lost": _rank_rows(lost_hulls)},
+        "geography": {"systems": _rank_rows(systems), "regions": _rank_rows(regions), "security_classes": _rank_rows(security_classes)},
+        "opponents": _rank_rows(opponents, 12),
+        "streaks": {"current_kind": current_kind, "current": current, "longest_kill": longest_kill, "longest_loss": longest_loss},
+        "wingmates": [{"characters": list(pair), "shared_kills": count} for pair, count in ranked_wingmates],
+        "timeline": [timeline[day] for day in sorted(timeline)],
+    }
 
 
 def build_killboard_analytics(db: Session, user: User, *, scope_type: str = "account", scope_id: int | None = None, days: int = 30) -> dict[str, Any]:
@@ -132,119 +239,101 @@ def build_killboard_analytics(db: Session, user: User, *, scope_type: str = "acc
     corporation_names = {**cached_names["corporation"], **_entity_names(db, EveCorporation, EveCorporation.corporation_id, EveCorporation.name, set(corporation_ids))}
     alliance_names = {**cached_names["alliance"], **_entity_names(db, EveAlliance, EveAlliance.alliance_id, EveAlliance.name, set(alliance_ids))}
 
-    kills = losses = final_blows = solo_kills = fleet_kills = 0
-    isk_destroyed = isk_lost = 0.0
-    unknown_values = 0
-    damage_done = total_target_damage = 0
-    used_hulls: Counter[str] = Counter()
-    killed_hulls: Counter[str] = Counter()
-    lost_hulls: Counter[str] = Counter()
-    systems_counter: Counter[str] = Counter()
-    regions_counter: Counter[str] = Counter()
-    security_counter: Counter[str] = Counter()
-    opponents: Counter[str] = Counter()
-    wingmates: Counter[tuple[str, str]] = Counter()
-    timeline: dict[str, dict[str, float | int | str]] = defaultdict(lambda: {"kills": 0, "losses": 0, "isk_destroyed": 0.0, "isk_lost": 0.0})
-    event_results: list[str] = []
+    normalized_events: list[dict[str, Any]] = []
     recent: list[dict[str, Any]] = []
 
     for row in rows:
         is_loss = _matches_victim(row, identities)
         matching_attackers = _matching_attackers(row, identities)
         is_kill = bool(matching_attackers)
-        value = float(row.enrichment.estimated_total_value) if row.enrichment and row.enrichment.estimated_total_value is not None else None
-        day = row.killmail_time.date().isoformat()
+        raw_value = row.enrichment.estimated_total_value if row.enrichment and row.enrichment.estimated_total_value is not None else None
+        value = float(raw_value) if raw_value is not None else None
+        value_cents = int((Decimal(str(raw_value)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP) * 100).to_integral_value()) if raw_value is not None else None
         system = systems.get(row.solar_system_id)
-        if system:
-            systems_counter[system.name] += 1
-            security_counter[security_class(system.security_status)] += 1
-            if system.constellation and system.constellation.region:
-                regions_counter[system.constellation.region.name] += 1
-        else:
-            systems_counter[f"System {row.solar_system_id}"] += 1
-            security_counter["Unknown"] += 1
-
-        if is_kill:
-            kills += 1
-            event_results.append("kill")
-            timeline[day]["kills"] += 1
-            if value is None:
-                unknown_values += 1
-            else:
-                isk_destroyed += value
-                timeline[day]["isk_destroyed"] += value
-            if row.enrichment and row.enrichment.solo is True:
-                solo_kills += 1
-            else:
-                fleet_kills += 1
-            victim_hull = type_names.get(row.victim_ship_type_id or 0, f"Type {row.victim_ship_type_id}" if row.victim_ship_type_id else "Unknown hull")
-            killed_hulls[victim_hull] += 1
-            for attacker in matching_attackers:
-                used_hulls[type_names.get(attacker.ship_type_id or 0, f"Type {attacker.ship_type_id}" if attacker.ship_type_id else "Unknown hull")] += 1
-                damage_done += attacker.damage_done
-                final_blows += int(attacker.final_blow)
-            total_target_damage += max(0, row.damage_taken)
-            opponent_name = _entity_label(row.victim_character_id, row.victim_corporation_id, row.victim_alliance_id, character_names, corporation_names, alliance_names)
-            if opponent_name:
-                opponents[opponent_name] += 1
-            participating = sorted({character_names.get(attacker.character_id or 0) for attacker in matching_attackers if character_names.get(attacker.character_id or 0)})
-            for pair in combinations(participating, 2):
-                wingmates[pair] += 1
+        region_name = system.constellation.region.name if system and system.constellation and system.constellation.region else None
+        victim_hull = type_names.get(row.victim_ship_type_id or 0, f"Type {row.victim_ship_type_id}" if row.victim_ship_type_id else "Unknown hull")
+        kill_opponent = _entity_label(row.victim_character_id, row.victim_corporation_id, row.victim_alliance_id, character_names, corporation_names, alliance_names) if is_kill else None
+        loss_opponents: list[str] = []
         if is_loss:
-            losses += 1
-            event_results.append("loss")
-            timeline[day]["losses"] += 1
-            if value is None:
-                unknown_values += 1
-            else:
-                isk_lost += value
-                timeline[day]["isk_lost"] += value
-            lost_hulls[type_names.get(row.victim_ship_type_id or 0, f"Type {row.victim_ship_type_id}" if row.victim_ship_type_id else "Unknown hull")] += 1
             for attacker in row.attackers:
                 if attacker.character_id in identities["characters"] or attacker.corporation_id in identities["corporations"]:
                     continue
                 opponent_name = _entity_label(attacker.character_id, attacker.corporation_id, attacker.alliance_id, character_names, corporation_names, alliance_names)
                 if opponent_name:
-                    opponents[opponent_name] += 1
+                    loss_opponents.append(opponent_name)
+        normalized_events.append(
+            {
+                "date": row.killmail_time.date().isoformat(),
+                "is_kill": is_kill,
+                "is_loss": is_loss,
+                "value_cents": value_cents,
+                "solo": row.enrichment.solo if row.enrichment else None,
+                "damage_taken": max(0, row.damage_taken),
+                "victim_hull": victim_hull,
+                "system_name": system.name if system else f"System {row.solar_system_id}",
+                "region_name": region_name,
+                "security_class": security_class(system.security_status) if system else "Unknown",
+                "kill_opponent": kill_opponent,
+                "loss_opponents": loss_opponents,
+                "matching_attackers": [
+                    {
+                        "ship_name": type_names.get(attacker.ship_type_id or 0, f"Type {attacker.ship_type_id}" if attacker.ship_type_id else "Unknown hull"),
+                        "damage_done": max(0, attacker.damage_done),
+                        "final_blow": bool(attacker.final_blow),
+                        "character_name": character_names.get(attacker.character_id or 0),
+                    }
+                    for attacker in matching_attackers
+                ],
+            }
+        )
 
         if len(recent) < 50:
             recent.append(serialize_recent(row, is_kill, is_loss, value, type_names, systems, character_names, corporation_names, alliance_names))
 
-    current_streak = 0
-    current_kind = event_results[0] if event_results else None
-    for result in event_results:
-        if result != current_kind:
-            break
-        current_streak += 1
-    longest_kill = longest_loss = running_kill = running_loss = 0
-    for result in reversed(event_results):
-        running_kill = running_kill + 1 if result == "kill" else 0
-        running_loss = running_loss + 1 if result == "loss" else 0
-        longest_kill = max(longest_kill, running_kill)
-        longest_loss = max(longest_loss, running_loss)
-
-    known_total = isk_destroyed + isk_lost
+    reduction_payload = {
+        "schema_version": "eqm.killboard-analytics-input.v1",
+        "as_of_date": utc_now().date().isoformat(),
+        "events": normalized_events,
+    }
+    reduction = evaluate_killboard_analytics_with_engine(
+        payload=reduction_payload,
+        python_result=lambda: _python_killboard_reduction(reduction_payload),
+    )
+    summary = reduction["summary"]
     return {
         "scope": {"scope_type": scope_type, "scope_id": scope_id}, "days": days,
         "coverage": {
             "warning": "zKillboard discovery is best-effort and may not represent complete activity. Displayed killmail details are canonical ESI records; values and classifications are zKill-derived.",
             "record_count": len(rows), "earliest": rows[-1].killmail_time.isoformat() if rows else None,
-            "latest": rows[0].killmail_time.isoformat() if rows else None, "unknown_value_records": unknown_values,
+            "latest": rows[0].killmail_time.isoformat() if rows else None, "unknown_value_records": reduction["unknown_value_records"],
         },
         "summary": {
-            "kills": kills, "losses": losses, "isk_destroyed": isk_destroyed, "isk_lost": isk_lost,
-            "efficiency": (isk_destroyed / known_total * 100) if known_total else None,
-            "solo_kills": solo_kills, "fleet_kills": fleet_kills, "final_blows": final_blows,
-            "damage_done": damage_done, "damage_contribution_percent": (damage_done / total_target_damage * 100) if total_target_damage else None,
-            "inactivity_days": max(0, (utc_now().date() - rows[0].killmail_time.date()).days) if rows else None,
+            "kills": summary["kills"], "losses": summary["losses"],
+            "isk_destroyed": summary["isk_destroyed_cents"] / 100, "isk_lost": summary["isk_lost_cents"] / 100,
+            "efficiency": summary["efficiency_rate_units"] / 100_000_000 if summary["efficiency_rate_units"] is not None else None,
+            "solo_kills": summary["solo_kills"], "fleet_kills": summary["fleet_kills"], "final_blows": summary["final_blows"],
+            "damage_done": summary["damage_done"],
+            "damage_contribution_percent": summary["damage_contribution_rate_units"] / 100_000_000 if summary["damage_contribution_rate_units"] is not None else None,
+            "inactivity_days": summary["inactivity_days"],
         },
-        "hulls": {"most_used": _rank(used_hulls), "most_killed": _rank(killed_hulls), "most_lost": _rank(lost_hulls)},
-        "geography": {"systems": _rank(systems_counter), "regions": _rank(regions_counter), "security_classes": _rank(security_counter)},
-        "opponents": _rank(opponents, 12),
-        "streaks": {"current_kind": current_kind, "current": current_streak, "longest_kill": longest_kill, "longest_loss": longest_loss},
-        "wingmates": [{"characters": list(pair), "shared_kills": count} for pair, count in wingmates.most_common(10)],
-        "timeline": [{"date": day, **values} for day, values in sorted(timeline.items())],
+        "hulls": reduction["hulls"],
+        "geography": reduction["geography"],
+        "opponents": reduction["opponents"],
+        "streaks": reduction["streaks"],
+        "wingmates": reduction["wingmates"],
+        "timeline": [
+            {
+                "date": row["date"], "kills": row["kills"], "losses": row["losses"],
+                "isk_destroyed": row["isk_destroyed_cents"] / 100,
+                "isk_lost": row["isk_lost_cents"] / 100,
+            }
+            for row in reduction["timeline"]
+        ],
         "recent": recent,
+        "engine_requested": reduction.get("engine_requested"),
+        "engine_used": reduction.get("engine_used"),
+        "engine_shadow_match": reduction.get("engine_shadow_match"),
+        "engine_fallback_reason": reduction.get("engine_fallback_reason"),
     }
 
 
