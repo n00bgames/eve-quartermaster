@@ -4,6 +4,8 @@ from collections import defaultdict
 from decimal import Decimal, ROUND_FLOOR, ROUND_HALF_UP
 from typing import Any, Iterable
 
+from app.services.settlement_math_engine import evaluate_settlement_math_with_engine
+
 MONEY = Decimal("0.01")
 RATE = Decimal("0.0000000001")
 WEIGHT = Decimal("0.00000001")
@@ -13,6 +15,8 @@ RESERVE_METHODS = {"none", "percentage", "output_percentage", "flat_isk"}
 COMPENSATION_METHODS = {"fixed_percentage", "shares"}
 DEDUCTION_METHODS = {"percentage", "flat_isk"}
 SETTLEMENT_MODES = {"isk", "minerals"}
+RATE_SCALE = Decimal("10000000000")
+WEIGHT_SCALE = Decimal("100000000")
 
 
 class SettlementValidationError(ValueError):
@@ -163,6 +167,81 @@ def compensation_ratios(participants: list[dict[str, Any]]) -> dict[int, Decimal
     for index, weight in share_rows:
         ratios[index] = remaining * weight / share_total if weight > 0 and share_total > 0 else ZERO
     return ratios
+
+
+def _cents(value: Decimal) -> int:
+    return int((money(value) * 100).to_integral_value())
+
+
+def _python_settlement_math(payload: dict[str, Any]) -> dict[str, Any]:
+    distributable = Decimal(payload["distributable_cents"]) / 100
+    gross = Decimal(payload["gross_cents"]) / 100
+    participants = payload["participants"]
+    payouts = {row["index"]: ZERO for row in participants}
+    for row in participants:
+        if row["compensation_method"] == "fixed_percentage":
+            rate = Decimal(row.get("fixed_rate_units") or 0) / RATE_SCALE
+            payouts[row["index"]] = money(distributable * rate)
+    fixed_total = money(sum(payouts.values(), ZERO))
+    share_pool = money(distributable - fixed_total)
+    share_rows = [
+        (row["index"], Decimal(row.get("share_weight_units") or 0) / WEIGHT_SCALE)
+        for row in participants
+        if row["compensation_method"] == "shares"
+    ]
+    if share_pool > 0:
+        for index, amount in allocate_money(share_pool, share_rows).items():
+            payouts[index] += amount
+    participant_total = money(sum(payouts.values(), ZERO))
+
+    ratios = {
+        row["index"]: (payouts[row["index"]] / distributable).quantize(RATE, rounding=ROUND_HALF_UP)
+        if distributable > 0 else ZERO
+        for row in participants
+    }
+    mineral_payouts: dict[int, list[dict[str, int]]] = {row["index"]: [] for row in participants}
+    output_results: list[dict[str, int]] = []
+    if payload["settlement_mode"] == "minerals":
+        ratio_rows = [
+            {
+                "compensation_method": row["compensation_method"],
+                "fixed_percentage": Decimal(row.get("fixed_rate_units") or 0) / RATE_SCALE,
+                "share_weight": Decimal(row.get("share_weight_units") or 0) / WEIGHT_SCALE,
+            }
+            for row in participants
+        ]
+        ratios = compensation_ratios(ratio_rows)
+        distributable_ratio = distributable / gross if gross > 0 else Decimal("1")
+        for output in payload["outputs"]:
+            quantity = Decimal(output["quantity"])
+            distributed = int((quantity * distributable_ratio).to_integral_value(rounding=ROUND_FLOOR))
+            for index, amount in allocate_units(distributed, list(ratios.items())).items():
+                if amount > 0:
+                    mineral_payouts[index].append({"output_index": output["index"], "quantity": amount})
+            output_results.append({"index": output["index"], "distributed_quantity": distributed, "retained_quantity": int(quantity) - distributed})
+    else:
+        output_results = [
+            {"index": output["index"], "distributed_quantity": 0, "retained_quantity": int(Decimal(output["quantity"]))}
+            for output in payload["outputs"]
+        ]
+
+    return {
+        "schema_version": "eqm.settlement-math-output.v1",
+        "fixed_payout_total_cents": _cents(fixed_total),
+        "share_pool_cents": _cents(share_pool),
+        "participant_payout_total_cents": _cents(participant_total),
+        "unallocated_cents": payload["gross_cents"] - payload["reserve_cents"] - payload["deduction_cents"] - _cents(participant_total),
+        "participants": [
+            {
+                "index": row["index"],
+                "payout_cents": _cents(payouts[row["index"]]),
+                "payout_ratio_units": int((ratios[row["index"]].quantize(RATE, rounding=ROUND_HALF_UP) * RATE_SCALE).to_integral_value()),
+                "mineral_payouts": mineral_payouts[row["index"]],
+            }
+            for row in participants
+        ],
+        "outputs": output_results,
+    }
 
 
 def _clean_outputs(raw_outputs: Any, default_price_source: str) -> tuple[list[dict[str, Any]], list[str]]:
@@ -343,59 +422,59 @@ def calculate_settlement(contribution_rows: Iterable[dict[str, Any]], payload: d
     fixed_rate_total = sum((row["fixed_percentage"] or ZERO for row in participants if row["compensation_method"] == "fixed_percentage"), ZERO)
     if fixed_rate_total > 1:
         raise SettlementValidationError("Participant fixed percentages cannot exceed 100% of the distributable pool.")
-    fixed_payout_total = ZERO
-    for row in participants:
-        fixed_payout = money(distributable * row["fixed_percentage"]) if row["fixed_percentage"] is not None else ZERO
-        row["payout_isk"] = fixed_payout
-        fixed_payout_total += fixed_payout
-    fixed_payout_total = money(fixed_payout_total)
-    share_pool = money(distributable - fixed_payout_total)
-    share_rows = [(index, row["share_weight"] or ZERO) for index, row in enumerate(participants) if row["compensation_method"] == "shares"]
-    if share_pool > 0:
-        allocations = allocate_money(share_pool, share_rows)
-        for index, amount in allocations.items():
-            participants[index]["payout_isk"] += amount
-
-    participant_payout_total = money(sum((row["payout_isk"] for row in participants), ZERO))
-    unallocated = money(gross_value - reserve_value - deduction_total - participant_payout_total)
+    math_payload = {
+        "schema_version": "eqm.settlement-math-input.v1",
+        "settlement_mode": settlement_mode,
+        "gross_cents": _cents(gross_value),
+        "reserve_cents": _cents(reserve_value),
+        "deduction_cents": _cents(deduction_total),
+        "distributable_cents": _cents(distributable),
+        "participants": [
+            {
+                "index": index,
+                "compensation_method": row["compensation_method"],
+                "fixed_rate_units": int(((row["fixed_percentage"] or ZERO) * RATE_SCALE).to_integral_value()) if row["compensation_method"] == "fixed_percentage" else None,
+                "share_weight_units": int(((row["share_weight"] or ZERO) * WEIGHT_SCALE).to_integral_value()) if row["compensation_method"] == "shares" else None,
+            }
+            for index, row in enumerate(participants)
+        ],
+        "outputs": [{"index": index, "quantity": serialize_decimal(row["quantity"])} for index, row in enumerate(outputs)],
+    }
+    math_result = evaluate_settlement_math_with_engine(
+        payload=math_payload,
+        python_result=lambda: _python_settlement_math(math_payload),
+    )
+    fixed_payout_total = Decimal(math_result["fixed_payout_total_cents"]) / 100
+    share_pool = Decimal(math_result["share_pool_cents"]) / 100
+    participant_payout_total = Decimal(math_result["participant_payout_total_cents"]) / 100
+    unallocated = Decimal(math_result["unallocated_cents"]) / 100
     if abs(unallocated) > MONEY:
         raise SettlementValidationError("The settlement does not reconcile.")
-    for row in participants:
-        row["payout_isk"] = money(row["payout_isk"])
-        row["payout_ratio"] = (row["payout_isk"] / distributable).quantize(RATE, rounding=ROUND_HALF_UP) if distributable > 0 else ZERO
-        row["mineral_payouts"] = []
+    for result_row in math_result["participants"]:
+        row = participants[result_row["index"]]
+        row["payout_isk"] = Decimal(result_row["payout_cents"]) / 100
+        row["payout_ratio"] = Decimal(result_row["payout_ratio_units"]) / RATE_SCALE
+        row["mineral_payouts"] = [
+            {
+                "type_id": outputs[item["output_index"]]["type_id"],
+                "type_name": outputs[item["output_index"]]["type_name"],
+                "quantity": item["quantity"],
+                "unit_price": outputs[item["output_index"]]["unit_price"],
+                "total_value": money(Decimal(item["quantity"]) * outputs[item["output_index"]]["unit_price"]),
+            }
+            for item in result_row["mineral_payouts"]
+        ]
         if row["payout_isk"] == 0:
             warnings.append(f"{row['display_name']} has no calculated payout.")
 
+    for output_result in math_result["outputs"]:
+        output = outputs[output_result["index"]]
+        output["distributed_quantity"] = output_result["distributed_quantity"]
+        output["retained_quantity"] = output_result["retained_quantity"]
     if settlement_mode == "minerals":
-        payout_ratios = compensation_ratios(participants)
-        for index, ratio in payout_ratios.items():
-            participants[index]["payout_ratio"] = ratio.quantize(RATE, rounding=ROUND_HALF_UP)
-        distributable_ratio = distributable / gross_value if gross_value > 0 else Decimal("1")
-        for output in outputs:
-            distributed_quantity = int((output["quantity"] * distributable_ratio).to_integral_value(rounding=ROUND_FLOOR))
-            output["distributed_quantity"] = distributed_quantity
-            output["retained_quantity"] = int(output["quantity"]) - distributed_quantity
-            unit_allocations = allocate_units(distributed_quantity, list(payout_ratios.items()))
-            for index, quantity in unit_allocations.items():
-                if quantity <= 0:
-                    continue
-                participants[index]["mineral_payouts"].append(
-                    {
-                        "type_id": output["type_id"],
-                        "type_name": output["type_name"],
-                        "quantity": quantity,
-                        "unit_price": output["unit_price"],
-                        "total_value": money(Decimal(quantity) * output["unit_price"]),
-                    }
-                )
         warnings = [warning for warning in warnings if "has no calculated payout" not in warning]
         if reserve_value + deduction_total > 0:
             warnings.append("Reserved and expense value is retained proportionally from each refined mineral.")
-    else:
-        for output in outputs:
-            output["distributed_quantity"] = 0
-            output["retained_quantity"] = int(output["quantity"])
 
     source_value = money(sum((row["estimated_value"] for row in contributions), ZERO))
     source_volume = sum((row["volume"] for row in contributions), ZERO)
@@ -431,5 +510,9 @@ def calculate_settlement(contribution_rows: Iterable[dict[str, Any]], payload: d
         "share_pool_value": share_pool,
         "participant_payout_total": participant_payout_total,
         "unallocated_remainder": unallocated,
+        "engine_requested": math_result.get("engine_requested"),
+        "engine_used": math_result.get("engine_used"),
+        "engine_shadow_match": math_result.get("engine_shadow_match"),
+        "engine_fallback_reason": math_result.get("engine_fallback_reason"),
         "warnings": list(dict.fromkeys(warnings)),
     }

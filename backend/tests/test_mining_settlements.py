@@ -219,6 +219,30 @@ class SettlementCalculationTests(unittest.TestCase):
         self.assertEqual(payouts, [6, 5])
         self.assertEqual([row["payout_ratio"] for row in result["participants"]], [Decimal("0.5000000000")] * 2)
 
+    def test_shadow_contract_matches_for_mixed_mineral_settlement(self):
+        from app.core.config import get_settings
+
+        settings = get_settings()
+        previous = settings.eqm_settlement_math_engine
+        settings.eqm_settlement_math_engine = "shadow"
+        try:
+            result = calculate_settlement(
+                rows((500, 300, 200)),
+                payload(
+                    settlement_mode="minerals",
+                    reserve={"method": "percentage", "value": "7.5"},
+                    deductions=[{"deduction_type": "hauling", "description": "Hauling", "calculation_method": "flat_isk", "value": "12.34"}],
+                    participants=[
+                        {"source": "manual", "display_name": "Booster", "role": "Booster", "compensation_method": "fixed_percentage", "compensation_value": "5"},
+                        {"source": "manual", "display_name": "Scout", "role": "Scout", "compensation_method": "shares", "compensation_value": "0.25"},
+                    ],
+                ),
+            )
+        finally:
+            settings.eqm_settlement_math_engine = previous
+        self.assertEqual(result["engine_used"], "python-shadow")
+        self.assertIs(result["engine_shadow_match"], True)
+
     def test_duplicate_outputs_are_rejected(self):
         duplicate = payload()["outputs"] * 2
         with self.assertRaisesRegex(SettlementValidationError, "appears more than once"):

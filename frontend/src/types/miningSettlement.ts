@@ -132,6 +132,10 @@ export type SettlementPreview = Omit<MiningSettlement, "id" | "name" | "status" 
   reserve_method: MiningReserveMethod;
   reserve_entered_value: number;
   reserve_normalized_percentage?: number | null;
+  engine_requested?: string | null;
+  engine_used?: string | null;
+  engine_shadow_match?: boolean | null;
+  engine_fallback_reason?: string | null;
 };
 
 export type SettlementOptionsPayload = {

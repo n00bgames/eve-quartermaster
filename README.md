@@ -710,6 +710,16 @@ Docker Compose defaults to `rust`. Jump plotter responses include `route_engine`
 
 Docker Compose defaults to `rust`. `/api/bounty-analytics` includes engine metadata and the Bounty Analytics page displays the engine that served the report. Set `EQM_BOUNTY_ANALYTICS_ENGINE=python` in `.env` and rebuild the backend for an independent rollback.
 
+### Mining settlement Rust engine
+
+`EQM_SETTLEMENT_MATH_ENGINE` controls the deterministic mining-settlement allocator. Python retains ledger access, contribution aggregation, validation, pricing, and persistence. Rust owns exact-cent fixed/share payouts, deterministic largest-remainder rounding, payout ratios, and whole-unit mineral distribution with reserve retention.
+
+- `python` uses the reference allocator.
+- `shadow` serves Python while requiring exact contract parity from Rust.
+- `rust` serves Rust results and automatically falls back to Python on a binary error, invalid contract, or timeout.
+
+Docker Compose defaults to `rust`. Settlement previews include engine metadata and display which evaluator served the calculation. Set `EQM_SETTLEMENT_MATH_ENGINE=python` in `.env` and rebuild the backend for an independent rollback.
+
 ```powershell
 docker compose --profile test run --rm eqm-core-tests cargo test --locked --test analytics_summary_contract
 docker compose --profile test run --rm backend-tests python -m pytest -q tests/test_analytics_summary_engine.py tests/test_analytics_series.py

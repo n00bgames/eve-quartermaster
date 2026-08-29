@@ -336,7 +336,7 @@ function Participants({ draft, characters, patch, updateParticipant }: {
 
 function SettlementPreviewView({ preview, onCopy }: { preview: SettlementPreview; onCopy: () => void }) {
   return <div className="settlement-preview">
-    <div className="settlement-preview-actions"><span>{preview.settlement_mode === "minerals" ? "Mineral-share settlement" : "ISK-share settlement"}</span><button type="button" onClick={onCopy}><ClipboardCopy size={14} />Copy Discord report</button></div>
+    <div className="settlement-preview-actions"><span>{preview.settlement_mode === "minerals" ? "Mineral-share settlement" : "ISK-share settlement"}{preview.engine_used ? " · " + (preview.engine_used === "rust" ? "Rust allocator" : preview.engine_used.replace(/-/g, " ")) : ""}</span><button type="button" onClick={onCopy}><ClipboardCopy size={14} />Copy Discord report</button></div>
     {preview.warnings.length > 0 && <div className="settlement-warnings"><AlertTriangle size={17} /><div>{preview.warnings.map((warning) => <span key={warning}>{warning}</span>)}</div></div>}
     <div className="settlement-reconciliation">
       <div><span>Gross refined value</span><strong>{isk.format(preview.gross_value)} ISK</strong></div>
