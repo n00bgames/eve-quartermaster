@@ -690,9 +690,21 @@ docker compose --profile test run --rm backend-tests python -m pytest -q tests/t
 
 Docker Compose defaults to `rust`. The `/api/analytics/summary` response includes `engine_requested`, `engine_used`, and fallback or shadow metadata so a live cutover can be verified directly. Set `EQM_ANALYTICS_ENGINE=python` in `.env` and rebuild the backend for an independent Analytics rollback.
 
+### Jump route Rust engine
+
+`EQM_JUMP_ROUTE_ENGINE` controls the jump-capable route search. Python retains SDE and structure reads, ship access rules, docking filters, operational intel, fuel calculations, and map assembly. Rust owns the spatial grid, range graph, avoidance filtering, and shortest-path search used to fill automatic and required-waypoint route segments.
+
+- `python` uses the reference Python route search.
+- `shadow` serves Python while comparing every segment with Rust and logging path or distance mismatches.
+- `rust` serves Rust routes and automatically falls back to Python on a binary error, invalid contract, or timeout.
+
+Docker Compose defaults to `rust`. Jump plotter responses include `route_engine` metadata with the requested engine, engine used, segment count, shadow result, and any fallback reason. Set `EQM_JUMP_ROUTE_ENGINE=python` in `.env` and rebuild the backend for an independent route-search rollback.
+
 ```powershell
 docker compose --profile test run --rm eqm-core-tests cargo test --locked --test analytics_summary_contract
 docker compose --profile test run --rm backend-tests python -m pytest -q tests/test_analytics_summary_engine.py tests/test_analytics_series.py
+docker compose --profile test run --rm eqm-core-tests cargo test --locked --test jump_route_contract
+docker compose --profile test run --rm backend-tests python -m pytest -q tests/test_jump_route_engine.py tests/test_jump_freighter_alternates.py
 ```
 
 The test image is built from the dedicated Docker `test` stage and includes the repository's backend tests. The normal backend and worker continue to use the final `runtime` stage without pytest.

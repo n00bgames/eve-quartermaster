@@ -3,4 +3,5 @@ pub mod colony_simulation;
 pub mod fitting_math;
 pub mod fitting_resources;
 pub mod fitting_stats;
+pub mod jump_route;
 pub mod pi_shortage;

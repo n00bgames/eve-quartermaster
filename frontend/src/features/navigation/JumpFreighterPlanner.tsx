@@ -466,6 +466,7 @@ export function JumpFreighterPlanner({
               ? "Via required cynos"
               : "Automatic"}{" "}
             · {route.max_range_ly} LY
+            {route.route_engine?.used ? ` · ${route.route_engine.used === "rust" ? "Rust route core" : route.route_engine.used}` : ""}
           </span>
         )}
       </div>

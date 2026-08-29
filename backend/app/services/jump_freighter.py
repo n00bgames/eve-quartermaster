@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.models import EveCharacter, EveConstellation, EveStargate, EveStation, EveSystem, Location
 from app.models.enums import LocationKind
 from app.models.navigation import SystemIndustrialKillObservation, SystemJumpObservation, SystemPvpKillObservation
+from app.services.jump_route_engine import evaluate_jump_route_with_engine
 from app.services.navigation import resolve_system, security_band, serialize_system
 
 LIGHT_YEAR_METERS = 9_460_730_472_580_800
@@ -309,7 +310,83 @@ def _neighbor_systems(system: EveSystem, grid: dict[tuple[int, int, int], list[E
     return candidates
 
 
-def _jump_path(db: Session, origin: EveSystem, destination: EveSystem, max_range_ly: float, station_safety: str = "any", avoid_system_ids: set[int] | None = None, *, allow_unstationed_destination: bool = False, ship: JumpFreighterShip | None = None) -> list[int]:
+def _python_jump_route(
+    by_id: dict[int, EveSystem],
+    origin: EveSystem,
+    destination: EveSystem,
+    max_range_ly: float,
+    allowed_station_system_ids: set[int],
+    avoid_system_ids: set[int],
+    ship: JumpFreighterShip | None,
+) -> dict[str, Any]:
+    max_meters = max_range_ly * LIGHT_YEAR_METERS
+    grid: dict[tuple[int, int, int], list[EveSystem]] = {}
+    for system in by_id.values():
+        grid.setdefault(_grid_key(system, max_meters), []).append(system)
+
+    distances: dict[int, float] = {origin.system_id: 0.0}
+    parent: dict[int, int | None] = {origin.system_id: None}
+    queue: list[tuple[float, float, int]] = [(0.0, 0.0, origin.system_id)]
+    visited: set[int] = set()
+
+    while queue:
+        _, current_cost, current_id = heappop(queue)
+        if current_id in visited:
+            continue
+        visited.add(current_id)
+        if current_id == destination.system_id:
+            break
+        current = by_id[current_id]
+        for candidate in _neighbor_systems(current, grid, max_meters):
+            if candidate.system_id == current_id or candidate.system_id in visited:
+                continue
+            if candidate.system_id in avoid_system_ids:
+                continue
+            if candidate.system_id != destination.system_id and not cyno_eligible(candidate):
+                continue
+            if candidate.system_id != origin.system_id and candidate.system_id not in allowed_station_system_ids:
+                # Supercapitals only need a Keepstar at the final docking target.
+                # Intermediate cynos may be open-space low/null systems.
+                open_space_supercapital_midpoint = requires_keepstar(ship) and candidate.system_id != destination.system_id
+                if not open_space_supercapital_midpoint:
+                    continue
+            jump_distance = distance_ly(current, candidate)
+            if jump_distance > max_range_ly:
+                continue
+            next_cost = current_cost + jump_distance
+            if next_cost < distances.get(candidate.system_id, float("inf")):
+                distances[candidate.system_id] = next_cost
+                parent[candidate.system_id] = current_id
+                heappush(queue, (next_cost + distance_ly(candidate, destination) * 0.01, next_cost, candidate.system_id))
+
+    if destination.system_id not in parent:
+        raise ValueError(f"No jump route found within {max_range_ly:.2f} LY range. Try higher JDC or a different midpoint.")
+
+    path: list[int] = []
+    cursor: int | None = destination.system_id
+    while cursor is not None:
+        path.append(cursor)
+        cursor = parent[cursor]
+    path.reverse()
+    return {
+        "schema_version": "eqm.jump-route-output.v1",
+        "path_system_ids": path,
+        "total_distance_ly": distances[destination.system_id],
+    }
+
+
+def _jump_path(
+    db: Session,
+    origin: EveSystem,
+    destination: EveSystem,
+    max_range_ly: float,
+    station_safety: str = "any",
+    avoid_system_ids: set[int] | None = None,
+    *,
+    allow_unstationed_destination: bool = False,
+    ship: JumpFreighterShip | None = None,
+    engine_observations: list[dict[str, Any]] | None = None,
+) -> list[int]:
     if origin.system_id == destination.system_id:
         return [origin.system_id]
     if not cyno_eligible(destination):
@@ -339,59 +416,41 @@ def _jump_path(db: Session, origin: EveSystem, destination: EveSystem, max_range
     by_id = {system.system_id: system for system in systems}
     by_id[origin.system_id] = origin
     by_id[destination.system_id] = destination
-    max_meters = max_range_ly * LIGHT_YEAR_METERS
-    grid: dict[tuple[int, int, int], list[EveSystem]] = {}
-    for system in by_id.values():
-        grid.setdefault(_grid_key(system, max_meters), []).append(system)
-
-    distances: dict[int, float] = {origin.system_id: 0.0}
-    parent: dict[int, int | None] = {origin.system_id: None}
-    queue: list[tuple[float, float, int]] = [(0.0, 0.0, origin.system_id)]
-    visited: set[int] = set()
-
-    while queue:
-        _, current_cost, current_id = heappop(queue)
-        if current_id in visited:
-            continue
-        visited.add(current_id)
-        if current_id == destination.system_id:
-            break
-        current = by_id[current_id]
-        for candidate in _neighbor_systems(current, grid, max_meters):
-            if candidate.system_id == current_id or candidate.system_id in visited:
-                continue
-            if candidate.system_id in avoid_system_ids:
-                continue
-            if candidate.system_id != destination.system_id and not cyno_eligible(candidate):
-                continue
-            if candidate.system_id != origin.system_id and candidate.system_id not in allowed_station_system_ids:
-                # Supercapitals only need a Keepstar at the final docking target.
-                # Requiring every automatically selected cyno midpoint to have a
-                # synced Keepstar makes otherwise valid low/null jump chains
-                # impossible whenever structure coverage is incomplete.
-                open_space_supercapital_midpoint = requires_keepstar(ship) and candidate.system_id != destination.system_id
-                if not open_space_supercapital_midpoint:
-                    continue
-            jump_distance = distance_ly(current, candidate)
-            if jump_distance > max_range_ly:
-                continue
-            next_cost = current_cost + jump_distance
-            if next_cost < distances.get(candidate.system_id, float("inf")):
-                distances[candidate.system_id] = next_cost
-                parent[candidate.system_id] = current_id
-                # Bias toward destination to keep routes natural while still preserving distance cost.
-                heappush(queue, (next_cost + distance_ly(candidate, destination) * 0.01, next_cost, candidate.system_id))
-
-    if destination.system_id not in parent:
-        raise ValueError(f"No jump route found within {max_range_ly:.2f} LY range. Try higher JDC or a different midpoint.")
-
-    path: list[int] = []
-    cursor: int | None = destination.system_id
-    while cursor is not None:
-        path.append(cursor)
-        cursor = parent[cursor]
-    path.reverse()
-    return path
+    payload = {
+        "schema_version": "eqm.jump-route-input.v1",
+        "origin_system_id": origin.system_id,
+        "destination_system_id": destination.system_id,
+        "max_range_ly": max_range_ly,
+        "destination_allowed": destination.system_id in allowed_station_system_ids,
+        "avoid_system_ids": sorted(avoid_system_ids),
+        "systems": [
+            {
+                "system_id": system.system_id,
+                "name": system.name,
+                "x_ly": (system.x or 0) / LIGHT_YEAR_METERS,
+                "y_ly": (system.y or 0) / LIGHT_YEAR_METERS,
+                "z_ly": (system.z or 0) / LIGHT_YEAR_METERS,
+                "eligible_midpoint": cyno_eligible(system)
+                and (system.system_id in allowed_station_system_ids or requires_keepstar(ship)),
+            }
+            for system in by_id.values()
+        ],
+    }
+    result = evaluate_jump_route_with_engine(
+        payload=payload,
+        python_result=lambda: _python_jump_route(
+            by_id,
+            origin,
+            destination,
+            max_range_ly,
+            allowed_station_system_ids,
+            avoid_system_ids,
+            ship,
+        ),
+    )
+    if engine_observations is not None:
+        engine_observations.append({key: value for key, value in result.items() if key.startswith("engine_")})
+    return result["path_system_ids"]
 
 
 def _waypoint_assisted_jump_path(
@@ -403,6 +462,7 @@ def _waypoint_assisted_jump_path(
     station_safety: str,
     avoid_system_ids: set[int],
     ship: JumpFreighterShip | None = None,
+    engine_observations: list[dict[str, Any]] | None = None,
 ) -> list[int]:
     checkpoints = [*waypoints, destination]
     required_ids = {system.system_id for system in checkpoints}
@@ -423,6 +483,7 @@ def _waypoint_assisted_jump_path(
                 effective_avoid_ids,
                 allow_unstationed_destination=is_required_waypoint,
                 ship=ship,
+                engine_observations=engine_observations,
             )
         except ValueError as exc:
             role = "required cyno waypoint" if is_required_waypoint else "destination"
@@ -430,6 +491,22 @@ def _waypoint_assisted_jump_path(
         path_ids.extend(segment[1:])
         current = target
     return path_ids
+
+
+def _route_engine_summary(observations: list[dict[str, Any]]) -> dict[str, Any]:
+    requested = {row.get("engine_requested") for row in observations if row.get("engine_requested")}
+    used = {row.get("engine_used") for row in observations if row.get("engine_used")}
+    return {
+        "requested": next(iter(requested)) if len(requested) == 1 else ("not-needed" if not requested else "mixed"),
+        "used": next(iter(used)) if len(used) == 1 else ("not-needed" if not used else "mixed"),
+        "segment_count": len(observations),
+        "shadow_match": (
+            all(row.get("engine_shadow_match") is True for row in observations)
+            if any("engine_shadow_match" in row for row in observations)
+            else None
+        ),
+        "fallback_reasons": [row["engine_fallback_reason"] for row in observations if row.get("engine_fallback_reason")],
+    }
 
 
 def _alternate_jump_candidates(
@@ -924,6 +1001,7 @@ def plan_jump_freighter_route(
 
     route_mode = "waypoint_assisted" if manual_waypoints else "automatic"
     required_waypoint_ids = {system.system_id for system in manual_waypoints}
+    engine_observations: list[dict[str, Any]] = []
     if manual_waypoints:
         path_ids = _waypoint_assisted_jump_path(
             db,
@@ -934,9 +1012,19 @@ def plan_jump_freighter_route(
             station_safety,
             {system.system_id for system in avoid_systems},
             ship,
+            engine_observations,
         )
     else:
-        path_ids = _jump_path(db, origin, destination, max_range, station_safety, {system.system_id for system in avoid_systems}, ship=ship)
+        path_ids = _jump_path(
+            db,
+            origin,
+            destination,
+            max_range,
+            station_safety,
+            {system.system_id for system in avoid_systems},
+            ship=ship,
+            engine_observations=engine_observations,
+        )
 
     systems = db.scalars(
         select(EveSystem)
@@ -1058,6 +1146,7 @@ def plan_jump_freighter_route(
         "origin": serialize_system(ordered[0]),
         "destination": serialize_system(ordered[-1]),
         "route_mode": route_mode,
+        "route_engine": _route_engine_summary(engine_observations),
         "requested_waypoints": [serialize_system(system) for system in manual_waypoints],
         "ship": {
             "name": ship.name,
