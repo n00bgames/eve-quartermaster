@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import unittest
 from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
@@ -141,6 +143,19 @@ class BattleReportTests(unittest.TestCase):
             self.assertEqual(organization_report["organization_overrides"], [
                 {"organization_type": "corporation", "organization_id": 98000002, "side": 2},
             ])
+
+    @patch("app.services.battle_report_engine.get_settings")
+    def test_complete_battle_report_matches_rust_in_shadow_mode(self, settings) -> None:
+        settings.return_value = SimpleNamespace(
+            eqm_battle_report_engine="shadow",
+            eqm_core_binary="/usr/local/bin/eqm-core",
+            eqm_core_timeout_seconds=5.0,
+        )
+        with Session(self.engine) as db:
+            user = db.query(User).filter_by(email="pilot@example.test").one()
+            data = build_latest_battle_report(db, user, character_id=90000001, gap_minutes=15)
+            self.assertEqual(data["engine_used"], "python-shadow")
+            self.assertTrue(data["engine_shadow_match"])
 
     def test_member_only_sees_owned_pilots(self) -> None:
         with Session(self.engine) as db:

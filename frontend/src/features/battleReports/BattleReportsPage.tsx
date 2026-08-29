@@ -369,7 +369,7 @@ export function BattleReportsPage({ api }: { api: ApiClient }) {
 
       {tab === "composition" && <section className="panel battle-view"><CompositionTable report={report} rows={report.composition} /></section>}
 
-      <div className="battle-footnote"><span>{payload?.coverage.grouping_rule}</span><span>Canonical fields: {payload?.coverage.canonical_source} · Discovery and value estimates: {payload?.coverage.discovery_source}</span></div>
+      <div className="battle-footnote"><span>{payload?.coverage.grouping_rule}</span><span>Canonical fields: {payload?.coverage.canonical_source} · Discovery and value estimates: {payload?.coverage.discovery_source}{payload?.engine_used ? ` · Report engine: ${payload.engine_used.replace(/-/g, " ")}` : ""}</span></div>
     </>}
   </div>;
 }

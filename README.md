@@ -740,6 +740,16 @@ Docker Compose defaults to `rust`. Killboard analytics responses include engine 
 
 Docker Compose defaults to `rust`. SRP analytics responses include engine metadata and the SRP quality placard displays the serving engine. Set `EQM_SRP_ANALYTICS_ENGINE=python` in `.env` and rebuild the backend for an independent rollback.
 
+### Battle Reports Rust engine
+
+`EQM_BATTLE_REPORT_ENGINE` controls deterministic engagement reconstruction. Python retains pilot permissions, retained-killmail queries, reporting-window selection, ESI/SDE/name enrichment, report history, and immutable public-share persistence. Rust owns affiliation-connected killmail selection, side-graph conflict resolution, manual pilot/organization override precedence, teams, participants, timeline, composition, totals, and efficiency calculations.
+
+- `python` uses the reference Battle Report builder.
+- `shadow` serves Python while requiring exact full-report parity from Rust.
+- `rust` serves Rust results and automatically falls back to the complete Python builder on a binary error, invalid contract, or timeout.
+
+Docker Compose defaults to `rust`. Battle Report responses include engine metadata and the report footer displays the serving engine. Set `EQM_BATTLE_REPORT_ENGINE=python` in `.env` and rebuild the backend for an independent rollback.
+
 ```powershell
 docker compose --profile test run --rm eqm-core-tests cargo test --locked --test analytics_summary_contract
 docker compose --profile test run --rm backend-tests python -m pytest -q tests/test_analytics_summary_engine.py tests/test_analytics_series.py
@@ -751,6 +761,8 @@ docker compose --profile test run --rm eqm-core-tests cargo test --locked --test
 docker compose --profile test run --rm backend-tests python -m pytest -q tests/test_killboard_analytics.py tests/test_killboard_analytics_engine.py
 docker compose --profile test run --rm eqm-core-tests cargo test --locked --test srp_analytics_contract
 docker compose --profile test run --rm backend-tests python -m pytest -q tests/test_srp_analytics.py tests/test_srp_analytics_engine.py -k "not migration_graph"
+docker compose --profile test run --rm eqm-core-tests cargo test --locked --test battle_reports_contract
+docker compose --profile test run --rm backend-tests python -m pytest -q tests/test_battle_reports.py tests/test_battle_report_engine.py
 ```
 
 The test image is built from the dedicated Docker `test` stage and includes the repository's backend tests. The normal backend and worker continue to use the final `runtime` stage without pytest.

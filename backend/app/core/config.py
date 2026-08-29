@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     eqm_settlement_math_engine: str = "rust"
     eqm_killboard_analytics_engine: str = "rust"
     eqm_srp_analytics_engine: str = "rust"
+    eqm_battle_report_engine: str = "rust"
     eqm_core_binary: str = "/usr/local/bin/eqm-core"
     eqm_core_timeout_seconds: float = 5.0
 

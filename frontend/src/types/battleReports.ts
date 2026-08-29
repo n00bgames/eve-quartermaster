@@ -121,6 +121,10 @@ export type BattleReportPayload = {
     grouping_rule?: string;
     generated_at_utc?: string;
   };
+  engine_requested?: string;
+  engine_used?: string;
+  engine_shadow_match?: boolean | null;
+  engine_fallback_reason?: string | null;
 };
 
 export type BattleReportShare = {

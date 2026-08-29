@@ -8,6 +8,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models import EveAlliance, EveCharacter, EveConstellation, EveCorporation, EveGroup, EveRegion, EveSystem, EveType, Killmail, KillmailAttacker, User
+from app.services.battle_report_engine import configured_battle_report_engine, evaluate_battle_report_with_engine
 from app.services.killboard_entities import cached_killboard_name_maps
 from app.services.permissions import role_rank
 
@@ -296,7 +297,7 @@ def battle_report_history(
     }
 
 
-def build_latest_battle_report(
+def _build_latest_battle_report_python(
     db: Session,
     user: User,
     *,
@@ -610,4 +611,196 @@ def build_latest_battle_report(
             "grouping_rule": f"Latest pilot activity connected by gaps of at most {gap_minutes} minutes, then affiliation-connected killmails in the same systems and window.",
             "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         },
+    }
+
+
+def _battle_report_contract(
+    db: Session,
+    user: User,
+    *,
+    character_id: int,
+    gap_minutes: int,
+    max_duration_hours: int,
+    seed_killmail_id: int | None,
+    side_overrides: dict[int, int] | None,
+    organization_overrides: dict[tuple[str, int], int] | None,
+) -> tuple[EveCharacter, dict[str, Any] | None]:
+    pilot = _require_report_pilot(db, user, character_id)
+    gap_minutes = max(5, min(60, int(gap_minutes)))
+    max_duration_hours = max(1, min(12, int(max_duration_hours)))
+    pilot_rows = _pilot_killmails(db, character_id)
+    if not pilot_rows:
+        return pilot, None
+    gap = timedelta(minutes=gap_minutes)
+    maximum_span = timedelta(hours=max_duration_hours)
+    clusters = _pilot_activity_clusters(pilot_rows, gap=gap, maximum_span=maximum_span)
+    if seed_killmail_id is None:
+        pilot_cluster = clusters[0]
+    else:
+        pilot_cluster = next((cluster for cluster in clusters if cluster[0].killmail_id == seed_killmail_id), None)
+        if pilot_cluster is None:
+            raise LookupError("The selected battle is not available in this pilot's retained report history")
+    seed = pilot_cluster[0]
+    system_ids = {row.solar_system_id for row in pilot_cluster}
+    candidates = list(db.scalars(
+        select(Killmail)
+        .where(
+            Killmail.solar_system_id.in_(system_ids),
+            Killmail.killmail_time >= pilot_cluster[-1].killmail_time - gap,
+            Killmail.killmail_time <= seed.killmail_time + gap,
+        )
+        .options(selectinload(Killmail.attackers), selectinload(Killmail.enrichment))
+        .order_by(Killmail.killmail_time.asc())
+    ).all())
+    names = _names(db, candidates)
+    type_ids = {row.victim_ship_type_id for row in candidates if row.victim_ship_type_id}
+    type_ids.update(attacker.ship_type_id for row in candidates for attacker in row.attackers if attacker.ship_type_id)
+    type_rows = db.execute(
+        select(EveType.type_id, EveType.name, EveGroup.group_id, EveGroup.name)
+        .outerjoin(EveGroup, EveGroup.group_id == EveType.group_id)
+        .where(EveType.type_id.in_(type_ids))
+    ).all() if type_ids else []
+    ships = {
+        int(type_id): {
+            "type_id": int(type_id), "type_name": str(type_name), "ship_group_id": group_id,
+            "ship_group_name": str(group_name) if group_name else None,
+        }
+        for type_id, type_name, group_id, group_name in type_rows
+    }
+    systems = {
+        row.system_id: row
+        for row in db.scalars(
+            select(EveSystem)
+            .where(EveSystem.system_id.in_({item.solar_system_id for item in candidates}))
+            .options(selectinload(EveSystem.constellation).selectinload(EveConstellation.region))
+        ).all()
+    }
+
+    def identity(character: int | None, corporation: int | None, alliance: int | None, faction: int | None) -> dict[str, Any]:
+        return {
+            "character_id": character,
+            "character_name": names["character"].get(character or 0, f"Character {character}" if character else None),
+            "corporation_id": corporation,
+            "corporation_name": names["corporation"].get(corporation or 0, f"Corporation {corporation}" if corporation else None),
+            "alliance_id": alliance,
+            "alliance_name": names["alliance"].get(alliance or 0, f"Alliance {alliance}" if alliance else None),
+            "faction_id": faction,
+        }
+
+    def ship(type_id: int | None) -> dict[str, Any] | None:
+        if type_id is None:
+            return None
+        return ships.get(type_id, {
+            "type_id": type_id, "type_name": f"Type {type_id}", "ship_group_id": None, "ship_group_name": None,
+        })
+
+    rows = []
+    for row in candidates:
+        system = systems.get(row.solar_system_id)
+        region_name = system.constellation.region.name if system and system.constellation and system.constellation.region else None
+        victim_identity = identity(row.victim_character_id, row.victim_corporation_id, row.victim_alliance_id, row.victim_faction_id)
+        rows.append({
+            "killmail_id": row.killmail_id,
+            "killmail_time": row.killmail_time.isoformat(),
+            "system": {
+                "system_id": row.solar_system_id,
+                "system_name": system.name if system else f"System {row.solar_system_id}",
+                "security_status": system.security_status if system else None,
+                "region_name": region_name,
+            },
+            **victim_identity,
+            "victim_name": names["character"].get(row.victim_character_id or 0) or names["corporation"].get(row.victim_corporation_id or 0) or "Unknown or NPC victim",
+            "timeline_victim_corporation_name": names["corporation"].get(row.victim_corporation_id or 0),
+            "timeline_victim_alliance_name": names["alliance"].get(row.victim_alliance_id or 0),
+            "victim_ship": ship(row.victim_ship_type_id),
+            "damage_taken": row.damage_taken,
+            "estimated_total_value": float(row.enrichment.estimated_total_value) if row.enrichment and row.enrichment.estimated_total_value is not None else None,
+            "zkill_url": row.enrichment.zkill_url if row.enrichment else f"https://zkillboard.com/kill/{row.killmail_id}/",
+            "attackers": [{
+                **identity(attacker.character_id, attacker.corporation_id, attacker.alliance_id, attacker.faction_id),
+                "ship": ship(attacker.ship_type_id),
+                "damage_done": attacker.damage_done,
+                "final_blow": bool(attacker.final_blow),
+            } for attacker in row.attackers],
+        })
+    manual_sides = {
+        int(pilot_id): int(side)
+        for pilot_id, side in (side_overrides or {}).items()
+        if int(pilot_id) != character_id and int(side) in {0, 1, 2}
+    }
+    manual_organizations = {
+        (str(kind), int(organization_id)): int(side)
+        for (kind, organization_id), side in (organization_overrides or {}).items()
+        if str(kind) in {"alliance", "corporation"} and int(organization_id) > 0 and int(side) in {0, 1, 2}
+    }
+    return pilot, {
+        "schema_version": "eqm.battle-report-input.v1",
+        "selected_character_id": character_id,
+        "seed_killmail_id": seed.killmail_id,
+        "gap_minutes": gap_minutes,
+        "side_overrides": [{"character_id": pilot_id, "side": side} for pilot_id, side in manual_sides.items()],
+        "organization_overrides": [
+            {"organization_type": kind, "organization_id": organization_id, "side": side}
+            for (kind, organization_id), side in sorted(manual_organizations.items())
+        ],
+        "rows": rows,
+    }
+
+
+def build_latest_battle_report(
+    db: Session,
+    user: User,
+    *,
+    character_id: int,
+    gap_minutes: int = 15,
+    max_duration_hours: int = 6,
+    seed_killmail_id: int | None = None,
+    side_overrides: dict[int, int] | None = None,
+    organization_overrides: dict[tuple[str, int], int] | None = None,
+) -> dict[str, Any]:
+    engine = configured_battle_report_engine()
+    if engine == "python":
+        return _build_latest_battle_report_python(
+            db, user, character_id=character_id, gap_minutes=gap_minutes,
+            max_duration_hours=max_duration_hours, seed_killmail_id=seed_killmail_id,
+            side_overrides=side_overrides, organization_overrides=organization_overrides,
+        )
+    pilot, contract = _battle_report_contract(
+        db, user, character_id=character_id, gap_minutes=gap_minutes,
+        max_duration_hours=max_duration_hours, seed_killmail_id=seed_killmail_id,
+        side_overrides=side_overrides, organization_overrides=organization_overrides,
+    )
+    if contract is None:
+        result = _build_latest_battle_report_python(
+            db, user, character_id=character_id, gap_minutes=gap_minutes,
+            max_duration_hours=max_duration_hours, seed_killmail_id=seed_killmail_id,
+            side_overrides=side_overrides, organization_overrides=organization_overrides,
+        )
+        result.update(engine_requested=engine, engine_used="python-empty")
+        return result
+    evaluated = evaluate_battle_report_with_engine(
+        payload=contract,
+        python_result=lambda: _build_latest_battle_report_python(
+            db, user, character_id=character_id, gap_minutes=gap_minutes,
+            max_duration_hours=max_duration_hours, seed_killmail_id=seed_killmail_id,
+            side_overrides=side_overrides, organization_overrides=organization_overrides,
+        ),
+        engine=engine,
+    )
+    if "pilot" in evaluated:
+        return evaluated
+    return {
+        "pilot": {"character_id": pilot.character_id, "name": pilot.name},
+        "report": evaluated["report"],
+        "coverage": {
+            "warning": "This report is reconstructed from locally cached killmails discovered through zKillboard. Discovery may be incomplete; killmail facts are canonical ESI records and ISK values are zKillboard estimates.",
+            "canonical_source": "ESI",
+            "discovery_source": "zKillboard",
+            "grouping_rule": f"Latest pilot activity connected by gaps of at most {contract['gap_minutes']} minutes, then affiliation-connected killmails in the same systems and window.",
+            "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+        },
+        "engine_requested": evaluated["engine_requested"],
+        "engine_used": evaluated["engine_used"],
+        "engine_shadow_match": evaluated.get("engine_shadow_match"),
+        "engine_fallback_reason": evaluated.get("engine_fallback_reason"),
     }
