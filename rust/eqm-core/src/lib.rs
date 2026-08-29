@@ -1,4 +1,5 @@
 pub mod analytics_summary;
+pub mod bounty_analytics;
 pub mod colony_simulation;
 pub mod fitting_math;
 pub mod fitting_resources;

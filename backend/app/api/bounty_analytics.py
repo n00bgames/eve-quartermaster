@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.api.auth import get_current_user
 from app.db.session import get_db
 from app.models import CharacterWalletJournalEntry, EsiToken, EveCharacter, EveCorporation, User
-from app.services.bounty_analytics import BOUNTY_REFERENCE_TYPE, build_bounty_ticks, json_value, leaderboard, summarize_ticks, timeline
+from app.services.bounty_analytics import BOUNTY_REFERENCE_TYPE, build_bounty_ticks, evaluate_bounty_report, json_value
 from app.services.permissions import base_role_for, can_view_section
 
 
@@ -195,6 +195,7 @@ def bounty_analytics(
     )
     statuses = token_statuses(db, current_user, characters)
     offset = (page - 1) * page_size
+    analysis = evaluate_bounty_report(ticks, grouping, timezone_name)
     payload = {
         "schema_version": EXPORT_SCHEMA_VERSION,
         "generated_at_utc": datetime.now(timezone.utc),
@@ -204,9 +205,9 @@ def bounty_analytics(
         "grouping": grouping,
         "reporting_timezone": timezone_name,
         "scope": "all_enrolled_pilots" if can_view_all_pilots(db, current_user) else "current_user_connected_characters",
-        "summary": summarize_ticks(ticks),
-        "timeline": timeline(ticks, grouping, timezone_name),
-        "leaderboard": leaderboard(ticks),
+        "summary": analysis["summary"],
+        "timeline": analysis["timeline"],
+        "leaderboard": analysis["leaderboard"],
         "ledger": ticks[offset : offset + page_size],
         "tick_count": len(ticks),
         "page": page,
@@ -231,6 +232,7 @@ def bounty_analytics(
             "isk_per_hour": "Not calculated because wallet journals do not identify reliable ratting-session boundaries.",
         },
     }
+    payload.update({key: value for key, value in analysis.items() if key.startswith("engine_")})
     return json_value(payload)
 
 

@@ -700,11 +700,23 @@ Docker Compose defaults to `rust`. The `/api/analytics/summary` response include
 
 Docker Compose defaults to `rust`. Jump plotter responses include `route_engine` metadata with the requested engine, engine used, segment count, shadow result, and any fallback reason. Set `EQM_JUMP_ROUTE_ENGINE=python` in `.env` and rebuild the backend for an independent route-search rollback.
 
+### Bounty Analytics Rust engine
+
+`EQM_BOUNTY_ANALYTICS_ENGINE` controls deterministic bounty reductions. Python retains wallet-journal access control, ESI row retrieval, authoritative tick construction, tax-status filtering, and reporting-timezone bucket preparation. Rust owns summary totals, tax-coverage reconciliation, pilot leaderboards, and timeline aggregation.
+
+- `python` uses the reference Python reductions.
+- `shadow` serves Python while comparing the complete Rust result and logging field-level mismatches.
+- `rust` serves Rust results and automatically falls back to Python on a binary error, invalid contract, or timeout.
+
+Docker Compose defaults to `rust`. `/api/bounty-analytics` includes engine metadata and the Bounty Analytics page displays the engine that served the report. Set `EQM_BOUNTY_ANALYTICS_ENGINE=python` in `.env` and rebuild the backend for an independent rollback.
+
 ```powershell
 docker compose --profile test run --rm eqm-core-tests cargo test --locked --test analytics_summary_contract
 docker compose --profile test run --rm backend-tests python -m pytest -q tests/test_analytics_summary_engine.py tests/test_analytics_series.py
 docker compose --profile test run --rm eqm-core-tests cargo test --locked --test jump_route_contract
 docker compose --profile test run --rm backend-tests python -m pytest -q tests/test_jump_route_engine.py tests/test_jump_freighter_alternates.py
+docker compose --profile test run --rm eqm-core-tests cargo test --locked --test bounty_analytics_contract
+docker compose --profile test run --rm backend-tests python -m pytest -q tests/test_bounty_analytics.py tests/test_bounty_analytics_engine.py
 ```
 
 The test image is built from the dedicated Docker `test` stage and includes the repository's backend tests. The normal backend and worker continue to use the final `runtime` stage without pytest.

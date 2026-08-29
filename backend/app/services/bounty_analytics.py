@@ -7,6 +7,7 @@ from typing import Any, Iterable
 from zoneinfo import ZoneInfo
 
 from app.models import CharacterWalletJournalEntry
+from app.services.bounty_analytics_engine import evaluate_bounty_analytics_with_engine
 
 
 BOUNTY_REFERENCE_TYPE = "bounty_prizes"
@@ -157,6 +158,52 @@ def timeline(ticks: list[dict[str, Any]], grouping: str, timezone_name: str) -> 
         stats = summarize_ticks(rows)
         result.append({"bucket_start": bucket_start, **stats})
     return result
+
+
+def timeline_bucket_start(value: datetime, grouping: str, timezone_name: str) -> datetime:
+    local = utc(value).astimezone(ZoneInfo(timezone_name))
+    if grouping == "daily":
+        local = local.replace(hour=0, minute=0, second=0, microsecond=0)
+    elif grouping == "hourly":
+        local = local.replace(minute=0, second=0, microsecond=0)
+    else:
+        local = utc(value)
+    return local.astimezone(timezone.utc)
+
+
+def evaluate_bounty_report(
+    ticks: list[dict[str, Any]],
+    grouping: str,
+    timezone_name: str,
+) -> dict[str, Any]:
+    payload = {
+        "schema_version": "eqm.bounty-analytics-input.v1",
+        "ticks": [
+            {
+                "tick_id": row["tick_id"],
+                "occurred_at": utc(row["occurred_at"]).isoformat(),
+                "bucket_start": timeline_bucket_start(row["occurred_at"], grouping, timezone_name).isoformat(),
+                "character_eve_id": row["character_eve_id"],
+                "character_name": row["character_name"],
+                "corporation_eve_id": row["corporation_eve_id"],
+                "corporation_name": row["corporation_name"],
+                "reference_ids": row["reference_ids"],
+                "net_isk": float(row["net_isk"]),
+                "corporate_tax_isk": float(row["corporate_tax_isk"]) if row["corporate_tax_isk"] is not None else None,
+                "gross_isk": float(row["gross_isk"]) if row["gross_isk"] is not None else None,
+            }
+            for row in ticks
+        ],
+    }
+    return evaluate_bounty_analytics_with_engine(
+        payload=payload,
+        python_result=lambda: {
+            "schema_version": "eqm.bounty-analytics-output.v1",
+            "summary": json_value(summarize_ticks(ticks)),
+            "timeline": json_value(timeline(ticks, grouping, timezone_name)),
+            "leaderboard": json_value(leaderboard(ticks)),
+        },
+    )
 
 
 def json_value(value: Any) -> Any:

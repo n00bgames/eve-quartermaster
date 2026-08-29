@@ -60,6 +60,10 @@ export type BountyCharacter = {
 
 export type BountyAnalyticsPayload = {
   schema_version: string;
+  engine_requested?: "python" | "shadow" | "rust";
+  engine_used?: "python" | "python-shadow" | "python-shadow-error" | "python-fallback" | "rust";
+  engine_shadow_match?: boolean;
+  engine_fallback_reason?: string;
   generated_at_utc: string;
   period: string;
   date_from_utc: string | null;
@@ -78,4 +82,3 @@ export type BountyAnalyticsPayload = {
   corporations: { corporation_eve_id: number; corporation_name: string }[];
   definitions: { tick: string; net: string; corporate_tax: string; gross: string; isk_per_hour: string };
 };
-
