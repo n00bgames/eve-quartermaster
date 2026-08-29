@@ -339,7 +339,7 @@ async def jump_freighter_route(
     jump_drive_calibration: int = Query(5, ge=0, le=5),
     jump_fuel_conservation: int = Query(5, ge=0, le=5),
     context_gate_hops: int = Query(1, ge=0, le=2),
-    station_safety: str = Query("any", pattern="^(any|avoid_red_only|green)$"),
+    station_safety: str = Query("any", pattern="^(any|avoid_red_only|green|pos)$"),
     kill_filter: str = Query("industrial", pattern="^(industrial|all)$"),
     jump_activity_hours: int = Query(6, ge=1, le=24),
     avoid_systems: str = Query(""),

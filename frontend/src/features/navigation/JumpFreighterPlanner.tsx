@@ -101,6 +101,14 @@ export function JumpFreighterPlanner({
 
   const [stationSafety, setStationSafety] = useState("any");
 
+  useEffect(() => {
+    if (supercapitalSelected) {
+      if (!["any", "pos"].includes(stationSafety)) setStationSafety("any");
+    } else if (stationSafety === "pos") {
+      setStationSafety("any");
+    }
+  }, [supercapitalSelected, stationSafety]);
+
   const [avoidSystems, setAvoidSystems] = useState<NavigationSystem[]>([]);
 
   const [route, setRoute] = useState<JumpFreighterRoute | null>(null);
@@ -619,11 +627,13 @@ export function JumpFreighterPlanner({
           Docking target
           <select
             value={stationSafety}
-            disabled={supercapitalSelected}
             onChange={(event) => setStationSafety(event.target.value)}
           >
             {supercapitalSelected ? (
-              <option value={stationSafety}>Known Keepstars only</option>
+              <>
+                <option value="any">Known Keepstars only</option>
+                <option value="pos">POS / open-space cyno</option>
+              </>
             ) : (
               <>
                 <option value="any">Any NPC station</option>
@@ -632,6 +642,12 @@ export function JumpFreighterPlanner({
               </>
             )}
           </select>
+          {supercapitalSelected && stationSafety === "pos" && (
+            <small>
+              Range validation only; a POS is not dockable and EQM does not
+              verify a tower in the destination system.
+            </small>
+          )}
         </label>
         <label className="checkbox-row">
           <input

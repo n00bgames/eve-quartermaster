@@ -115,6 +115,34 @@ class JumpFreighterAlternateTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "no known Keepstar"):
                 _jump_path(None, origin, destination, 6.0, ship=avatar)  # type: ignore[arg-type]
 
+    def test_supercapital_pos_mode_allows_unstationed_final_destination(self) -> None:
+        origin = system(1, "Origin", 0)
+        midpoint = system(2, "Open-space midpoint", 5)
+        destination = system(3, "POS destination", 10)
+
+        with patch("app.services.jump_freighter._known_space_systems", return_value=[origin, midpoint, destination]):
+            path = _jump_path(
+                None,  # type: ignore[arg-type]
+                origin,
+                destination,
+                6.0,
+                station_safety="pos",
+                ship=ship_config("Avatar"),
+            )
+
+        self.assertEqual(path, [origin.system_id, midpoint.system_id, destination.system_id])
+
+    def test_non_supercapital_route_rejects_pos_destination_mode(self) -> None:
+        with self.assertRaisesRegex(ValueError, "available only for supercarriers and titans"):
+            _jump_path(
+                None,  # type: ignore[arg-type]
+                system(1, "Origin", 0),
+                system(2, "Destination", 5),
+                6.0,
+                station_safety="pos",
+                ship=ship_config("Rhea"),
+            )
+
     def test_non_supercapital_route_still_requires_dockable_midpoints(self) -> None:
         origin = system(1, "Origin", 0)
         midpoint = system(2, "No station", 5)

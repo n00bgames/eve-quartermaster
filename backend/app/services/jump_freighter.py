@@ -287,7 +287,7 @@ def _station_safety_system_ids(db: Session, station_safety: str, ship: JumpFreig
 
 def _station_safety_label(station_safety: str, ship: JumpFreighterShip | None = None) -> str:
     if requires_keepstar(ship):
-        return "Known Keepstars only"
+        return "POS / open-space cyno (no docking validation)" if station_safety.strip().lower() == "pos" else "Known Keepstars only"
     return {
         "any": "Any NPC station",
         "avoid_red_only": "Avoid red-only systems",
@@ -314,14 +314,23 @@ def _jump_path(db: Session, origin: EveSystem, destination: EveSystem, max_range
         return [origin.system_id]
     if not cyno_eligible(destination):
         raise ValueError("Jump freighter destination must be lowsec/nullsec for a cyno. Use a nearby cyno system, then plan the gate leg separately.")
-    station_system_ids = _station_safety_system_ids(db, "any", ship)
-    if not allow_unstationed_destination and destination.system_id not in station_system_ids:
-        if requires_keepstar(ship):
-            raise ValueError(f"{destination.name} has no known Keepstar. Supercarriers and titans can only use known Keepstar-class structures as docking destinations.")
-        raise ValueError(f"{destination.name} has no imported NPC stations. Jump-capable cyno targets must have an NPC station; choose a nearby station system and gate the final leg.")
-    allowed_station_system_ids = _station_safety_system_ids(db, station_safety, ship)
-    if not allow_unstationed_destination and destination.system_id not in allowed_station_system_ids:
-        raise ValueError(f"{destination.name} has docking locations, but none match the filter: {_station_safety_label(station_safety, ship)}.")
+    if station_safety.strip().lower() == "pos" and not requires_keepstar(ship):
+        raise ValueError("POS / open-space destination mode is available only for supercarriers and titans.")
+    open_space_supercapital_destination = requires_keepstar(ship) and station_safety.strip().lower() == "pos"
+    if open_space_supercapital_destination:
+        # A POS is not a dockable location and its exact moon/tower does not
+        # affect system-to-system jump geometry. Treat this as explicit
+        # range-only validation for the selected destination system.
+        allowed_station_system_ids = {destination.system_id}
+    else:
+        station_system_ids = _station_safety_system_ids(db, "any", ship)
+        if not allow_unstationed_destination and destination.system_id not in station_system_ids:
+            if requires_keepstar(ship):
+                raise ValueError(f"{destination.name} has no known Keepstar. Select POS / open-space cyno to validate jump geometry without a dockable destination.")
+            raise ValueError(f"{destination.name} has no imported NPC stations. Jump-capable cyno targets must have an NPC station; choose a nearby station system and gate the final leg.")
+        allowed_station_system_ids = _station_safety_system_ids(db, station_safety, ship)
+        if not allow_unstationed_destination and destination.system_id not in allowed_station_system_ids:
+            raise ValueError(f"{destination.name} has docking locations, but none match the filter: {_station_safety_label(station_safety, ship)}.")
     avoid_system_ids = set(avoid_system_ids or set())
     avoid_system_ids.discard(origin.system_id)
     avoid_system_ids.discard(destination.system_id)
@@ -1016,13 +1025,17 @@ def plan_jump_freighter_route(
             f"Required cyno routing active through {len(manual_waypoints)} supplied system{'' if len(manual_waypoints) == 1 else 's'}; EQM automatically fills valid jumps between them."
             if route_mode == "waypoint_assisted"
             else (
-                "Highsec origins are allowed; automatic supercapital midpoints may be any low/null cyno system, while the final docking target must have a known Keepstar-class structure."
+                (
+                    "Highsec origins are allowed; POS / open-space mode validates low/null cyno geometry without requiring a dockable final structure."
+                    if station_safety == "pos"
+                    else "Highsec origins are allowed; automatic supercapital midpoints may be any low/null cyno system, while the final docking target must have a known Keepstar-class structure."
+                )
                 if requires_keepstar(ship)
                 else "Highsec origins are allowed; automatic jump targets are low/null systems with imported NPC stations."
             )
         ),
         (
-            f"Final docking target filter: {_station_safety_label(station_safety, ship)}; intermediate supercapital cynos and supplied waypoints may be open-space targets without a docking location."
+            f"Supercapital destination mode: {_station_safety_label(station_safety, ship)}; intermediate cynos and supplied waypoints may also be open-space targets."
             if requires_keepstar(ship)
             else f"Docking target filter: {_station_safety_label(station_safety, ship)}; supplied cyno waypoints are honored even without a docking location."
         ),
@@ -1031,7 +1044,11 @@ def plan_jump_freighter_route(
         f"Avoiding {len(avoid_systems)} system{'' if len(avoid_systems) == 1 else 's'}; required waypoints cannot be avoided.",
         "Alternates are informational candidates and do not change the plotted route until you add one as a required waypoint or replot around it.",
         (
-            "Keepstar eligibility does not guarantee access. Verify docking rights, tether, bookmarks, and cyno placement before moving a supercapital."
+            (
+                "POS / open-space mode validates range only. EQM does not verify a control tower, force-field access, tether, moon position, or cyno placement in the destination system."
+                if station_safety == "pos"
+                else "Keepstar eligibility does not guarantee access. Verify docking rights, tether, bookmarks, and cyno placement before moving a supercapital."
+            )
             if requires_keepstar(ship)
             else "Station guidance is operational reference data. Verify bookmarks and station geometry before risking a live jump."
         ),
