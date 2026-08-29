@@ -133,6 +133,10 @@ export type PlanetaryAnalytics = {
 };
 export type AnalyticsSummary = {
   days: number;
+  engine_requested?: "python" | "shadow" | "rust";
+  engine_used?: "python" | "python-shadow" | "python-shadow-error" | "python-fallback" | "rust";
+  engine_shadow_match?: boolean;
+  engine_fallback_reason?: string;
   scope: {
     mode: "all" | "mine" | "corporation" | "alliance";
     corporation_id?: number | null;

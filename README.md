@@ -680,6 +680,21 @@ docker compose --profile test run --rm eqm-core-tests
 docker compose --profile test run --rm backend-tests python -m pytest -q tests/test_fitting_math_parity.py tests/test_fitting_math_engine.py tests/test_fitting_resources_parity.py tests/test_fitting_resources_engine.py
 ```
 
+### Analytics Rust engine
+
+`EQM_ANALYTICS_ENGINE` controls the shared Analytics summary evaluator. FastAPI and SQLAlchemy retain authentication, privacy/scope enforcement, and database retrieval. Rust owns the deterministic summary calculations: overview cards, organic-versus-coverage change composition, growth and extraction rankings, standing movement, and daily corporation trend series.
+
+- `python` uses the reference Python calculations.
+- `shadow` serves Python while comparing the complete Rust result and logging field-level mismatches.
+- `rust` serves Rust results and automatically falls back to Python on a binary error, invalid contract, or timeout.
+
+Docker Compose defaults to `rust`. The `/api/analytics/summary` response includes `engine_requested`, `engine_used`, and fallback or shadow metadata so a live cutover can be verified directly. Set `EQM_ANALYTICS_ENGINE=python` in `.env` and rebuild the backend for an independent Analytics rollback.
+
+```powershell
+docker compose --profile test run --rm eqm-core-tests cargo test --locked --test analytics_summary_contract
+docker compose --profile test run --rm backend-tests python -m pytest -q tests/test_analytics_summary_engine.py tests/test_analytics_series.py
+```
+
 The test image is built from the dedicated Docker `test` stage and includes the repository's backend tests. The normal backend and worker continue to use the final `runtime` stage without pytest.
 
 Fitting reference evidence lives under `backend/tests/fixtures/fittings/evidence/`. Every external capture records its simulator/profile version, module and drone state, heat/implant/booster assumptions, and display-rounded expected values. The current fleet includes cold All-V and exported Steihl Lianul skill-profile captures from Pyfa 2.68.0 for a Rail Moa, Rapid Light Caracal, Active Armor Vexor, and command-burst Absolution, with the Absolution also cross-checked in the EVE fitting simulator. EQM uses the currently imported CCP SDE as authoritative when a versioned Pyfa capture contains older module attributes; such source-version differences are documented in the evidence instead of being hidden with hard-coded corrections.

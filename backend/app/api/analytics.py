@@ -25,6 +25,7 @@ from app.services.analytics import (
     set_analytics_retention_mode,
 )
 from app.services.analytics_scope import apply_anonymous_analytics_privacy, resolve_analytics_character_scope, visible_analytics_character_ids
+from app.services.analytics_summary_engine import evaluate_analytics_summary_with_engine
 from app.services.audit import record_audit_event
 from app.services.metric_registry import METRIC_CATALOG
 from app.services.permissions import ROLE_RANK, can_view_section, role_rank
@@ -811,8 +812,16 @@ def standing_movement_rows(rows: list[SnapshotMetric], cutoff: datetime) -> dict
 
 def standing_movement_analytics(db: Session, days: int, character_ids: set[int] | None) -> dict[str, Any]:
     cutoff = start_cutoff(days)
+    return standing_movement_rows(standing_movement_history_rows(db, cutoff, character_ids), cutoff)
+
+
+def standing_movement_history_rows(
+    db: Session,
+    cutoff: datetime,
+    character_ids: set[int] | None,
+) -> list[SnapshotMetric]:
     if character_ids is not None and not character_ids:
-        return standing_movement_rows([], cutoff)
+        return []
 
     filters = [
         SnapshotMetric.metric_key == "standings.base",
@@ -837,8 +846,68 @@ def standing_movement_analytics(db: Session, days: int, character_ids: set[int] 
     )
     if character_ids is not None:
         query = query.where(SnapshotMetric.owner_id.in_(character_ids))
-    rows = list(db.scalars(query.order_by(SnapshotMetric.recorded_at, SnapshotMetric.id)).all())
-    return standing_movement_rows(rows, cutoff)
+    return list(db.scalars(query.order_by(SnapshotMetric.recorded_at, SnapshotMetric.id)).all())
+
+
+def analytics_summary_payload(
+    *,
+    cutoff: datetime,
+    character_rows: list[CharacterSkillSnapshot],
+    identified_character_rows: list[CharacterSkillSnapshot],
+    character_category_rows: list[CharacterSkillSnapshot],
+    corporation_rows: list[CorporationSnapshot],
+    standing_rows: list[SnapshotMetric],
+) -> dict[str, Any]:
+    def character_row(row: CharacterSkillSnapshot) -> dict[str, Any]:
+        return {
+            "id": int(row.id),
+            "character_id": int(row.character_id),
+            "character_name": row.character_name,
+            "total_skill_points": as_float(row.total_skill_points),
+            "recorded_at": iso(aware_utc(row.recorded_at)),
+        }
+
+    def category_row(row: CharacterSkillSnapshot) -> dict[str, Any]:
+        return {
+            "id": int(row.id),
+            "character_id": int(row.character_id),
+            "category_name": row.category_name,
+            "category_skill_points": as_float(row.category_skill_points),
+            "recorded_at": iso(aware_utc(row.recorded_at)),
+        }
+
+    def corporation_row(row: CorporationSnapshot) -> dict[str, Any]:
+        return {
+            "id": int(row.id),
+            "corporation_id": int(row.corporation_id),
+            "corporation_name": row.corporation_name,
+            "wallet_balance": as_float(row.wallet_balance),
+            "member_count": as_float(row.member_count),
+            "blueprint_count": as_float(row.blueprint_count),
+            "recorded_at": iso(aware_utc(row.recorded_at)),
+        }
+
+    def standing_row(row: SnapshotMetric) -> dict[str, Any]:
+        dimensions = row.dimensions_json or {}
+        return {
+            "id": int(row.id),
+            "series_key": row.series_key or "",
+            "recorded_at": iso(aware_utc(row.recorded_at)),
+            "metric_value": as_float(row.metric_value),
+            "source_type": str(dimensions.get("source_type") or ""),
+            "source_eve_id": int(dimensions.get("source_eve_id") or 0),
+            "source_name": str(dimensions.get("source_name") or ""),
+        }
+
+    return {
+        "schema_version": "eqm.analytics-summary-input.v1",
+        "cutoff": iso(cutoff),
+        "character_rows": [character_row(row) for row in character_rows],
+        "identified_character_rows": [character_row(row) for row in identified_character_rows],
+        "character_category_rows": [category_row(row) for row in character_category_rows],
+        "corporation_rows": [corporation_row(row) for row in corporation_rows],
+        "standing_rows": [standing_row(row) for row in standing_rows],
+    }
 
 @router.get("/summary")
 def analytics_summary(
@@ -892,27 +961,56 @@ def analytics_summary(
     character_category_rows = character_history_rows(db, days, character_ids, categorized=True)
     identified_character_rows = character_history_rows(db, days, identified_character_ids, categorized=False)
     corporation_rows = corporation_history_rows(db, days, corporation_ids)
-    latest_characters, earliest_characters = latest_and_earliest_character_rows(db, days, character_ids, character_rows)
-    latest_corps, earliest_corps = latest_and_earliest_corp_rows(db, days, corporation_ids, corporation_rows)
-    latest_identified, earliest_identified = latest_and_earliest_character_rows(
-        db, days, identified_character_ids, identified_character_rows
+    standing_rows = standing_movement_history_rows(db, cutoff, character_ids)
+
+    def python_core() -> dict[str, Any]:
+        latest_characters, _ = latest_and_earliest_character_rows(db, days, character_ids, character_rows)
+        latest_corps, earliest_corps = latest_and_earliest_corp_rows(db, days, corporation_ids, corporation_rows)
+        latest_identified, earliest_identified = latest_and_earliest_character_rows(
+            db, days, identified_character_ids, identified_character_rows
+        )
+        return {
+            "cards": {
+                "wallet_total": sum(as_float(row.wallet_balance) for row in latest_corps),
+                "blueprint_total": sum(int(row.blueprint_count or 0) for row in latest_corps),
+                "member_total": sum(int(row.member_count or 0) for row in latest_corps),
+                "character_count": len(latest_characters),
+            },
+            "change_composition": {
+                "skill_points": change_breakdown(character_rows, key="character_id", value_attr="total_skill_points", name_attr="character_name", cutoff=cutoff),
+                "corporation_wallets": change_breakdown(corporation_rows, key="corporation_id", value_attr="wallet_balance", name_attr="corporation_name", cutoff=cutoff),
+                "members": change_breakdown(corporation_rows, key="corporation_id", value_attr="member_count", name_attr="corporation_name", cutoff=cutoff),
+                "blueprints": change_breakdown(corporation_rows, key="corporation_id", value_attr="blueprint_count", name_attr="corporation_name", cutoff=cutoff),
+            },
+            "top_sp_gainers": delta_rows(latest_identified, earliest_identified, "character_id", "total_skill_points", "character_name")[:12],
+            "top_sp_losses": skill_point_losses(db, days, identified_character_ids, identified_character_rows),
+            "top_skill_category_gainers": category_deltas(db, days, character_ids, character_category_rows),
+            "top_skill_category_losses": skill_category_losses(db, days, character_ids, character_category_rows),
+            "wallet_growth": delta_rows(latest_corps, earliest_corps, "corporation_id", "wallet_balance", "corporation_name")[:12],
+            "member_growth": delta_rows(latest_corps, earliest_corps, "corporation_id", "member_count", "corporation_name")[:12],
+            "blueprint_growth": delta_rows(latest_corps, earliest_corps, "corporation_id", "blueprint_count", "corporation_name")[:12],
+            "standings_movement": standing_movement_rows(standing_rows, cutoff),
+            "series": {
+                "wallet_totals": daily_corporation_series(corporation_rows, "wallet_balance", cutoff),
+                "member_counts": daily_corporation_series(corporation_rows, "member_count", cutoff),
+                "blueprint_counts": daily_corporation_series(corporation_rows, "blueprint_count", cutoff),
+            },
+        }
+    analytics_core = evaluate_analytics_summary_with_engine(
+        payload=analytics_summary_payload(
+            cutoff=cutoff,
+            character_rows=character_rows,
+            identified_character_rows=identified_character_rows,
+            character_category_rows=character_category_rows,
+            corporation_rows=corporation_rows,
+            standing_rows=standing_rows,
+        ),
+        python_result=python_core,
     )
-    sp_gainers = delta_rows(latest_identified, earliest_identified, "character_id", "total_skill_points", "character_name")[:12]
-    wallet_growth = delta_rows(latest_corps, earliest_corps, "corporation_id", "wallet_balance", "corporation_name")[:12]
-    member_growth = delta_rows(latest_corps, earliest_corps, "corporation_id", "member_count", "corporation_name")[:12]
-    blueprint_growth = delta_rows(latest_corps, earliest_corps, "corporation_id", "blueprint_count", "corporation_name")[:12]
-    latest_wallet_total = sum(as_float(row.wallet_balance) for row in latest_corps)
-    latest_blueprints = sum(int(row.blueprint_count or 0) for row in latest_corps)
-    latest_members = sum(int(row.member_count or 0) for row in latest_corps)
-    change_composition = {
-        "skill_points": change_breakdown(character_rows, key="character_id", value_attr="total_skill_points", name_attr="character_name", cutoff=cutoff),
-        "corporation_wallets": change_breakdown(corporation_rows, key="corporation_id", value_attr="wallet_balance", name_attr="corporation_name", cutoff=cutoff),
-        "members": change_breakdown(corporation_rows, key="corporation_id", value_attr="member_count", name_attr="corporation_name", cutoff=cutoff),
-        "blueprints": change_breakdown(corporation_rows, key="corporation_id", value_attr="blueprint_count", name_attr="corporation_name", cutoff=cutoff),
-    }
+    analytics_core.pop("schema_version", None)
     if anonymous_character_ids:
-        change_composition["skill_points"]["newly_tracked"] = [
-            row for row in change_composition["skill_points"]["newly_tracked"]
+        analytics_core["change_composition"]["skill_points"]["newly_tracked"] = [
+            row for row in analytics_core["change_composition"]["skill_points"]["newly_tracked"]
             if row["id"] not in anonymous_character_ids
         ]
     return {
@@ -938,30 +1036,11 @@ def analytics_summary(
             "available_seconds": coverage_seconds,
             "complete": bool(first_metric_at and first_metric_at <= cutoff),
         },
-        "cards": {
-            "wallet_total": latest_wallet_total,
-            "blueprint_total": latest_blueprints,
-            "member_total": latest_members,
-            "character_count": len(latest_characters),
-        },
-        "change_composition": change_composition,
-        "top_sp_gainers": sp_gainers,
-        "top_sp_losses": skill_point_losses(db, days, identified_character_ids, identified_character_rows),
-        "top_skill_category_gainers": category_deltas(db, days, character_ids, character_category_rows),
-        "top_skill_category_losses": skill_category_losses(db, days, character_ids, character_category_rows),
-        "wallet_growth": wallet_growth,
-        "member_growth": member_growth,
-        "blueprint_growth": blueprint_growth,
+        **analytics_core,
         "duplicate_blueprints": duplicate_blueprints(db, identified_ownership_entity_ids),
         "manufacturing": manufacturing_analytics(db, days),
         "mining": mining_analytics(db, days, character_ids, anonymous_character_ids),
         "research_projects": research_project_analytics(db, days, character_ids, anonymous_character_ids),
-        "standings_movement": standing_movement_analytics(db, days, character_ids),
-        "series": {
-            "wallet_totals": corporation_series(db, days, "wallet_balance", corporation_ids, corporation_rows),
-            "member_counts": corporation_series(db, days, "member_count", corporation_ids, corporation_rows),
-            "blueprint_counts": corporation_series(db, days, "blueprint_count", corporation_ids, corporation_rows),
-        },
     }
 
 
