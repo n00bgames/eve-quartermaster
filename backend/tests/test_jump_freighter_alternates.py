@@ -9,6 +9,7 @@ from app.services.jump_freighter import (
     _alternate_jump_candidates,
     _alternate_station_status,
     _fetch_system_kill_counts,
+    _jump_path,
     _waypoint_assisted_jump_path,
     _station_profiles,
     ship_config,
@@ -92,6 +93,39 @@ class JumpFreighterAlternateTests(unittest.TestCase):
         self.assertEqual(path, [1, 10, 2, 11, 3])
         self.assertTrue(route_segment.call_args_list[0].kwargs["allow_unstationed_destination"])
         self.assertFalse(route_segment.call_args_list[1].kwargs["allow_unstationed_destination"])
+
+    def test_supercapital_route_allows_open_space_midpoints_but_requires_keepstar_destination(self) -> None:
+        origin = system(1, "Origin", 0)
+        midpoint = system(2, "Open-space cyno", 5)
+        destination = system(3, "Keepstar destination", 10)
+        avatar = ship_config("Avatar")
+
+        with (
+            patch("app.services.jump_freighter._known_space_systems", return_value=[origin, midpoint, destination]),
+            patch("app.services.jump_freighter._station_safety_system_ids", return_value={destination.system_id}),
+        ):
+            path = _jump_path(None, origin, destination, 6.0, ship=avatar)  # type: ignore[arg-type]
+
+        self.assertEqual(path, [origin.system_id, midpoint.system_id, destination.system_id])
+
+        with (
+            patch("app.services.jump_freighter._known_space_systems", return_value=[origin, midpoint, destination]),
+            patch("app.services.jump_freighter._station_safety_system_ids", return_value=set()),
+        ):
+            with self.assertRaisesRegex(ValueError, "no known Keepstar"):
+                _jump_path(None, origin, destination, 6.0, ship=avatar)  # type: ignore[arg-type]
+
+    def test_non_supercapital_route_still_requires_dockable_midpoints(self) -> None:
+        origin = system(1, "Origin", 0)
+        midpoint = system(2, "No station", 5)
+        destination = system(3, "Station destination", 10)
+
+        with (
+            patch("app.services.jump_freighter._known_space_systems", return_value=[origin, midpoint, destination]),
+            patch("app.services.jump_freighter._station_safety_system_ids", return_value={destination.system_id}),
+        ):
+            with self.assertRaisesRegex(ValueError, "No jump route found"):
+                _jump_path(None, origin, destination, 6.0, ship=ship_config("Rhea"))  # type: ignore[arg-type]
 
     def test_supercapital_profiles_only_known_keepstars(self) -> None:
         keepstar = Location(

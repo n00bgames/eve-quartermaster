@@ -356,7 +356,13 @@ def _jump_path(db: Session, origin: EveSystem, destination: EveSystem, max_range
             if candidate.system_id != destination.system_id and not cyno_eligible(candidate):
                 continue
             if candidate.system_id != origin.system_id and candidate.system_id not in allowed_station_system_ids:
-                continue
+                # Supercapitals only need a Keepstar at the final docking target.
+                # Requiring every automatically selected cyno midpoint to have a
+                # synced Keepstar makes otherwise valid low/null jump chains
+                # impossible whenever structure coverage is incomplete.
+                open_space_supercapital_midpoint = requires_keepstar(ship) and candidate.system_id != destination.system_id
+                if not open_space_supercapital_midpoint:
+                    continue
             jump_distance = distance_ly(current, candidate)
             if jump_distance > max_range_ly:
                 continue
@@ -1010,12 +1016,16 @@ def plan_jump_freighter_route(
             f"Required cyno routing active through {len(manual_waypoints)} supplied system{'' if len(manual_waypoints) == 1 else 's'}; EQM automatically fills valid jumps between them."
             if route_mode == "waypoint_assisted"
             else (
-                "Highsec origins are allowed; automatic jump targets are low/null systems with known Keepstar-class structures."
+                "Highsec origins are allowed; automatic supercapital midpoints may be any low/null cyno system, while the final docking target must have a known Keepstar-class structure."
                 if requires_keepstar(ship)
                 else "Highsec origins are allowed; automatic jump targets are low/null systems with imported NPC stations."
             )
         ),
-        f"Docking target filter: {_station_safety_label(station_safety, ship)}; supplied cyno waypoints are honored even without a docking location.",
+        (
+            f"Final docking target filter: {_station_safety_label(station_safety, ship)}; intermediate supercapital cynos and supplied waypoints may be open-space targets without a docking location."
+            if requires_keepstar(ship)
+            else f"Docking target filter: {_station_safety_label(station_safety, ship)}; supplied cyno waypoints are honored even without a docking location."
+        ),
         f"Kill display: {_kill_filter_label(kill_filter)}.",
         f"Observed activity window: {jump_activity_hours}h; confidence depends on hourly samples collected by EQM.",
         f"Avoiding {len(avoid_systems)} system{'' if len(avoid_systems) == 1 else 's'}; required waypoints cannot be avoided.",
