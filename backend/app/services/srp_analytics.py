@@ -5,7 +5,7 @@ import io
 from collections import defaultdict
 from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
-from typing import Any, Iterable
+from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import HTTPException
@@ -14,10 +14,24 @@ from sqlalchemy.orm import Session
 
 from app.models import SrpRequest, SrpRequestEvent
 from app.services.srp import money_string
+from app.services.srp_analytics_engine import evaluate_srp_analytics_with_engine
 
-ZERO = Decimal("0.00")
 METRIC_VERSION = "srp.analytics.v1"
 EXCLUDED_DISPOSITIONS = {"duplicate", "invalid", "test", "cancelled"}
+BREAKDOWN_FIELDS = {
+    "doctrines": ("doctrine_id", "doctrine_name_snapshot"),
+    "fits": ("fitting_id", "fitting_name_snapshot"),
+    "ship_types": ("ship_type_id", "ship_name_snapshot"),
+    "ship_groups": ("ship_group_id", "ship_group_name_snapshot"),
+    "characters": ("character_id", "character_name_snapshot"),
+    "operations": ("operation_id", "operation_name_snapshot"),
+    "corporations": ("corporation_id", "corporation_name_snapshot"),
+    "alliances": ("alliance_id", "alliance_name_snapshot"),
+    "systems": ("system_id", "system_name_snapshot"),
+    "regions": ("region_id", "region_name_snapshot"),
+    "statuses": ("status", "status"),
+    "security_classes": ("security_class", "security_class"),
+}
 
 
 def _utc_boundary(value: date, reporting_timezone: str, *, next_day: bool = False) -> datetime:
@@ -64,10 +78,6 @@ def filtered_rows(db: Session, *, user_id: int, manager: bool, date_from: date |
     return list(db.scalars(statement.order_by(SrpRequest.loss_occurred_at)).all())
 
 
-def _sum(rows: Iterable[SrpRequest], field: str) -> Decimal:
-    return sum((Decimal(value) for row in rows if (value := getattr(row, field)) is not None), ZERO)
-
-
 def _bucket_key(value: datetime, granularity: str, zone: ZoneInfo) -> str:
     if value.tzinfo is None:
         value = value.replace(tzinfo=timezone.utc)
@@ -79,27 +89,98 @@ def _bucket_key(value: datetime, granularity: str, zone: ZoneInfo) -> str:
     return local.date().isoformat()
 
 
-def _breakdown(rows: list[SrpRequest], id_field: str, label_field: str) -> list[dict[str, Any]]:
-    groups: dict[tuple[Any, str], list[SrpRequest]] = defaultdict(list)
+def _money_cents(value: Any) -> int | None:
+    if value is None:
+        return None
+    return int((Decimal(value) * 100).quantize(Decimal("1")))
+
+
+def _average_cents(total: int, count: int) -> int | None:
+    return int((Decimal(total) / Decimal(count)).quantize(Decimal("1"))) if count else None
+
+
+def _python_srp_reduction(payload: dict[str, Any]) -> dict[str, Any]:
+    rows = payload["rows"]
+    total = sum((row["authoritative_loss_cents"] or 0 for row in rows), 0)
+    valued_count = sum(row["authoritative_loss_cents"] is not None for row in rows)
+    requested = sum((row["requested_cents"] or 0 for row in rows), 0)
+    approved = sum((row["approved_cents"] or 0 for row in rows), 0)
+    paid = sum((row["paid_cents"] or 0 for row in rows), 0)
+    rejected = sum((row["requested_cents"] or 0 for row in rows if row["status"] == "rejected"), 0)
+    buckets: dict[str, dict[str, Any]] = {}
+    groups: dict[str, dict[tuple[str, str], dict[str, Any]]] = {key: {} for key in BREAKDOWN_FIELDS}
     for row in rows:
-        label = getattr(row, label_field) or "Unknown"
-        groups[(getattr(row, id_field), label)].append(row)
-    output = []
-    for (value_id, label), members in groups.items():
-        valued = [row for row in members if row.authoritative_loss_value is not None]
-        total = _sum(valued, "authoritative_loss_value")
-        output.append({"id": value_id, "label": label, "loss_count": len(members), "valued_count": len(valued),
-                       "total_isk": money_string(total), "average_isk": money_string(total / len(valued)) if valued else None,
-                       "request_ids": [row.id for row in members]})
-    return sorted(output, key=lambda item: (-Decimal(item["total_isk"] or "0"), -item["loss_count"], item["label"]))
+        bucket = buckets.setdefault(row["bucket"], {"bucket": row["bucket"], "loss_count": 0, "valued_count": 0, "total_isk_cents": 0, "request_ids": []})
+        bucket["loss_count"] += 1
+        bucket["request_ids"].append(row["request_id"])
+        if row["authoritative_loss_cents"] is not None:
+            bucket["valued_count"] += 1
+            bucket["total_isk_cents"] += row["authoritative_loss_cents"]
+        for section, dimension in row["dimensions"].items():
+            key = (repr(dimension["id"]), dimension["label"])
+            group = groups[section].setdefault(key, {"id": dimension["id"], "label": dimension["label"], "loss_count": 0, "valued_count": 0, "total_isk_cents": 0, "average_isk_cents": None, "request_ids": []})
+            group["loss_count"] += 1
+            group["request_ids"].append(row["request_id"])
+            if row["authoritative_loss_cents"] is not None:
+                group["valued_count"] += 1
+                group["total_isk_cents"] += row["authoritative_loss_cents"]
+    breakdowns: dict[str, list[dict[str, Any]]] = {}
+    for section, section_groups in groups.items():
+        output = list(section_groups.values())
+        for group in output:
+            group["average_isk_cents"] = _average_cents(group["total_isk_cents"], group["valued_count"])
+        breakdowns[section] = sorted(output, key=lambda item: (-item["total_isk_cents"], -item["loss_count"], item["label"]))
+    doctrines = breakdowns["doctrines"]
+    ship_types = breakdowns["ship_types"]
+    loss_count = len(rows)
+    unvalued = loss_count - valued_count
+    return {
+        "schema_version": "eqm.srp-analytics-output.v1",
+        "summary": {
+            "loss_count": loss_count, "valued_loss_count": valued_count, "total_isk_lost_cents": total,
+            "average_isk_per_loss_cents": _average_cents(total, loss_count),
+            "average_isk_per_calendar_day_cents": _average_cents(total, payload["calendar_days"]),
+            "average_isk_per_active_loss_day_cents": _average_cents(total, payload["active_loss_days"]),
+            "calendar_days": payload["calendar_days"], "active_loss_days": payload["active_loss_days"],
+            "requested_reimbursement_cents": requested, "approved_reimbursement_cents": approved,
+            "rejected_reimbursement_cents": rejected, "paid_reimbursement_cents": paid,
+            "loss_less_approved_cents": total - approved, "loss_less_paid_cents": total - paid,
+        },
+        "time_series": [buckets[key] for key in sorted(buckets)],
+        "granularity": payload["granularity"],
+        "breakdowns": breakdowns,
+        "top": {
+            "doctrines_by_isk": doctrines[:10],
+            "doctrines_by_losses": sorted(doctrines, key=lambda item: (-item["loss_count"], item["label"]))[:10],
+            "ships_by_losses": sorted(ship_types, key=lambda item: (-item["loss_count"], item["label"]))[:10],
+        },
+        "quality": {
+            "unvalued_count": unvalued,
+            "unvalued_percentage_units": int((Decimal(unvalued * 10_000) / Decimal(loss_count)).quantize(Decimal("1"))) if loss_count else 0,
+            "missing_doctrine_count": sum(row["dimensions"]["doctrines"]["id"] is None for row in rows),
+            "missing_ship_type_count": sum(row["dimensions"]["ship_types"]["id"] is None for row in rows),
+            "manual_count": sum(row["data_source"] == "manual" for row in rows),
+            "imported_count": sum(row["data_source"] != "manual" for row in rows),
+        },
+    }
+
+
+def _money_from_cents(value: int | None) -> str | None:
+    return money_string(Decimal(value) / 100) if value is not None else None
+
+
+def _breakdown_from_contract(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": row["id"], "label": row["label"], "loss_count": row["loss_count"], "valued_count": row["valued_count"],
+        "total_isk": _money_from_cents(row["total_isk_cents"]), "average_isk": _money_from_cents(row["average_isk_cents"]),
+        "request_ids": row["request_ids"],
+    }
 
 
 def build_analytics(db: Session, rows: list[SrpRequest], *, date_from: date | None, date_to: date | None,
                     reporting_timezone: str, applied_filters: dict[str, Any], user_id: int, manager: bool) -> dict[str, Any]:
     try: zone = ZoneInfo(reporting_timezone)
     except ZoneInfoNotFoundError as exc: raise HTTPException(status_code=400, detail="Unknown reporting timezone") from exc
-    valued = [row for row in rows if row.authoritative_loss_value is not None]
-    total = _sum(valued, "authoritative_loss_value")
     if date_from and date_to:
         calendar_days = max((date_to - date_from).days + 1, 1)
     elif rows:
@@ -109,11 +190,31 @@ def build_analytics(db: Session, rows: list[SrpRequest], *, date_from: date | No
         calendar_days = 0
     active_days = len({(row.loss_occurred_at if row.loss_occurred_at.tzinfo else row.loss_occurred_at.replace(tzinfo=timezone.utc)).astimezone(zone).date() for row in rows})
     granularity = "day" if calendar_days <= 45 else "week" if calendar_days <= 180 else "month"
-    buckets: dict[str, list[SrpRequest]] = defaultdict(list)
-    for row in rows: buckets[_bucket_key(row.loss_occurred_at, granularity, zone)].append(row)
-    time_series = [{"bucket": key, "loss_count": len(members), "valued_count": sum(r.authoritative_loss_value is not None for r in members),
-                    "total_isk": money_string(_sum(members, "authoritative_loss_value")), "request_ids": [r.id for r in members]}
-                   for key, members in sorted(buckets.items())]
+    normalized_rows = [{
+        "request_id": row.id,
+        "bucket": _bucket_key(row.loss_occurred_at, granularity, zone),
+        "authoritative_loss_cents": _money_cents(row.authoritative_loss_value),
+        "requested_cents": _money_cents(row.requested_reimbursement_amount),
+        "approved_cents": _money_cents(row.approved_reimbursement_amount),
+        "paid_cents": _money_cents(row.paid_reimbursement_amount),
+        "status": row.status,
+        "data_source": row.data_source,
+        "dimensions": {
+            section: {"id": getattr(row, id_field), "label": getattr(row, label_field) or "Unknown"}
+            for section, (id_field, label_field) in BREAKDOWN_FIELDS.items()
+        },
+    } for row in rows]
+    engine_payload = {
+        "schema_version": "eqm.srp-analytics-input.v1",
+        "calendar_days": calendar_days,
+        "active_loss_days": active_days,
+        "granularity": granularity,
+        "rows": normalized_rows,
+    }
+    reduction = evaluate_srp_analytics_with_engine(
+        payload=engine_payload,
+        python_result=lambda: _python_srp_reduction(engine_payload),
+    )
     all_visible_statement = select(SrpRequest).where(SrpRequest.archived_at.is_(None), SrpRequest.status != "draft", SrpRequest.record_disposition.in_(EXCLUDED_DISPOSITIONS))
     if not manager: all_visible_statement = all_visible_statement.where(SrpRequest.requesting_user_id == user_id)
     if date_from: all_visible_statement = all_visible_statement.where(SrpRequest.loss_occurred_at >= _utc_boundary(date_from, reporting_timezone))
@@ -123,49 +224,51 @@ def build_analytics(db: Session, rows: list[SrpRequest], *, date_from: date | No
     workflow_counts: dict[str, int] = defaultdict(int)
     if event_statement is not None:
         for event_type, _ in db.execute(event_statement): workflow_counts[event_type] += 1
-    requested = _sum(rows, "requested_reimbursement_amount")
-    approved = _sum(rows, "approved_reimbursement_amount")
-    paid = _sum(rows, "paid_reimbursement_amount")
-    rejected = _sum([row for row in rows if row.status == "rejected"], "requested_reimbursement_amount")
-    unvalued = len(rows) - len(valued)
+    core_summary = reduction["summary"]
     summary = {
-        "loss_count": len(rows), "valued_loss_count": len(valued), "total_isk_lost": money_string(total),
-        "average_isk_per_loss": money_string(total / len(rows)) if rows else None,
-        "average_isk_per_calendar_day": money_string(total / calendar_days) if calendar_days else None,
-        "average_isk_per_active_loss_day": money_string(total / active_days) if active_days else None,
-        "calendar_days": calendar_days, "active_loss_days": active_days,
-        "requested_reimbursement": money_string(requested), "approved_reimbursement": money_string(approved),
-        "rejected_reimbursement": money_string(rejected), "paid_reimbursement": money_string(paid),
-        "loss_less_approved": money_string(total - approved), "loss_less_paid": money_string(total - paid),
+        "loss_count": core_summary["loss_count"], "valued_loss_count": core_summary["valued_loss_count"],
+        "total_isk_lost": _money_from_cents(core_summary["total_isk_lost_cents"]),
+        "average_isk_per_loss": _money_from_cents(core_summary["average_isk_per_loss_cents"]),
+        "average_isk_per_calendar_day": _money_from_cents(core_summary["average_isk_per_calendar_day_cents"]),
+        "average_isk_per_active_loss_day": _money_from_cents(core_summary["average_isk_per_active_loss_day_cents"]),
+        "calendar_days": core_summary["calendar_days"], "active_loss_days": core_summary["active_loss_days"],
+        "requested_reimbursement": _money_from_cents(core_summary["requested_reimbursement_cents"]),
+        "approved_reimbursement": _money_from_cents(core_summary["approved_reimbursement_cents"]),
+        "rejected_reimbursement": _money_from_cents(core_summary["rejected_reimbursement_cents"]),
+        "paid_reimbursement": _money_from_cents(core_summary["paid_reimbursement_cents"]),
+        "loss_less_approved": _money_from_cents(core_summary["loss_less_approved_cents"]),
+        "loss_less_paid": _money_from_cents(core_summary["loss_less_paid_cents"]),
     }
+    time_series = [{
+        "bucket": row["bucket"], "loss_count": row["loss_count"], "valued_count": row["valued_count"],
+        "total_isk": _money_from_cents(row["total_isk_cents"]), "request_ids": row["request_ids"],
+    } for row in reduction["time_series"]]
     breakdowns = {
-        "doctrines": _breakdown(rows, "doctrine_id", "doctrine_name_snapshot"),
-        "fits": _breakdown(rows, "fitting_id", "fitting_name_snapshot"),
-        "ship_types": _breakdown(rows, "ship_type_id", "ship_name_snapshot"),
-        "ship_groups": _breakdown(rows, "ship_group_id", "ship_group_name_snapshot"),
-        "characters": _breakdown(rows, "character_id", "character_name_snapshot"),
-        "operations": _breakdown(rows, "operation_id", "operation_name_snapshot"),
-        "corporations": _breakdown(rows, "corporation_id", "corporation_name_snapshot"),
-        "alliances": _breakdown(rows, "alliance_id", "alliance_name_snapshot"),
-        "systems": _breakdown(rows, "system_id", "system_name_snapshot"),
-        "regions": _breakdown(rows, "region_id", "region_name_snapshot"),
-        "statuses": _breakdown(rows, "status", "status"),
-        "security_classes": _breakdown(rows, "security_class", "security_class"),
+        section: [_breakdown_from_contract(row) for row in members]
+        for section, members in reduction["breakdowns"].items()
     }
+    top = {
+        section: [_breakdown_from_contract(row) for row in members]
+        for section, members in reduction["top"].items()
+    }
+    core_quality = reduction["quality"]
     generated = datetime.now(timezone.utc)
     return {
         "summary": summary, "time_series": time_series, "granularity": granularity, "breakdowns": breakdowns,
-        "top": {"doctrines_by_isk": breakdowns["doctrines"][:10],
-                "doctrines_by_losses": sorted(breakdowns["doctrines"], key=lambda x: (-x["loss_count"], x["label"]))[:10],
-                "ships_by_losses": sorted(breakdowns["ship_types"], key=lambda x: (-x["loss_count"], x["label"]))[:10]},
-        "quality": {"unvalued_count": unvalued, "unvalued_percentage": round(unvalued * 100 / len(rows), 2) if rows else 0,
-                    "missing_doctrine_count": sum(row.doctrine_id is None for row in rows),
-                    "missing_ship_type_count": sum(row.ship_type_id is None for row in rows),
-                    "manual_count": sum(row.data_source == "manual" for row in rows),
-                    "imported_count": sum(row.data_source != "manual" for row in rows),
+        "top": top,
+        "quality": {"unvalued_count": core_quality["unvalued_count"],
+                    "unvalued_percentage": core_quality["unvalued_percentage_units"] / 100,
+                    "missing_doctrine_count": core_quality["missing_doctrine_count"],
+                    "missing_ship_type_count": core_quality["missing_ship_type_count"],
+                    "manual_count": core_quality["manual_count"],
+                    "imported_count": core_quality["imported_count"],
                     "excluded_record_count": excluded_count,
                     "latest_included_loss": rows[-1].loss_occurred_at.isoformat() if rows else None,
                     "generated_at": generated.isoformat()},
+        "engine_used": reduction.get("engine_used", "python"),
+        "engine_requested": reduction.get("engine_requested", "python"),
+        "engine_shadow_match": reduction.get("engine_shadow_match"),
+        "engine_fallback_reason": reduction.get("engine_fallback_reason"),
         "workflow_event_counts": dict(workflow_counts), "applied_filters": applied_filters,
         "metric_definitions": {"version": METRIC_VERSION, "reporting_timezone": reporting_timezone,
             "ships_lost": "Distinct non-draft operational SRP loss records; duplicate, invalid, test, and cancelled records are excluded by default.",

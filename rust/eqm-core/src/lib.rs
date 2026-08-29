@@ -8,3 +8,4 @@ pub mod jump_route;
 pub mod killboard_analytics;
 pub mod pi_shortage;
 pub mod settlement_math;
+pub mod srp_analytics;

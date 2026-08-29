@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 from decimal import Decimal
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
@@ -95,6 +97,19 @@ class TestSrpAnalytics:
         report = build_analytics(self.db, rows[:1], date_from=None, date_to=None, reporting_timezone="America/Chicago",
                                  applied_filters={}, user_id=self.user.id, manager=False)
         assert report["time_series"][0]["bucket"] == "2026-07-31"
+
+    @patch("app.services.srp_analytics_engine.get_settings")
+    def test_complete_report_matches_rust_in_shadow_mode(self, settings) -> None:
+        settings.return_value = SimpleNamespace(
+            eqm_srp_analytics_engine="shadow",
+            eqm_core_binary="/usr/local/bin/eqm-core",
+            eqm_core_timeout_seconds=5.0,
+        )
+        rows = filtered_rows(self.db, user_id=self.user.id, manager=False)
+        report = build_analytics(self.db, rows, date_from=None, date_to=None, reporting_timezone="UTC",
+                                 applied_filters={}, user_id=self.user.id, manager=False)
+        assert report["engine_used"] == "python-shadow"
+        assert report["engine_shadow_match"] is True
 
 
 def test_migration_graph_has_jump_clone_bigint_as_single_head() -> None:
