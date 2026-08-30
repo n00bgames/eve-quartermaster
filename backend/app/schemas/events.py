@@ -357,3 +357,7 @@ class EventAnalyticsResponse(BaseModel):
     totals: EventAnalyticsCounts
     by_event_type: list[EventAnalyticsTypeRow]
     series: list[EventAnalyticsBucket]
+    engine_requested: str | None = None
+    engine_used: str | None = None
+    engine_shadow_match: bool | None = None
+    engine_fallback_reason: str | None = None

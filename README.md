@@ -710,6 +710,16 @@ Docker Compose defaults to `rust`. Jump plotter responses include `route_engine`
 
 Docker Compose defaults to `rust`. Industrial Threat and PvP Intel responses include engine metadata. Set `EQM_THREAT_ANALYTICS_ENGINE=python` in `.env` and rebuild the backend for an independent rollback.
 
+### Event Analytics Rust engine
+
+`EQM_EVENT_ANALYTICS_ENGINE` controls deterministic Event reporting. Python retains event permissions, visibility rules, database loading, user and character identity serialization, and detailed attendance rosters. Rust owns range totals and time buckets plus fleet-composition role, hull, RSVP, registration, confirmation, attendance, requirement-gap, and unregistered-RSVP reductions.
+
+- `python` uses the reference Event calculations.
+- `shadow` serves Python while requiring exact normalized-contract parity from Rust.
+- `rust` serves Rust results and automatically falls back to Python on a binary error, invalid contract, or timeout.
+
+Docker Compose defaults to `rust`. Event Analytics responses expose engine diagnostics, while composition responses retain the same aggregate contract and add diagnostics without moving identity-sensitive roster assembly out of Python. Set `EQM_EVENT_ANALYTICS_ENGINE=python` in `.env` and rebuild the backend for an independent rollback.
+
 ### Bounty Analytics Rust engine
 
 `EQM_BOUNTY_ANALYTICS_ENGINE` controls deterministic bounty reductions. Python retains wallet-journal access control, ESI row retrieval, authoritative tick construction, tax-status filtering, and reporting-timezone bucket preparation. Rust owns summary totals, tax-coverage reconciliation, pilot leaderboards, and timeline aggregation.

@@ -8,6 +8,7 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Added
 
+- Cut Event Analytics and aggregate fleet composition over to Rust, including range/time-bucket attendance reporting, RSVP and registration totals, role and hull counts, requirement gaps, and unregistered-RSVP counts; retained Python permission and identity handling plus shadow comparison and automatic fallback through `EQM_EVENT_ANALYTICS_ENGINE`.
 - Cut Industrial Threat and PvP Intel aggregation over to one shared Rust reducer with exact-cent destroyed-value totals, deterministic risk scores, and hull/time/organization/location/group-size rankings; retained Python shadow comparison and automatic fallback through `EQM_THREAT_ANALYTICS_ENGINE`.
 - Cut HyperNet deterministic economics over to Rust with exact-cent offer, seeded-node risk, bid outcome, progress, and reconciliation calculations; retained Python shadow comparison and automatic fallback under the independent `EQM_HYPERNET_ENGINE` switch.
 - Added last-hour ESI traffic intelligence to the Jump Capable Ship Plotter, Route Checker/Gatecheck, and PvP Intel Report. Route systems and jump alternates now display ship jumps, ship kills, and pod kills from a shared five-minute cache backed by hourly observations rather than scraping Dotlan.

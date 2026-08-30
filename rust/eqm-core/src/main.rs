@@ -1,9 +1,10 @@
 use std::{env, fs, io, process};
 
 use eqm_core::analytics_summary::{evaluate_analytics_summary, AnalyticsSummaryInput};
-use eqm_core::bounty_analytics::{evaluate_bounty_analytics, BountyAnalyticsInput};
 use eqm_core::battle_reports::{evaluate_battle_report, BattleReportInput};
+use eqm_core::bounty_analytics::{evaluate_bounty_analytics, BountyAnalyticsInput};
 use eqm_core::colony_simulation::{simulate_colony, ColonySimulationInput};
+use eqm_core::event_analytics::{evaluate_event_analytics, EventAnalyticsInput};
 use eqm_core::fitting_math::{evaluate_fitting_math, FittingMathInput};
 use eqm_core::fitting_resources::{evaluate_fitting_resources, FittingResourcesInput};
 use eqm_core::fitting_stats::{evaluate_fitting_stats, FittingStatsInput};
@@ -23,7 +24,7 @@ fn value_after(args: &[String], flag: &str) -> Option<String> {
 
 fn usage() -> ! {
     eprintln!(
-        "Usage:\n  eqm-core pi-shortage --input <payload.json> [--target-type-id <id>] [--generated-at <ISO-8601>]\n  eqm-core colony-simulation --input <payload.json>\n  eqm-core fitting-math --input <payload.json>\n  eqm-core fitting-resources --input <payload.json>\n  eqm-core fitting-stats --input <payload.json>\n  eqm-core analytics-summary --input <payload.json>\n  eqm-core bounty-analytics --input <payload.json>\n  eqm-core battle-report --input <payload.json>\n  eqm-core hypernet-economics --input <payload.json>\n  eqm-core jump-route --input <payload.json>\n  eqm-core settlement-math --input <payload.json>\n  eqm-core killboard-analytics --input <payload.json>\n  eqm-core srp-analytics --input <payload.json>\n  eqm-core threat-analytics --input <payload.json>"
+        "Usage:\n  eqm-core pi-shortage --input <payload.json> [--target-type-id <id>] [--generated-at <ISO-8601>]\n  eqm-core colony-simulation --input <payload.json>\n  eqm-core event-analytics --input <payload.json>\n  eqm-core fitting-math --input <payload.json>\n  eqm-core fitting-resources --input <payload.json>\n  eqm-core fitting-stats --input <payload.json>\n  eqm-core analytics-summary --input <payload.json>\n  eqm-core bounty-analytics --input <payload.json>\n  eqm-core battle-report --input <payload.json>\n  eqm-core hypernet-economics --input <payload.json>\n  eqm-core jump-route --input <payload.json>\n  eqm-core settlement-math --input <payload.json>\n  eqm-core killboard-analytics --input <payload.json>\n  eqm-core srp-analytics --input <payload.json>\n  eqm-core threat-analytics --input <payload.json>"
     );
     process::exit(2);
 }
@@ -63,6 +64,11 @@ fn run() -> Result<(), String> {
             let payload: ColonySimulationInput = serde_json::from_str(&input_text)
                 .map_err(|error| format!("invalid colony simulation payload: {error}"))?;
             serde_json::to_value(simulate_colony(payload)?)
+        }
+        "event-analytics" => {
+            let payload: EventAnalyticsInput = serde_json::from_str(&input_text)
+                .map_err(|error| format!("invalid event analytics payload: {error}"))?;
+            Ok(evaluate_event_analytics(payload)?)
         }
         "fitting-math" => {
             let payload: FittingMathInput = serde_json::from_str(&input_text)

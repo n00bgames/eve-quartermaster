@@ -1,7 +1,8 @@
 pub mod analytics_summary;
-pub mod bounty_analytics;
 pub mod battle_reports;
+pub mod bounty_analytics;
 pub mod colony_simulation;
+pub mod event_analytics;
 pub mod fitting_math;
 pub mod fitting_resources;
 pub mod fitting_stats;

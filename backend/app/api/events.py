@@ -66,6 +66,7 @@ from app.services.events import (
     validate_lifecycle_transition,
     visible_events,
 )
+from app.services.event_analytics_engine import evaluate_event_analytics_with_engine
 from app.services.navigation import search_systems
 
 
@@ -580,7 +581,7 @@ def finalize_counts(counts: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def build_analytics(events: list[Event], from_at: datetime, to_at: datetime, bucket: str) -> dict[str, Any]:
+def _build_analytics_python(events: list[Event], from_at: datetime, to_at: datetime, bucket: str) -> dict[str, Any]:
     totals = empty_counts()
     by_type: dict[str, dict[str, Any]] = defaultdict(empty_counts)
     by_period: dict[datetime, dict[str, Any]] = defaultdict(empty_counts)
@@ -602,6 +603,57 @@ def build_analytics(events: list[Event], from_at: datetime, to_at: datetime, buc
             for start, counts in sorted(by_period.items())
         ],
     }
+
+
+def response_engine_row(row: Any) -> dict[str, Any]:
+    return {"user_id": int(getattr(row, "user_id", 0) or 0), "status": row.status}
+
+
+def registration_engine_row(row: Any) -> dict[str, Any]:
+    return {
+        "id": row.id,
+        "user_id": int(getattr(row, "user_id", 0) or 0),
+        "registration_status": row.registration_status,
+        "confirmation_status": getattr(row, "confirmation_status", None),
+        "role_label": getattr(row, "custom_role", None) or getattr(row, "role_key", None) or "unassigned",
+        "hull_label": getattr(row, "ship_name_snapshot", None) or getattr(row, "freeform_ship_description", None) or "Undecided",
+        "doctrine_requirement_id": getattr(row, "doctrine_requirement_id", None),
+    }
+
+
+def attendance_engine_row(row: Any) -> dict[str, Any]:
+    return {"registration_id": row.registration_id, "attendance_status": row.attendance_status}
+
+
+def event_range_engine_payload(events: list[Event], from_at: datetime, to_at: datetime, bucket: str) -> dict[str, Any]:
+    return {
+        "schema_version": "eqm.event-analytics.v1",
+        "operation": "range",
+        "range": {
+            "from_at": utc_aware(from_at).isoformat(),
+            "to_at": utc_aware(to_at).isoformat(),
+            "bucket": bucket,
+            "events": [
+                {
+                    "event_type": event.event_type,
+                    "start_at": utc_aware(event.start_at).isoformat(),
+                    "responses": [response_engine_row(row) for row in event.responses],
+                    "registrations": [registration_engine_row(row) for row in event.registrations],
+                    "attendance": [attendance_engine_row(row) for row in event.attendance_entries],
+                }
+                for event in events
+            ],
+        },
+    }
+
+
+def build_analytics(events: list[Event], from_at: datetime, to_at: datetime, bucket: str) -> dict[str, Any]:
+    from_at = utc_aware(from_at)
+    to_at = utc_aware(to_at)
+    return evaluate_event_analytics_with_engine(
+        payload=event_range_engine_payload(events, from_at, to_at, bucket),
+        python_result=lambda: _build_analytics_python(events, from_at, to_at, bucket),
+    )
 
 
 @router.get("")
@@ -1144,14 +1196,7 @@ def delete_registration(
     return {"ok": True}
 
 
-@router.get("/{event_id}/composition")
-def event_composition(
-    event_id: int,
-    current_user: User = Depends(require_events),
-    db: Session = Depends(get_db),
-) -> dict[str, Any]:
-    event = get_visible_event(event_id, current_user, db)
-    full_detail = can_view_full_composition(event, current_user, db)
+def _event_composition_python(event: Event) -> dict[str, Any]:
     attendance_by_registration = {
         row.registration_id: row for row in event.attendance_entries if row.registration_id is not None
     }
@@ -1167,16 +1212,12 @@ def event_composition(
         hull_counts[registration.ship_name_snapshot or registration.freeform_ship_description or "Undecided"] += 1
         if registration.doctrine_requirement_id:
             doctrine_counts[registration.doctrine_requirement_id] += 1
-    response_user_ids = {
-        response.user_id for response in event.responses if response.status in {"going", "maybe"}
-    }
+    response_user_ids = {response.user_id for response in event.responses if response.status in {"going", "maybe"}}
     registered_user_ids = {registration.user_id for registration in event.registrations}
     response_counts: dict[str, int] = defaultdict(int)
     for response in event.responses:
         response_counts[response.status] += 1
-    payload: dict[str, Any] = {
-        "event_id": event.id,
-        "identity_visible": full_detail,
+    return {
         "totals": {
             "rsvp": dict(response_counts),
             "registration": dict(status_counts),
@@ -1212,7 +1253,56 @@ def event_composition(
         ],
         "users_without_characters": len(response_user_ids - registered_user_ids),
     }
+
+
+def event_composition_engine_payload(event: Event) -> dict[str, Any]:
+    return {
+        "schema_version": "eqm.event-analytics.v1",
+        "operation": "composition",
+        "composition": {
+            "responses": [response_engine_row(row) for row in event.responses],
+            "registrations": [registration_engine_row(row) for row in event.registrations],
+            "attendance": [attendance_engine_row(row) for row in event.attendance_entries],
+            "role_requirements": [
+                {
+                    "id": row.id,
+                    "label": row.custom_label or row.role_key,
+                    "requested": row.requested_quantity,
+                    "sort_order": row.sort_order,
+                }
+                for row in event.role_requirements
+            ],
+            "doctrine_requirements": [
+                {"id": row.id, "label": row.label, "requested": row.requested_quantity, "sort_order": row.sort_order}
+                for row in event.doctrine_requirements
+            ],
+        },
+    }
+
+
+@router.get("/{event_id}/composition")
+def event_composition(
+    event_id: int,
+    current_user: User = Depends(require_events),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    event = get_visible_event(event_id, current_user, db)
+    full_detail = can_view_full_composition(event, current_user, db)
+    attendance_by_registration = {
+        row.registration_id: row for row in event.attendance_entries if row.registration_id is not None
+    }
+    composition = evaluate_event_analytics_with_engine(
+        payload=event_composition_engine_payload(event),
+        python_result=lambda: _event_composition_python(event),
+    )
+    payload: dict[str, Any] = {
+        "event_id": event.id,
+        "identity_visible": full_detail,
+        **composition,
+    }
     if full_detail:
+        response_user_ids = {response.user_id for response in event.responses if response.status in {"going", "maybe"}}
+        registered_user_ids = {registration.user_id for registration in event.registrations}
         payload["registrations"] = [
             {
                 **serialize_registration(registration),
