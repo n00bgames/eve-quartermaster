@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.models import EveGroup, EveStargate, EveSystem, EveType, SystemIndustrialKillObservation, SystemKillFetchCache, SystemPvpKillObservation
 from app.services.navigation import plan_gate_route, resolve_system, serialize_system
+from app.services.threat_analytics_engine import evaluate_threat_analytics_with_engine
 
 ZKILLBOARD_BASE_URL = "https://zkillboard.com/api"
 ESI_BASE_URL = "https://esi.evetech.net/latest"
@@ -115,12 +116,12 @@ def zkill_url(kill: dict[str, Any]) -> str | None:
     return f"https://zkillboard.com/kill/{killmail_id}/" if killmail_id is not None else None
 
 
-def gatecheck_score(kill_count: int, total_value: float, latest_kill_at: str | None, hours: int) -> int:
+def gatecheck_score(kill_count: int, total_value: float, latest_kill_at: str | None, hours: int, evaluated_at: datetime | None = None) -> int:
     score = kill_count * 10
     score += min(40, int(total_value / 1_000_000_000) * 5)
     latest = parse_kill_time(latest_kill_at)
     if latest is not None:
-        age_hours = max(0.0, (datetime.now(timezone.utc) - latest.astimezone(timezone.utc)).total_seconds() / 3600)
+        age_hours = max(0.0, ((evaluated_at or datetime.now(timezone.utc)) - latest.astimezone(timezone.utc)).total_seconds() / 3600)
         if age_hours <= 1:
             score += 35
         elif age_hours <= 6:
@@ -810,6 +811,104 @@ def group_size_bucket(attacker_count: int) -> str:
     return f"{attacker_count} attacker{'s' if attacker_count != 1 else ''}"
 
 
+def threat_observation_payload(row: Any) -> dict[str, Any]:
+    raw = row.raw_json if isinstance(row.raw_json, dict) else {}
+    raw_names = raw.get("_eqm_names") if isinstance(raw.get("_eqm_names"), dict) else {}
+    attackers = raw.get("attackers") if isinstance(raw.get("attackers"), list) else []
+
+    def attacker_names(org_key: str) -> list[str]:
+        names: list[str] = []
+        for attacker in attackers:
+            if not isinstance(attacker, dict):
+                continue
+            org_id = optional_int(attacker.get(org_key))
+            if org_id is None:
+                continue
+            name = str(raw_names.get(str(org_id)) or f"{org_key.replace('_id', '').title()} {org_id}")
+            if org_key == "corporation_id" and row.final_blow_corporation_id == org_id and row.final_blow_corporation_name:
+                name = row.final_blow_corporation_name
+            if org_key == "alliance_id" and row.final_blow_alliance_id == org_id and row.final_blow_alliance_name:
+                name = row.final_blow_alliance_name
+            names.append(name)
+        return names
+
+    victim_corporation = None
+    if row.victim_corporation_id is not None:
+        victim_corporation = row.victim_corporation_name or f"Corporation {row.victim_corporation_id}"
+    victim_alliance = None
+    if row.victim_alliance_id is not None:
+        victim_alliance = row.victim_alliance_name or f"Alliance {row.victim_alliance_id}"
+    return {
+        "killmail_time": row.killmail_time.isoformat(),
+        "total_value_cents": int((row.total_value or Decimal("0")) * 100),
+        "victim_hull": row.victim_hull,
+        "location_kind": row.location_kind,
+        "location_name": row.location_name,
+        "final_blow_hull": row.final_blow_ship_type_name,
+        "attacker_count": row.attacker_count,
+        "attacker_corporations": attacker_names("corporation_id"),
+        "attacker_alliances": attacker_names("alliance_id"),
+        "victim_corporation": victim_corporation,
+        "victim_alliance": victim_alliance,
+    }
+
+
+def threat_engine_payload(rows: list[Any], *, evaluated_at: datetime, refresh_hours: int) -> dict[str, Any]:
+    return {
+        "schema_version": "eqm.threat-analytics-input.v1",
+        "evaluated_at": evaluated_at.isoformat(),
+        "refresh_hours": refresh_hours,
+        "rows": [threat_observation_payload(row) for row in rows],
+    }
+
+
+def python_threat_reduction(
+    rows: list[Any], *, evaluated_at: datetime, refresh_hours: int, include_victim_organizations: bool
+) -> dict[str, Any]:
+    rankings = {key: (Counter(), Counter()) for key in ("hulls", "periods", "locations", "final_hulls", "group_sizes")}
+    total_value = Decimal("0")
+    latest_kill_at = rows[0].killmail_time.isoformat() if rows else None
+    for row in rows:
+        value = row.total_value or Decimal("0")
+        total_value += value
+        labels = {
+            "hulls": row.victim_hull or "Unknown hull",
+            "periods": time_period_label(row.killmail_time),
+            "locations": f"{row.location_kind or 'space'} · {row.location_name or 'Unknown location'}",
+            "final_hulls": row.final_blow_ship_type_name or "Unknown final-blow hull",
+            "group_sizes": group_size_bucket(row.attacker_count),
+        }
+        for key, label in labels.items():
+            rankings[key][0][label] += 1
+            rankings[key][1][label] += value
+
+    attacker_corp_counts, attacker_corp_values = attacker_org_counters(rows, "corporation_id")
+    attacker_alliance_counts, attacker_alliance_values = attacker_org_counters(rows, "alliance_id")
+    score = gatecheck_score(len(rows), float(total_value), latest_kill_at, refresh_hours, evaluated_at)
+    result = {
+        "total_kills": len(rows),
+        "total_destroyed_value": float(total_value),
+        "latest_killmail_time": latest_kill_at,
+        "risk_score": score,
+        "risk_label": risk_label(score),
+        "top_victim_hulls": rank_counter(rankings["hulls"][0], values=rankings["hulls"][1]),
+        "top_time_periods": rank_counter(rankings["periods"][0], values=rankings["periods"][1]),
+        "top_attacker_corporations": rank_counter(attacker_corp_counts, values=attacker_corp_values),
+        "top_attacker_alliances": rank_counter(attacker_alliance_counts, values=attacker_alliance_values),
+        "most_dangerous_locations": rank_counter(rankings["locations"][0], values=rankings["locations"][1]),
+        "top_final_blow_hulls": rank_counter(rankings["final_hulls"][0], values=rankings["final_hulls"][1]),
+        "top_attacker_group_sizes": rank_counter(rankings["group_sizes"][0], values=rankings["group_sizes"][1]),
+    }
+    if include_victim_organizations:
+        victim_corp_counts, victim_corp_values = victim_org_counters(rows, "victim_corporation_id")
+        victim_alliance_counts, victim_alliance_values = victim_org_counters(rows, "victim_alliance_id")
+        result.update(
+            top_victim_corporations=rank_counter(victim_corp_counts, values=victim_corp_values),
+            top_victim_alliances=rank_counter(victim_alliance_counts, values=victim_alliance_values),
+        )
+    return result
+
+
 def build_industrial_threat_analysis(
     db: Session,
     system: EveSystem,
@@ -826,74 +925,39 @@ def build_industrial_threat_analysis(
         .where(SystemIndustrialKillObservation.killmail_time >= window_start)
         .order_by(SystemIndustrialKillObservation.killmail_time.desc())
     ).all()
+    evaluated_at = utc_now()
 
-    hulls: Counter[str] = Counter()
-    hull_values: Counter[str] = Counter()
-    periods: Counter[str] = Counter()
-    period_values: Counter[str] = Counter()
-    locations: Counter[str] = Counter()
-    location_values: Counter[str] = Counter()
-    final_hulls: Counter[str] = Counter()
-    final_hull_values: Counter[str] = Counter()
-    group_sizes: Counter[str] = Counter()
-    group_size_values: Counter[str] = Counter()
-
-    total_value = Decimal("0")
-    latest_kill_at: str | None = None
-    for row in rows:
-        total_value += row.total_value or Decimal("0")
-        if latest_kill_at is None:
-            latest_kill_at = row.killmail_time.isoformat()
-
-        hull = row.victim_hull or "Unknown hull"
-        hulls[hull] += 1
-        hull_values[hull] += row.total_value or 0
-
-        period = time_period_label(row.killmail_time)
-        periods[period] += 1
-        period_values[period] += row.total_value or 0
-
-        location_name = row.location_name or "Unknown location"
-        location = f"{row.location_kind or 'space'} · {location_name}"
-        locations[location] += 1
-        location_values[location] += row.total_value or 0
-
-        final_hull = row.final_blow_ship_type_name or "Unknown final-blow hull"
-        final_hulls[final_hull] += 1
-        final_hull_values[final_hull] += row.total_value or 0
-
-        size = group_size_bucket(row.attacker_count)
-        group_sizes[size] += 1
-        group_size_values[size] += row.total_value or 0
-
-    corp_counts, corp_values = attacker_org_counters(list(rows), "corporation_id")
-    alliance_counts, alliance_values = attacker_org_counters(list(rows), "alliance_id")
-    score = gatecheck_score(len(rows), float(total_value), latest_kill_at, max(1, min(refresh_hours, 168)))
-
-    return {
+    refresh_hours = max(1, min(refresh_hours, 168))
+    reduction_keys = {
+        "total_industrial_kills", "total_destroyed_value", "latest_killmail_time", "risk_score", "risk_label",
+        "top_victim_hulls", "top_time_periods", "top_attacker_corporations", "top_attacker_alliances",
+        "most_dangerous_locations", "top_final_blow_hulls", "top_attacker_group_sizes",
+    }
+    def python_result() -> dict[str, Any]:
+        result = python_threat_reduction(
+            list(rows), evaluated_at=evaluated_at, refresh_hours=refresh_hours, include_victim_organizations=False
+        )
+        result["total_industrial_kills"] = result.pop("total_kills")
+        return result
+    reduction = evaluate_threat_analytics_with_engine(
+        payload=threat_engine_payload(list(rows), evaluated_at=evaluated_at, refresh_hours=refresh_hours),
+        python_result=python_result,
+        expected_keys=reduction_keys,
+    )
+    result = {
         "system": serialize_system(system),
         "days": max(1, min(days, INDUSTRIAL_CACHE_RETENTION_DAYS)),
         "retention_days": INDUSTRIAL_CACHE_RETENTION_DAYS,
-        "refresh_hours": max(1, min(refresh_hours, 168)),
+        "refresh_hours": refresh_hours,
         "cache": {
             "live_fetch_performed": live_fetch_performed,
             "fetched_at": cache.fetched_at.isoformat() if cache else None,
             "expires_at": cache.expires_at.isoformat() if cache else None,
             "ttl_minutes": INDUSTRIAL_CACHE_TTL_MINUTES,
         },
-        "total_industrial_kills": len(rows),
-        "total_destroyed_value": float(total_value),
-        "latest_killmail_time": latest_kill_at,
-        "risk_score": score,
-        "risk_label": risk_label(score),
-        "top_victim_hulls": rank_counter(hulls, values=hull_values),
-        "top_time_periods": rank_counter(periods, values=period_values),
-        "top_attacker_corporations": rank_counter(corp_counts, values=corp_values),
-        "top_attacker_alliances": rank_counter(alliance_counts, values=alliance_values),
-        "most_dangerous_locations": rank_counter(locations, values=location_values),
-        "top_final_blow_hulls": rank_counter(final_hulls, values=final_hull_values),
-        "top_attacker_group_sizes": rank_counter(group_sizes, values=group_size_values),
+        **reduction,
     }
+    return result
 
 
 async def cache_system_industrial_kills(db: Session, client: httpx.AsyncClient, system_id: int, hours: int) -> int:
@@ -1039,78 +1103,36 @@ def build_pvp_intel_analysis(
         .where(SystemPvpKillObservation.killmail_time >= window_start)
         .order_by(SystemPvpKillObservation.killmail_time.desc())
     ).all()
+    evaluated_at = utc_now()
 
-    hulls: Counter[str] = Counter()
-    hull_values: Counter[str] = Counter()
-    periods: Counter[str] = Counter()
-    period_values: Counter[str] = Counter()
-    locations: Counter[str] = Counter()
-    location_values: Counter[str] = Counter()
-    final_hulls: Counter[str] = Counter()
-    final_hull_values: Counter[str] = Counter()
-    group_sizes: Counter[str] = Counter()
-    group_size_values: Counter[str] = Counter()
-
-    total_value = Decimal("0")
-    latest_kill_at: str | None = None
-    for row in rows:
-        total_value += row.total_value or Decimal("0")
-        if latest_kill_at is None:
-            latest_kill_at = row.killmail_time.isoformat()
-
-        hull = row.victim_hull or "Unknown hull"
-        hulls[hull] += 1
-        hull_values[hull] += row.total_value or 0
-
-        period = time_period_label(row.killmail_time)
-        periods[period] += 1
-        period_values[period] += row.total_value or 0
-
-        location_name = row.location_name or "Unknown location"
-        location = f"{row.location_kind or 'space'} · {location_name}"
-        locations[location] += 1
-        location_values[location] += row.total_value or 0
-
-        final_hull = row.final_blow_ship_type_name or "Unknown final-blow hull"
-        final_hulls[final_hull] += 1
-        final_hull_values[final_hull] += row.total_value or 0
-
-        size = group_size_bucket(row.attacker_count)
-        group_sizes[size] += 1
-        group_size_values[size] += row.total_value or 0
-
-    attacker_corp_counts, attacker_corp_values = attacker_org_counters(list(rows), "corporation_id")
-    attacker_alliance_counts, attacker_alliance_values = attacker_org_counters(list(rows), "alliance_id")
-    victim_corp_counts, victim_corp_values = victim_org_counters(list(rows), "victim_corporation_id")
-    victim_alliance_counts, victim_alliance_values = victim_org_counters(list(rows), "victim_alliance_id")
-    score = gatecheck_score(len(rows), float(total_value), latest_kill_at, max(1, min(refresh_hours, 168)))
-
-    return {
+    refresh_hours = max(1, min(refresh_hours, 168))
+    reduction_keys = {
+        "total_kills", "total_destroyed_value", "latest_killmail_time", "risk_score", "risk_label",
+        "top_victim_hulls", "top_time_periods", "top_attacker_corporations", "top_attacker_alliances",
+        "top_victim_corporations", "top_victim_alliances", "most_dangerous_locations",
+        "top_final_blow_hulls", "top_attacker_group_sizes",
+    }
+    reduction = evaluate_threat_analytics_with_engine(
+        payload=threat_engine_payload(list(rows), evaluated_at=evaluated_at, refresh_hours=refresh_hours),
+        python_result=lambda: python_threat_reduction(
+            list(rows), evaluated_at=evaluated_at, refresh_hours=refresh_hours, include_victim_organizations=True
+        ),
+        expected_keys=reduction_keys,
+    )
+    result = {
         "system": serialize_system(system),
         "days": max(1, min(days, INDUSTRIAL_CACHE_RETENTION_DAYS)),
         "retention_days": INDUSTRIAL_CACHE_RETENTION_DAYS,
-        "refresh_hours": max(1, min(refresh_hours, 168)),
+        "refresh_hours": refresh_hours,
         "cache": {
             "live_fetch_performed": live_fetch_performed,
             "fetched_at": cache.fetched_at.isoformat() if cache else None,
             "expires_at": cache.expires_at.isoformat() if cache else None,
             "ttl_minutes": INDUSTRIAL_CACHE_TTL_MINUTES,
         },
-        "total_kills": len(rows),
-        "total_destroyed_value": float(total_value),
-        "latest_killmail_time": latest_kill_at,
-        "risk_score": score,
-        "risk_label": risk_label(score),
-        "top_victim_hulls": rank_counter(hulls, values=hull_values),
-        "top_time_periods": rank_counter(periods, values=period_values),
-        "top_attacker_corporations": rank_counter(attacker_corp_counts, values=attacker_corp_values),
-        "top_attacker_alliances": rank_counter(attacker_alliance_counts, values=attacker_alliance_values),
-        "top_victim_corporations": rank_counter(victim_corp_counts, values=victim_corp_values),
-        "top_victim_alliances": rank_counter(victim_alliance_counts, values=victim_alliance_values),
-        "most_dangerous_locations": rank_counter(locations, values=location_values),
-        "top_final_blow_hulls": rank_counter(final_hulls, values=final_hull_values),
-        "top_attacker_group_sizes": rank_counter(group_sizes, values=group_size_values),
+        **reduction,
     }
+    return result
 
 
 async def cache_system_pvp_kills(db: Session, client: httpx.AsyncClient, system_id: int, hours: int) -> int:

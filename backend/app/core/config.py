@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     eqm_srp_analytics_engine: str = "rust"
     eqm_battle_report_engine: str = "rust"
     eqm_hypernet_engine: str = "rust"
+    eqm_threat_analytics_engine: str = "rust"
     eqm_core_binary: str = "/usr/local/bin/eqm-core"
     eqm_core_timeout_seconds: float = 5.0
 

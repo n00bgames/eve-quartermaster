@@ -112,7 +112,7 @@ class TestSrpAnalytics:
         assert report["engine_shadow_match"] is True
 
 
-def test_migration_graph_has_jump_clone_bigint_as_single_head() -> None:
+def test_migration_graph_has_hypernet_bid_tracking_as_single_head() -> None:
     config = Config("alembic.ini")
     script = ScriptDirectory.from_config(config)
-    assert script.get_heads() == ["0074_jump_clone_bigint"]
+    assert script.get_heads() == ["0078_hypernet_bid_tracking"]

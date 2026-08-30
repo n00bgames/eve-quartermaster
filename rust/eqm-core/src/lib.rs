@@ -11,3 +11,4 @@ pub mod killboard_analytics;
 pub mod pi_shortage;
 pub mod settlement_math;
 pub mod srp_analytics;
+pub mod threat_analytics;
