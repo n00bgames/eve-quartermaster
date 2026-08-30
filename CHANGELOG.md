@@ -4,6 +4,18 @@ All notable changes to EVE Quartermaster are tracked here.
 
 This project is moving quickly during beta. Version sections are written as user-facing release notes first, with implementation detail included where it helps operators understand deployment or testing impact.
 
+## [0.1.23.1-beta] - 2026-08-30
+
+### Security
+
+- Replaced the publicly reachable Vite development server in the Docker deployment with a compiled production frontend served by Nginx, rejected Vite-internal probe paths, and added conservative response-security headers.
+- Restricted the published PostgreSQL, Redis, backend, and frontend ports to the host loopback interface so only the host reverse proxy and local administration can reach them directly.
+- Updated the frontend lockfile to patched Nano ID and PostCSS dependency versions after automated probes exposed the development server configuration.
+
+### Changed
+
+- Bumped the visible application, package, backend API, Android wrapper, export metadata, README badge, and outbound service user-agent versions to 0.1.23.1-beta for the security hotfix release.
+
 ## [0.1.23-beta] - 2026-08-29
 
 ### Added

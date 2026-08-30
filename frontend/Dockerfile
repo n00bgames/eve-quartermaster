@@ -1,8 +1,15 @@
-FROM node:22-alpine
+FROM node:22-alpine AS build
 
 WORKDIR /app/frontend
 COPY frontend/package.json frontend/package-lock.json* ./
-RUN npm install
+RUN npm ci
 COPY frontend ./
 COPY static ../static
-CMD ["npm", "run", "dev", "--", "--port", "5173"]
+RUN npm run build
+
+FROM nginx:1.29-alpine
+
+COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/frontend/dist /usr/share/nginx/html
+
+EXPOSE 5173

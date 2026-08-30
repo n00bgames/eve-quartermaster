@@ -8,7 +8,7 @@ services:
       POSTGRES_USER: eve
       POSTGRES_PASSWORD: eve
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -20,7 +20,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
 
   backend:
     build:
@@ -64,7 +64,7 @@ services:
       EQM_CORE_BINARY: ${EQM_CORE_BINARY:-/usr/local/bin/eqm-core}
       EQM_CORE_TIMEOUT_SECONDS: ${EQM_CORE_TIMEOUT_SECONDS:-5}
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     volumes:
       - ${SDE_HOST_PATH:-./sde}:/sde:ro
     depends_on:
@@ -118,7 +118,7 @@ services:
       VITE_ALLOWED_HOSTS: ${VITE_ALLOWED_HOSTS:-eqm.easyduneadmin.app}
       VITE_PROXY_API_TARGET: ${VITE_PROXY_API_TARGET:-http://backend:8000}
     ports:
-      - "5173:5173"
+      - "127.0.0.1:5173:5173"
     depends_on:
       - backend
 
