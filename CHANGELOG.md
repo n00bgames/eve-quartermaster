@@ -4,6 +4,13 @@ All notable changes to EVE Quartermaster are tracked here.
 
 This project is moving quickly during beta. Version sections are written as user-facing release notes first, with implementation detail included where it helps operators understand deployment or testing impact.
 
+## [0.1.24-beta] - 2026-08-30
+
+### Changed
+
+- Made the authenticated EQM logo return directly to the Overview page.
+- Bumped the visible application, package, backend API, Android wrapper, export metadata, README badge, and outbound service user-agent versions to 0.1.24-beta.
+
 ## [0.1.23.1-beta] - 2026-08-30
 
 ### Added

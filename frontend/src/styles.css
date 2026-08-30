@@ -632,6 +632,19 @@
   margin-bottom: 16px;
 }
 
+.brand-home-button {
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  display: block;
+  padding: 0;
+  width: 100%;
+}
+
+.brand-home-button .brand-logo {
+  margin-bottom: 16px;
+}
+
 .sidebar h1 {
   font-size: 1.15rem;
   margin-bottom: 5px;

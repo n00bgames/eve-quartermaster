@@ -621,7 +621,18 @@ function App() {
 
       <aside className="sidebar">
 
-        <img className="brand-logo" src="/eqm-logo.webp" alt="EVE Quartermaster" />
+        <button
+          type="button"
+          className="brand-home-button"
+          aria-label="Open Overview"
+          title="Open Overview"
+          onClick={() => {
+            window.location.hash = "";
+            setActiveTab("overview");
+          }}
+        >
+          <img className="brand-logo" src="/eqm-logo.webp" alt="EVE Quartermaster" />
+        </button>
 
         <div>
 
