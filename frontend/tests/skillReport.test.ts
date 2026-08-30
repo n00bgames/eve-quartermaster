@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { characterSkillReport, characterSkillReportFilename, groupSkillsByCategory } from "../src/features/characters/skillReport.ts";
+import {
+  allCharacterSkillsCsv,
+  allCharacterSkillsFilename,
+  allCharacterSkillsJson,
+  characterSkillReport,
+  characterSkillReportFilename,
+  groupSkillsByCategory,
+} from "../src/features/characters/skillReport.ts";
 import type { CharacterSkillProfile, SkillRecord } from "../src/types/skills.ts";
 
 const skills: SkillRecord[] = [
@@ -78,4 +85,35 @@ test("builds a deterministic shareable skill report", () => {
   assert.match(report, /Afterburner \| Level 4 \| 45,255 SP/);
   assert.match(report, /Evasive Maneuvering \| Training to level 5/);
   assert.equal(characterSkillReportFilename(profile), "example-pilot-eqm-skills.txt");
+});
+
+test("exports every visible character skill as deterministic CSV", () => {
+  const secondProfile: CharacterSkillProfile = {
+    ...profile,
+    token_id: 6,
+    character_id: 90000002,
+    character_name: "Alpha, Pilot",
+    skill_count: 0,
+    queue_count: 0,
+    skills: [],
+    queue: [],
+  };
+  const lines = allCharacterSkillsCsv([profile, secondProfile]).trimEnd().split("\n");
+  assert.equal(lines.length, 5);
+  assert.match(lines[0], /^character_id,character_name,total_skill_points/);
+  assert.match(lines[1], /^90000002,"Alpha, Pilot",557255,1000/);
+  assert.match(lines[2], /Example Pilot.*Drones.*Drones.*Skill,5,4,256000/);
+  assert.match(lines[3], /Example Pilot.*Afterburner.*Navigation/);
+  assert.match(lines[4], /Example Pilot.*Warp Drive Operation.*Navigation/);
+});
+
+test("exports complete profiles and queues as JSON", () => {
+  const result = JSON.parse(allCharacterSkillsJson([profile], new Date("2026-07-26T13:00:00Z")));
+  assert.equal(result.schema_version, 1);
+  assert.equal(result.generated_at, "2026-07-26T13:00:00.000Z");
+  assert.equal(result.character_count, 1);
+  assert.equal(result.skill_count, 3);
+  assert.deepEqual(result.characters[0].skills.map((skill: SkillRecord) => skill.skill_name), ["Drones", "Afterburner", "Warp Drive Operation"]);
+  assert.equal(result.characters[0].queue[0].skill_name, "Evasive Maneuvering");
+  assert.equal(allCharacterSkillsFilename("json", new Date("2026-07-26T13:00:00Z")), "eve-quartermaster-skills-all-2026-07-26.json");
 });

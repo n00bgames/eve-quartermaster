@@ -6,6 +6,10 @@ This project is moving quickly during beta. Version sections are written as user
 
 ## [0.1.23.1-beta] - 2026-08-30
 
+### Added
+
+- Added **Export All CSV** and **Export All JSON** actions to Character Skills for downloading every skill profile visible to the current account, including full queue data in JSON.
+
 ### Security
 
 - Replaced the publicly reachable Vite development server in the Docker deployment with a compiled production frontend served by Nginx, rejected Vite-internal probe paths, and added conservative response-security headers.

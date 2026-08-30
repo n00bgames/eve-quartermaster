@@ -75,3 +75,77 @@ export function characterSkillReportFilename(profile: CharacterSkillProfile) {
     .toLowerCase() || "character";
   return `${safeName}-eqm-skills.txt`;
 }
+
+function sortedProfiles(profiles: CharacterSkillProfile[]) {
+  return [...profiles].sort((left, right) =>
+    left.character_name.localeCompare(right.character_name, undefined, { numeric: true, sensitivity: "base" })
+    || left.character_id - right.character_id,
+  );
+}
+
+function sortedSkills(skills: SkillRecord[]) {
+  return groupSkillsByCategory(skills).flatMap(([, rows]) => rows);
+}
+
+function csvCell(value: string | number | null | undefined) {
+  const text = value == null ? "" : String(value);
+  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+export function allCharacterSkillsCsv(profiles: CharacterSkillProfile[]) {
+  const columns = [
+    "character_id", "character_name", "total_skill_points", "unallocated_skill_points", "skills_synced_at",
+    "skill_type_id", "skill_name", "skill_group_name", "skill_category_name", "trained_skill_level",
+    "active_skill_level", "skillpoints_in_skill", "skill_last_synced_at",
+  ];
+  const rows: (string | number | null | undefined)[][] = [];
+  for (const profile of sortedProfiles(profiles)) {
+    const skills = sortedSkills(profile.skills);
+    if (skills.length === 0) {
+      rows.push([
+        profile.character_id,
+        profile.character_name,
+        profile.total_skill_points,
+        profile.unallocated_skill_points,
+        profile.skills_synced_at,
+        ...Array<null>(8).fill(null),
+      ]);
+      continue;
+    }
+    for (const skill of skills) {
+      rows.push([
+        profile.character_id, profile.character_name, profile.total_skill_points, profile.unallocated_skill_points,
+        profile.skills_synced_at, skill.skill_type_id, skill.skill_name, skill.skill_group_name,
+        skill.skill_category_name, skill.trained_skill_level, skill.active_skill_level,
+        skill.skillpoints_in_skill, skill.last_synced_at,
+      ]);
+    }
+  }
+  return `${[columns, ...rows].map((row) => row.map(csvCell).join(",")).join("\n")}\n`;
+}
+
+export function allCharacterSkillsJson(profiles: CharacterSkillProfile[], generatedAt = new Date()) {
+  const characters = sortedProfiles(profiles).map((profile) => ({
+    character_id: profile.character_id,
+    character_name: profile.character_name,
+    total_skill_points: profile.total_skill_points ?? null,
+    unallocated_skill_points: profile.unallocated_skill_points ?? null,
+    skills_synced_at: profile.skills_synced_at ?? null,
+    skill_queue_synced_at: profile.skill_queue_synced_at ?? null,
+    skill_count: profile.skill_count,
+    queue_count: profile.queue_count,
+    skills: sortedSkills(profile.skills),
+    queue: [...profile.queue].sort((left, right) => left.queue_position - right.queue_position),
+  }));
+  return JSON.stringify({
+    schema_version: 1,
+    generated_at: generatedAt.toISOString(),
+    character_count: characters.length,
+    skill_count: characters.reduce((total, character) => total + character.skills.length, 0),
+    characters,
+  }, null, 2) + "\n";
+}
+
+export function allCharacterSkillsFilename(format: "csv" | "json", generatedAt = new Date()) {
+  return `eve-quartermaster-skills-all-${generatedAt.toISOString().slice(0, 10)}.${format}`;
+}
