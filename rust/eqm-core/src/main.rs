@@ -7,6 +7,7 @@ use eqm_core::colony_simulation::{simulate_colony, ColonySimulationInput};
 use eqm_core::fitting_math::{evaluate_fitting_math, FittingMathInput};
 use eqm_core::fitting_resources::{evaluate_fitting_resources, FittingResourcesInput};
 use eqm_core::fitting_stats::{evaluate_fitting_stats, FittingStatsInput};
+use eqm_core::hypernet_economics::{evaluate_hypernet_economics, HyperNetEconomicsInput};
 use eqm_core::jump_route::{evaluate_jump_route, JumpRouteInput};
 use eqm_core::killboard_analytics::{evaluate_killboard_analytics, KillboardAnalyticsInput};
 use eqm_core::pi_shortage::{build_planetary_shortage_report, PlanetaryIndustryPayload};
@@ -21,7 +22,7 @@ fn value_after(args: &[String], flag: &str) -> Option<String> {
 
 fn usage() -> ! {
     eprintln!(
-        "Usage:\n  eqm-core pi-shortage --input <payload.json> [--target-type-id <id>] [--generated-at <ISO-8601>]\n  eqm-core colony-simulation --input <payload.json>\n  eqm-core fitting-math --input <payload.json>\n  eqm-core fitting-resources --input <payload.json>\n  eqm-core fitting-stats --input <payload.json>\n  eqm-core analytics-summary --input <payload.json>\n  eqm-core bounty-analytics --input <payload.json>\n  eqm-core battle-report --input <payload.json>\n  eqm-core jump-route --input <payload.json>\n  eqm-core settlement-math --input <payload.json>\n  eqm-core killboard-analytics --input <payload.json>\n  eqm-core srp-analytics --input <payload.json>"
+        "Usage:\n  eqm-core pi-shortage --input <payload.json> [--target-type-id <id>] [--generated-at <ISO-8601>]\n  eqm-core colony-simulation --input <payload.json>\n  eqm-core fitting-math --input <payload.json>\n  eqm-core fitting-resources --input <payload.json>\n  eqm-core fitting-stats --input <payload.json>\n  eqm-core analytics-summary --input <payload.json>\n  eqm-core bounty-analytics --input <payload.json>\n  eqm-core battle-report --input <payload.json>\n  eqm-core hypernet-economics --input <payload.json>\n  eqm-core jump-route --input <payload.json>\n  eqm-core settlement-math --input <payload.json>\n  eqm-core killboard-analytics --input <payload.json>\n  eqm-core srp-analytics --input <payload.json>"
     );
     process::exit(2);
 }
@@ -91,6 +92,11 @@ fn run() -> Result<(), String> {
             let payload: BattleReportInput = serde_json::from_str(&input_text)
                 .map_err(|error| format!("invalid Battle Report payload: {error}"))?;
             Ok(evaluate_battle_report(payload)?)
+        }
+        "hypernet-economics" => {
+            let payload: HyperNetEconomicsInput = serde_json::from_str(&input_text)
+                .map_err(|error| format!("invalid HyperNet economics payload: {error}"))?;
+            Ok(evaluate_hypernet_economics(payload)?)
         }
         "jump-route" => {
             let payload: JumpRouteInput = serde_json::from_str(&input_text)

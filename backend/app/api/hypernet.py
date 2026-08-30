@@ -10,6 +10,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.auth import get_current_user
+from app.core.config import get_settings
 from app.db.session import get_db
 from app.models import (
     EsiToken,
@@ -36,6 +37,11 @@ from app.schemas.hypernet import (
 )
 from app.services.audit import record_audit_event
 from app.services.hypernet import data_source, money, offer_financials, progress_metrics, seeded_node_scenario
+from app.services.hypernet_economics_engine import (
+    evaluate_offer_with_engine,
+    evaluate_participation_with_engine,
+    evaluate_reconciliation_with_engine,
+)
 from app.services.permissions import can_view_section
 
 
@@ -101,6 +107,97 @@ def financial_payload(values: dict[str, Decimal | None]) -> dict[str, float | No
     return {key: as_number(value) for key, value in values.items()}
 
 
+def participation_calculations(
+    *,
+    total_nodes: int,
+    nodes_purchased: int,
+    node_price: Decimal,
+    outcome: str,
+    item_value_at_completion: Decimal | None,
+) -> dict[str, Any]:
+    spent = money(node_price * nodes_purchased)
+    value = money(item_value_at_completion) if item_value_at_completion is not None else None
+    if outcome == "won":
+        profit_loss = money((value or Decimal("0")) - spent)
+    elif outcome == "lost":
+        value = None
+        profit_loss = money(-spent)
+    elif outcome == "cancelled":
+        value = None
+        profit_loss = money(0)
+    else:
+        value = None
+        profit_loss = None
+    return evaluate_participation_with_engine(
+        python_result={
+            "win_probability_percent": round(float(Decimal(nodes_purchased) / Decimal(total_nodes) * Decimal("100")), 4),
+            "total_spent": spent,
+            "item_value_at_completion": value,
+            "profit_loss": profit_loss,
+        },
+        total_nodes=total_nodes,
+        nodes_purchased=nodes_purchased,
+        node_price=node_price,
+        outcome=outcome,
+        item_value_at_completion=value,
+    )
+
+
+def authoritative_offer_financials(
+    *,
+    total_offer_price: Decimal,
+    total_nodes: int,
+    seller_owned_nodes: int,
+    hypercores_required: int,
+    hypercore_unit_cost: Decimal,
+    acquisition_cost: Decimal,
+    desired_profit: Decimal,
+    jita_sell: Decimal | None = None,
+    local_sell: Decimal | None = None,
+) -> dict[str, Decimal | None]:
+    financials = offer_financials(
+        total_offer_price=total_offer_price,
+        total_nodes=total_nodes,
+        hypercores_required=hypercores_required,
+        hypercore_unit_cost=hypercore_unit_cost,
+        acquisition_cost=acquisition_cost,
+        desired_profit=desired_profit,
+        jita_sell=jita_sell,
+        local_sell=local_sell,
+    )
+    scenario = seeded_node_scenario(
+        total_nodes=total_nodes,
+        seller_owned_nodes=seller_owned_nodes,
+        node_price=financials["node_price"] or 0,
+        acquisition_cost=acquisition_cost,
+        hypercore_cost=financials["hypercore_cost"] or 0,
+        payout_after_fee=financials["payout_after_fee"] or 0,
+        current_jita_sell=jita_sell,
+    )
+    evaluated = evaluate_offer_with_engine(
+        python_result={
+            "financials": financials,
+            "seeded_scenario": scenario,
+            "progress": {
+                "first_organic_node_at": None,
+                "hours_to_first_organic_node": None,
+                "organic_nodes_per_hour": None,
+                "estimated_hours_to_completion": None,
+            },
+        },
+        total_offer_price=total_offer_price,
+        total_nodes=total_nodes,
+        seller_owned_nodes=seller_owned_nodes,
+        hypercores_required=hypercores_required,
+        hypercore_unit_cost=hypercore_unit_cost,
+        acquisition_cost=acquisition_cost,
+        desired_profit=desired_profit,
+        jita_sell=jita_sell,
+        local_sell=local_sell,
+    )
+    return evaluated["financials"]
+
+
 def serialize_participation(row: HyperNetParticipation) -> dict[str, Any]:
     probability = Decimal(row.nodes_purchased) / Decimal(row.total_nodes) * Decimal("100")
     return {
@@ -159,17 +256,36 @@ def offer_calculations(offer: HyperNetOffer) -> dict[str, Any]:
         payout_after_fee=financials["payout_after_fee"] or 0,
         current_jita_sell=jita_sell,
     )
+    evaluated = evaluate_offer_with_engine(
+        python_result={
+            "financials": financials,
+            "seeded_scenario": scenario,
+            "progress": progress_metrics(
+                created_at=offer.created_offer_at,
+                total_nodes=offer.total_nodes,
+                snapshots=offer.snapshots,
+            ),
+        },
+        total_offer_price=offer.total_offer_price,
+        total_nodes=offer.total_nodes,
+        seller_owned_nodes=offer.seller_owned_nodes,
+        hypercores_required=offer.hypercores_required,
+        hypercore_unit_cost=offer.hypercore_unit_cost,
+        acquisition_cost=offer.acquisition_cost,
+        desired_profit=offer.desired_profit,
+        jita_sell=jita_sell,
+        local_sell=local_sell,
+        created_at=offer.created_offer_at,
+        snapshots=offer.snapshots,
+    )
     return {
-        "financials": financial_payload(financials),
+        "financials": financial_payload(evaluated["financials"]),
         "seeded_scenario": {
             key: value if isinstance(value, bool) or value is None else as_number(value)
-            for key, value in scenario.items()
+            for key, value in evaluated["seeded_scenario"].items()
         },
-        "progress": progress_metrics(
-            created_at=offer.created_offer_at,
-            total_nodes=offer.total_nodes,
-            snapshots=offer.snapshots,
-        ),
+        "progress": evaluated["progress"],
+        **{key: value for key, value in evaluated.items() if key.startswith("engine_")},
     }
 
 
@@ -291,6 +407,7 @@ def hypernet_meta(user: User = Depends(require_hypernet), db: Session = Depends(
         ],
         "fee_rate": 0.05,
         "manual_only": True,
+        "economics_engine": get_settings().eqm_hypernet_engine,
     }
 
 
@@ -349,7 +466,11 @@ def hypernet_location_search(
 
 @router.post("/calculator")
 def hypernet_calculator(payload: HyperNetCalculatorRequest, _: User = Depends(require_hypernet)) -> dict[str, Any]:
-    financials = offer_financials(**payload.model_dump(exclude={"seller_owned_nodes"}))
+    calculator_values = payload.model_dump(exclude={"seller_owned_nodes"})
+    for field in ("total_offer_price", "hypercore_unit_cost", "acquisition_cost", "desired_profit", "jita_sell", "local_sell"):
+        if calculator_values.get(field) is not None:
+            calculator_values[field] = money(calculator_values[field])
+    financials = offer_financials(**calculator_values)
     scenario = seeded_node_scenario(
         total_nodes=payload.total_nodes,
         seller_owned_nodes=payload.seller_owned_nodes,
@@ -357,14 +478,32 @@ def hypernet_calculator(payload: HyperNetCalculatorRequest, _: User = Depends(re
         acquisition_cost=payload.acquisition_cost,
         hypercore_cost=financials["hypercore_cost"] or 0,
         payout_after_fee=financials["payout_after_fee"] or 0,
-        current_jita_sell=payload.jita_sell,
+        current_jita_sell=calculator_values["jita_sell"],
+    )
+    evaluated = evaluate_offer_with_engine(
+        python_result={"financials": financials, "seeded_scenario": scenario, "progress": {
+            "first_organic_node_at": None,
+            "hours_to_first_organic_node": None,
+            "organic_nodes_per_hour": None,
+            "estimated_hours_to_completion": None,
+        }},
+        total_offer_price=calculator_values["total_offer_price"],
+        total_nodes=payload.total_nodes,
+        seller_owned_nodes=payload.seller_owned_nodes,
+        hypercores_required=payload.hypercores_required,
+        hypercore_unit_cost=calculator_values["hypercore_unit_cost"],
+        acquisition_cost=calculator_values["acquisition_cost"],
+        desired_profit=calculator_values["desired_profit"],
+        jita_sell=calculator_values["jita_sell"],
+        local_sell=calculator_values["local_sell"],
     )
     return {
-        "financials": financial_payload(financials),
+        "financials": financial_payload(evaluated["financials"]),
         "seeded_scenario": {
             key: value if isinstance(value, bool) or value is None else as_number(value)
-            for key, value in scenario.items()
+            for key, value in evaluated["seeded_scenario"].items()
         },
+        **{key: value for key, value in evaluated.items() if key.startswith("engine_")},
     }
 
 
@@ -507,6 +646,13 @@ def create_hypernet_participation(
     location = db.get(Location, payload.location_id) if payload.location_id else None
     if payload.location_id and location is None:
         raise HTTPException(status_code=400, detail="Location was not found")
+    economics = participation_calculations(
+        total_nodes=payload.total_nodes,
+        nodes_purchased=payload.nodes_purchased,
+        node_price=money(payload.node_price),
+        outcome="pending",
+        item_value_at_completion=None,
+    )
     row = HyperNetParticipation(
         user_id=user.id,
         character_id=character.id,
@@ -518,7 +664,7 @@ def create_hypernet_participation(
         total_nodes=payload.total_nodes,
         nodes_purchased=payload.nodes_purchased,
         node_price=money(payload.node_price),
-        total_spent=money(payload.node_price * payload.nodes_purchased),
+        total_spent=economics["total_spent"],
         outcome="pending",
         created_at=payload.created_at,
         notes=payload.notes,
@@ -587,15 +733,16 @@ def patch_hypernet_participation(
             raise HTTPException(status_code=400, detail="Won bids require the item value at completion")
         row.won = True if row.outcome == "won" else False if row.outcome == "lost" else None
 
-    row.total_spent = money(row.node_price * row.nodes_purchased)
-    if row.outcome == "won":
-        row.profit_loss = money((row.item_value_at_completion or Decimal("0")) - row.total_spent)
-    elif row.outcome == "lost":
-        row.item_value_at_completion = None
-        row.profit_loss = money(-row.total_spent)
-    elif row.outcome == "cancelled":
-        row.item_value_at_completion = None
-        row.profit_loss = money(0)
+    economics = participation_calculations(
+        total_nodes=row.total_nodes,
+        nodes_purchased=row.nodes_purchased,
+        node_price=row.node_price,
+        outcome=row.outcome,
+        item_value_at_completion=row.item_value_at_completion,
+    )
+    row.total_spent = economics["total_spent"]
+    row.item_value_at_completion = economics["item_value_at_completion"]
+    row.profit_loss = economics["profit_loss"]
 
     record_audit_event(db, event_kind="hypernet_bid_edited", title=f"HyperNet bid edited: {row.item_type.name if row.item_type else row.item_type_id}", body=f"{row.nodes_purchased}/{row.total_nodes} nodes · {row.outcome} · result {row.profit_loss} ISK", actor_user=user)
     db.commit()
@@ -617,13 +764,16 @@ def resolve_hypernet_participation(
     row.outcome = payload.outcome
     row.completed_at = payload.completed_at
     row.won = True if payload.outcome == "won" else False if payload.outcome == "lost" else None
-    row.item_value_at_completion = money(payload.item_value_at_completion) if payload.item_value_at_completion is not None else None
-    if payload.outcome == "won":
-        row.profit_loss = money((row.item_value_at_completion or Decimal("0")) - row.total_spent)
-    elif payload.outcome == "lost":
-        row.profit_loss = money(-row.total_spent)
-    else:
-        row.profit_loss = money(0)
+    economics = participation_calculations(
+        total_nodes=row.total_nodes,
+        nodes_purchased=row.nodes_purchased,
+        node_price=row.node_price,
+        outcome=payload.outcome,
+        item_value_at_completion=money(payload.item_value_at_completion) if payload.item_value_at_completion is not None else None,
+    )
+    row.total_spent = economics["total_spent"]
+    row.item_value_at_completion = economics["item_value_at_completion"]
+    row.profit_loss = economics["profit_loss"]
     if payload.notes:
         row.notes = "\n\n".join(value for value in [row.notes, payload.notes.strip()] if value)
     record_audit_event(
@@ -651,15 +801,16 @@ def create_hypernet_offer(
     if payload.location_id and location is None:
         raise HTTPException(status_code=400, detail="Location was not found")
     source = data_source(payload.source)
-    calculations = offer_financials(
-        total_offer_price=payload.total_offer_price,
+    calculations = authoritative_offer_financials(
+        total_offer_price=money(payload.total_offer_price),
         total_nodes=payload.total_nodes,
+        seller_owned_nodes=payload.seller_owned_nodes,
         hypercores_required=payload.hypercores_required,
-        hypercore_unit_cost=payload.hypercore_unit_cost,
-        acquisition_cost=payload.acquisition_cost,
-        desired_profit=payload.desired_profit,
-        jita_sell=payload.jita_sell,
-        local_sell=payload.local_sell,
+        hypercore_unit_cost=money(payload.hypercore_unit_cost),
+        acquisition_cost=money(payload.acquisition_cost),
+        desired_profit=money(payload.desired_profit),
+        jita_sell=money(payload.jita_sell) if payload.jita_sell is not None else None,
+        local_sell=money(payload.local_sell) if payload.local_sell is not None else None,
     )
     offer = HyperNetOffer(
         owner_user_id=user.id,
@@ -736,9 +887,10 @@ def patch_hypernet_offer(
         setattr(offer, field, value)
     if offer.expires_at <= offer.created_offer_at:
         raise HTTPException(status_code=400, detail="expires_at must be after created_offer_at")
-    calculations = offer_financials(
+    calculations = authoritative_offer_financials(
         total_offer_price=offer.total_offer_price,
         total_nodes=offer.total_nodes,
+        seller_owned_nodes=offer.seller_owned_nodes,
         hypercores_required=offer.hypercores_required,
         hypercore_unit_cost=offer.hypercore_unit_cost,
         acquisition_cost=offer.acquisition_cost,
@@ -839,7 +991,7 @@ def reconcile_hypernet_offer(
     if payload.unique_participants is not None:
         offer.unique_participants = payload.unique_participants
     offer.winner = payload.winner
-    offer.actual_hypercore_cost = money(payload.actual_hypercore_cost) if payload.actual_hypercore_cost is not None else money(offer.hypercores_required * offer.hypercore_unit_cost)
+    actual_hypercore_cost = money(payload.actual_hypercore_cost) if payload.actual_hypercore_cost is not None else money(offer.hypercores_required * offer.hypercore_unit_cost)
     offer.final_market_value = money(payload.final_market_value) if payload.final_market_value is not None else None
     if payload.status == "completed":
         offer.completed_at = payload.reconciled_at
@@ -847,18 +999,43 @@ def reconcile_hypernet_offer(
         offer.payout = money(payload.final_payout) if payload.final_payout is not None else offer.payout
         seeded_spend = money(offer.seller_owned_nodes * (offer.total_offer_price / offer.total_nodes))
         if payload.final_profit is not None:
-            offer.final_profit = money(payload.final_profit)
+            final_profit = money(payload.final_profit)
         elif payload.winner == "external":
-            offer.final_profit = money((offer.payout or 0) - offer.actual_hypercore_cost - seeded_spend - offer.acquisition_cost)
+            final_profit = money((offer.payout or 0) - actual_hypercore_cost - seeded_spend - offer.acquisition_cost)
         else:
-            offer.final_profit = money((offer.payout or 0) - offer.actual_hypercore_cost - seeded_spend + (offer.final_market_value or offer.acquisition_cost) - offer.acquisition_cost)
-        offer.item_outcome = "transferred" if payload.winner == "external" else "retained"
+            final_profit = money((offer.payout or 0) - actual_hypercore_cost - seeded_spend + (offer.final_market_value or offer.acquisition_cost) - offer.acquisition_cost)
+        item_outcome = "transferred" if payload.winner == "external" else "retained"
     elif payload.status == "expired":
-        offer.final_profit = money(payload.final_profit) if payload.final_profit is not None else money(-offer.actual_hypercore_cost)
-        offer.item_outcome = "retained"
+        seeded_spend = money(offer.seller_owned_nodes * (offer.total_offer_price / offer.total_nodes))
+        final_profit = money(payload.final_profit) if payload.final_profit is not None else money(-actual_hypercore_cost)
+        item_outcome = "retained"
     else:
-        offer.final_profit = money(payload.final_profit) if payload.final_profit is not None else None
-        offer.item_outcome = "unresolved"
+        seeded_spend = money(offer.seller_owned_nodes * (offer.total_offer_price / offer.total_nodes))
+        final_profit = money(payload.final_profit) if payload.final_profit is not None else None
+        item_outcome = "unresolved"
+    economics = evaluate_reconciliation_with_engine(
+        python_result={
+            "actual_hypercore_cost": actual_hypercore_cost,
+            "seeded_spend": seeded_spend,
+            "final_profit": final_profit,
+            "item_outcome": item_outcome,
+        },
+        status=payload.status,
+        winner=payload.winner,
+        total_offer_price=offer.total_offer_price,
+        total_nodes=offer.total_nodes,
+        seller_owned_nodes=offer.seller_owned_nodes,
+        hypercores_required=offer.hypercores_required,
+        hypercore_unit_cost=offer.hypercore_unit_cost,
+        acquisition_cost=offer.acquisition_cost,
+        actual_hypercore_cost=actual_hypercore_cost,
+        payout=offer.payout,
+        final_market_value=offer.final_market_value,
+        final_profit=money(payload.final_profit) if payload.final_profit is not None else None,
+    )
+    offer.actual_hypercore_cost = economics["actual_hypercore_cost"]
+    offer.final_profit = economics["final_profit"]
+    offer.item_outcome = economics["item_outcome"]
     if payload.note:
         offer.notes = "\n\n".join(value for value in [offer.notes, payload.note.strip()] if value)
     record_audit_event(

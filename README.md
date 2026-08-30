@@ -750,6 +750,16 @@ Docker Compose defaults to `rust`. SRP analytics responses include engine metada
 
 Docker Compose defaults to `rust`. Battle Report responses include engine metadata and the report footer displays the serving engine. Set `EQM_BATTLE_REPORT_ENGINE=python` in `.env` and rebuild the backend for an independent rollback.
 
+### HyperNet economics Rust engine
+
+`EQM_HYPERNET_ENGINE` controls the deterministic HyperNet evaluator. Python retains permissions, manual record entry, database access, character/item/location enrichment, and lifetime portfolio queries. Rust owns exact-cent offer fees, node prices, HyperCore costs, break-even and target pricing, seeded-node probabilities and risk, progress trajectory, buyer exposure/outcomes, and final offer reconciliation.
+
+- `python` uses the reference HyperNet calculations.
+- `shadow` serves Python while requiring exact normalized-contract parity from Rust.
+- `rust` serves Rust results and automatically falls back to Python on a binary error, invalid contract, or timeout.
+
+Docker Compose defaults to `rust`. Offer and calculator responses include engine metadata, and `/api/hypernet/meta` reports the configured economics engine. Set `EQM_HYPERNET_ENGINE=python` in `.env` and rebuild the backend for an independent rollback.
+
 ```powershell
 docker compose --profile test run --rm eqm-core-tests cargo test --locked --test analytics_summary_contract
 docker compose --profile test run --rm backend-tests python -m pytest -q tests/test_analytics_summary_engine.py tests/test_analytics_series.py
