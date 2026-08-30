@@ -4,10 +4,12 @@ All notable changes to EVE Quartermaster are tracked here.
 
 This project is moving quickly during beta. Version sections are written as user-facing release notes first, with implementation detail included where it helps operators understand deployment or testing impact.
 
-## [0.1.22-beta] - 2026-08-27
+## [0.1.23-beta] - 2026-08-29
 
 ### Added
 
+- Cut personal and corporation Financial Analytics calculations over to Rust, including daily closes, carry-forward series, wallet growth and extremes, income/spending velocity, notable activity ordering, change-only privacy views, and wealth distribution; retained Python permissions, SQL baselines, journal enrichment, shadow comparison, and automatic fallback through `EQM_FINANCIAL_ANALYTICS_ENGINE`.
+- Cut Planetary production-history aggregation over to Rust, including cutoff prorating, character/product and tier totals, current production rates, rankings, and anonymous-contributor handling; retained Python snapshot persistence, SDE/SQL enrichment, shadow comparison, and automatic fallback through `EQM_PLANETARY_ANALYTICS_ENGINE`.
 - Cut Event Analytics and aggregate fleet composition over to Rust, including range/time-bucket attendance reporting, RSVP and registration totals, role and hull counts, requirement gaps, and unregistered-RSVP counts; retained Python permission and identity handling plus shadow comparison and automatic fallback through `EQM_EVENT_ANALYTICS_ENGINE`.
 - Cut Industrial Threat and PvP Intel aggregation over to one shared Rust reducer with exact-cent destroyed-value totals, deterministic risk scores, and hull/time/organization/location/group-size rankings; retained Python shadow comparison and automatic fallback through `EQM_THREAT_ANALYTICS_ENGINE`.
 - Cut HyperNet deterministic economics over to Rust with exact-cent offer, seeded-node risk, bid outcome, progress, and reconciliation calculations; retained Python shadow comparison and automatic fallback under the independent `EQM_HYPERNET_ENGINE` switch.
@@ -32,7 +34,7 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Changed
 
-- Bumped the visible application, package, backend API, Android wrapper, export metadata, README badge, and outbound service user-agent versions to 0.1.22-beta for release.
+- Bumped the visible application, package, backend API, Android wrapper, export metadata, README badge, and outbound service user-agent versions to 0.1.23-beta for release.
 
 ## [0.1.19-beta] - 2026-08-20
 

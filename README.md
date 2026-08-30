@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/n00bgames/eve-quartermaster"><img alt="Project" src="https://img.shields.io/badge/project-eve--quartermaster-e8b84d?style=for-the-badge"></a>
-  <img alt="Version" src="https://img.shields.io/badge/version-0.1.22--beta-4fb3c7?style=for-the-badge">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.1.23--beta-4fb3c7?style=for-the-badge">
   <img alt="License" src="https://img.shields.io/badge/license-AGPL--3.0--or--later-70c894?style=for-the-badge">
 </p>
 
@@ -719,6 +719,26 @@ Docker Compose defaults to `rust`. Industrial Threat and PvP Intel responses inc
 - `rust` serves Rust results and automatically falls back to Python on a binary error, invalid contract, or timeout.
 
 Docker Compose defaults to `rust`. Event Analytics responses expose engine diagnostics, while composition responses retain the same aggregate contract and add diagnostics without moving identity-sensitive roster assembly out of Python. Set `EQM_EVENT_ANALYTICS_ENGINE=python` in `.env` and rebuild the backend for an independent rollback.
+
+### Planetary Analytics Rust engine
+
+`EQM_PLANETARY_ANALYTICS_ENGINE` controls Planetary production-history aggregation. Python retains scope/privacy enforcement, snapshot persistence, SQL retrieval, SDE names, and extractor/factory projections. Rust owns cutoff prorating, character/product rollups, tier totals, current production rates, product rankings, and privacy-safe top-character selection.
+
+- `python` uses the reference Planetary history calculations.
+- `shadow` serves Python while requiring exact normalized-contract parity from Rust.
+- `rust` serves Rust results and automatically falls back to Python on a binary error, invalid contract, or timeout.
+
+Docker Compose defaults to `rust`. Planetary Analytics responses include engine diagnostics. Set `EQM_PLANETARY_ANALYTICS_ENGINE=python` in `.env` and rebuild the backend for an independent rollback.
+
+### Financial Analytics Rust engine
+
+`EQM_FINANCIAL_ANALYTICS_ENGINE` controls deterministic wallet-history calculations. Python retains permissions, corporation privacy policy, SQL baseline selection, wallet-journal enrichment, and identity metadata. Rust owns daily closes, carry-forward corporation/division series, wallet change and growth statistics, income/spending velocity, notable-event ordering, privacy-safe change series, and wealth distribution.
+
+- `python` uses the reference Financial calculations.
+- `shadow` serves Python while requiring exact normalized-contract parity from Rust.
+- `rust` serves Rust results and automatically falls back to Python on a binary error, invalid contract, or timeout.
+
+Docker Compose defaults to `rust`. Each personal or corporation result includes engine diagnostics. Set `EQM_FINANCIAL_ANALYTICS_ENGINE=python` in `.env` and rebuild the backend for an independent rollback.
 
 ### Bounty Analytics Rust engine
 

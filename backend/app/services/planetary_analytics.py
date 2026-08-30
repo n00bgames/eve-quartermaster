@@ -15,6 +15,7 @@ from app.services.planetary_industry import (
     extractor_dogma_factors,
     extractor_program_projection,
 )
+from app.services.planetary_analytics_engine import evaluate_planetary_analytics_with_engine
 
 # Stable SDE inventory group identifiers for PI products.
 PI_TIER_BY_GROUP_ID = {
@@ -240,38 +241,85 @@ def planetary_analytics_summary(
     anonymous_character_ids: set[int] | None = None,
 ) -> dict[str, Any]:
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-    if not character_ids:
-        return _empty_summary(days)
-    history = db.scalars(
-        select(PlanetaryProductionSnapshot)
-        .where(
-            PlanetaryProductionSnapshot.character_id.in_(character_ids),
-            PlanetaryProductionSnapshot.captured_at >= cutoff,
-        )
-        .options(
-            selectinload(PlanetaryProductionSnapshot.character),
-            selectinload(PlanetaryProductionSnapshot.product_type),
-        )
-        .order_by(PlanetaryProductionSnapshot.captured_at)
-    ).all()
-    all_rows = db.scalars(
-        select(PlanetaryProductionSnapshot)
-        .where(PlanetaryProductionSnapshot.character_id.in_(character_ids))
-        .options(
-            selectinload(PlanetaryProductionSnapshot.character),
-            selectinload(PlanetaryProductionSnapshot.product_type),
-        )
-        .order_by(
-            PlanetaryProductionSnapshot.character_id,
-            PlanetaryProductionSnapshot.captured_at.desc(),
-        )
-    ).all()
+    history = []
+    all_rows = []
+    if character_ids:
+        history = db.scalars(
+            select(PlanetaryProductionSnapshot)
+            .where(
+                PlanetaryProductionSnapshot.character_id.in_(character_ids),
+                PlanetaryProductionSnapshot.captured_at >= cutoff,
+            )
+            .options(
+                selectinload(PlanetaryProductionSnapshot.character),
+                selectinload(PlanetaryProductionSnapshot.product_type),
+            )
+            .order_by(PlanetaryProductionSnapshot.captured_at)
+        ).all()
+        all_rows = db.scalars(
+            select(PlanetaryProductionSnapshot)
+            .where(PlanetaryProductionSnapshot.character_id.in_(character_ids))
+            .options(
+                selectinload(PlanetaryProductionSnapshot.character),
+                selectinload(PlanetaryProductionSnapshot.product_type),
+            )
+            .order_by(
+                PlanetaryProductionSnapshot.character_id,
+                PlanetaryProductionSnapshot.captured_at.desc(),
+            )
+        ).all()
     latest_at: dict[int, datetime] = {}
     current: list[PlanetaryProductionSnapshot] = []
     for row in all_rows:
         latest = latest_at.setdefault(row.character_id, row.captured_at)
         if row.captured_at == latest:
             current.append(row)
+
+    anonymous_character_ids = anonymous_character_ids or set()
+    payload = {
+        "schema_version": "eqm.planetary-analytics.v1",
+        "days": days,
+        "cutoff": cutoff.isoformat(),
+        "history": [_snapshot_engine_row(row) for row in history],
+        "current": [_snapshot_engine_row(row) for row in current],
+        "anonymous_character_ids": sorted(anonymous_character_ids),
+    }
+    return evaluate_planetary_analytics_with_engine(
+        payload=payload,
+        python_result=lambda: _planetary_analytics_summary_python(
+            days,
+            cutoff,
+            history,
+            current,
+            anonymous_character_ids,
+        ),
+    )
+
+
+def _snapshot_engine_row(row: PlanetaryProductionSnapshot) -> dict[str, Any]:
+    return {
+        "character_id": row.character_id,
+        "character_name": row.character.name,
+        "product_type_id": row.product_type_id,
+        "product_name": row.product_type.name,
+        "tier": row.commodity_tier,
+        "unit_volume": float(row.unit_volume or 0),
+        "estimated_units_since_previous": float(row.estimated_units_since_previous or 0),
+        "projected_units_per_day": float(row.projected_units_per_day or 0),
+        "interval_started_at": _aware(row.interval_started_at).isoformat() if row.interval_started_at else None,
+        "captured_at": (_aware(row.captured_at) or row.captured_at).isoformat(),
+    }
+
+
+def _planetary_analytics_summary_python(
+    days: int,
+    cutoff: datetime,
+    history: list[PlanetaryProductionSnapshot],
+    current: list[PlanetaryProductionSnapshot],
+    anonymous_character_ids: set[int],
+) -> dict[str, Any]:
+    if not history and not current:
+        return _empty_summary(days)
 
     aggregates: dict[tuple[int, int], dict[str, Any]] = {}
     for row in history:
@@ -286,7 +334,6 @@ def planetary_analytics_summary(
         item["current_units_per_day"] += row.projected_units_per_day
         item["current_volume_per_day"] += row.projected_units_per_day * row.unit_volume
 
-    anonymous_character_ids = anonymous_character_ids or set()
     character_products = sorted(
         aggregates.values(),
         key=lambda item: (item["estimated_volume"], item["current_volume_per_day"]),
