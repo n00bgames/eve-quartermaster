@@ -12,6 +12,10 @@ This project is moving quickly during beta. Version sections are written as user
 - Restricted the published PostgreSQL, Redis, backend, and frontend ports to the host loopback interface so only the host reverse proxy and local administration can reach them directly.
 - Updated the frontend lockfile to patched Nano ID and PostCSS dependency versions after automated probes exposed the development server configuration.
 
+### Fixed
+
+- Marked `sde-fetch.sh` executable in Git so Linux deployments can run the SDE refresh helper without a manual `chmod +x` repair.
+
 ### Changed
 
 - Bumped the visible application, package, backend API, Android wrapper, export metadata, README badge, and outbound service user-agent versions to 0.1.23.1-beta for the security hotfix release.
