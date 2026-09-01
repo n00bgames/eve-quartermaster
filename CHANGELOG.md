@@ -8,6 +8,7 @@ This project is moving quickly during beta. Version sections are written as user
 
 ### Changed
 
+- Extended Character Skills CSV exports with typed skill and queue rows, complete queue timing/SP fields, per-character queue sync metadata, and queue totals in JSON for easier downstream analysis.
 - Made the authenticated EQM logo return directly to the Overview page.
 - Bumped the visible application, package, backend API, Android wrapper, export metadata, README badge, and outbound service user-agent versions to 0.1.24-beta.
 

@@ -65,6 +65,10 @@ const profile: CharacterSkillProfile = {
     skill_type_id: 104,
     skill_name: "Evasive Maneuvering",
     finished_level: 5,
+    training_start_sp: 45255,
+    level_start_sp: 45255,
+    level_end_sp: 256000,
+    start_date: "2026-07-26T12:00:00Z",
     finish_date: "2026-07-27T12:00:00Z",
   }],
 };
@@ -87,7 +91,7 @@ test("builds a deterministic shareable skill report", () => {
   assert.equal(characterSkillReportFilename(profile), "example-pilot-eqm-skills.txt");
 });
 
-test("exports every visible character skill as deterministic CSV", () => {
+test("exports every visible character skill and queue entry as deterministic CSV", () => {
   const secondProfile: CharacterSkillProfile = {
     ...profile,
     token_id: 6,
@@ -99,12 +103,16 @@ test("exports every visible character skill as deterministic CSV", () => {
     queue: [],
   };
   const lines = allCharacterSkillsCsv([profile, secondProfile]).trimEnd().split("\n");
-  assert.equal(lines.length, 5);
-  assert.match(lines[0], /^character_id,character_name,total_skill_points/);
-  assert.match(lines[1], /^90000002,"Alpha, Pilot",557255,1000/);
-  assert.match(lines[2], /Example Pilot.*Drones.*Drones.*Skill,5,4,256000/);
-  assert.match(lines[3], /Example Pilot.*Afterburner.*Navigation/);
-  assert.match(lines[4], /Example Pilot.*Warp Drive Operation.*Navigation/);
+  assert.equal(lines.length, 6);
+  assert.match(lines[0], /^record_type,character_id,character_name,total_skill_points/);
+  assert.match(lines[0], /skill_queue_synced_at.*queue_position,queue_finished_level.*queue_finish_date$/);
+  assert.match(lines[1], /^character,90000002,"Alpha, Pilot",557255,1000,0,0/);
+  assert.match(lines[2], /^skill,90000001,Example Pilot.*Drones.*Drones.*Skill,5,4,256000/);
+  assert.match(lines[3], /^skill,90000001,Example Pilot.*Afterburner.*Navigation/);
+  assert.match(lines[4], /^skill,90000001,Example Pilot.*Warp Drive Operation.*Navigation/);
+  assert.match(lines[5], /^queue,90000001,Example Pilot.*104,Evasive Maneuvering,,,,,,,0,5,45255,45255,256000,2026-07-26T12:00:00Z,2026-07-27T12:00:00Z$/);
+  const columnCount = lines[0].split(",").length;
+  assert.ok(lines.slice(2).every((line) => line.split(",").length === columnCount));
 });
 
 test("exports complete profiles and queues as JSON", () => {
@@ -113,7 +121,9 @@ test("exports complete profiles and queues as JSON", () => {
   assert.equal(result.generated_at, "2026-07-26T13:00:00.000Z");
   assert.equal(result.character_count, 1);
   assert.equal(result.skill_count, 3);
+  assert.equal(result.queue_count, 1);
   assert.deepEqual(result.characters[0].skills.map((skill: SkillRecord) => skill.skill_name), ["Drones", "Afterburner", "Warp Drive Operation"]);
   assert.equal(result.characters[0].queue[0].skill_name, "Evasive Maneuvering");
+  assert.equal(result.characters[0].queue[0].level_end_sp, 256000);
   assert.equal(allCharacterSkillsFilename("json", new Date("2026-07-26T13:00:00Z")), "eve-quartermaster-skills-all-2026-07-26.json");
 });

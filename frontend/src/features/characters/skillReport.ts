@@ -94,30 +94,47 @@ function csvCell(value: string | number | null | undefined) {
 
 export function allCharacterSkillsCsv(profiles: CharacterSkillProfile[]) {
   const columns = [
-    "character_id", "character_name", "total_skill_points", "unallocated_skill_points", "skills_synced_at",
+    "record_type", "character_id", "character_name", "total_skill_points", "unallocated_skill_points",
+    "skill_count", "queue_count", "skills_synced_at", "skill_queue_synced_at",
     "skill_type_id", "skill_name", "skill_group_name", "skill_category_name", "trained_skill_level",
-    "active_skill_level", "skillpoints_in_skill", "skill_last_synced_at",
+    "active_skill_level", "skillpoints_in_skill", "skill_last_synced_at", "queue_position",
+    "queue_finished_level", "queue_training_start_sp", "queue_level_start_sp", "queue_level_end_sp",
+    "queue_start_date", "queue_finish_date",
   ];
   const rows: (string | number | null | undefined)[][] = [];
   for (const profile of sortedProfiles(profiles)) {
     const skills = sortedSkills(profile.skills);
-    if (skills.length === 0) {
+    const queue = [...profile.queue].sort((left, right) => left.queue_position - right.queue_position);
+    const characterColumns = [
+      profile.character_id,
+      profile.character_name,
+      profile.total_skill_points,
+      profile.unallocated_skill_points,
+      profile.skill_count,
+      profile.queue_count,
+      profile.skills_synced_at,
+      profile.skill_queue_synced_at,
+    ];
+    if (skills.length === 0 && queue.length === 0) {
       rows.push([
-        profile.character_id,
-        profile.character_name,
-        profile.total_skill_points,
-        profile.unallocated_skill_points,
-        profile.skills_synced_at,
-        ...Array<null>(8).fill(null),
+        "character",
+        ...characterColumns,
+        ...Array<null>(15).fill(null),
       ]);
       continue;
     }
     for (const skill of skills) {
       rows.push([
-        profile.character_id, profile.character_name, profile.total_skill_points, profile.unallocated_skill_points,
-        profile.skills_synced_at, skill.skill_type_id, skill.skill_name, skill.skill_group_name,
+        "skill", ...characterColumns, skill.skill_type_id, skill.skill_name, skill.skill_group_name,
         skill.skill_category_name, skill.trained_skill_level, skill.active_skill_level,
-        skill.skillpoints_in_skill, skill.last_synced_at,
+        skill.skillpoints_in_skill, skill.last_synced_at, ...Array<null>(7).fill(null),
+      ]);
+    }
+    for (const entry of queue) {
+      rows.push([
+        "queue", ...characterColumns, entry.skill_type_id, entry.skill_name, null, null,
+        null, null, null, null, entry.queue_position, entry.finished_level, entry.training_start_sp,
+        entry.level_start_sp, entry.level_end_sp, entry.start_date, entry.finish_date,
       ]);
     }
   }
@@ -142,6 +159,7 @@ export function allCharacterSkillsJson(profiles: CharacterSkillProfile[], genera
     generated_at: generatedAt.toISOString(),
     character_count: characters.length,
     skill_count: characters.reduce((total, character) => total + character.skills.length, 0),
+    queue_count: characters.reduce((total, character) => total + character.queue.length, 0),
     characters,
   }, null, 2) + "\n";
 }
