@@ -1,5 +1,6 @@
 import { AlertTriangle, BarChart3, ChevronDown, Download, Factory, Globe2, RefreshCw, Timer, Warehouse } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { PiPlanner } from "./PiPlanner";
 
 import { pollCharacterSyncJob } from "../../lib/characterSyncPolling";
 import { buildPlanetaryExport, type PlanetaryExportFormat } from "./planetaryExport";
@@ -48,6 +49,8 @@ export function PlanetaryIndustryPage({
   formatDateTime: (value?: string | null) => string;
 }) {
   const [data, setData] = useState<PlanetaryIndustryPayload | null>(null);
+  const [view, setView] = useState<"colonies" | "planner">("colonies");
+  const [plannerOpened, setPlannerOpened] = useState(false);
   const [character, setCharacter] = useState("all");
   const [system, setSystem] = useState("all");
   const [planetType, setPlanetType] = useState("all");
@@ -172,6 +175,12 @@ export function PlanetaryIndustryPage({
     : 0;
 
   return <section className="panel stacked planetary-page">
+    <nav className="pi-tabs" aria-label="Planetary Industry views">
+      <button type="button" aria-current={view === "colonies" ? "page" : undefined} onClick={() => setView("colonies")}>Colonies & supply</button>
+      <button type="button" aria-current={view === "planner" ? "page" : undefined} onClick={() => { setPlannerOpened(true); setView("planner"); }}>Operation planner</button>
+    </nav>
+    <div hidden={view !== "planner"}>{plannerOpened && <PiPlanner api={api} />}</div>
+    <div hidden={view !== "colonies"} className="planetary-existing-view">
     <div className="section-heading">
       <div><h3>Planetary Industry</h3><p>Colony layouts, extractor cycles, routed production, storage, and factory health from ESI.</p></div>
       <div className="button-row compact">
@@ -224,6 +233,7 @@ export function PlanetaryIndustryPage({
       {colonies.map((colony) => <ColonyRow key={colony.id} colony={colony} expanded={expanded === colony.id} onToggle={() => setExpanded(expanded === colony.id ? null : colony.id)} formatDateTime={formatDateTime} />)}
       {data && colonies.length === 0 && <p className="empty">No colonies match these filters.</p>}
       {!data && !error && <p className="empty">Loading planetary colonies...</p>}
+    </div>
     </div>
   </section>;
 }

@@ -11,6 +11,7 @@ pub mod hypernet_economics;
 pub mod jump_route;
 pub mod killboard_analytics;
 pub mod pi_shortage;
+pub mod pi_allocation;
 pub mod planetary_analytics;
 pub mod settlement_math;
 pub mod srp_analytics;

@@ -34,6 +34,9 @@ fn usage() -> ! {
 fn run() -> Result<(), String> {
     let args: Vec<String> = env::args().skip(1).collect();
     let command = args.first().map(String::as_str).unwrap_or_else(|| usage());
+    if command == "pi-allocation-worker" {
+        return eqm_core::pi_allocation::serve();
+    }
     let input_path =
         value_after(&args, "--input").ok_or_else(|| "--input is required".to_string())?;
     let input_text = if input_path == "-" {

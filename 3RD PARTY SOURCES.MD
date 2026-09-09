@@ -14,6 +14,15 @@ EQM is licensed under the GNU Affero General Public License v3.0 or later. A thi
 
 ## Authoritative platform and game-data sources
 
+### PI planner research (September 2026)
+
+- **Solving PI**, Ryan Allen / Admiral Leyton / Lacking Tallent: [repository](https://github.com/LackingTallent/SolvingPI), [application](https://solvingpi.com/). Supplied source package identified as `solving-pi-v9` 0.1.0; inspected live UI identified itself as `v9.0.0-proto`, commit `61635d5`. No source-reuse license was identified in the supplied archive or inspected repository. Used for feature-direction research and synthetic behavioral probes only. EQM's planner, Rust allocator, market fills, interface and layouts are independently implemented; no SPI code, branding, or bundled community templates are incorporated.
+- **CCP/EVE developer PI guide**: [extraction calculation](https://developers.eveonline.com/docs/guides/pi/). The planner reuses EQM's existing implementation of the documented extraction calculation; it does not substitute ESI's raw `qty_per_cycle` for average program yield.
+- **EVE Online native template format**: [CCP Bee's announcement and OldGuyMonty's public game-export example, post 7](https://forums.eveonline.com/t/planetary-industry-templates/470630). Used to identify interoperable clipboard field names and one-based link/route indices. EQM generates original coordinates/layouts and does not redistribute the example layout. Live-client import is not yet validation evidence.
+- **Bundled CCP game data**: `backend/app/data/pi_planning_pins.json` and `backend/tests/fixtures/pi-planner-catalog.v1.json` are subsets of CCP SDE build 3478781 (2026-08-25T11:07:20Z), inspected 2026-09-09. They contain game types, volumes, Dogma and schematics, under the applicable CCP developer/data terms below. Resource/planet availability reuses EQM's existing shortage-report matrix and its documented EVE University provenance.
+
+The complete PI planner contract and limitations are in [docs/pi-operation-planner.md](docs/pi-operation-planner.md).
+
 | Source | Steward | Terms | EQM use |
 | --- | --- | --- | --- |
 | [EVE Swagger Interface (ESI)](https://developers.eveonline.com/docs/services/esi/) and EVE SSO | CCP hf. | [CCP Developer License Agreement](https://developers.eveonline.com/license-agreement) and applicable developer policies | Authorized character and corporation data, public universe data, and permitted in-client actions. EQM observes scopes, user consent, ESI cache headers, error limits, and revocation. |

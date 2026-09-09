@@ -1,0 +1,57 @@
+.pi-planner { display: grid; gap: 18px; min-width: 0; }
+.planetary-existing-view:not([hidden]) { display: grid; gap: 18px; }
+.pi-planner h3,.pi-planner h4,.pi-planner h5 { margin: 0 0 10px; }
+.pi-planner p { margin: 8px 0 14px; line-height: 1.55; }
+.pi-toolbar,.pi-scenario-row,.pi-inline,.pi-run { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; justify-content: space-between; }
+.pi-toolbar { align-items: center; }
+.pi-scenario-row label,.pi-inline label { flex: 1; min-width: 170px; }
+.pi-planner label { display: grid; gap: 7px; font-size: .88rem; }
+.pi-planner input,.pi-planner select,.pi-planner textarea { width: 100%; min-width: 0; }
+.pi-planner textarea { font-family: ui-monospace, monospace; resize: vertical; }
+.pi-planner button { display: inline-flex; gap: 6px; align-items: center; justify-content: center; }
+.pi-tabs { display: flex; flex-direction: row; flex-wrap: wrap; gap: 6px; padding: 4px; border-bottom: 1px solid #44526866; }
+.pi-tabs button { width: auto; }
+.pi-tabs button[aria-current="page"] { background: #28777a55; border-color: #5ac9be; }
+.pi-config { display: grid; gap: 14px; }
+.pi-card { padding: 18px; border: 1px solid #63778b55; border-radius: 10px; background: #121d2b18; min-width: 0; }
+.pi-card summary { cursor: pointer; font-weight: 650; padding: 3px 0 9px; }
+.pi-pilot,.pi-planet { padding: 14px 0; border-bottom: 1px solid #63778b44; }
+.pi-pilot summary,.pi-planet summary { margin-bottom: 10px; }
+.pi-fields { display: grid; grid-template-columns: repeat(auto-fit,minmax(185px,1fr)); gap: 14px; margin: 14px 0; }
+.pi-inline { justify-content: flex-start; margin: 12px 0; }
+.pi-inline>button { align-self: end; }
+.pi-check-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(200px,1fr)); gap: 10px; margin: 10px 0; }
+.pi-planner .pi-check-grid label,.pi-planner .pi-check { display: flex; flex-direction: row; align-items: center; gap: 8px; }
+.pi-planner input[type="checkbox"] { width: auto; }
+.pi-note { font-size: .88rem; opacity: .8; }
+.pi-notice { padding: 12px 16px; border-left: 3px solid #d8ad5c; background: #a9812520; border-radius: 5px; }
+.pi-run { padding: 12px 0; justify-content: flex-start; }
+.pi-job { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 14px; border: 1px solid #5ac9be55; border-radius: 8px; }
+.pi-job progress { flex: 1; min-width: 160px; }
+.pi-results { display: grid; gap: 16px; }
+.pi-results table { width: 100%; font-size: .87rem; }
+.pi-results caption,.pi-planner table caption { text-align: left; font-weight: 650; margin: 10px 0; }
+.pi-results td,.pi-results th { padding: 10px; vertical-align: top; }
+.pi-selected { background: #399d9524; }
+.pi-metrics { display: grid; grid-template-columns: repeat(auto-fit,minmax(185px,1fr)); gap: 12px; }
+.pi-metrics article { padding: 17px; border: 1px solid #63778b55; border-radius: 9px; display: grid; gap: 8px; }
+.pi-metrics strong { font-size: 1.35rem; font-variant-numeric: tabular-nums; }
+.pi-metrics small { font-size: .8rem; opacity: .8; }
+.pi-ledger dl { display: grid; grid-template-columns: repeat(auto-fit,minmax(245px,1fr)); gap: 12px 24px; }
+.pi-ledger dl>div { display: flex; justify-content: space-between; gap: 15px; }
+.pi-ledger dd { margin: 0; font-variant-numeric: tabular-nums; text-align: right; }
+.pi-colony-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,340px),1fr)); gap: 14px; }
+.pi-capacity { display: grid; gap: 5px; font-size: .82rem; }
+.pi-capacity meter { width: 100%; }
+.pi-colony-grid button { margin-top: 12px; }
+.pi-chain { margin-top: 22px; }
+.pi-chain-scroll { overflow-x: auto; padding: 8px; background: #0d172433; border-radius: 8px; }
+.pi-chain svg { width: 100%; min-width: 760px; max-height: 700px; }
+.pi-node { fill: #183744; stroke: #64aeb2; stroke-width: 1.3px; }
+.pi-node.selected { stroke: #f4cc72; stroke-width: 3px; }
+.pi-chain text,.pi-template-map text { fill: #e8f2f5; font-size: 12px; }
+.pi-chain .pi-node-tier { fill: #abd1d4; font-size: 10px; }
+.pi-template-map { display: block; width: 100%; max-height: 480px; background: #101e2c; border-radius: 10px; color: #74bbb5; }
+.pi-planner details li { margin: 7px 0; line-height: 1.5; }
+.pi-planner small { overflow-wrap: anywhere; }
+@media (max-width: 650px) { .pi-card { padding: 12px; } .pi-toolbar,.pi-inline { align-items: stretch; } .pi-inline>* { flex: 1 1 100%; } .pi-fields { grid-template-columns: 1fr; } .pi-tabs button { flex: 1 1 40%; } }

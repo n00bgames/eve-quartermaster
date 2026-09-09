@@ -1,0 +1,1696 @@
+[
+  {
+    "id": 65,
+    "name": "Superconductors",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 9838,
+      "name": "Superconductors",
+      "volume": 0.75,
+      "quantity": 5
+    },
+    "inputs": [
+      {
+        "type_id": 2389,
+        "name": "Plasmoids",
+        "volume": 0.19,
+        "quantity": 40
+      },
+      {
+        "type_id": 3645,
+        "name": "Water",
+        "volume": 0.19,
+        "quantity": 40
+      }
+    ]
+  },
+  {
+    "id": 66,
+    "name": "Coolant",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 9832,
+      "name": "Coolant",
+      "volume": 0.75,
+      "quantity": 5
+    },
+    "inputs": [
+      {
+        "type_id": 2390,
+        "name": "Electrolytes",
+        "volume": 0.19,
+        "quantity": 40
+      },
+      {
+        "type_id": 3645,
+        "name": "Water",
+        "volume": 0.19,
+        "quantity": 40
+      }
+    ]
+  },
+  {
+    "id": 67,
+    "name": "Rocket Fuel",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 9830,
+      "name": "Rocket Fuel",
+      "volume": 0.75,
+      "quantity": 5
+    },
+    "inputs": [
+      {
+        "type_id": 2389,
+        "name": "Plasmoids",
+        "volume": 0.19,
+        "quantity": 40
+      },
+      {
+        "type_id": 2390,
+        "name": "Electrolytes",
+        "volume": 0.19,
+        "quantity": 40
+      }
+    ]
+  },
+  {
+    "id": 68,
+    "name": "Synthetic Oil",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 3691,
+      "name": "Synthetic Oil",
+      "volume": 0.75,
+      "quantity": 5
+    },
+    "inputs": [
+      {
+        "type_id": 2390,
+        "name": "Electrolytes",
+        "volume": 0.19,
+        "quantity": 40
+      },
+      {
+        "type_id": 3683,
+        "name": "Oxygen",
+        "volume": 0.19,
+        "quantity": 40
+      }
+    ]
+  },
+  {
+    "id": 69,
+    "name": "Oxides",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 2317,
+      "name": "Oxides",
+      "volume": 0.75,
+      "quantity": 5
+    },
+    "inputs": [
+      {
+        "type_id": 2392,
+        "name": "Oxidizing Compound",
+        "volume": 0.19,
+        "quantity": 40
+      },
+      {
+        "type_id": 3683,
+        "name": "Oxygen",
+        "volume": 0.19,
+        "quantity": 40
+      }
+    ]
+  },
+  {
+    "id": 70,
+    "name": "Silicate Glass",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 3697,
+      "name": "Silicate Glass",
+      "volume": 0.75,
+      "quantity": 5
+    },
+    "inputs": [
+      {
+        "type_id": 2392,
+        "name": "Oxidizing Compound",
+        "volume": 0.19,
+        "quantity": 40
+      },
+      {
+        "type_id": 9828,
+        "name": "Silicon",
+        "volume": 0.19,
+        "quantity": 40
+      }
+    ]
+  },
+  {
+    "id": 71,
+    "name": "Transmitter",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 9840,
+      "name": "Transmitter",
+      "volume": 0.75,
+      "quantity": 5
+    },
+    "inputs": [
+      {
+        "type_id": 2389,
+        "name": "Plasmoids",
+        "volume": 0.19,
+        "quantity": 40
+      },
+      {
+        "type_id": 2401,
+        "name": "Chiral Structures",
+        "volume": 0.19,
+        "quantity": 40
+      }
+    ]
+  },
+  {
+    "id": 72,
+    "name": "Water-Cooled CPU",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 2328,
+      "name": "Water-Cooled CPU",
+      "volume": 0.75,
+      "quantity": 5
+    },
+    "inputs": [
+      {
+        "type_id": 2398,
+        "name": "Reactive Metals",
+        "volume": 0.19,
+        "quantity": 40
+      },
+      {
+        "type_id": 3645,
+        "name": "Water",
+        "volume": 0.19,
+        "quantity": 40
+      }
+    ]
+  },
+  {
+    "id": 73,
+    "name": "Mechanical Parts",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 3689,
+      "name": "Mechanical Parts",
+      "volume": 0.75,
+      "quantity": 5
+    },
+    "inputs": [
+      {
+        "type_id": 2398,
+        "name": "Reactive Metals",
+        "volume": 0.19,
+        "quantity": 40
+      },
+      {
+        "type_id": 2399,
+        "name": "Precious Metals",
+        "volume": 0.19,
+        "quantity": 40
+      }
+    ]
+  },
+  {
+    "id": 74,
+    "name": "Construction Blocks",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 3828,
+      "name": "Construction Blocks",
+      "volume": 0.75,
+      "quantity": 5
+    },
+    "inputs": [
+      {
+        "type_id": 2398,
+        "name": "Reactive Metals",
+        "volume": 0.19,
+        "quantity": 40
+      },
+      {
+        "type_id": 2400,
+        "name": "Toxic Metals",
+        "volume": 0.19,
+        "quantity": 40
+      }
+    ]
+  },
+  {
+    "id": 75,
+    "name": "Enriched Uranium",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 44,
+      "name": "Enriched Uranium",
+      "volume": 0.75,
+      "quantity": 5
+    },
+    "inputs": [
+      {
+        "type_id": 2399,
+        "name": "Precious Metals",
+        "volume": 0.19,
+        "quantity": 40
+      },
+      {
+        "type_id": 2400,
+        "name": "Toxic Metals",
+        "volume": 0.19,
+        "quantity": 40
+      }
+    ]
+  },
+  {
+    "id": 76,
+    "name": "Consumer Electronics",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 9836,
+      "name": "Consumer Electronics",
+      "volume": 0.75,
+      "quantity": 5
+    },
+    "inputs": [
+      {
+        "type_id": 2400,
+        "name": "Toxic Metals",
+        "volume": 0.19,
+        "quantity": 40
+      },
+      {
+        "type_id": 2401,
+        "name": "Chiral Structures",
+        "volume": 0.19,
+        "quantity": 40
+      }
+    ]
+  },
+  {
+    "id": 77,
+    "name": "Miniature Electronics",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 9842,
+      "name": "Miniature Electronics",
+      "volume": 0.75,
+      "quantity": 5
+    },
+    "inputs": [
+      {
+        "type_id": 2401,
+        "name": "Chiral Structures",
+        "volume": 0.19,
+        "quantity": 40
+      },
+      {
+        "type_id": 9828,
+        "name": "Silicon",
+        "volume": 0.19,
+        "quantity": 40
+      }
+    ]
+  },
+  {
+    "id": 78,
+    "name": "Nanites",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 2463,
+      "name": "Nanites",
+      "volume": 0.75,
+      "quantity": 5
+    },
+    "inputs": [
+      {
+        "type_id": 2393,
+        "name": "Bacteria",
+        "volume": 0.19,
+        "quantity": 40
+      },
+      {
+        "type_id": 2398,
+        "name": "Reactive Metals",
+        "volume": 0.19,
+        "quantity": 40
+      }
+    ]
+  },
+  {
+    "id": 79,
+    "name": "Biocells",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 2329,
+      "name": "Biocells",
+      "volume": 0.75,
+      "quantity": 5
+    },
+    "inputs": [
+      {
+        "type_id": 2396,
+        "name": "Biofuels",
+        "volume": 0.19,
+        "quantity": 40
+      },
+      {
+        "type_id": 2399,
+        "name": "Precious Metals",
+        "volume": 0.19,
+        "quantity": 40
+      }
+    ]
+  },
+  {
+    "id": 80,
+    "name": "Microfiber Shielding",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 2327,
+      "name": "Microfiber Shielding",
+      "volume": 0.75,
+      "quantity": 5
+    },
+    "inputs": [
+      {
+        "type_id": 2397,
+        "name": "Industrial Fibers",
+        "volume": 0.19,
+        "quantity": 40
+      },
+      {
+        "type_id": 9828,
+        "name": "Silicon",
+        "volume": 0.19,
+        "quantity": 40
+      }
+    ]
+  },
+  {
+    "id": 81,
+    "name": "Viral Agent",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 3775,
+      "name": "Viral Agent",
+      "volume": 0.75,
+      "quantity": 5
+    },
+    "inputs": [
+      {
+        "type_id": 2393,
+        "name": "Bacteria",
+        "volume": 0.19,
+        "quantity": 40
+      },
+      {
+        "type_id": 3779,
+        "name": "Biomass",
+        "volume": 0.19,
+        "quantity": 40
+      }
+    ]
+  },
+  {
+    "id": 82,
+    "name": "Fertilizer",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 3693,
+      "name": "Fertilizer",
+      "volume": 0.75,
+      "quantity": 5
+    },
+    "inputs": [
+      {
+        "type_id": 2393,
+        "name": "Bacteria",
+        "volume": 0.19,
+        "quantity": 40
+      },
+      {
+        "type_id": 2395,
+        "name": "Proteins",
+        "volume": 0.19,
+        "quantity": 40
+      }
+    ]
+  },
+  {
+    "id": 83,
+    "name": "Genetically Enhanced Livestock",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 15317,
+      "name": "Genetically Enhanced Livestock",
+      "volume": 0.75,
+      "quantity": 5
+    },
+    "inputs": [
+      {
+        "type_id": 2395,
+        "name": "Proteins",
+        "volume": 0.19,
+        "quantity": 40
+      },
+      {
+        "type_id": 3779,
+        "name": "Biomass",
+        "volume": 0.19,
+        "quantity": 40
+      }
+    ]
+  },
+  {
+    "id": 84,
+    "name": "Livestock",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 3725,
+      "name": "Livestock",
+      "volume": 0.75,
+      "quantity": 5
+    },
+    "inputs": [
+      {
+        "type_id": 2395,
+        "name": "Proteins",
+        "volume": 0.19,
+        "quantity": 40
+      },
+      {
+        "type_id": 2396,
+        "name": "Biofuels",
+        "volume": 0.19,
+        "quantity": 40
+      }
+    ]
+  },
+  {
+    "id": 85,
+    "name": "Polytextiles",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 3695,
+      "name": "Polytextiles",
+      "volume": 0.75,
+      "quantity": 5
+    },
+    "inputs": [
+      {
+        "type_id": 2396,
+        "name": "Biofuels",
+        "volume": 0.19,
+        "quantity": 40
+      },
+      {
+        "type_id": 2397,
+        "name": "Industrial Fibers",
+        "volume": 0.19,
+        "quantity": 40
+      }
+    ]
+  },
+  {
+    "id": 86,
+    "name": "Test Cultures",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 2319,
+      "name": "Test Cultures",
+      "volume": 0.75,
+      "quantity": 5
+    },
+    "inputs": [
+      {
+        "type_id": 2393,
+        "name": "Bacteria",
+        "volume": 0.19,
+        "quantity": 40
+      },
+      {
+        "type_id": 3645,
+        "name": "Water",
+        "volume": 0.19,
+        "quantity": 40
+      }
+    ]
+  },
+  {
+    "id": 87,
+    "name": "Supertensile Plastics",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 2312,
+      "name": "Supertensile Plastics",
+      "volume": 0.75,
+      "quantity": 5
+    },
+    "inputs": [
+      {
+        "type_id": 3683,
+        "name": "Oxygen",
+        "volume": 0.19,
+        "quantity": 40
+      },
+      {
+        "type_id": 3779,
+        "name": "Biomass",
+        "volume": 0.19,
+        "quantity": 40
+      }
+    ]
+  },
+  {
+    "id": 88,
+    "name": "Polyaramids",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 2321,
+      "name": "Polyaramids",
+      "volume": 0.75,
+      "quantity": 5
+    },
+    "inputs": [
+      {
+        "type_id": 2392,
+        "name": "Oxidizing Compound",
+        "volume": 0.19,
+        "quantity": 40
+      },
+      {
+        "type_id": 2397,
+        "name": "Industrial Fibers",
+        "volume": 0.19,
+        "quantity": 40
+      }
+    ]
+  },
+  {
+    "id": 89,
+    "name": "Ukomi Superconductor",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 17136,
+      "name": "Ukomi Superconductors",
+      "volume": 3.0,
+      "quantity": 3
+    },
+    "inputs": [
+      {
+        "type_id": 3691,
+        "name": "Synthetic Oil",
+        "volume": 0.75,
+        "quantity": 10
+      },
+      {
+        "type_id": 9838,
+        "name": "Superconductors",
+        "volume": 0.75,
+        "quantity": 10
+      }
+    ]
+  },
+  {
+    "id": 90,
+    "name": "Condensates",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 2344,
+      "name": "Condensates",
+      "volume": 3.0,
+      "quantity": 3
+    },
+    "inputs": [
+      {
+        "type_id": 2317,
+        "name": "Oxides",
+        "volume": 0.75,
+        "quantity": 10
+      },
+      {
+        "type_id": 9832,
+        "name": "Coolant",
+        "volume": 0.75,
+        "quantity": 10
+      }
+    ]
+  },
+  {
+    "id": 91,
+    "name": "Camera Drones",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 2345,
+      "name": "Camera Drones",
+      "volume": 3.0,
+      "quantity": 3
+    },
+    "inputs": [
+      {
+        "type_id": 3697,
+        "name": "Silicate Glass",
+        "volume": 0.75,
+        "quantity": 10
+      },
+      {
+        "type_id": 9830,
+        "name": "Rocket Fuel",
+        "volume": 0.75,
+        "quantity": 10
+      }
+    ]
+  },
+  {
+    "id": 92,
+    "name": "Synthetic Synapses",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 2346,
+      "name": "Synthetic Synapses",
+      "volume": 3.0,
+      "quantity": 3
+    },
+    "inputs": [
+      {
+        "type_id": 2312,
+        "name": "Supertensile Plastics",
+        "volume": 0.75,
+        "quantity": 10
+      },
+      {
+        "type_id": 2319,
+        "name": "Test Cultures",
+        "volume": 0.75,
+        "quantity": 10
+      }
+    ]
+  },
+  {
+    "id": 94,
+    "name": "High-Tech Transmitter",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 17898,
+      "name": "High-Tech Transmitters",
+      "volume": 3.0,
+      "quantity": 3
+    },
+    "inputs": [
+      {
+        "type_id": 2321,
+        "name": "Polyaramids",
+        "volume": 0.75,
+        "quantity": 10
+      },
+      {
+        "type_id": 9840,
+        "name": "Transmitter",
+        "volume": 0.75,
+        "quantity": 10
+      }
+    ]
+  },
+  {
+    "id": 95,
+    "name": "Gel-Matrix Biopaste",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 2348,
+      "name": "Gel-Matrix Biopaste",
+      "volume": 3.0,
+      "quantity": 3
+    },
+    "inputs": [
+      {
+        "type_id": 2317,
+        "name": "Oxides",
+        "volume": 0.75,
+        "quantity": 10
+      },
+      {
+        "type_id": 2329,
+        "name": "Biocells",
+        "volume": 0.75,
+        "quantity": 10
+      },
+      {
+        "type_id": 9838,
+        "name": "Superconductors",
+        "volume": 0.75,
+        "quantity": 10
+      }
+    ]
+  },
+  {
+    "id": 96,
+    "name": "Supercomputers",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 2349,
+      "name": "Supercomputers",
+      "volume": 3.0,
+      "quantity": 3
+    },
+    "inputs": [
+      {
+        "type_id": 2328,
+        "name": "Water-Cooled CPU",
+        "volume": 0.75,
+        "quantity": 10
+      },
+      {
+        "type_id": 9832,
+        "name": "Coolant",
+        "volume": 0.75,
+        "quantity": 10
+      },
+      {
+        "type_id": 9836,
+        "name": "Consumer Electronics",
+        "volume": 0.75,
+        "quantity": 10
+      }
+    ]
+  },
+  {
+    "id": 97,
+    "name": "Robotics",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 9848,
+      "name": "Robotics",
+      "volume": 3.0,
+      "quantity": 3
+    },
+    "inputs": [
+      {
+        "type_id": 3689,
+        "name": "Mechanical Parts",
+        "volume": 0.75,
+        "quantity": 10
+      },
+      {
+        "type_id": 9836,
+        "name": "Consumer Electronics",
+        "volume": 0.75,
+        "quantity": 10
+      }
+    ]
+  },
+  {
+    "id": 98,
+    "name": "Smartfab Units",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 2351,
+      "name": "Smartfab Units",
+      "volume": 3.0,
+      "quantity": 3
+    },
+    "inputs": [
+      {
+        "type_id": 3828,
+        "name": "Construction Blocks",
+        "volume": 0.75,
+        "quantity": 10
+      },
+      {
+        "type_id": 9842,
+        "name": "Miniature Electronics",
+        "volume": 0.75,
+        "quantity": 10
+      }
+    ]
+  },
+  {
+    "id": 99,
+    "name": "Nuclear Reactors",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 2352,
+      "name": "Nuclear Reactors",
+      "volume": 3.0,
+      "quantity": 3
+    },
+    "inputs": [
+      {
+        "type_id": 44,
+        "name": "Enriched Uranium",
+        "volume": 0.75,
+        "quantity": 10
+      },
+      {
+        "type_id": 2327,
+        "name": "Microfiber Shielding",
+        "volume": 0.75,
+        "quantity": 10
+      }
+    ]
+  },
+  {
+    "id": 100,
+    "name": "Guidance Systems",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 9834,
+      "name": "Guidance Systems",
+      "volume": 3.0,
+      "quantity": 3
+    },
+    "inputs": [
+      {
+        "type_id": 2328,
+        "name": "Water-Cooled CPU",
+        "volume": 0.75,
+        "quantity": 10
+      },
+      {
+        "type_id": 9840,
+        "name": "Transmitter",
+        "volume": 0.75,
+        "quantity": 10
+      }
+    ]
+  },
+  {
+    "id": 102,
+    "name": "Neocoms",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 2354,
+      "name": "Neocoms",
+      "volume": 3.0,
+      "quantity": 3
+    },
+    "inputs": [
+      {
+        "type_id": 2329,
+        "name": "Biocells",
+        "volume": 0.75,
+        "quantity": 10
+      },
+      {
+        "type_id": 3697,
+        "name": "Silicate Glass",
+        "volume": 0.75,
+        "quantity": 10
+      }
+    ]
+  },
+  {
+    "id": 103,
+    "name": "Planetary Vehicles",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 9846,
+      "name": "Planetary Vehicles",
+      "volume": 3.0,
+      "quantity": 3
+    },
+    "inputs": [
+      {
+        "type_id": 2312,
+        "name": "Supertensile Plastics",
+        "volume": 0.75,
+        "quantity": 10
+      },
+      {
+        "type_id": 3689,
+        "name": "Mechanical Parts",
+        "volume": 0.75,
+        "quantity": 10
+      },
+      {
+        "type_id": 9842,
+        "name": "Miniature Electronics",
+        "volume": 0.75,
+        "quantity": 10
+      }
+    ]
+  },
+  {
+    "id": 104,
+    "name": "Biotech Research Reports",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 2358,
+      "name": "Biotech Research Reports",
+      "volume": 3.0,
+      "quantity": 3
+    },
+    "inputs": [
+      {
+        "type_id": 2463,
+        "name": "Nanites",
+        "volume": 0.75,
+        "quantity": 10
+      },
+      {
+        "type_id": 3725,
+        "name": "Livestock",
+        "volume": 0.75,
+        "quantity": 10
+      },
+      {
+        "type_id": 3828,
+        "name": "Construction Blocks",
+        "volume": 0.75,
+        "quantity": 10
+      }
+    ]
+  },
+  {
+    "id": 105,
+    "name": "Vaccines",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 28974,
+      "name": "Vaccines",
+      "volume": 3.0,
+      "quantity": 3
+    },
+    "inputs": [
+      {
+        "type_id": 3725,
+        "name": "Livestock",
+        "volume": 0.75,
+        "quantity": 10
+      },
+      {
+        "type_id": 3775,
+        "name": "Viral Agent",
+        "volume": 0.75,
+        "quantity": 10
+      }
+    ]
+  },
+  {
+    "id": 106,
+    "name": "Industrial Explosives",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 2360,
+      "name": "Industrial Explosives",
+      "volume": 3.0,
+      "quantity": 3
+    },
+    "inputs": [
+      {
+        "type_id": 3693,
+        "name": "Fertilizer",
+        "volume": 0.75,
+        "quantity": 10
+      },
+      {
+        "type_id": 3695,
+        "name": "Polytextiles",
+        "volume": 0.75,
+        "quantity": 10
+      }
+    ]
+  },
+  {
+    "id": 107,
+    "name": "Hermetic Membranes",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 2361,
+      "name": "Hermetic Membranes",
+      "volume": 3.0,
+      "quantity": 3
+    },
+    "inputs": [
+      {
+        "type_id": 2321,
+        "name": "Polyaramids",
+        "volume": 0.75,
+        "quantity": 10
+      },
+      {
+        "type_id": 15317,
+        "name": "Genetically Enhanced Livestock",
+        "volume": 0.75,
+        "quantity": 10
+      }
+    ]
+  },
+  {
+    "id": 108,
+    "name": "Transcranial Microcontroller",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 12836,
+      "name": "Transcranial Microcontrollers",
+      "volume": 3.0,
+      "quantity": 3
+    },
+    "inputs": [
+      {
+        "type_id": 2329,
+        "name": "Biocells",
+        "volume": 0.75,
+        "quantity": 10
+      },
+      {
+        "type_id": 2463,
+        "name": "Nanites",
+        "volume": 0.75,
+        "quantity": 10
+      }
+    ]
+  },
+  {
+    "id": 109,
+    "name": "Data Chips",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 17392,
+      "name": "Data Chips",
+      "volume": 3.0,
+      "quantity": 3
+    },
+    "inputs": [
+      {
+        "type_id": 2312,
+        "name": "Supertensile Plastics",
+        "volume": 0.75,
+        "quantity": 10
+      },
+      {
+        "type_id": 2327,
+        "name": "Microfiber Shielding",
+        "volume": 0.75,
+        "quantity": 10
+      }
+    ]
+  },
+  {
+    "id": 110,
+    "name": "Hazmat Detection Systems",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 2366,
+      "name": "Hazmat Detection Systems",
+      "volume": 3.0,
+      "quantity": 3
+    },
+    "inputs": [
+      {
+        "type_id": 3695,
+        "name": "Polytextiles",
+        "volume": 0.75,
+        "quantity": 10
+      },
+      {
+        "type_id": 3775,
+        "name": "Viral Agent",
+        "volume": 0.75,
+        "quantity": 10
+      },
+      {
+        "type_id": 9840,
+        "name": "Transmitter",
+        "volume": 0.75,
+        "quantity": 10
+      }
+    ]
+  },
+  {
+    "id": 111,
+    "name": "Cryoprotectant Solution",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 2367,
+      "name": "Cryoprotectant Solution",
+      "volume": 3.0,
+      "quantity": 3
+    },
+    "inputs": [
+      {
+        "type_id": 2319,
+        "name": "Test Cultures",
+        "volume": 0.75,
+        "quantity": 10
+      },
+      {
+        "type_id": 3691,
+        "name": "Synthetic Oil",
+        "volume": 0.75,
+        "quantity": 10
+      },
+      {
+        "type_id": 3693,
+        "name": "Fertilizer",
+        "volume": 0.75,
+        "quantity": 10
+      }
+    ]
+  },
+  {
+    "id": 112,
+    "name": "Organic Mortar Applicators",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 2870,
+      "name": "Organic Mortar Applicators",
+      "volume": 50.0,
+      "quantity": 1
+    },
+    "inputs": [
+      {
+        "type_id": 2344,
+        "name": "Condensates",
+        "volume": 3.0,
+        "quantity": 6
+      },
+      {
+        "type_id": 2393,
+        "name": "Bacteria",
+        "volume": 0.19,
+        "quantity": 40
+      },
+      {
+        "type_id": 9848,
+        "name": "Robotics",
+        "volume": 3.0,
+        "quantity": 6
+      }
+    ]
+  },
+  {
+    "id": 113,
+    "name": "Sterile Conduits",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 2875,
+      "name": "Sterile Conduits",
+      "volume": 50.0,
+      "quantity": 1
+    },
+    "inputs": [
+      {
+        "type_id": 2351,
+        "name": "Smartfab Units",
+        "volume": 3.0,
+        "quantity": 6
+      },
+      {
+        "type_id": 3645,
+        "name": "Water",
+        "volume": 0.19,
+        "quantity": 40
+      },
+      {
+        "type_id": 28974,
+        "name": "Vaccines",
+        "volume": 3.0,
+        "quantity": 6
+      }
+    ]
+  },
+  {
+    "id": 114,
+    "name": "Nano-Factory",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 2869,
+      "name": "Nano-Factory",
+      "volume": 50.0,
+      "quantity": 1
+    },
+    "inputs": [
+      {
+        "type_id": 2360,
+        "name": "Industrial Explosives",
+        "volume": 3.0,
+        "quantity": 6
+      },
+      {
+        "type_id": 2398,
+        "name": "Reactive Metals",
+        "volume": 0.19,
+        "quantity": 40
+      },
+      {
+        "type_id": 17136,
+        "name": "Ukomi Superconductors",
+        "volume": 3.0,
+        "quantity": 6
+      }
+    ]
+  },
+  {
+    "id": 115,
+    "name": "Self-Harmonizing Power Core",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 2872,
+      "name": "Self-Harmonizing Power Core",
+      "volume": 50.0,
+      "quantity": 1
+    },
+    "inputs": [
+      {
+        "type_id": 2345,
+        "name": "Camera Drones",
+        "volume": 3.0,
+        "quantity": 6
+      },
+      {
+        "type_id": 2352,
+        "name": "Nuclear Reactors",
+        "volume": 3.0,
+        "quantity": 6
+      },
+      {
+        "type_id": 2361,
+        "name": "Hermetic Membranes",
+        "volume": 3.0,
+        "quantity": 6
+      }
+    ]
+  },
+  {
+    "id": 116,
+    "name": "Recursive Computing Module",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 2871,
+      "name": "Recursive Computing Module",
+      "volume": 50.0,
+      "quantity": 1
+    },
+    "inputs": [
+      {
+        "type_id": 2346,
+        "name": "Synthetic Synapses",
+        "volume": 3.0,
+        "quantity": 6
+      },
+      {
+        "type_id": 9834,
+        "name": "Guidance Systems",
+        "volume": 3.0,
+        "quantity": 6
+      },
+      {
+        "type_id": 12836,
+        "name": "Transcranial Microcontrollers",
+        "volume": 3.0,
+        "quantity": 6
+      }
+    ]
+  },
+  {
+    "id": 117,
+    "name": "Broadcast Node",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 2867,
+      "name": "Broadcast Node",
+      "volume": 50.0,
+      "quantity": 1
+    },
+    "inputs": [
+      {
+        "type_id": 2354,
+        "name": "Neocoms",
+        "volume": 3.0,
+        "quantity": 6
+      },
+      {
+        "type_id": 17392,
+        "name": "Data Chips",
+        "volume": 3.0,
+        "quantity": 6
+      },
+      {
+        "type_id": 17898,
+        "name": "High-Tech Transmitters",
+        "volume": 3.0,
+        "quantity": 6
+      }
+    ]
+  },
+  {
+    "id": 118,
+    "name": "Integrity Response Drones",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 2868,
+      "name": "Integrity Response Drones",
+      "volume": 50.0,
+      "quantity": 1
+    },
+    "inputs": [
+      {
+        "type_id": 2348,
+        "name": "Gel-Matrix Biopaste",
+        "volume": 3.0,
+        "quantity": 6
+      },
+      {
+        "type_id": 2366,
+        "name": "Hazmat Detection Systems",
+        "volume": 3.0,
+        "quantity": 6
+      },
+      {
+        "type_id": 9846,
+        "name": "Planetary Vehicles",
+        "volume": 3.0,
+        "quantity": 6
+      }
+    ]
+  },
+  {
+    "id": 119,
+    "name": "Wetware Mainframe",
+    "cycle_time": 3600,
+    "output": {
+      "type_id": 2876,
+      "name": "Wetware Mainframe",
+      "volume": 50.0,
+      "quantity": 1
+    },
+    "inputs": [
+      {
+        "type_id": 2349,
+        "name": "Supercomputers",
+        "volume": 3.0,
+        "quantity": 6
+      },
+      {
+        "type_id": 2358,
+        "name": "Biotech Research Reports",
+        "volume": 3.0,
+        "quantity": 6
+      },
+      {
+        "type_id": 2367,
+        "name": "Cryoprotectant Solution",
+        "volume": 3.0,
+        "quantity": 6
+      }
+    ]
+  },
+  {
+    "id": 121,
+    "name": "Water",
+    "cycle_time": 1800,
+    "output": {
+      "type_id": 3645,
+      "name": "Water",
+      "volume": 0.19,
+      "quantity": 20
+    },
+    "inputs": [
+      {
+        "type_id": 2268,
+        "name": "Aqueous Liquids",
+        "volume": 0.005,
+        "quantity": 3000
+      }
+    ]
+  },
+  {
+    "id": 122,
+    "name": "Plasmoids",
+    "cycle_time": 1800,
+    "output": {
+      "type_id": 2389,
+      "name": "Plasmoids",
+      "volume": 0.19,
+      "quantity": 20
+    },
+    "inputs": [
+      {
+        "type_id": 2308,
+        "name": "Suspended Plasma",
+        "volume": 0.005,
+        "quantity": 3000
+      }
+    ]
+  },
+  {
+    "id": 123,
+    "name": "Electrolytes",
+    "cycle_time": 1800,
+    "output": {
+      "type_id": 2390,
+      "name": "Electrolytes",
+      "volume": 0.19,
+      "quantity": 20
+    },
+    "inputs": [
+      {
+        "type_id": 2309,
+        "name": "Ionic Solutions",
+        "volume": 0.005,
+        "quantity": 3000
+      }
+    ]
+  },
+  {
+    "id": 124,
+    "name": "Oxygen",
+    "cycle_time": 1800,
+    "output": {
+      "type_id": 3683,
+      "name": "Oxygen",
+      "volume": 0.19,
+      "quantity": 20
+    },
+    "inputs": [
+      {
+        "type_id": 2310,
+        "name": "Noble Gas",
+        "volume": 0.005,
+        "quantity": 3000
+      }
+    ]
+  },
+  {
+    "id": 125,
+    "name": "Oxidizing Compound",
+    "cycle_time": 1800,
+    "output": {
+      "type_id": 2392,
+      "name": "Oxidizing Compound",
+      "volume": 0.19,
+      "quantity": 20
+    },
+    "inputs": [
+      {
+        "type_id": 2311,
+        "name": "Reactive Gas",
+        "volume": 0.005,
+        "quantity": 3000
+      }
+    ]
+  },
+  {
+    "id": 126,
+    "name": "Reactive Metals",
+    "cycle_time": 1800,
+    "output": {
+      "type_id": 2398,
+      "name": "Reactive Metals",
+      "volume": 0.19,
+      "quantity": 20
+    },
+    "inputs": [
+      {
+        "type_id": 2267,
+        "name": "Base Metals",
+        "volume": 0.005,
+        "quantity": 3000
+      }
+    ]
+  },
+  {
+    "id": 127,
+    "name": "Precious Metals",
+    "cycle_time": 1800,
+    "output": {
+      "type_id": 2399,
+      "name": "Precious Metals",
+      "volume": 0.19,
+      "quantity": 20
+    },
+    "inputs": [
+      {
+        "type_id": 2270,
+        "name": "Noble Metals",
+        "volume": 0.005,
+        "quantity": 3000
+      }
+    ]
+  },
+  {
+    "id": 128,
+    "name": "Toxic Metals",
+    "cycle_time": 1800,
+    "output": {
+      "type_id": 2400,
+      "name": "Toxic Metals",
+      "volume": 0.19,
+      "quantity": 20
+    },
+    "inputs": [
+      {
+        "type_id": 2272,
+        "name": "Heavy Metals",
+        "volume": 0.005,
+        "quantity": 3000
+      }
+    ]
+  },
+  {
+    "id": 129,
+    "name": "Chiral Structures",
+    "cycle_time": 1800,
+    "output": {
+      "type_id": 2401,
+      "name": "Chiral Structures",
+      "volume": 0.19,
+      "quantity": 20
+    },
+    "inputs": [
+      {
+        "type_id": 2306,
+        "name": "Non-CS Crystals",
+        "volume": 0.005,
+        "quantity": 3000
+      }
+    ]
+  },
+  {
+    "id": 130,
+    "name": "Silicon",
+    "cycle_time": 1800,
+    "output": {
+      "type_id": 9828,
+      "name": "Silicon",
+      "volume": 0.19,
+      "quantity": 20
+    },
+    "inputs": [
+      {
+        "type_id": 2307,
+        "name": "Felsic Magma",
+        "volume": 0.005,
+        "quantity": 3000
+      }
+    ]
+  },
+  {
+    "id": 131,
+    "name": "Bacteria",
+    "cycle_time": 1800,
+    "output": {
+      "type_id": 2393,
+      "name": "Bacteria",
+      "volume": 0.19,
+      "quantity": 20
+    },
+    "inputs": [
+      {
+        "type_id": 2073,
+        "name": "Microorganisms",
+        "volume": 0.005,
+        "quantity": 3000
+      }
+    ]
+  },
+  {
+    "id": 132,
+    "name": "Biomass",
+    "cycle_time": 1800,
+    "output": {
+      "type_id": 3779,
+      "name": "Biomass",
+      "volume": 0.19,
+      "quantity": 20
+    },
+    "inputs": [
+      {
+        "type_id": 2286,
+        "name": "Planktic Colonies",
+        "volume": 0.005,
+        "quantity": 3000
+      }
+    ]
+  },
+  {
+    "id": 133,
+    "name": "Proteins",
+    "cycle_time": 1800,
+    "output": {
+      "type_id": 2395,
+      "name": "Proteins",
+      "volume": 0.19,
+      "quantity": 20
+    },
+    "inputs": [
+      {
+        "type_id": 2287,
+        "name": "Complex Organisms",
+        "volume": 0.005,
+        "quantity": 3000
+      }
+    ]
+  },
+  {
+    "id": 134,
+    "name": "Biofuels",
+    "cycle_time": 1800,
+    "output": {
+      "type_id": 2396,
+      "name": "Biofuels",
+      "volume": 0.19,
+      "quantity": 20
+    },
+    "inputs": [
+      {
+        "type_id": 2288,
+        "name": "Carbon Compounds",
+        "volume": 0.005,
+        "quantity": 3000
+      }
+    ]
+  },
+  {
+    "id": 135,
+    "name": "Industrial Fibers",
+    "cycle_time": 1800,
+    "output": {
+      "type_id": 2397,
+      "name": "Industrial Fibers",
+      "volume": 0.19,
+      "quantity": 20
+    },
+    "inputs": [
+      {
+        "type_id": 2305,
+        "name": "Autotrophs",
+        "volume": 0.005,
+        "quantity": 3000
+      }
+    ]
+  }
+]

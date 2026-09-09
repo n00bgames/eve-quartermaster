@@ -1,4 +1,5 @@
 from fastapi import APIRouter
+from app.api.pi_planner import router as pi_planner_router
 
 from app.api.analytics import router as analytics_router
 from app.api.auth import router as auth_router
@@ -40,6 +41,7 @@ from app.api.skill_plans import router as skill_plans_router
 from app.api.srp import router as srp_router
 
 api_router = APIRouter()
+api_router.include_router(pi_planner_router)
 api_router.include_router(analytics_router)
 api_router.include_router(auth_router)
 api_router.include_router(bounty_analytics_router)

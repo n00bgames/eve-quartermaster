@@ -4,6 +4,8 @@
 
 ## Current scope
 
+- `pi-allocation-worker`: persistent newline-delimited worker for the PI operation planner's colony packing, facility/link capacity, extraction and storage arithmetic. Enabled by default through `EQM_PI_PLANNER_ENGINE=rust` after cross-language parity checks; Python and shadow modes remain available. See [the planner contract](../../docs/pi-operation-planner.md).
+
 - `pi-shortage`: configured PI throughput, projected inventory, target-chain traversal, net deficits, processor equivalents, raw P0 expansion, and eligible planet types.
 - `colony-simulation`: deterministic event scheduling, routed factory inputs and outputs, storage capacity, extractor decay/noise, blocked output, and truncation safeguards.
 - `fitting-math`: dogma multiplier normalization, stacking penalties, capacitor recharge, stability, and finite depletion simulation.

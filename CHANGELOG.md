@@ -4,6 +4,15 @@ All notable changes to EVE Quartermaster are tracked here.
 
 This project is moving quickly during beta. Version sections are written as user-facing release notes first, with implementation detail included where it helps operators understand deployment or testing impact.
 
+## Unreleased
+
+### Added
+
+- Added a PI operation planner with ESI order-depth pricing, profit/output/quota comparisons, buy-versus-make choices, per-pilot colony proposals, costs, hauling and maintenance constraints.
+- Added private scenarios, recoverable calculation runs, recipe/inventory graphs, system scouting, build/shopping CSVs, frozen-price replay, and original native template previews with explicit in-game validation limits.
+- Added a persistent Rust allocation worker in `eqm-core`, enabled by default for planning, with Python reference/shadow/fallback modes and cross-language parity tests.
+- Added Alembic migration `0079_pi_planning` for scenario/job records; deploy backend and frontend together. See `docs/pi-operation-planner.md` for operation, validation and model limits.
+
 ## [0.1.24-beta] - 2026-08-30
 
 ### Changed

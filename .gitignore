@@ -28,3 +28,7 @@ android-eqm/.kotlin/
 # Local Codex operating context
 AGENTS.md
 docs/l4-pilot-profile.md
+
+# Isolated PI planner browser test output
+frontend/.pi-test-cache/
+frontend/test-results/

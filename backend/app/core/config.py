@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     killboard_request_delay_seconds_default: float = 1.0
     killboard_max_pages_default: int = 10
     eqm_pi_engine: str = "python"
+    eqm_pi_planner_engine: str = "rust"
     eqm_fitting_engine: str = "python"
     eqm_fitting_stats_engine: str = "rust"
     eqm_analytics_engine: str = "rust"

@@ -22,6 +22,7 @@ from app.models.killboard import BattleReportShare, KillboardEntityName, Killboa
 from app.models.navigation import SystemIndustrialKillObservation, SystemJumpObservation, SystemKillFetchCache, SystemPvpKillObservation
 from app.models.notes import Note, NoteItem
 from app.models.planetary_industry import PlanetaryColony, PlanetaryLink, PlanetaryPin, PlanetaryRoute
+from app.models.pi_planning import PiPlanningJob, PiPlanningScenario
 from app.models.planetary_schematics import EvePlanetSchematic, EvePlanetSchematicInput
 from app.models.planetary_analytics import PlanetaryProductionSnapshot
 from app.models.research_projects import ResearchProject, ResearchQueueItem
@@ -30,6 +31,8 @@ from app.models.skills import CharacterSkill, CharacterSkillQueueEntry
 from app.models.standings import CharacterStanding
 
 __all__ = [
+    "PiPlanningJob",
+    "PiPlanningScenario",
     "AppSetting",
     "Asset",
     "AuditEvent",

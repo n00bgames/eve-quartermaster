@@ -1,0 +1,1235 @@
+{
+  "source": "CCP SDE build 3478781, released 2026-08-25T11:07:20Z; local snapshot inspected 2026-09-09. Runtime imported Dogma overrides this fallback.",
+  "pins": {
+    "2129": {
+      "name": "Limited Barren Command Center",
+      "price": 670000.0,
+      "capacity": 500.0,
+      "published": false,
+      "dogma": {
+        "11": 9000.0,
+        "48": 7057.0,
+        "182": 2505.0,
+        "277": 1.0,
+        "633": 1.0,
+        "1632": 2016.0,
+        "1639": 3.0
+      }
+    },
+    "2130": {
+      "name": "Standard Barren Command Center",
+      "price": 1600000.0,
+      "capacity": 500.0,
+      "published": false,
+      "dogma": {
+        "11": 12000.0,
+        "48": 12136.0,
+        "182": 2505.0,
+        "277": 2.0,
+        "633": 2.0,
+        "1632": 2016.0,
+        "1639": 3.0
+      }
+    },
+    "2131": {
+      "name": "Improved Barren Command Center",
+      "price": 2800000.0,
+      "capacity": 500.0,
+      "published": false,
+      "dogma": {
+        "11": 15000.0,
+        "48": 17215.0,
+        "182": 2505.0,
+        "277": 3.0,
+        "633": 3.0,
+        "1632": 2016.0,
+        "1639": 3.0
+      }
+    },
+    "2132": {
+      "name": "Advanced Barren Command Center",
+      "price": 3700000.0,
+      "capacity": 500.0,
+      "published": false,
+      "dogma": {
+        "11": 17000.0,
+        "48": 21315.0,
+        "182": 2505.0,
+        "277": 4.0,
+        "633": 4.0,
+        "1632": 2016.0,
+        "1639": 3.0
+      }
+    },
+    "2133": {
+      "name": "Elite Barren Command Center",
+      "price": 6400000.0,
+      "capacity": 500.0,
+      "published": false,
+      "dogma": {
+        "11": 19000.0,
+        "48": 25415.0,
+        "182": 2505.0,
+        "277": 5.0,
+        "633": 5.0,
+        "1632": 2016.0,
+        "1639": 3.0
+      }
+    },
+    "2134": {
+      "name": "Limited Gas Command Center",
+      "price": 670000.0,
+      "capacity": 500.0,
+      "published": false,
+      "dogma": {
+        "11": 9000.0,
+        "48": 7057.0,
+        "182": 2505.0,
+        "277": 1.0,
+        "633": 1.0,
+        "1632": 13.0,
+        "1639": 3.0
+      }
+    },
+    "2135": {
+      "name": "Standard Gas Command Center",
+      "price": 1600000.0,
+      "capacity": 500.0,
+      "published": false,
+      "dogma": {
+        "11": 12000.0,
+        "48": 12136.0,
+        "182": 2505.0,
+        "277": 2.0,
+        "633": 2.0,
+        "1632": 13.0,
+        "1639": 3.0
+      }
+    },
+    "2136": {
+      "name": "Improved Gas Command Center",
+      "price": 2800000.0,
+      "capacity": 500.0,
+      "published": false,
+      "dogma": {
+        "11": 15000.0,
+        "48": 17215.0,
+        "182": 2505.0,
+        "277": 3.0,
+        "633": 3.0,
+        "1632": 13.0,
+        "1639": 3.0
+      }
+    },
+    "2137": {
+      "name": "Advanced Gas Command Center",
+      "price": 3700000.0,
+      "capacity": 500.0,
+      "published": false,
+      "dogma": {
+        "11": 17000.0,
+        "48": 21315.0,
+        "182": 2505.0,
+        "277": 4.0,
+        "633": 4.0,
+        "1632": 13.0,
+        "1639": 3.0
+      }
+    },
+    "2138": {
+      "name": "Elite Gas Command Center",
+      "price": 6400000.0,
+      "capacity": 500.0,
+      "published": false,
+      "dogma": {
+        "11": 19000.0,
+        "48": 25415.0,
+        "182": 2505.0,
+        "277": 5.0,
+        "633": 5.0,
+        "1632": 13.0,
+        "1639": 3.0
+      }
+    },
+    "2139": {
+      "name": "Limited Ice Command Center",
+      "price": 670000.0,
+      "capacity": 500.0,
+      "published": false,
+      "dogma": {
+        "11": 9000.0,
+        "48": 7057.0,
+        "182": 2505.0,
+        "277": 1.0,
+        "633": 1.0,
+        "1632": 12.0,
+        "1639": 3.0
+      }
+    },
+    "2140": {
+      "name": "Standard Ice Command Center",
+      "price": 1600000.0,
+      "capacity": 500.0,
+      "published": false,
+      "dogma": {
+        "11": 12000.0,
+        "48": 12136.0,
+        "182": 2505.0,
+        "277": 2.0,
+        "633": 2.0,
+        "1632": 12.0,
+        "1639": 3.0
+      }
+    },
+    "2141": {
+      "name": "Improved Ice Command Center",
+      "price": 2800000.0,
+      "capacity": 500.0,
+      "published": false,
+      "dogma": {
+        "11": 15000.0,
+        "48": 17215.0,
+        "182": 2505.0,
+        "277": 3.0,
+        "633": 3.0,
+        "1632": 12.0,
+        "1639": 3.0
+      }
+    },
+    "2142": {
+      "name": "Advanced Ice Command Center",
+      "price": 3700000.0,
+      "capacity": 500.0,
+      "published": false,
+      "dogma": {
+        "11": 17000.0,
+        "48": 21315.0,
+        "182": 2505.0,
+        "277": 4.0,
+        "633": 4.0,
+        "1632": 12.0,
+        "1639": 3.0
+      }
+    },
+    "2143": {
+      "name": "Elite Ice Command Center",
+      "price": 6400000.0,
+      "capacity": 500.0,
+      "published": false,
+      "dogma": {
+        "11": 19000.0,
+        "48": 25415.0,
+        "182": 2505.0,
+        "277": 5.0,
+        "633": 5.0,
+        "1632": 12.0,
+        "1639": 3.0
+      }
+    },
+    "2144": {
+      "name": "Limited Lava Command Center",
+      "price": 670000.0,
+      "capacity": 500.0,
+      "published": false,
+      "dogma": {
+        "11": 9000.0,
+        "48": 7057.0,
+        "182": 2505.0,
+        "277": 1.0,
+        "633": 1.0,
+        "1632": 2015.0,
+        "1639": 3.0
+      }
+    },
+    "2145": {
+      "name": "Standard Lava Command Center",
+      "price": 1600000.0,
+      "capacity": 500.0,
+      "published": false,
+      "dogma": {
+        "11": 12000.0,
+        "48": 12136.0,
+        "182": 2505.0,
+        "277": 2.0,
+        "633": 2.0,
+        "1632": 2015.0,
+        "1639": 3.0
+      }
+    },
+    "2146": {
+      "name": "Improved Lava Command Center",
+      "price": 2800000.0,
+      "capacity": 500.0,
+      "published": false,
+      "dogma": {
+        "11": 15000.0,
+        "48": 17215.0,
+        "182": 2505.0,
+        "277": 3.0,
+        "633": 3.0,
+        "1632": 2015.0,
+        "1639": 3.0
+      }
+    },
+    "2147": {
+      "name": "Advanced Lava Command Center",
+      "price": 3700000.0,
+      "capacity": 500.0,
+      "published": false,
+      "dogma": {
+        "11": 17000.0,
+        "48": 21315.0,
+        "182": 2505.0,
+        "277": 4.0,
+        "633": 4.0,
+        "1632": 2015.0,
+        "1639": 3.0
+      }
+    },
+    "2148": {
+      "name": "Elite Lava Command Center",
+      "price": 6400000.0,
+      "capacity": 500.0,
+      "published": false,
+      "dogma": {
+        "11": 19000.0,
+        "48": 25415.0,
+        "182": 2505.0,
+        "277": 5.0,
+        "633": 5.0,
+        "1632": 2015.0,
+        "1639": 3.0
+      }
+    },
+    "2149": {
+      "name": "Limited Oceanic Command Center",
+      "price": 670000.0,
+      "capacity": 500.0,
+      "published": false,
+      "dogma": {
+        "11": 9000.0,
+        "48": 7057.0,
+        "182": 2505.0,
+        "277": 1.0,
+        "633": 1.0,
+        "1632": 2014.0,
+        "1639": 3.0
+      }
+    },
+    "2150": {
+      "name": "Standard Oceanic Command Center",
+      "price": 1600000.0,
+      "capacity": 500.0,
+      "published": false,
+      "dogma": {
+        "11": 12000.0,
+        "48": 12136.0,
+        "182": 2505.0,
+        "277": 2.0,
+        "633": 2.0,
+        "1632": 2014.0,
+        "1639": 3.0
+      }
+    },
+    "2151": {
+      "name": "Improved Oceanic Command Center",
+      "price": 2800000.0,
+      "capacity": 500.0,
+      "published": false,
+      "dogma": {
+        "11": 15000.0,
+        "48": 17215.0,
+        "182": 2505.0,
+        "277": 3.0,
+        "633": 3.0,
+        "1632": 2014.0,
+        "1639": 3.0
+      }
+    },
+    "2152": {
+      "name": "Advanced Oceanic Command Center",
+      "price": 3700000.0,
+      "capacity": 500.0,
+      "published": false,
+      "dogma": {
+        "11": 17000.0,
+        "48": 21315.0,
+        "182": 2505.0,
+        "277": 4.0,
+        "633": 4.0,
+        "1632": 2014.0,
+        "1639": 3.0
+      }
+    },
+    "2153": {
+      "name": "Elite Oceanic Command Center",
+      "price": 6400000.0,
+      "capacity": 500.0,
+      "published": false,
+      "dogma": {
+        "11": 19000.0,
+        "48": 25415.0,
+        "182": 2505.0,
+        "277": 5.0,
+        "633": 5.0,
+        "1632": 2014.0,
+        "1639": 3.0
+      }
+    },
+    "2154": {
+      "name": "Limited Plasma Command Center",
+      "price": 670000.0,
+      "capacity": 500.0,
+      "published": false,
+      "dogma": {
+        "11": 9000.0,
+        "48": 7057.0,
+        "182": 2505.0,
+        "277": 1.0,
+        "633": 1.0,
+        "1632": 2063.0,
+        "1639": 3.0
+      }
+    },
+    "2155": {
+      "name": "Standard Plasma Command Center",
+      "price": 1600000.0,
+      "capacity": 500.0,
+      "published": false,
+      "dogma": {
+        "11": 12000.0,
+        "48": 12136.0,
+        "182": 2505.0,
+        "277": 2.0,
+        "633": 2.0,
+        "1632": 2063.0,
+        "1639": 3.0
+      }
+    },
+    "2156": {
+      "name": "Improved Plasma Command Center",
+      "price": 2800000.0,
+      "capacity": 500.0,
+      "published": false,
+      "dogma": {
+        "11": 15000.0,
+        "48": 17215.0,
+        "182": 2505.0,
+        "277": 3.0,
+        "633": 3.0,
+        "1632": 2063.0,
+        "1639": 3.0
+      }
+    },
+    "2157": {
+      "name": "Advanced Plasma Command Center",
+      "price": 3700000.0,
+      "capacity": 500.0,
+      "published": false,
+      "dogma": {
+        "11": 17000.0,
+        "48": 21315.0,
+        "182": 2505.0,
+        "277": 4.0,
+        "633": 4.0,
+        "1632": 2063.0,
+        "1639": 3.0
+      }
+    },
+    "2158": {
+      "name": "Elite Plasma Command Center",
+      "price": 6400000.0,
+      "capacity": 500.0,
+      "published": false,
+      "dogma": {
+        "11": 19000.0,
+        "48": 25415.0,
+        "182": 2505.0,
+        "277": 5.0,
+        "633": 5.0,
+        "1632": 2063.0,
+        "1639": 3.0
+      }
+    },
+    "2159": {
+      "name": "Limited Storm Command Center",
+      "price": 670000.0,
+      "capacity": 500.0,
+      "published": false,
+      "dogma": {
+        "11": 9000.0,
+        "48": 7057.0,
+        "182": 2505.0,
+        "277": 1.0,
+        "633": 1.0,
+        "1632": 2017.0,
+        "1639": 3.0
+      }
+    },
+    "2160": {
+      "name": "Standard Storm Command Center",
+      "price": 1600000.0,
+      "capacity": 500.0,
+      "published": false,
+      "dogma": {
+        "11": 12000.0,
+        "48": 12136.0,
+        "182": 2505.0,
+        "277": 2.0,
+        "633": 2.0,
+        "1632": 2017.0,
+        "1639": 3.0
+      }
+    },
+    "2254": {
+      "name": "Temperate Command Center",
+      "price": 90000.0,
+      "capacity": 500.0,
+      "published": true,
+      "dogma": {
+        "11": 6000.0,
+        "48": 1675.0,
+        "633": 0.0,
+        "1632": 11.0,
+        "1639": 3.0
+      }
+    },
+    "2256": {
+      "name": "Temperate Launchpad",
+      "price": 900000.0,
+      "capacity": 10000.0,
+      "published": true,
+      "dogma": {
+        "15": 700.0,
+        "49": 3600.0,
+        "1632": 11.0,
+        "1638": 0.5,
+        "1639": 1.0
+      }
+    },
+    "2257": {
+      "name": "Ice Storage Facility",
+      "price": 250000.0,
+      "capacity": 12000.0,
+      "published": true,
+      "dogma": {
+        "15": 700.0,
+        "49": 500.0,
+        "1632": 12.0
+      }
+    },
+    "2469": {
+      "name": "Lava Basic Industry Facility",
+      "price": 75000.0,
+      "capacity": 0,
+      "published": true,
+      "dogma": {
+        "15": 800.0,
+        "49": 200.0,
+        "1632": 2015.0
+      }
+    },
+    "2470": {
+      "name": "Lava Advanced Industry Facility",
+      "price": 250000.0,
+      "capacity": 0,
+      "published": true,
+      "dogma": {
+        "15": 700.0,
+        "49": 500.0,
+        "1632": 2015.0
+      }
+    },
+    "2471": {
+      "name": "Plasma Basic Industry Facility",
+      "price": 75000.0,
+      "capacity": 0,
+      "published": true,
+      "dogma": {
+        "15": 800.0,
+        "49": 200.0,
+        "1632": 2063.0
+      }
+    },
+    "2472": {
+      "name": "Plasma Advanced Industry Facility",
+      "price": 250000.0,
+      "capacity": 0,
+      "published": true,
+      "dogma": {
+        "15": 700.0,
+        "49": 500.0,
+        "1632": 2063.0
+      }
+    },
+    "2473": {
+      "name": "Barren Basic Industry Facility",
+      "price": 75000.0,
+      "capacity": 0,
+      "published": true,
+      "dogma": {
+        "15": 800.0,
+        "49": 200.0,
+        "1632": 2016.0
+      }
+    },
+    "2474": {
+      "name": "Barren Advanced Industry Facility",
+      "price": 250000.0,
+      "capacity": 0,
+      "published": true,
+      "dogma": {
+        "15": 700.0,
+        "49": 500.0,
+        "1632": 2016.0
+      }
+    },
+    "2475": {
+      "name": "Barren High-Tech Production Plant",
+      "price": 525000.0,
+      "capacity": 0,
+      "published": true,
+      "dogma": {
+        "15": 400.0,
+        "49": 1100.0,
+        "1632": 2016.0
+      }
+    },
+    "2480": {
+      "name": "Temperate Advanced Industry Facility",
+      "price": 250000.0,
+      "capacity": 0,
+      "published": true,
+      "dogma": {
+        "15": 700.0,
+        "49": 500.0,
+        "1632": 11.0
+      }
+    },
+    "2481": {
+      "name": "Temperate Basic Industry Facility",
+      "price": 75000.0,
+      "capacity": 0,
+      "published": true,
+      "dogma": {
+        "15": 800.0,
+        "49": 200.0,
+        "1632": 11.0
+      }
+    },
+    "2482": {
+      "name": "Temperate High-Tech Production Plant",
+      "price": 525000.0,
+      "capacity": 0,
+      "published": true,
+      "dogma": {
+        "15": 400.0,
+        "49": 1100.0,
+        "1632": 11.0
+      }
+    },
+    "2483": {
+      "name": "Storm Basic Industry Facility",
+      "price": 75000.0,
+      "capacity": 0,
+      "published": true,
+      "dogma": {
+        "15": 800.0,
+        "49": 200.0,
+        "1632": 2017.0
+      }
+    },
+    "2484": {
+      "name": "Storm Advanced Industry Facility",
+      "price": 250000.0,
+      "capacity": 0,
+      "published": true,
+      "dogma": {
+        "15": 700.0,
+        "49": 500.0,
+        "1632": 2017.0
+      }
+    },
+    "2485": {
+      "name": "Oceanic Advanced Industry Facility",
+      "price": 250000.0,
+      "capacity": 0,
+      "published": true,
+      "dogma": {
+        "15": 700.0,
+        "49": 500.0,
+        "1632": 2014.0
+      }
+    },
+    "2490": {
+      "name": "Oceanic Basic Industry Facility",
+      "price": 75000.0,
+      "capacity": 0,
+      "published": true,
+      "dogma": {
+        "15": 800.0,
+        "49": 200.0,
+        "1632": 2014.0
+      }
+    },
+    "2491": {
+      "name": "Ice Advanced Industry Facility",
+      "price": 250000.0,
+      "capacity": 0,
+      "published": true,
+      "dogma": {
+        "15": 700.0,
+        "49": 500.0,
+        "1632": 12.0
+      }
+    },
+    "2492": {
+      "name": "Gas Basic Industry Facility",
+      "price": 75000.0,
+      "capacity": 0,
+      "published": true,
+      "dogma": {
+        "15": 800.0,
+        "49": 200.0,
+        "1632": 13.0
+      }
+    },
+    "2493": {
+      "name": "Ice Basic Industry Facility",
+      "price": 75000.0,
+      "capacity": 0,
+      "published": true,
+      "dogma": {
+        "15": 800.0,
+        "49": 200.0,
+        "1632": 12.0
+      }
+    },
+    "2494": {
+      "name": "Gas Advanced Industry Facility",
+      "price": 250000.0,
+      "capacity": 0,
+      "published": true,
+      "dogma": {
+        "15": 700.0,
+        "49": 500.0,
+        "1632": 13.0
+      }
+    },
+    "2524": {
+      "name": "Barren Command Center",
+      "price": 90000.0,
+      "capacity": 500.0,
+      "published": true,
+      "dogma": {
+        "11": 6000.0,
+        "48": 1675.0,
+        "633": 0.0,
+        "1632": 2016.0,
+        "1639": 3.0
+      }
+    },
+    "2525": {
+      "name": "Oceanic Command Center",
+      "price": 90000.0,
+      "capacity": 500.0,
+      "published": true,
+      "dogma": {
+        "11": 6000.0,
+        "48": 1675.0,
+        "633": 0.0,
+        "1632": 2014.0,
+        "1639": 3.0
+      }
+    },
+    "2533": {
+      "name": "Ice Command Center",
+      "price": 90000.0,
+      "capacity": 500.0,
+      "published": true,
+      "dogma": {
+        "11": 6000.0,
+        "48": 1675.0,
+        "633": 0.0,
+        "1632": 12.0,
+        "1639": 3.0
+      }
+    },
+    "2534": {
+      "name": "Gas Command Center",
+      "price": 90000.0,
+      "capacity": 500.0,
+      "published": true,
+      "dogma": {
+        "11": 6000.0,
+        "48": 1675.0,
+        "633": 0.0,
+        "1632": 13.0,
+        "1639": 3.0
+      }
+    },
+    "2535": {
+      "name": "Oceanic Storage Facility",
+      "price": 250000.0,
+      "capacity": 12000.0,
+      "published": true,
+      "dogma": {
+        "15": 700.0,
+        "49": 500.0,
+        "1632": 2014.0
+      }
+    },
+    "2536": {
+      "name": "Gas Storage Facility",
+      "price": 250000.0,
+      "capacity": 12000.0,
+      "published": true,
+      "dogma": {
+        "15": 700.0,
+        "49": 500.0,
+        "1632": 13.0
+      }
+    },
+    "2541": {
+      "name": "Barren Storage Facility",
+      "price": 250000.0,
+      "capacity": 12000.0,
+      "published": true,
+      "dogma": {
+        "15": 700.0,
+        "49": 500.0,
+        "1632": 2016.0
+      }
+    },
+    "2542": {
+      "name": "Oceanic Launchpad",
+      "price": 900000.0,
+      "capacity": 10000.0,
+      "published": true,
+      "dogma": {
+        "15": 700.0,
+        "49": 3600.0,
+        "1632": 2014.0,
+        "1638": 0.5,
+        "1639": 1.0
+      }
+    },
+    "2543": {
+      "name": "Gas Launchpad",
+      "price": 900000.0,
+      "capacity": 10000.0,
+      "published": true,
+      "dogma": {
+        "15": 700.0,
+        "49": 3600.0,
+        "1632": 13.0,
+        "1638": 0.5,
+        "1639": 1.0
+      }
+    },
+    "2544": {
+      "name": "Barren Launchpad",
+      "price": 900000.0,
+      "capacity": 10000.0,
+      "published": true,
+      "dogma": {
+        "15": 700.0,
+        "49": 3600.0,
+        "1632": 2016.0,
+        "1638": 0.5,
+        "1639": 1.0
+      }
+    },
+    "2549": {
+      "name": "Lava Command Center",
+      "price": 90000.0,
+      "capacity": 500.0,
+      "published": true,
+      "dogma": {
+        "11": 6000.0,
+        "48": 1675.0,
+        "633": 0.0,
+        "1632": 2015.0,
+        "1639": 3.0
+      }
+    },
+    "2550": {
+      "name": "Storm Command Center",
+      "price": 90000.0,
+      "capacity": 500.0,
+      "published": true,
+      "dogma": {
+        "11": 6000.0,
+        "48": 1675.0,
+        "633": 0.0,
+        "1632": 2017.0,
+        "1639": 3.0
+      }
+    },
+    "2551": {
+      "name": "Plasma Command Center",
+      "price": 90000.0,
+      "capacity": 500.0,
+      "published": true,
+      "dogma": {
+        "11": 6000.0,
+        "48": 1675.0,
+        "633": 0.0,
+        "1632": 2063.0,
+        "1639": 3.0
+      }
+    },
+    "2552": {
+      "name": "Ice Launchpad",
+      "price": 900000.0,
+      "capacity": 10000.0,
+      "published": true,
+      "dogma": {
+        "15": 700.0,
+        "49": 3600.0,
+        "1632": 12.0,
+        "1638": 0.5,
+        "1639": 1.0
+      }
+    },
+    "2555": {
+      "name": "Lava Launchpad",
+      "price": 900000.0,
+      "capacity": 10000.0,
+      "published": true,
+      "dogma": {
+        "15": 700.0,
+        "49": 3600.0,
+        "1632": 2015.0,
+        "1638": 0.5,
+        "1639": 1.0
+      }
+    },
+    "2556": {
+      "name": "Plasma Launchpad",
+      "price": 900000.0,
+      "capacity": 10000.0,
+      "published": true,
+      "dogma": {
+        "15": 700.0,
+        "49": 3600.0,
+        "1632": 2063.0,
+        "1638": 0.5,
+        "1639": 1.0
+      }
+    },
+    "2557": {
+      "name": "Storm Launchpad",
+      "price": 900000.0,
+      "capacity": 10000.0,
+      "published": true,
+      "dogma": {
+        "15": 700.0,
+        "49": 3600.0,
+        "1632": 2017.0,
+        "1638": 0.5,
+        "1639": 1.0
+      }
+    },
+    "2558": {
+      "name": "Lava Storage Facility",
+      "price": 250000.0,
+      "capacity": 12000.0,
+      "published": true,
+      "dogma": {
+        "15": 700.0,
+        "49": 500.0,
+        "1632": 2015.0
+      }
+    },
+    "2560": {
+      "name": "Plasma Storage Facility",
+      "price": 250000.0,
+      "capacity": 12000.0,
+      "published": true,
+      "dogma": {
+        "15": 700.0,
+        "49": 500.0,
+        "1632": 2063.0
+      }
+    },
+    "2561": {
+      "name": "Storm Storage Facility",
+      "price": 250000.0,
+      "capacity": 12000.0,
+      "published": true,
+      "dogma": {
+        "15": 700.0,
+        "49": 500.0,
+        "1632": 2017.0
+      }
+    },
+    "2562": {
+      "name": "Temperate Storage Facility",
+      "price": 250000.0,
+      "capacity": 12000.0,
+      "published": true,
+      "dogma": {
+        "15": 700.0,
+        "49": 500.0,
+        "1632": 11.0
+      }
+    },
+    "2574": {
+      "name": "Improved Storm Command Center",
+      "price": 2800000.0,
+      "capacity": 500.0,
+      "published": false,
+      "dogma": {
+        "11": 15000.0,
+        "48": 17215.0,
+        "182": 2505.0,
+        "277": 3.0,
+        "633": 3.0,
+        "1632": 2017.0,
+        "1639": 3.0
+      }
+    },
+    "2576": {
+      "name": "Advanced Storm Command Center",
+      "price": 3700000.0,
+      "capacity": 500.0,
+      "published": false,
+      "dogma": {
+        "11": 17000.0,
+        "48": 21315.0,
+        "182": 2505.0,
+        "277": 4.0,
+        "633": 4.0,
+        "1632": 2017.0,
+        "1639": 3.0
+      }
+    },
+    "2577": {
+      "name": "Elite Storm Command Center",
+      "price": 6400000.0,
+      "capacity": 500.0,
+      "published": false,
+      "dogma": {
+        "11": 19000.0,
+        "48": 25415.0,
+        "182": 2505.0,
+        "277": 5.0,
+        "633": 5.0,
+        "1632": 2017.0,
+        "1639": 3.0
+      }
+    },
+    "2578": {
+      "name": "Limited Temperate Command Center",
+      "price": 670000.0,
+      "capacity": 500.0,
+      "published": false,
+      "dogma": {
+        "11": 9000.0,
+        "48": 7057.0,
+        "182": 2505.0,
+        "277": 1.0,
+        "633": 1.0,
+        "1632": 11.0,
+        "1639": 3.0
+      }
+    },
+    "2581": {
+      "name": "Standard Temperate Command Center",
+      "price": 1600000.0,
+      "capacity": 500.0,
+      "published": false,
+      "dogma": {
+        "11": 12000.0,
+        "48": 12136.0,
+        "182": 2505.0,
+        "277": 2.0,
+        "633": 2.0,
+        "1632": 11.0,
+        "1639": 3.0
+      }
+    },
+    "2582": {
+      "name": "Improved Temperate Command Center",
+      "price": 2800000.0,
+      "capacity": 500.0,
+      "published": false,
+      "dogma": {
+        "11": 15000.0,
+        "48": 17215.0,
+        "182": 2505.0,
+        "277": 3.0,
+        "633": 3.0,
+        "1632": 11.0,
+        "1639": 3.0
+      }
+    },
+    "2585": {
+      "name": "Advanced Temperate Command Center",
+      "price": 3700000.0,
+      "capacity": 500.0,
+      "published": false,
+      "dogma": {
+        "11": 17000.0,
+        "48": 21315.0,
+        "182": 2505.0,
+        "277": 4.0,
+        "633": 4.0,
+        "1632": 11.0,
+        "1639": 3.0
+      }
+    },
+    "2586": {
+      "name": "Elite Temperate Command Center",
+      "price": 6400000.0,
+      "capacity": 500.0,
+      "published": false,
+      "dogma": {
+        "11": 19000.0,
+        "48": 25415.0,
+        "182": 2505.0,
+        "277": 5.0,
+        "633": 5.0,
+        "1632": 11.0,
+        "1639": 3.0
+      }
+    },
+    "2848": {
+      "name": "Barren Extractor Control Unit",
+      "price": 45000.0,
+      "capacity": 0,
+      "published": true,
+      "dogma": {
+        "15": 2600.0,
+        "49": 400.0,
+        "1632": 2016.0,
+        "1642": 1000.0,
+        "1643": 300.0,
+        "1644": 5.0,
+        "1645": 1.0,
+        "1690": 110.0,
+        "1691": 550.0
+      }
+    },
+    "3060": {
+      "name": "Gas Extractor Control Unit",
+      "price": 45000.0,
+      "capacity": 0,
+      "published": true,
+      "dogma": {
+        "15": 2600.0,
+        "49": 400.0,
+        "1632": 13.0,
+        "1642": 1000.0,
+        "1643": 300.0,
+        "1644": 5.0,
+        "1645": 1.0,
+        "1690": 110.0,
+        "1691": 550.0
+      }
+    },
+    "3061": {
+      "name": "Ice Extractor Control Unit",
+      "price": 45000.0,
+      "capacity": 0,
+      "published": true,
+      "dogma": {
+        "15": 2600.0,
+        "49": 400.0,
+        "1632": 12.0,
+        "1642": 1000.0,
+        "1643": 300.0,
+        "1644": 5.0,
+        "1645": 1.0,
+        "1690": 110.0,
+        "1691": 550.0
+      }
+    },
+    "3062": {
+      "name": "Lava Extractor Control Unit",
+      "price": 45000.0,
+      "capacity": 0,
+      "published": true,
+      "dogma": {
+        "15": 2600.0,
+        "49": 400.0,
+        "1632": 2015.0,
+        "1642": 1000.0,
+        "1643": 300.0,
+        "1644": 5.0,
+        "1645": 1.0,
+        "1690": 110.0,
+        "1691": 550.0
+      }
+    },
+    "3063": {
+      "name": "Oceanic Extractor Control Unit",
+      "price": 45000.0,
+      "capacity": 0,
+      "published": true,
+      "dogma": {
+        "15": 2600.0,
+        "49": 400.0,
+        "1632": 2014.0,
+        "1642": 1000.0,
+        "1643": 300.0,
+        "1644": 5.0,
+        "1645": 1.0,
+        "1690": 110.0,
+        "1691": 550.0
+      }
+    },
+    "3064": {
+      "name": "Plasma Extractor Control Unit",
+      "price": 45000.0,
+      "capacity": 0,
+      "published": true,
+      "dogma": {
+        "15": 2600.0,
+        "49": 400.0,
+        "1632": 2063.0,
+        "1642": 1000.0,
+        "1643": 300.0,
+        "1644": 5.0,
+        "1645": 1.0,
+        "1690": 110.0,
+        "1691": 550.0
+      }
+    },
+    "3067": {
+      "name": "Storm Extractor Control Unit",
+      "price": 45000.0,
+      "capacity": 0,
+      "published": true,
+      "dogma": {
+        "15": 2600.0,
+        "49": 400.0,
+        "1632": 2017.0,
+        "1642": 1000.0,
+        "1643": 300.0,
+        "1644": 5.0,
+        "1645": 1.0,
+        "1690": 110.0,
+        "1691": 550.0
+      }
+    },
+    "3068": {
+      "name": "Temperate Extractor Control Unit",
+      "price": 45000.0,
+      "capacity": 0,
+      "published": true,
+      "dogma": {
+        "15": 2600.0,
+        "49": 400.0,
+        "1632": 11.0,
+        "1642": 1000.0,
+        "1643": 300.0,
+        "1644": 5.0,
+        "1645": 1.0,
+        "1690": 110.0,
+        "1691": 550.0
+      }
+    }
+  }
+}

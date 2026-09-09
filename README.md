@@ -853,6 +853,8 @@ Some EQM feature direction was inspired by research into [EVE Buddy](https://git
 
 See [3RD PARTY SOURCES.MD](3RD%20PARTY%20SOURCES.MD) for source provenance, licenses, validation references, and the project's rules for recording future third-party research or incorporation.
 
+The [PI operation planner](docs/pi-operation-planner.md) adds ESI-priced production comparisons, a Rust colony allocator, saved scenarios, recipe/inventory tools, scouting and original template previews. Solving PI informed the feature research; EQM includes no source code or community layouts from that project.
+
 ## License
 
 EVE Quartermaster is licensed under the **GNU Affero General Public License v3.0 or later**. See `LICENSE` for details.
