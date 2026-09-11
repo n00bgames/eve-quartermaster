@@ -116,6 +116,9 @@ def test_p4_from_shared_p2_follows_server_recipes(client, monkeypatch):
     r = response.json()
     assert r["mode"] == "chain" and r["engine_used"] == "rust"
     assert r["output_quantity"] == 2 and r["duration_seconds"] == 14400
+    assert r["pipeline_duration_seconds"] == 10800
+    assert r["timing_method"] == "overlapping_cycles"
+    assert [(tier["tier"], tier["product_count"]) for tier in r["tiers"]] == [(3, 2), (4, 1)]
     assert {s["type_id"]: s["produced"] for s in r["stages"]} == {30: 9, 31: 9, 40: 2}
     assert {i["type_id"]: i["remaining"] for i in r["ingredients"]} == {20: 5, 10: 6}
     for change in ({"feed_tier": 4}, {"stage_factories": {"3": 0}}, {"stage_factories": {"3": 10001}}):

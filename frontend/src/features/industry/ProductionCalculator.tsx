@@ -6,7 +6,10 @@ import { productionChain } from "./productionChain";
 export type PiHangar = { id: string; name: string; items: Record<string, number>; oldest_synced_at: string | null; has_unsynced_items: boolean };
 type Result = {
   mode?: "chain";
-  stages?: { recipe_id: number; type_id: number; tier: number; produced: number; consumed: number; remaining: number; factories: number; duration_seconds: number }[];
+  pipeline_duration_seconds?: number | null;
+  timing_method?: "overlapping_cycles" | "staged_only_event_limit";
+  tiers?: { tier: number; product_count: number; runtime_seconds: number; first_start_seconds: number | null; finished_at_seconds: number | null }[];
+  stages?: { recipe_id: number; type_id: number; tier: number; produced: number; consumed: number; remaining: number; factories: number; duration_seconds: number; first_start_seconds?: number | null; finished_at_seconds?: number | null }[];
   total_batches: number; output_quantity: number; duration_seconds: number;
   full_capacity_seconds: number; final_round_factories: number;
   ingredients: { type_id: number; available: number; consumed: number; remaining: number; limiting: boolean; required_per_round: number }[];
@@ -81,13 +84,24 @@ export function ProductionCalculator({ recipes, hangar, api }: {
     {error && <p className="mini-alert">{error}</p>}
     {current && <>
       <div className="status-grid planetary-report-summary">
-        <article><span>{current.mode === "chain" ? "Staged completion estimate" : "Production ends after"}</span><strong>{duration(current.duration_seconds)}</strong><small>{current.mode === "chain" ? "Each tier finishes before the next starts" : "From starting with this stock"}</small></article>
+        <article><span>{current.mode === "chain" ? "Overall finish · overlapping production" : "Production ends after"}</span><strong>{current.mode === "chain" ? current.pipeline_duration_seconds == null ? "See tier runtimes" : duration(current.pipeline_duration_seconds) : duration(current.duration_seconds)}</strong><small>{current.mode === "chain" ? "Includes startup and waits for intermediate materials" : "From starting with this stock"}</small></article>
+        {current.tiers?.map(tier => <article key={tier.tier}><span>P{tier.tier} production</span><strong>{duration(tier.runtime_seconds)}</strong><small>{tier.product_count} {tier.product_count === 1 ? "product" : "products running in parallel"} · runtime with inputs available</small><small>{tier.first_start_seconds == null ? "" : `Starts ${duration(tier.first_start_seconds)} · finishes ${duration(tier.finished_at_seconds!)}`}</small></article>)}
         {current.mode !== "chain" && <article><span>All factories supplied for</span><strong>{duration(current.full_capacity_seconds)}</strong><small>{current.final_round_factories ? `${current.final_round_factories} factories can run one final cycle` : "No partial final round"}</small></article>}
         <article><span>Total output</span><strong>{number.format(current.output_quantity)}</strong><small>{recipe?.output.name} · {number.format(current.total_batches)} factory cycles</small></article>
       </div>
+      {current.mode === "chain" && <>
+        <p className="muted">Tier runtimes overlap; do not add them together. All times are measured from starting with the entered feedstock.</p>
+        {current.pipeline_duration_seconds == null && <p className="notice warning">{current.timing_method === "staged_only_event_limit" ? "This stockpile exceeds the detailed timing calculation limit. Output quantities and tier work times remain calculated; no overlapping finish time is available." : "Rebuild the backend to enable overlapping production timing."}</p>}
+        <details><summary>Sequential comparison only: {duration(current.duration_seconds)}</summary><p>This is how long it would take if every tier waited for the previous tier to finish completely. It is not the overlapping production estimate.</p></details>
+      </>}
       <div className="table-wrap"><table><thead><tr><th>Ingredient</th><th>On hand</th><th>Consumed</th><th>Left over</th><th>Limit</th></tr></thead><tbody>{current.ingredients.map(i => <tr key={i.type_id}><td>{names.get(i.type_id)}</td><td>{number.format(i.available)}</td><td>{number.format(i.consumed)}</td><td>{number.format(i.remaining)}</td><td>{i.limiting ? "Limits next output batch" : "—"}</td></tr>)}</tbody></table></div>
-      {current.stages && <div className="table-wrap"><table><thead><tr><th>Production stage</th><th>Made</th><th>Used downstream</th><th>Intermediate left over</th><th>Factories</th><th>Runtime</th></tr></thead><tbody>{current.stages.map(stage => <tr key={stage.recipe_id}><td>P{stage.tier} · {names.get(stage.type_id)}</td><td>{number.format(stage.produced)}</td><td>{number.format(stage.consumed)}</td><td>{stage.recipe_id === recipe?.id ? "Final output" : number.format(stage.remaining)}</td><td>{number.format(stage.factories)}</td><td>{duration(stage.duration_seconds)}</td></tr>)}</tbody></table></div>}
-      <small className="planetary-report-caveat">{current.mode === "chain" ? "The time estimate runs recipes within each tier in parallel, then starts the next tier. Overlapping tiers in-game may finish sooner. Unused feedstock is left unprocessed; intermediate stock already on hand is not included in feed-tier mode. " : ""}Assumes ingredients are delivered and distributed between factories. Storage, routing, hauling time and partially completed cycles are not simulated.</small>
+      {current.tiers?.map(tier => <section key={tier.tier}>
+        <h4>P{tier.tier} production · {tier.product_count} {tier.product_count === 1 ? "product" : "products"}</h4>
+        <div className="table-wrap"><table><thead><tr><th>Product</th><th>Made</th><th>Used downstream</th><th>Left over</th><th>Factories</th><th>Runtime with inputs available</th><th>Starts after</th><th>Finishes after</th></tr></thead><tbody>{current.stages?.filter(stage => stage.tier === tier.tier).map(stage => <tr key={stage.recipe_id}>
+          <td>{names.get(stage.type_id)}</td><td>{number.format(stage.produced)}</td><td>{number.format(stage.consumed)}</td><td>{stage.recipe_id === recipe?.id ? "Final output" : number.format(stage.remaining)}</td><td>{number.format(stage.factories)}</td><td>{duration(stage.duration_seconds)}</td><td>{stage.first_start_seconds == null ? "—" : duration(stage.first_start_seconds)}</td><td>{stage.finished_at_seconds == null ? "—" : duration(stage.finished_at_seconds)}</td>
+        </tr>)}</tbody></table></div>
+      </section>)}
+      <small className="planetary-report-caveat">{current.mode === "chain" ? "The overlapping estimate starts ready factory cycles as soon as inputs and dedicated factories are available, with instant delivery between stages. Actual routing, storage and cycle alignment can delay production. Unused feedstock is left unprocessed; intermediate stock already on hand is not included in feed-tier mode. " : ""}Assumes ingredients are delivered and distributed between factories. Storage, routing, hauling time and partially completed cycles are not simulated.</small>
     </>}
     {!recipes.length && <p className="empty">Import the SDE PI schematic catalog to load recipes.</p>}
   </section>;

@@ -10,6 +10,8 @@ Planned release title: **v1.0.0 — The Bigger Bite of the PI 1.0 Release!**
 
 ### Changed
 
+- Replaced the PI chain calculator's sequential headline time with an overlapping-cycle estimate and separate per-tier/per-product production times; sequential timing remains a labeled comparison.
+
 - Extended the Production Calculator to turn lower-tier feedstock (including P2) into complete P3/P4 chains, with shared-input accounting, intermediate leftovers, and per-recipe factory counts.
 
 - Prepared EQM 1.0.0 as a regular release, without the beta/prerelease label.

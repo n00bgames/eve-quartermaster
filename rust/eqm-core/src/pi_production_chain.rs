@@ -1,7 +1,8 @@
 //! Complete-cycle expansion with shared feedstock across a PI recipe DAG.
 use serde::Deserialize;
 use serde_json::{json, Value};
-use std::collections::{BTreeMap, BTreeSet};
+use std::cmp::Reverse;
+use std::collections::{BTreeMap, BTreeSet, BinaryHeap};
 
 #[derive(Clone, Deserialize)]
 pub struct Input {
@@ -99,6 +100,96 @@ fn expand(
     }
     Ok(p)
 }
+struct Pipeline {
+    duration: u64,
+    first_start: BTreeMap<u64, u64>,
+    finished: BTreeMap<u64, u64>,
+}
+
+// Run complete factory cycles concurrently. Deliver every completion at a timestamp
+// before starting more work, so ready downstream jobs do not gain an artificial delay.
+fn pipeline(
+    root: u64,
+    order: &[u64],
+    recipes: &BTreeMap<u64, Recipe>,
+    plan: &Plan,
+    inventory: BTreeMap<u64, u64>,
+    factories: &BTreeMap<u64, u64>,
+) -> Result<Option<Pipeline>, String> {
+    let mut stock = inventory;
+    let mut remaining = plan.batches.clone();
+    let mut active = BTreeMap::<u64, u64>::new();
+    let mut events = BinaryHeap::<Reverse<(u64, u64, u64)>>::new();
+    let mut result = Pipeline {
+        duration: 0,
+        first_start: BTreeMap::new(),
+        finished: BTreeMap::new(),
+    };
+    let mut now = 0;
+    let mut completed_events = 0;
+    loop {
+        for id in order
+            .iter()
+            .rev()
+            .filter(|id| plan.batches.contains_key(id))
+        {
+            let r = &recipes[id];
+            let running = *active.get(id).unwrap_or(&0);
+            let mut count = remaining[id].min(*factories.get(&r.id).unwrap_or(&1) - running);
+            let mut requirements = BTreeMap::<u64, u64>::new();
+            for input in &r.inputs {
+                *requirements.entry(input.type_id).or_default() += input.quantity;
+            }
+            for (type_id, quantity) in &requirements {
+                count = count.min(*stock.get(type_id).unwrap_or(&0) / quantity);
+            }
+            if count == 0 {
+                continue;
+            }
+            for (type_id, quantity) in requirements {
+                *stock.entry(type_id).or_default() -= count * quantity;
+            }
+            *remaining.get_mut(id).unwrap() -= count;
+            *active.entry(*id).or_default() += count;
+            result.first_start.entry(*id).or_insert(now);
+            events.push(Reverse((
+                now.checked_add(r.cycle_time).ok_or("Duration overflow")?,
+                *id,
+                count,
+            )));
+        }
+        let Some(Reverse((next_time, _, _))) = events.peek() else {
+            if remaining.values().any(|n| *n > 0) {
+                return Err("Production schedule could not complete".into());
+            }
+            return Ok(Some(result));
+        };
+        now = *next_time;
+        while events
+            .peek()
+            .is_some_and(|Reverse((time, _, _))| *time == now)
+        {
+            let Reverse((_, id, count)) = events.pop().unwrap();
+            completed_events += 1;
+            // Keep very large stockpiles responsive; retain exact yield and staged
+            // runtimes when a bounded event simulation cannot provide an ETA.
+            if completed_events > 20_000 {
+                return Ok(None);
+            }
+            *active.get_mut(&id).unwrap() -= count;
+            let produced = count
+                .checked_mul(recipes[&id].output_quantity)
+                .ok_or("Quantity overflow")?;
+            let entry = stock.entry(id).or_default();
+            *entry = entry.checked_add(produced).ok_or("Quantity overflow")?;
+            result.finished.insert(id, now);
+            if id == root {
+                result.duration = now;
+            }
+        }
+    }
+}
+
 pub fn calculate(req: Request) -> Result<Value, String> {
     if req.recipes.is_empty()
         || req.recipes.len() > 512
@@ -177,6 +268,17 @@ pub fn calculate(req: Request) -> Result<Value, String> {
         json!({"type_id":id,"available":available,"consumed":used,"remaining":available-used,
             "limiting":next.demand[id]>available,"needed_for_next_batch":next.demand[id].saturating_sub(available)})
     }).collect();
+    let schedule = pipeline(
+        root,
+        &order,
+        &recipes,
+        &plan,
+        feeds
+            .iter()
+            .map(|id| (*id, *req.inventory.get(id).unwrap_or(&0)))
+            .collect(),
+        &req.factories,
+    )?;
     let mut stages = Vec::new();
     let mut tier_seconds = BTreeMap::<u8, u64>::new();
     for id in order.iter().rev().filter(|id| tiers[id] > req.feed_tier) {
@@ -194,16 +296,26 @@ pub fn calculate(req: Request) -> Result<Value, String> {
             .ok_or("Quantity overflow")?;
         stages.push(json!({"recipe_id":r.id,"type_id":id,"tier":tiers[id],"batches":batches,"produced":made,
             "consumed":if *id==root {0} else {plan.demand[id]},"remaining":if *id==root {0} else {made-plan.demand[id]},
-            "factories":factories,"duration_seconds":duration,"final_round_factories":batches%factories}));
+            "factories":factories,"duration_seconds":duration,"final_round_factories":batches%factories,
+            "first_start_seconds":schedule.as_ref().and_then(|s|s.first_start.get(id)),
+            "finished_at_seconds":schedule.as_ref().and_then(|s|s.finished.get(id))}));
     }
     let duration = tier_seconds
         .values()
         .try_fold(0u64, |a, b| a.checked_add(*b))
         .ok_or("Duration overflow")?;
+    let tier_summary: Vec<Value> = tier_seconds.iter().map(|(tier, runtime)| {
+        let ids: Vec<_> = plan.batches.keys().filter(|id| tiers[id] == *tier).collect();
+        json!({"tier":tier,"product_count":ids.len(),"runtime_seconds":runtime,
+            "first_start_seconds":schedule.as_ref().and_then(|s|ids.iter().filter_map(|id|s.first_start.get(id)).min()),
+            "finished_at_seconds":schedule.as_ref().and_then(|s|ids.iter().filter_map(|id|s.finished.get(id)).max())})
+    }).collect();
     Ok(
         json!({"schema_version":"eqm.pi-production.v1","mode":"chain","feed_tier":req.feed_tier,
         "total_batches":low,"output_quantity":plan.demand[&root],"duration_seconds":duration,
-        "ingredients":ingredients,"stages":stages}),
+        "ingredients":ingredients,"stages":stages,"tiers":tier_summary,
+        "pipeline_duration_seconds":schedule.as_ref().map(|s|s.duration),
+        "timing_method":if schedule.is_some() {"overlapping_cycles"} else {"staged_only_event_limit"}}),
     )
 }
 
@@ -230,7 +342,11 @@ mod tests {
         assert_eq!(r["ingredients"][0]["remaining"], 5);
         assert_eq!(r["stages"][0]["produced"], 9);
         assert_eq!(r["stages"][0]["remaining"], 1);
-        assert_eq!(r["duration_seconds"], 14400); // 2h P3, then 2h P4.
+        assert_eq!(r["duration_seconds"], 14400); // Sequential comparison.
+        assert_eq!(r["pipeline_duration_seconds"], 10800); // P4 starts at hour 1.
+        assert_eq!(r["tiers"][0]["runtime_seconds"], 7200);
+        assert_eq!(r["tiers"][0]["product_count"], 2);
+        assert_eq!(r["tiers"][1]["first_start_seconds"], 3600);
         assert_eq!(r["ingredients"][0]["limiting"], true);
     }
     #[test]
@@ -256,11 +372,53 @@ mod tests {
     fn large_stock_is_bounded_and_conserved() {
         let r = run(json!({"20":1_000_000_000_000u64,"10":1_000_000_000_000u64}));
         assert!(r["output_quantity"].as_u64().unwrap() > 1_000_000);
+        assert_eq!(r["pipeline_duration_seconds"], Value::Null);
+        assert_eq!(r["timing_method"], "staged_only_event_limit");
         for i in r["ingredients"].as_array().unwrap() {
             assert_eq!(
                 i["consumed"].as_u64().unwrap() + i["remaining"].as_u64().unwrap(),
                 1_000_000_000_000
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod pipeline_examples {
+    use super::*;
+    #[test]
+    fn screenshot_balanced_three_p3_lines_feed_two_p4_factories() {
+        // Reproduce the screenshot's batch quantities and factory counts.
+        let mut recipes = vec![
+            json!({"id":1,"output_type_id":10,"output_quantity":20,"cycle_time":1800,"inputs":[{"type_id":1,"quantity":3000}]}),
+        ];
+        for id in 20..26 {
+            recipes.push(json!({"id":id,"output_type_id":id,"output_quantity":5,"cycle_time":3600,"inputs":[{"type_id":10,"quantity":40}]}));
+        }
+        for (id, a, b) in [(30, 20, 21), (31, 22, 23), (32, 24, 25)] {
+            recipes.push(json!({"id":id,"output_type_id":id,"output_quantity":3,"cycle_time":3600,"inputs":[{"type_id":a,"quantity":10},{"type_id":b,"quantity":10}]}));
+        }
+        recipes.push(json!({"id":40,"output_type_id":40,"output_quantity":1,"cycle_time":3600,"inputs":[{"type_id":30,"quantity":6},{"type_id":31,"quantity":6},{"type_id":32,"quantity":6}]}));
+        let req = json!({"target_id":40,"feed_tier":2,"recipes":recipes,
+            "inventory":{"20":4240,"21":11595,"22":6700,"23":10980,"24":8350,"25":6675},
+            "factories":{"30":4,"31":4,"32":4,"40":2}});
+        let result = calculate(serde_json::from_value(req.clone()).unwrap()).unwrap();
+        assert_eq!(result["output_quantity"], 212);
+        assert_eq!(result["pipeline_duration_seconds"], 107 * 3600); // 4d 11h, including first P3 cycle.
+        assert_eq!(result["duration_seconds"], 212 * 3600);
+        assert_eq!(result["tiers"][0]["runtime_seconds"], 106 * 3600);
+        assert_eq!(result["tiers"][0]["product_count"], 3);
+        assert_eq!(result["tiers"][1]["runtime_seconds"], 106 * 3600);
+        let mut slow = req.clone();
+        slow["factories"]["30"] = json!(2);
+        let slow = calculate(serde_json::from_value(slow).unwrap()).unwrap();
+        assert_eq!(slow["pipeline_duration_seconds"], 213 * 3600); // Slower one P3 line limits all P4.
+        assert_eq!(slow["output_quantity"], 212);
+        let mut empty = req;
+        empty["inventory"] = json!({});
+        assert_eq!(
+            calculate(serde_json::from_value(empty).unwrap()).unwrap()["pipeline_duration_seconds"],
+            0
+        );
     }
 }
