@@ -37,7 +37,7 @@ Verify the application version, select a visible corporate station/Upwell hangar
 ## Current release preparation
 
 - Pushed implementation commit: `cb79eca70f2fa9fa5663f77407d596b7bdebba7f` (PI supply monitoring, Rust calculator, 1.0 preparation).
-- Planned regular release: **v1.0.0 — A Bigger Slice of the PI Update!** No beta/prerelease designation.
+- Planned regular release: **v1.0.0 — The Bigger Bite of the PI 1.0 Release!** No beta/prerelease designation.
 - Fitting Simulator is for informational purposes only, still in development, and not PYFA-complete.
 - Remote checkout was clean at `003f4c5` when inspected on September 11. The new PI changes have not been deployed during this handoff update; recheck current state next time.
 - GitHub publication/tagging remains separate from testing the pushed code on the remote server.

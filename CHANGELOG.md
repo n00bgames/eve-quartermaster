@@ -6,7 +6,7 @@ Version sections are written as user-facing release notes first, with implementa
 
 ## Unreleased
 
-Planned release title: **v1.0.0 — A Bigger Slice of the PI Update!**
+Planned release title: **v1.0.0 — The Bigger Bite of the PI 1.0 Release!**
 
 ### Changed
 
