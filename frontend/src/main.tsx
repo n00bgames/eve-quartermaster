@@ -13,6 +13,7 @@ import { BROWSER_TIMEZONE, formatDateTime, formatDurationMs, formatTimeOnly, loc
 import { assetFamily, assetSubtype, blueprintFamily, blueprintSubtype, inventoryFamilyLabels, looksCapitalRelated, matchesInventoryFamily, sortedUnique, visibleAssetLocations, visibleAssetQuantity } from "./lib/inventory";
 import { BlueprintHoverCard, blueprintHoverDetails } from "./components/BlueprintHoverCard";
 import { WardecBadge } from "./components/WardecBadge";
+import { HeaderClocks } from "./components/HeaderClocks";
 import { MarketAppraisalPage } from "./features/market/MarketAppraisalPage";
 import { CorporateExchangePage } from "./features/exchange/CorporateExchangePage";
 import { PublicExchangeListingPage } from "./features/exchange/PublicExchangeListingPage";
@@ -738,6 +739,8 @@ function App() {
           </div>
 
           <div className="toolbar">
+
+            <HeaderClocks localTimeZone={preferredTimeZone(user)} />
 
             <span className="status-badge version-badge">v{APP_VERSION}</span>
 

@@ -1,0 +1,17 @@
+.header-clocks {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 12px;
+  border: 1px solid #303741;
+  border-radius: 8px;
+  background: #12171df0;
+}
+
+.header-clock { display: grid; gap: 2px; }
+.header-clock + .header-clock { border-left: 1px solid #303741; padding-left: 12px; }
+.header-clock-label { display: flex; align-items: baseline; gap: 6px; color: #aab4c2; font-size: .72rem; font-weight: 700; }
+.header-clock-label small { max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .65rem; font-weight: 400; }
+.header-clock time { color: #f5f7fa; font-size: .95rem; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.header-clock:first-child time { color: #c9f6ff; }
