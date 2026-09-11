@@ -13,11 +13,15 @@ Select a corporate station/Upwell hangar above the report to monitor its cached 
 
 Corporate assets use EQM's existing owner visibility rules and Assets section permission. Divisions are identified by corporation, resolved station/structure, and CorpSAG1–7. Nested containers resolve through visible asset ancestry, with cycle and cross-owner guards. Unresolved locations and ancestry are excluded. Empty divisions are offered at known corporate hangar locations; locations with no synced corporate hangar records cannot be discovered from an empty asset list. Division names fall back to CorpSAG flags until metadata is synced.
 
+The **Sync this corporation’s assets** button beside the source selector uses an eligible token from the existing Corporations permissions workflow, refreshes the entire selected corporation (ESI has no location-only asset sync), then reloads the displayed hangar stock. It is disabled without an authorized asset token. Failed syncs are shown explicitly; ESI caching can delay in-game changes even after success. Calculator entries stay as entered until an import button is used again.
+
 PI sync only refreshes colonies. Use the existing corporation asset sync to refresh hangar contents; the PI page rereads cached records every 30 seconds. Oldest item sync time and missing timestamps are displayed. Snapshots can lag in-game transfers, so stock may still require hauling or a newer ESI checkpoint.
 
 ## Production Calculator
 
 Choose a PI recipe from the SDE catalog, enter ingredient quantities and a factory count, or copy the selected hangar stock. For a P4 product, the calculator defaults to P2 feedstock. Select Materials I feed to expand the recipe chain from P0, P1, P2, or P3 as appropriate, or choose Direct recipe ingredients for the original single-step calculation. Lower-tier inputs used directly remain listed even when feeding P2. Shared ingredients are deduplicated and allocated across the entire chain. Missing quantities mean zero. Inputs must be whole nonnegative units; factories must be 1–10,000.
+
+Use selected hangar stock imports all listed ingredients. The small **I** button beside each quantity imports just that material and preserves other entries; its tooltip previews the quantity and hangar. Import buttons are disabled until a hangar is selected. Materials absent from the selected snapshot import as zero. Imports use cached corporation assets, so sync those assets first if stock has changed in-game.
 
 For direct-input mode:
 

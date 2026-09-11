@@ -19,6 +19,8 @@ Planned release title: **v1.0.0 — The Bigger Bite of the PI 1.0 Release!**
 
 ### Added
 
+- Added individual ingredient import buttons to the PI Production Calculator alongside the existing bulk hangar import, plus a corporation asset sync action beside the inventory source selector.
+
 - Added bright-green PI surplus reporting, selectable corporate station/Upwell hangar stock with saved browser preference, and separate inventory/runway accounting.
 - Added a Rust-backed PI Production Calculator for recipe ingredients, parallel factories, runtime, limiting inputs and leftovers, with optional hangar-stock autofill.
 - Added EVE (UTC) and local clocks to the top bar.

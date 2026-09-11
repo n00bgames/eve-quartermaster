@@ -1,5 +1,6 @@
 import { AlertTriangle, BarChart3, ChevronDown, Download, Factory, Globe2, RefreshCw, Timer, Warehouse } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { HangarAssetSync } from "./HangarAssetSync";
 import { PiPlanner } from "./PiPlanner";
 import { ProductionCalculator, type PiHangar } from "./ProductionCalculator";
 import "./piSupply.css";
@@ -272,6 +273,7 @@ export function PlanetaryIndustryPage({
         setHangarId(e.target.value);
         try { if (inventoryPreferenceKey.current) window.localStorage.setItem(inventoryPreferenceKey.current, e.target.value); } catch { /* Selection still works without storage. */ }
       }}><option value="">Colony stock only</option>{hangarId && !selectedHangar && <option value={hangarId}>Previously selected hangar (unavailable)</option>}{hangars.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}</select></label>
+      <HangarAssetSync hangar={selectedHangar} api={api} onSynced={load} />
       <small>Station and Upwell corporate divisions visible to your EQM account, including stock in nested containers. Updated from the latest corporate asset sync; PI sync does not refresh hangars.</small>
       {selectedHangar && <small>Oldest item sync: {selectedHangar.oldest_synced_at ? formatDateTime(selectedHangar.oldest_synced_at) : "No item timestamp"}{selectedHangar.has_unsynced_items ? " · Includes manually entered or unsynced items" : ""}</small>}
       {selectedHangar && <details><summary>Monitored PI inventory · {hangarMaterials.length} materials</summary>

@@ -9,3 +9,13 @@
 
 .pi-production-calculator > section { min-width: 0; }
 .pi-production-calculator .status-grid small { display: block; margin-top: 4px; }
+
+.pi-ingredient-field { display: grid; gap: 6px; min-width: 0; }
+.pi-ingredient-input { display: flex; align-items: stretch; gap: 6px; min-width: 0; }
+.pi-ingredient-input input { flex: 1; min-width: 0; width: 100%; }
+.pi-ingredient-input .pi-import-ingredient { flex: 0 0 36px; min-height: 36px; padding: 4px; font-weight: 700; background: #192f3c; color: #8bdfff; border: 1px solid #4a879a; border-radius: 6px; cursor: pointer; }
+
+.pi-hangar-sync { display: grid; gap: 6px; }
+.pi-hangar-sync p { margin: 0; }
+
+.pi-ingredient-input .pi-import-ingredient:disabled { opacity: .45; cursor: not-allowed; }

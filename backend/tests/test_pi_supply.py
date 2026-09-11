@@ -29,6 +29,8 @@ def test_hangars_include_nested_containers_once_and_separate_owners_and_division
             asset(6, location=station, flag="CorpSAG1", owner_id=2, quantity=50),
             asset(7, parent=999, quantity=1000), asset(8, parent=9), asset(9, parent=8)]
     groups={h["id"]:h for h in pi_supply.group_hangars(rows,{(1,"CorpSAG1"):"PI stock"})["hangars"]}
+    assert groups["1:7:CorpSAG1"]["corporation_record_id"] == 1
+    assert groups["2:7:CorpSAG1"]["corporation_record_id"] == 2
     assert len(groups)==21
     assert groups["1:7:CorpSAG1"]["items"]["3645"]==50
     assert groups["1:7:CorpSAG2"]["items"]["3645"]==20

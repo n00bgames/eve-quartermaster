@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import type { PlanetarySchematic } from "../../types/planetaryIndustry";
 
 import { productionChain } from "./productionChain";
 
-export type PiHangar = { id: string; name: string; items: Record<string, number>; oldest_synced_at: string | null; has_unsynced_items: boolean };
+export type PiHangar = { id: string; corporation_record_id?: number; name: string; items: Record<string, number>; oldest_synced_at: string | null; has_unsynced_items: boolean };
 type Result = {
   mode?: "chain";
   pipeline_duration_seconds?: number | null;
@@ -21,6 +21,7 @@ export function ProductionCalculator({ recipes, hangar, api }: {
   recipes: PlanetarySchematic[]; hangar?: PiHangar;
   api: <T>(path: string, options?: RequestInit) => Promise<T>;
 }) {
+  const stockId = useId();
   const [recipeId, setRecipeId] = useState("");
   const [factories, setFactories] = useState("1");
   const [feedTier, setFeedTier] = useState<number | null>(null);
@@ -74,7 +75,21 @@ export function ProductionCalculator({ recipes, hangar, api }: {
     {recipe && <>
       <p>{number.format(recipe.output.quantity)} {recipe.output.name} per {duration(recipe.cycle_time)} factory cycle.</p>
       <div className="button-row compact"><button type="button" disabled={!hangar} onClick={() => setStock(Object.fromEntries(chain.inputs.map(i => [String(i.type_id), String(hangar?.items[String(i.type_id)] ?? 0)])))}>Use selected hangar stock</button></div>
-      <div className="planetary-controls">{chain.inputs.map(i => <label key={i.type_id}>{i.name}{feedTier === null ? ` · ${number.format(i.quantity)} per cycle` : " · on hand"}<input type="number" min="0" max="1000000000000" step="1" value={stock[String(i.type_id)] ?? ""} placeholder="0" onChange={e => setStock(s => ({ ...s, [String(i.type_id)]: e.target.value }))} /></label>)}</div>
+      <small className="muted">Use I beside an ingredient to import only that quantity from the selected hangar's latest asset snapshot.</small>
+      <div className="planetary-controls">{chain.inputs.map(i => {
+        const typeId = String(i.type_id);
+        const available = hangar?.items[typeId] ?? 0;
+        return <div className="pi-ingredient-field" key={typeId}>
+          <label htmlFor={`${stockId}-${typeId}`}>{i.name}{feedTier === null ? ` · ${number.format(i.quantity)} per cycle` : " · on hand"}</label>
+          <div className="pi-ingredient-input">
+            <input id={`${stockId}-${typeId}`} type="number" min="0" max="1000000000000" step="1" value={stock[typeId] ?? ""} placeholder="0" onChange={e => setStock(s => ({ ...s, [typeId]: e.target.value }))} />
+            <button type="button" className="pi-import-ingredient" disabled={!hangar}
+              aria-label={`Import ${i.name} from selected hangar`}
+              title={hangar ? `Import ${number.format(available)} ${i.name} from ${hangar.name}` : "Select a corporate hangar to import stock"}
+              onClick={() => setStock(s => ({ ...s, [typeId]: String(available) }))}>I</button>
+          </div>
+        </div>;
+      })}</div>
     </>}
     {recipe && feedTier !== null && <>
       <p>Enter the listed feed materials, including any lower-tier ingredients used directly by this recipe. Shared materials are counted once. Intermediate production is allocated to maximize complete {recipe.output.name} batches.</p>

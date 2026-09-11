@@ -48,7 +48,7 @@ def group_hangars(assets, names):
             flag = f"CorpSAG{index}"
             key = f"{owner.id}:{location.id}:{flag}"
             groups.setdefault(key, {
-                "id": key,
+                "id": key, "corporation_record_id": owner.corporation_id,
                 "name": f"{owner.display_name} · {location.name} · {names.get((owner.corporation_id, flag), flag)}",
                 "items": {}, "oldest_synced_at": None, "has_unsynced_items": False,
             })
