@@ -14,6 +14,7 @@ from app.api.auth import get_current_user
 from app.api.characters import can_sync_character_data, visible_characters
 from app.api.esi import (
     apply_type_metadata,
+    corporation_role_names,
     apply_type_names,
     get_linked_token,
     refresh_access_token,
@@ -37,7 +38,8 @@ from app.models import (
 )
 from app.models.enums import SyncStatus
 from app.services.esi_client import EsiClient
-from app.services.permissions import can_view_section
+from app.services.permissions import can_view_section, role_rank, ROLE_RANK
+from app.services.pi_character_scope import character_scopes, scoped_payload, verified_corporations
 from app.services.planetary_analytics import record_planetary_production_snapshot
 from app.services.planetary_industry import (
     DEFAULT_DECAY_FACTOR,
@@ -67,7 +69,8 @@ def inventory_hangars(current_user: User = Depends(get_current_user), db: Sessio
 
 
 @router.get("/supply-report")
-def supply_report(target_type_id: int | None = Query(None, gt=0), hangar_id: str | None = Query(None, max_length=100),
+async def supply_report(character_scope: str = Query("mine", pattern="^(mine|corp|all)$"), character_id: int | None = Query(None, gt=0),
+                  target_type_id: int | None = Query(None, gt=0), hangar_id: str | None = Query(None, max_length=100),
                   current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     require_planetary_view(current_user, db)
     selected = None
@@ -75,10 +78,10 @@ def supply_report(target_type_id: int | None = Query(None, gt=0), hangar_id: str
         selected = next((h for h in hangar_snapshot(current_user, db)["hangars"] if h["id"] == hangar_id), None)
         if selected is None:
             raise HTTPException(404, "Hangar is unavailable or not visible")
-    payload = list_planetary_industry(current_user, db)
+    payload = scoped_payload(await list_planetary_industry(current_user, db), character_scope, character_id)
     payload["hangar_stock"] = selected["items"] if selected else {}
     extra = ["--target-type-id", str(target_type_id)] if target_type_id else []
-    result = native_calculation("pi-shortage", payload, extra)
+    result = await asyncio.to_thread(native_calculation, "pi-shortage", payload, extra)
     result["inventory_source"] = {"id": selected["id"], "name": selected["name"]} if selected else None
     if selected:
         result["caveats"].append("Selected hangar inventory is a cached asset snapshot, not live ESI stock; hauling to factories is required.")
@@ -471,12 +474,36 @@ def sync_token_payload(db: Session, user: User, character_ids: set[int]) -> list
 
 
 @router.get("")
-def list_planetary_industry(
+async def list_planetary_industry(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     require_planetary_view(current_user, db)
     characters = visible_characters(current_user, db)
+    rank = role_rank(current_user, db)
+    authorized_corps, verification_failed = set(), False
+    if rank >= ROLE_RANK["director"]:
+        own_ids = {row.id for row in characters if row.owner_user_id == current_user.id}
+        tokens = db.scalars(select(EsiToken).where(EsiToken.user_id == current_user.id,
+            EsiToken.character_id.in_(own_ids), EsiToken.revoked_at.is_(None))).all()
+
+        async def check_corporate_roles(token, character):
+            if character.corporation is None:
+                return False
+            client = EsiClient(await refresh_access_token(token))
+            db.commit()
+            roles = corporation_role_names(await client.get(f"/characters/{character.character_id}/roles/"))
+            affiliation = await client.get(f"/characters/{character.character_id}/")
+            return bool(roles - {"none", ""}) and affiliation.get("corporation_id") == character.corporation.corporation_id
+
+        authorized_corps, verification_failed = await verified_corporations(characters, tokens, current_user.id, check_corporate_roles)
+    scopes = character_scopes(characters, current_user.id, rank, authorized_corps)
+    return await asyncio.to_thread(build_planetary_payload, current_user, db, characters, scopes, verification_failed)
+
+
+def build_planetary_payload(current_user, db, characters, scopes, verification_failed):
+    allowed_ids = {id for scope in scopes for id in scope["character_ids"]}
+    characters = [row for row in characters if row.id in allowed_ids]
     character_ids = {row.id for row in characters}
     colonies = db.scalars(
         select(PlanetaryColony)
@@ -501,6 +528,8 @@ def list_planetary_industry(
     ).all()
     return {
         "as_of": datetime.now(timezone.utc).isoformat(),
+        "character_scopes": scopes,
+        "corporation_scope_notice": ("Some corporate roles could not be verified; unverified corporations are excluded." if verification_failed else None),
         "characters": [
             {"id": row.id, "name": row.name, "portrait_url": row.portrait_url}
             for row in characters

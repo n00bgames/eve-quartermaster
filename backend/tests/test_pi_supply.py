@@ -92,7 +92,10 @@ def test_missing_worker_is_explicit(client,monkeypatch):
 def test_report_uses_native_stock_and_surplus(client, monkeypatch):
     import json
     fixture=json.loads((Path(__file__).parents[2]/"frontend/tests/fixtures/planetary-shortage-input.v1.json").read_text())
-    monkeypatch.setattr(api,"list_planetary_industry",lambda *a:fixture)
+    fixture["character_scopes"] = [{"id": "mine", "name": "My Characters Only", "character_ids": [row["character_id"] for row in fixture["colonies"]]}]
+    async def listed(*args):
+        return fixture
+    monkeypatch.setattr(api,"list_planetary_industry",listed)
     monkeypatch.setattr(api,"hangar_snapshot",lambda *a:{"hangars":[{"id":"test","name":"PI stock","items":{"9832":720}}]})
     result=client.get("/planetary-industry/supply-report?hangar_id=test&target_type_id=2870")
     assert result.status_code==200,result.text

@@ -119,6 +119,8 @@ export type PlanetaryColony = {
 };
 
 export type PlanetaryIndustryPayload = {
+  corporation_scope_notice?: string | null;
+  character_scopes?: { id: "mine" | "corp" | "all"; name: string; character_ids: number[] }[];
   as_of: string;
   characters: { id: number; name: string; portrait_url?: string | null }[];
   sync_tokens: PlanetarySyncToken[];

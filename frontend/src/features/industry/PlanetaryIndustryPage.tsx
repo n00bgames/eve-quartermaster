@@ -1,5 +1,6 @@
 import { AlertTriangle, BarChart3, ChevronDown, Download, Factory, Globe2, RefreshCw, Timer, Warehouse } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { scopePlanetaryCharacters } from "./planetaryCharacterScope";
 import { HangarAssetSync } from "./HangarAssetSync";
 import { PiPlanner } from "./PiPlanner";
 import { ProductionCalculator, type PiHangar } from "./ProductionCalculator";
@@ -54,7 +55,7 @@ export function PlanetaryIndustryPage({
   const [data, setData] = useState<PlanetaryIndustryPayload | null>(null);
   const [view, setView] = useState<"colonies" | "planner">("colonies");
   const [plannerOpened, setPlannerOpened] = useState(false);
-  const [character, setCharacter] = useState("all");
+  const [character, setCharacter] = useState("mine");
   const [system, setSystem] = useState("all");
   const [planetType, setPlanetType] = useState("all");
   const [reportTarget, setReportTarget] = useState("all");
@@ -134,7 +135,7 @@ export function PlanetaryIndustryPage({
 
   function downloadExport(format: PlanetaryExportFormat) {
     if (!data) return;
-    const result = buildPlanetaryExport(data, format);
+    const result = buildPlanetaryExport(scopedData ?? data, format);
     const url = URL.createObjectURL(new Blob([result.text], { type: result.mimeType }));
     const anchor = document.createElement("a");
     anchor.href = url;
@@ -171,6 +172,11 @@ export function PlanetaryIndustryPage({
     return () => window.clearInterval(projectionTimer);
   }, []);
 
+  const scopedData = useMemo(() => data ? scopePlanetaryCharacters(data, character) : null, [data, character]);
+  useEffect(() => {
+    if (data && !data.character_scopes?.some(group => group.id === character) && !data.characters.some(row => String(row.id) === character)) setCharacter("mine");
+  }, [data, character]);
+
   const systems = useMemo(
     () => [...new Set((data?.colonies ?? []).map((row) => row.solar_system_name).filter(Boolean))].sort(),
     [data],
@@ -180,14 +186,13 @@ export function PlanetaryIndustryPage({
     [data],
   );
   const colonies = useMemo(
-    () => (data?.colonies ?? []).filter((row) => (
-      (character === "all" || row.character_id === Number(character))
-      && (system === "all" || row.solar_system_name === system)
+    () => (scopedData?.colonies ?? []).filter((row) => (
+      (system === "all" || row.solar_system_name === system)
       && (planetType === "all" || row.planet_type === planetType)
     )),
-    [data, character, system, planetType],
+    [scopedData, system, planetType],
   );
-  const reportTargets = useMemo(() => data ? availablePlanetaryShortageTargets(data) : [], [data]);
+  const reportTargets = useMemo(() => scopedData ? availablePlanetaryShortageTargets(scopedData) : [], [scopedData]);
   const selectedHangar = hangars.find(h => h.id === hangarId);
   const hangarMaterials = useMemo(() => {
     const names = new Map<number, string>();
@@ -198,10 +203,10 @@ export function PlanetaryIndustryPage({
     return Object.entries(selectedHangar?.items ?? {}).filter(([id]) => names.has(Number(id)))
       .map(([id, quantity]) => ({ id, name: names.get(Number(id))!, quantity })).sort((a, b) => a.name.localeCompare(b.name));
   }, [data?.schematics, selectedHangar]);
-  const reportKey = JSON.stringify([data?.as_of, reportTarget, hangarId, selectedHangar]);
-  const fallbackReport = useMemo(() => data && (!hangarId || selectedHangar) ? buildPlanetaryShortageReport(data, {
+  const reportKey = JSON.stringify([data?.as_of, character, reportTarget, hangarId, selectedHangar]);
+  const fallbackReport = useMemo(() => scopedData && (!hangarId || selectedHangar) ? buildPlanetaryShortageReport(scopedData, {
     targetTypeId: reportTarget === "all" ? null : Number(reportTarget), hangarStock: selectedHangar?.items,
-  }) : null, [data, reportTarget, hangarId, selectedHangar]);
+  }) : null, [scopedData, reportTarget, hangarId, selectedHangar]);
   const shortageReport = fallbackReport && nativeReport?.key === reportKey ? nativeReport.report : fallbackReport ? {
     ...fallbackReport, engine_used: "browser-reference", inventory_source: selectedHangar ? { id: selectedHangar.id, name: selectedHangar.name } : null,
   } : null;
@@ -209,6 +214,8 @@ export function PlanetaryIndustryPage({
     if (!data || (hangarId && !selectedHangar)) { setReportError(null); return; }
     const controller = new AbortController();
     const params = new URLSearchParams();
+    if (["mine", "corp", "all"].includes(character)) params.set("character_scope", character);
+    else params.set("character_id", character);
     if (reportTarget !== "all") params.set("target_type_id", reportTarget);
     if (hangarId) params.set("hangar_id", hangarId);
     setReportError(null);
@@ -258,16 +265,19 @@ export function PlanetaryIndustryPage({
       <small>{syncJob.success_count} synced · {syncJob.failed_count} failed · {syncJob.skipped_count} skipped</small>
     </div>}
     <div className="status-grid planetary-summary-grid">
-      <article><Globe2 size={19} /><span>Colonies</span><strong>{data?.summary.colonies ?? 0}</strong></article>
-      <article><Timer size={19} /><span>Extractor attention</span><strong>{(data?.summary.expired_extractors ?? 0) + (data?.summary.expiring_extractors ?? 0)}</strong></article>
-      <article><Factory size={19} /><span>Factory attention</span><strong>{data?.summary.starved_factories ?? 0}</strong></article>
-      <article><Warehouse size={19} /><span>Projected volume</span><strong>{number.format(data?.summary.stored_volume ?? 0)} m3</strong></article>
+      <article><Globe2 size={19} /><span>Colonies</span><strong>{scopedData?.summary.colonies ?? 0}</strong></article>
+      <article><Timer size={19} /><span>Extractor attention</span><strong>{(scopedData?.summary.expired_extractors ?? 0) + (scopedData?.summary.expiring_extractors ?? 0)}</strong></article>
+      <article><Factory size={19} /><span>Factory attention</span><strong>{scopedData?.summary.starved_factories ?? 0}</strong></article>
+      <article><Warehouse size={19} /><span>Projected volume</span><strong>{number.format(scopedData?.summary.stored_volume ?? 0)} m3</strong></article>
     </div>
     <div className="planetary-controls">
-      <label>Character<select value={character} onChange={(event) => setCharacter(event.target.value)}><option value="all">All characters</option>{data?.characters.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
+      <label>Character<select value={character} onChange={(event) => setCharacter(event.target.value)}><option value="mine">My Characters Only</option>{data?.character_scopes?.filter(group => group.id !== "mine").map(group => <option key={group.id} value={group.id}>{group.name}</option>)}{data?.characters.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
       <label>System<select value={system} onChange={(event) => setSystem(event.target.value)}><option value="all">All systems</option>{systems.map((value) => <option key={value} value={value!}>{value}</option>)}</select></label>
       <label>Planet type<select value={planetType} onChange={(event) => setPlanetType(event.target.value)}><option value="all">All types</option>{planetTypes.map((value) => <option key={value} value={value!}>{value}</option>)}</select></label>
     </div>
+    {character === "corp" && <small>My Corp Pilots includes corporations where one of your own linked characters has verified corporate roles. Corporate-role ESI access is required.</small>}
+    {data?.corporation_scope_notice && <p className="notice warning">{data.corporation_scope_notice}</p>}
+    {data && !data.character_scopes && <p className="notice warning">Update the backend to enable character groups. Individual character selection remains available.</p>}
     <div className="pi-hangar-monitor">
       <label>Corporate inventory to monitor<select value={hangarId} onChange={e => {
         setHangarId(e.target.value);

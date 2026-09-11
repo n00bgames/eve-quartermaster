@@ -7,6 +7,10 @@ Recorded September 11, 2026 for release later today at the user's request. This 
 
 ## User workflow
 
+The Character selector defaults to **My Characters Only**. EQM directors and higher can choose **My Corp Pilots**, but corporation membership alone never grants this group access: one of the viewer's own linked characters must have an active token with `esi-characters.read_corporation_roles.v1`, nonempty corporate roles verified through ESI, and a matching current corporation affiliation. An unprivileged alt in another corporation does not expose that corporation's pilots. Verification results are cached for at most 60 seconds; revoked tokens, missing scope, and changed local affiliations invalidate access, and verification failures exclude unverified corporations. Admins and hosts additionally retain **All Characters**. Custom roles inherit their configured base role.
+
+Server-side PI listings restrict character choices, colonies, and sync-token metadata to the permitted groups. The selected group or individual pilot filters displayed colony totals, supply calculations and exports. Directors cannot bypass their scope through an individual pilot's ID in the supply API. Other EQM sections retain their existing permissions.
+
 In Planetary Industry → Colonies & supply, the supply report displays shortages followed by bright-green surpluses. Surplus is configured daily supply minus configured daily demand, floored at zero. Finished output with no configured consumer is included. Exactly balanced ingredients are covered, but are not surpluses. Configured output still assumes upstream ingredients remain available.
 
 Select a corporate station/Upwell hangar above the report to monitor its cached stock. The selection is remembered per EQM user in this browser. Colony stock and hangar stock are shown separately; both count toward runway, but hangar stock does not change daily throughput or eliminate a production deficit. Expand Monitored PI inventory to see all recognized PI ingredients/products at that location, even without configured consumers.

@@ -19,6 +19,8 @@ Planned release title: **v1.0.0 — The Bigger Bite of the PI 1.0 Release!**
 
 ### Added
 
+- Added My Characters Only (default), verified My Corp Pilots for directors, and All Characters for admins/hosts to PI; selected pilots now drive colony totals, supply reports and exports. Corporate membership through an unprivileged alt does not grant corporation-wide PI visibility.
+
 - Added individual ingredient import buttons to the PI Production Calculator alongside the existing bulk hangar import, plus a corporation asset sync action beside the inventory source selector.
 
 - Added bright-green PI surplus reporting, selectable corporate station/Upwell hangar stock with saved browser preference, and separate inventory/runway accounting.
