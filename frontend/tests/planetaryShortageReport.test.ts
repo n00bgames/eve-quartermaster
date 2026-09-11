@@ -13,7 +13,7 @@ const fixture = JSON.parse(fs.readFileSync(
   "utf8",
 )) as PlanetaryIndustryPayload;
 const expected = JSON.parse(fs.readFileSync(
-  new URL("./fixtures/planetary-shortage-report.v1.json", import.meta.url),
+  new URL("./fixtures/planetary-shortage-report.v2.json", import.meta.url),
   "utf8",
 ));
 
@@ -54,5 +54,28 @@ test("network report retains covered rows but ranks shortages first", () => {
     ["Water", "critical"],
     ["Coolant", "critical"],
     ["Bacteria", "covered"],
+    ["Organic Mortar Applicators", "covered"],
   ]);
+});
+
+test("hangar stock extends runway without disguising a production deficit", () => {
+  const report = buildPlanetaryShortageReport(fixture, { hangarStock: { "9832": 720 } });
+  const row = report.commodities.find(r => r.type_id === 9832)!;
+  assert.equal(row.hangar_inventory, 720);
+  assert.equal(row.net_shortfall_per_day, 360);
+  assert.equal(row.total_inventory, row.projected_inventory + 720);
+  assert.equal(row.runway_days_at_net_shortfall, 2.666667);
+  assert.equal(row.severity, "critical");
+  const output = report.commodities.find(r => r.type_id === 2870)!;
+  assert.equal(output.net_surplus_per_day, 24);
+  assert.equal(output.coverage, null);
+  assert.equal(output.inventory_days_at_demand, null);
+});
+
+test("surplus includes excess intermediate production but not exactly balanced inputs", () => {
+  const copy = structuredClone(fixture);
+  copy.schematics!.find(r => r.output.type_id === 2393)!.output.quantity *= 2;
+  const report = buildPlanetaryShortageReport(copy, { targetTypeId: 2870 });
+  assert.equal(report.commodities.find(r => r.type_id === 2393)!.net_surplus_per_day, 960);
+  assert.equal(buildPlanetaryShortageReport(fixture).commodities.find(r => r.type_id === 2393)!.net_surplus_per_day, 0);
 });

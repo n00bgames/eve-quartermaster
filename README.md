@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/n00bgames/eve-quartermaster"><img alt="Project" src="https://img.shields.io/badge/project-eve--quartermaster-e8b84d?style=for-the-badge"></a>
-  <img alt="Version" src="https://img.shields.io/badge/version-0.1.24--beta-4fb3c7?style=for-the-badge">
+  <img alt="Version" src="https://img.shields.io/badge/version-1.0.0-4fb3c7?style=for-the-badge">
   <img alt="License" src="https://img.shields.io/badge/license-AGPL--3.0--or--later-70c894?style=for-the-badge">
 </p>
 
@@ -816,6 +816,8 @@ docker compose --profile test run --rm backend-tests python -m pytest -q tests/t
 ```
 
 The test image is built from the dedicated Docker `test` stage and includes the repository's backend tests. The normal backend and worker continue to use the final `runtime` stage without pytest.
+
+**Fitting Simulator: For Informational Purposes Only.** Still in development and not PYFA-complete; it does not yet provide full feature or calculation parity with PYFA.
 
 Fitting reference evidence lives under `backend/tests/fixtures/fittings/evidence/`. Every external capture records its simulator/profile version, module and drone state, heat/implant/booster assumptions, and display-rounded expected values. The current fleet includes cold All-V and exported Steihl Lianul skill-profile captures from Pyfa 2.68.0 for a Rail Moa, Rapid Light Caracal, Active Armor Vexor, and command-burst Absolution, with the Absolution also cross-checked in the EVE fitting simulator. EQM uses the currently imported CCP SDE as authoritative when a versioned Pyfa capture contains older module attributes; such source-version differences are documented in the evidence instead of being hidden with hard-coded corrections.
 

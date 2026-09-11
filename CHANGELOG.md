@@ -2,11 +2,22 @@
 
 All notable changes to EVE Quartermaster are tracked here.
 
-This project is moving quickly during beta. Version sections are written as user-facing release notes first, with implementation detail included where it helps operators understand deployment or testing impact.
+Version sections are written as user-facing release notes first, with implementation detail included where it helps operators understand deployment or testing impact.
 
 ## Unreleased
 
+Planned release title: **v1.0.0 — A Bigger Slice of the PI Update!**
+
+### Changed
+
+- Prepared EQM 1.0.0 as a regular release, without the beta/prerelease label.
+- Added a visible Fitting Simulator notice: for informational purposes only, still in development, and not PYFA-complete.
+
 ### Added
+
+- Added bright-green PI surplus reporting, selectable corporate station/Upwell hangar stock with saved browser preference, and separate inventory/runway accounting.
+- Added a Rust-backed PI Production Calculator for recipe ingredients, parallel factories, runtime, limiting inputs and leftovers, with optional hangar-stock autofill.
+- Added EVE (UTC) and local clocks to the top bar.
 
 - Added a PI operation planner with ESI order-depth pricing, profit/output/quota comparisons, buy-versus-make choices, per-pilot colony proposals, costs, hauling and maintenance constraints.
 - Added private scenarios, recoverable calculation runs, recipe/inventory graphs, system scouting, build/shopping CSVs, frozen-price replay, and original native template previews with explicit in-game validation limits.

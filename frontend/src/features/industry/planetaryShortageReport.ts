@@ -4,7 +4,7 @@ import type {
   PlanetarySchematic,
 } from "../../types/planetaryIndustry";
 
-export const PLANETARY_SHORTAGE_REPORT_SCHEMA = "eqm.planetary-shortage-report.v1" as const;
+export const PLANETARY_SHORTAGE_REPORT_SCHEMA = "eqm.planetary-shortage-report.v2" as const;
 
 export type PlanetaryShortageSeverity = "critical" | "short" | "watch" | "covered";
 
@@ -19,6 +19,9 @@ export type PlanetaryShortageRow = {
   type_id: number;
   name: string;
   projected_inventory: number;
+  hangar_inventory: number;
+  total_inventory: number;
+  net_surplus_per_day: number;
   configured_supply_per_day: number;
   configured_demand_per_day: number;
   net_shortfall_per_day: number;
@@ -60,6 +63,8 @@ export type PlanetaryShortageReport = {
   };
   commodities: PlanetaryShortageRow[];
   caveats: string[];
+  engine_used?: string;
+  inventory_source?: { id: string; name: string } | null;
 };
 
 type Aggregate = {
@@ -243,7 +248,7 @@ export function availablePlanetaryShortageTargets(data: PlanetaryIndustryPayload
 
 export function buildPlanetaryShortageReport(
   data: PlanetaryIndustryPayload,
-  options: { targetTypeId?: number | null; generatedAt?: Date } = {},
+  options: { targetTypeId?: number | null; generatedAt?: Date; hangarStock?: Record<string, number> } = {},
 ): PlanetaryShortageReport {
   const aggregates = new Map<number, Aggregate>();
   const recipes = new Map<number, PlanetarySchematic>();
@@ -298,8 +303,8 @@ export function buildPlanetaryShortageReport(
     ? null
     : availablePlanetaryShortageTargets(data).find((row) => row.type_id === targetTypeId) ?? null;
   const includedTypeIds = targetTypeId == null
-    ? new Set([...aggregates.values()].filter((row) => row.demandPerDay > 0).map((row) => row.typeId))
-    : collectDependencyTypeIds(targetTypeId, recipes);
+    ? new Set([...aggregates.values()].filter((row) => row.demandPerDay > 0 || row.supplyPerDay > 0).map((row) => row.typeId))
+    : collectDependencyTypeIds(targetTypeId, recipes).add(targetTypeId);
   const names = new Map([...aggregates.values()].map((row) => [row.typeId, row.name]));
   for (const schematic of recipes.values()) {
     names.set(schematic.output.type_id, schematic.output.name);
@@ -309,8 +314,10 @@ export function buildPlanetaryShortageReport(
   const commodities = [...includedTypeIds]
     .map((typeId): PlanetaryShortageRow | null => {
       const aggregate = aggregates.get(typeId);
-      if (!aggregate || aggregate.demandPerDay <= 0) return null;
-      const coverage = aggregate.supplyPerDay / aggregate.demandPerDay;
+      if (!aggregate || (aggregate.demandPerDay <= 0 && aggregate.supplyPerDay <= 0)) return null;
+      const hangarInventory = options.hangarStock?.[String(typeId)] ?? 0;
+      const totalInventory = aggregate.inventory + hangarInventory;
+      const coverage = aggregate.demandPerDay > 0 ? aggregate.supplyPerDay / aggregate.demandPerDay : null;
       const netShortfall = Math.max(0, aggregate.demandPerDay - aggregate.supplyPerDay);
       const processorGap = netShortfall > 0 && aggregate.producerOutputPerDay
         ? Math.ceil(netShortfall / aggregate.producerOutputPerDay)
@@ -321,13 +328,16 @@ export function buildPlanetaryShortageReport(
         type_id: aggregate.typeId,
         name: aggregate.name,
         projected_inventory: rounded(aggregate.inventory),
+        hangar_inventory: rounded(hangarInventory),
+        total_inventory: rounded(totalInventory),
+        net_surplus_per_day: rounded(Math.max(0, aggregate.supplyPerDay - aggregate.demandPerDay)),
         configured_supply_per_day: rounded(aggregate.supplyPerDay),
         configured_demand_per_day: rounded(aggregate.demandPerDay),
         net_shortfall_per_day: rounded(netShortfall),
-        coverage: rounded(coverage),
-        inventory_days_at_demand: rounded(aggregate.inventory / aggregate.demandPerDay),
+        coverage: coverage == null ? null : rounded(coverage),
+        inventory_days_at_demand: aggregate.demandPerDay > 0 ? rounded(totalInventory / aggregate.demandPerDay) : null,
         runway_days_at_net_shortfall: netShortfall > 0
-          ? rounded(aggregate.inventory / netShortfall)
+          ? rounded(totalInventory / netShortfall)
           : null,
         configured_producers: aggregate.producers,
         configured_consumers: aggregate.consumers,

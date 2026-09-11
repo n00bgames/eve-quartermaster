@@ -1,6 +1,8 @@
 import { AlertTriangle, BarChart3, ChevronDown, Download, Factory, Globe2, RefreshCw, Timer, Warehouse } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PiPlanner } from "./PiPlanner";
+import { ProductionCalculator, type PiHangar } from "./ProductionCalculator";
+import "./piSupply.css";
 
 import { pollCharacterSyncJob } from "../../lib/characterSyncPolling";
 import { buildPlanetaryExport, type PlanetaryExportFormat } from "./planetaryExport";
@@ -55,6 +57,12 @@ export function PlanetaryIndustryPage({
   const [system, setSystem] = useState("all");
   const [planetType, setPlanetType] = useState("all");
   const [reportTarget, setReportTarget] = useState("all");
+  const [hangars, setHangars] = useState<PiHangar[]>([]);
+  const [hangarId, setHangarId] = useState("");
+  const inventoryPreferenceKey = useRef<string | null>(null);
+  const [inventoryError, setInventoryError] = useState<string | null>(null);
+  const [nativeReport, setNativeReport] = useState<{ key: string; report: PlanetaryShortageReport } | null>(null);
+  const [reportError, setReportError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [syncJob, setSyncJob] = useState<CharacterSyncJob | null>(null);
@@ -63,7 +71,21 @@ export function PlanetaryIndustryPage({
 
   async function load() {
     setError(null);
-    setData(await api<PlanetaryIndustryPayload>("/planetary-industry"));
+    const [pi, inventory] = await Promise.allSettled([
+      api<PlanetaryIndustryPayload>("/planetary-industry"),
+      api<{ hangars: PiHangar[]; viewer_id: number }>("/planetary-industry/inventory-hangars"),
+    ]);
+    if (inventory.status === "fulfilled") {
+      setHangars(inventory.value.hangars); setInventoryError(null);
+      const key = `eqm.pi.hangar.${inventory.value.viewer_id}`;
+      if (inventoryPreferenceKey.current !== key) {
+        inventoryPreferenceKey.current = key;
+        try { setHangarId(window.localStorage.getItem(key) ?? ""); } catch { /* Storage may be disabled. */ }
+      }
+    }
+    else { setHangars([]); setInventoryError("Corporate inventory could not be refreshed; hangar stock is unavailable."); }
+    if (pi.status === "fulfilled") setData(pi.value);
+    else throw pi.reason;
   }
 
   async function syncAll() {
@@ -165,9 +187,35 @@ export function PlanetaryIndustryPage({
     [data, character, system, planetType],
   );
   const reportTargets = useMemo(() => data ? availablePlanetaryShortageTargets(data) : [], [data]);
-  const shortageReport = useMemo(() => data ? buildPlanetaryShortageReport(data, {
-    targetTypeId: reportTarget === "all" ? null : Number(reportTarget),
-  }) : null, [data, reportTarget]);
+  const selectedHangar = hangars.find(h => h.id === hangarId);
+  const hangarMaterials = useMemo(() => {
+    const names = new Map<number, string>();
+    for (const recipe of data?.schematics ?? []) {
+      names.set(recipe.output.type_id, recipe.output.name);
+      for (const input of recipe.inputs) names.set(input.type_id, input.name);
+    }
+    return Object.entries(selectedHangar?.items ?? {}).filter(([id]) => names.has(Number(id)))
+      .map(([id, quantity]) => ({ id, name: names.get(Number(id))!, quantity })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [data?.schematics, selectedHangar]);
+  const reportKey = JSON.stringify([data?.as_of, reportTarget, hangarId, selectedHangar]);
+  const fallbackReport = useMemo(() => data && (!hangarId || selectedHangar) ? buildPlanetaryShortageReport(data, {
+    targetTypeId: reportTarget === "all" ? null : Number(reportTarget), hangarStock: selectedHangar?.items,
+  }) : null, [data, reportTarget, hangarId, selectedHangar]);
+  const shortageReport = fallbackReport && nativeReport?.key === reportKey ? nativeReport.report : fallbackReport ? {
+    ...fallbackReport, engine_used: "browser-reference", inventory_source: selectedHangar ? { id: selectedHangar.id, name: selectedHangar.name } : null,
+  } : null;
+  useEffect(() => {
+    if (!data || (hangarId && !selectedHangar)) { setReportError(null); return; }
+    const controller = new AbortController();
+    const params = new URLSearchParams();
+    if (reportTarget !== "all") params.set("target_type_id", reportTarget);
+    if (hangarId) params.set("hangar_id", hangarId);
+    setReportError(null);
+    void api<PlanetaryShortageReport>(`/planetary-industry/supply-report?${params}`, { signal: controller.signal })
+      .then(report => { if (!controller.signal.aborted) setNativeReport({ key: reportKey, report }); })
+      .catch(() => { if (!controller.signal.aborted) setReportError("Native supply calculation unavailable; showing the browser reference calculation."); });
+    return () => controller.abort();
+  }, [reportKey, selectedHangar]);
   const eligible = data?.sync_tokens.filter((token) => token.can_sync && token.has_scope).length ?? 0;
   const missingScope = data?.sync_tokens.filter((token) => token.can_sync && !token.has_scope) ?? [];
   const syncPercent = syncJob?.total_count
@@ -219,6 +267,21 @@ export function PlanetaryIndustryPage({
       <label>System<select value={system} onChange={(event) => setSystem(event.target.value)}><option value="all">All systems</option>{systems.map((value) => <option key={value} value={value!}>{value}</option>)}</select></label>
       <label>Planet type<select value={planetType} onChange={(event) => setPlanetType(event.target.value)}><option value="all">All types</option>{planetTypes.map((value) => <option key={value} value={value!}>{value}</option>)}</select></label>
     </div>
+    <div className="pi-hangar-monitor">
+      <label>Corporate inventory to monitor<select value={hangarId} onChange={e => {
+        setHangarId(e.target.value);
+        try { if (inventoryPreferenceKey.current) window.localStorage.setItem(inventoryPreferenceKey.current, e.target.value); } catch { /* Selection still works without storage. */ }
+      }}><option value="">Colony stock only</option>{hangarId && !selectedHangar && <option value={hangarId}>Previously selected hangar (unavailable)</option>}{hangars.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}</select></label>
+      <small>Station and Upwell corporate divisions visible to your EQM account, including stock in nested containers. Updated from the latest corporate asset sync; PI sync does not refresh hangars.</small>
+      {selectedHangar && <small>Oldest item sync: {selectedHangar.oldest_synced_at ? formatDateTime(selectedHangar.oldest_synced_at) : "No item timestamp"}{selectedHangar.has_unsynced_items ? " · Includes manually entered or unsynced items" : ""}</small>}
+      {selectedHangar && <details><summary>Monitored PI inventory · {hangarMaterials.length} materials</summary>
+        <div className="table-wrap"><table><thead><tr><th>Material</th><th>On hand</th></tr></thead><tbody>{hangarMaterials.map(row => <tr key={row.id}><td>{row.name}</td><td>{number.format(row.quantity)}</td></tr>)}</tbody></table></div>
+        {!hangarMaterials.length && <p className="empty">No PI materials found in this hangar snapshot using the loaded schematic catalog.</p>}
+      </details>}
+      {!hangars.length && !inventoryError && <small>No corporate hangars available. Sync corporation assets with an authorized ESI token and ensure your EQM role can view corporate assets.</small>}
+      {(inventoryError || (hangarId && !selectedHangar)) && <p className="mini-alert">{inventoryError ?? "Selected hangar is no longer available. Select another inventory source."}</p>}
+    </div>
+    {reportError && <p className="notice warning">{reportError}</p>}
     {shortageReport && <PlanetaryShortageReportPanel
       report={shortageReport}
       targets={reportTargets}
@@ -226,6 +289,7 @@ export function PlanetaryIndustryPage({
       onTargetChange={setReportTarget}
       onDownload={downloadShortageReport}
     />}
+    <ProductionCalculator recipes={data?.schematics ?? []} hangar={selectedHangar} api={api} />
     <div className="planetary-token-row">
       {data?.sync_tokens.map((token) => <button type="button" key={token.token_id} disabled={busy || !token.can_sync || !token.has_scope} onClick={() => void syncCharacter(token.token_id)} title={!token.has_scope ? "Reauthorize ESI to grant the PI scope" : `Sync ${token.character_name}`}>{token.character_name}<small>{token.has_scope ? "PI ready" : "Reauth required"}</small></button>)}
     </div>
@@ -260,6 +324,7 @@ function PlanetaryShortageReportPanel({
   onDownload: () => void;
 }) {
   const shortages = report.commodities.filter((row) => row.net_shortfall_per_day > 0);
+  const surpluses = report.commodities.filter((row) => row.net_surplus_per_day > 0);
   return <section className="planetary-shortage-report">
     <div className="section-heading compact">
       <div>
@@ -272,20 +337,21 @@ function PlanetaryShortageReportPanel({
       </div>
     </div>
     <div className="status-grid planetary-report-summary">
-      <article><span>Focus</span><strong>{report.scope.target_name ?? "All production"}</strong><small>{report.scope.target_name ? `${report.scope.configured_target_factories} factories · ${number.format(report.scope.configured_target_output_per_day)}/day planned` : `${report.scope.commodity_count} consumed commodities`}</small></article>
+      <article><span>Focus</span><strong>{report.scope.target_name ?? "All production"}</strong><small>{report.scope.target_name ? `${report.scope.configured_target_factories} factories · ${number.format(report.scope.configured_target_output_per_day)}/day planned` : `${report.scope.commodity_count} commodities`}</small></article>
       <article><span>Critical</span><strong>{report.summary.critical_shortages}</strong><small>Below 50% configured coverage</small></article>
       <article><span>Other gaps</span><strong>{report.summary.shortages + report.summary.watch_items}</strong><small>50% to below 100% coverage</small></article>
       <article><span>Covered</span><strong>{report.summary.covered_items}</strong><small>At least 100% configured coverage</small></article>
     </div>
+    <h4>Shortages</h4>
     <div className="table-wrap planetary-report-table-wrap"><table className="planetary-report-table">
-      <thead><tr><th>Commodity</th><th>Coverage</th><th>Supply / day</th><th>Demand / day</th><th>Net gap / day</th><th>Projected stock</th><th>Runway at gap</th><th>Base materials / planets</th><th>Added processors</th></tr></thead>
-      <tbody>{shortages.slice(0, 20).map((row) => <tr key={row.type_id} className={`shortage-${row.severity}`}>
+      <thead><tr><th>Commodity</th><th>Coverage</th><th>Supply / day</th><th>Demand / day</th><th>Net gap / day</th><th>Colony stock</th><th>Hangar stock</th><th>Runway at gap</th><th>Base materials / planets</th><th>Added processors</th></tr></thead>
+      <tbody>{shortages.map((row) => <tr key={row.type_id} className={`shortage-${row.severity}`}>
         <td><strong>{row.name}</strong><small>{row.configured_producers} producers · {row.configured_consumers} consumers</small></td>
         <td><strong>{percent(row.coverage)}</strong><small>{row.severity}</small></td>
         <td>{number.format(row.configured_supply_per_day)}</td>
         <td>{number.format(row.configured_demand_per_day)}</td>
         <td>{number.format(row.net_shortfall_per_day)}</td>
-        <td>{number.format(row.projected_inventory)}</td>
+        <td>{number.format(row.projected_inventory)}</td><td>{number.format(row.hangar_inventory)}</td>
         <td>{days(row.runway_days_at_net_shortfall)}</td>
         <td className="planetary-base-components">{row.base_components.length
           ? row.base_components.map((component) => <span key={component.type_id}><strong>{component.name} · {number.format(component.quantity_per_day)}/day</strong><small>{component.planet_types.join(", ")}</small></span>)
@@ -294,7 +360,13 @@ function PlanetaryShortageReportPanel({
       </tr>)}</tbody>
     </table></div>
     {shortages.length === 0 && <p className="empty">No configured throughput gaps were found for this scope.</p>}
-    <small className="planetary-report-caveat">Projected stock is network-wide and may need hauling. Processor counts are throughput equivalents; confirm CPU and powergrid in-game.</small>
+    <h4 className="planetary-surplus-heading">Surpluses · {surpluses.length}</h4>
+    <div className="table-wrap planetary-report-table-wrap"><table className="planetary-report-table planetary-surplus-table">
+      <thead><tr><th>Commodity</th><th>Supply / day</th><th>Demand / day</th><th>Net surplus / day</th><th>Colony stock</th><th>Hangar stock</th><th>Total stock</th></tr></thead>
+      <tbody>{surpluses.map(row => <tr key={row.type_id}><td><strong>{row.name}</strong><small>{row.configured_consumers ? "Excess configured supply" : "Output with no configured consumers"}</small></td><td>{number.format(row.configured_supply_per_day)}</td><td>{number.format(row.configured_demand_per_day)}</td><td><strong>+{number.format(row.net_surplus_per_day)}</strong></td><td>{number.format(row.projected_inventory)}</td><td>{number.format(row.hangar_inventory)}</td><td>{number.format(row.total_inventory)}</td></tr>)}</tbody>
+    </table></div>
+    {!surpluses.length && <p className="empty">No configured production surpluses in this scope.</p>}
+    <small className="planetary-report-caveat">Runway includes colony and selected hangar stock. Inventory may need hauling. Surpluses assume configured factories remain supplied; upstream shortages can reduce actual output. Processor counts are throughput equivalents; confirm CPU and powergrid in-game.</small>
   </section>;
 }
 

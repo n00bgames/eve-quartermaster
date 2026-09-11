@@ -46,7 +46,7 @@ fn rust_report_matches_the_typescript_golden_contract() {
         build_planetary_shortage_report(&fixture(), Some(2870), "2026-08-28T12:30:00.000Z");
     let actual = serde_json::to_value(report).expect("report serializes");
     let expected: Value = serde_json::from_str(include_str!(
-        "../../../frontend/tests/fixtures/planetary-shortage-report.v1.json"
+        "../../../frontend/tests/fixtures/planetary-shortage-report.v2.json"
     ))
     .expect("valid PI output fixture");
 
@@ -78,4 +78,18 @@ fn target_catalog_is_deterministic() {
             .collect::<Vec<_>>(),
         vec!["Bacteria", "Coolant", "Organic Mortar Applicators"]
     );
+}
+
+#[test]
+fn inventory_extends_runway_and_final_output_is_surplus() {
+    let mut data = fixture();
+    data.hangar_stock.insert(9832, 720.0);
+    let report = build_planetary_shortage_report(&data, Some(2870), &data.as_of);
+    let row = report.commodities.iter().find(|r| r.type_id == 9832).unwrap();
+    assert_eq!(row.net_shortfall_per_day, 360.0);
+    assert_eq!(row.total_inventory, row.projected_inventory + 720.0);
+    assert_eq!(row.runway_days_at_net_shortfall, Some(2.666667));
+    let output = report.commodities.iter().find(|r| r.type_id == 2870).unwrap();
+    assert_eq!(output.net_surplus_per_day, 24.0);
+    assert_eq!(output.coverage, None);
 }

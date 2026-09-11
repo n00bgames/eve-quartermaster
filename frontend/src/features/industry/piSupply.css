@@ -1,0 +1,8 @@
+.planetary-surplus-table tbody td, .planetary-surplus-table tbody strong { color: #65ff91; }
+.planetary-surplus-table tbody tr { background: #10301e80; }
+.planetary-surplus-table small { display: block; color: #b5eac4; }
+.planetary-surplus-heading { color: #65ff91; margin: 18px 0 10px; }
+.pi-hangar-monitor { display: grid; gap: 8px; padding: 12px; border: 1px solid #303741; border-radius: 8px; }
+.pi-hangar-monitor select { max-width: 100%; }
+.pi-production-calculator { margin-top: 18px; display: grid; gap: 12px; }
+.pi-production-calculator p, .pi-production-calculator h3 { margin-bottom: 0; }

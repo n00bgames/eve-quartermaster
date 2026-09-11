@@ -17,7 +17,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="eve-quartermaster", version="0.1.24-beta", lifespan=lifespan)
+app = FastAPI(title="eve-quartermaster", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

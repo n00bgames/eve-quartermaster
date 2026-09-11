@@ -3,11 +3,13 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 
-pub const PLANETARY_SHORTAGE_REPORT_SCHEMA: &str = "eqm.planetary-shortage-report.v1";
+pub const PLANETARY_SHORTAGE_REPORT_SCHEMA: &str = "eqm.planetary-shortage-report.v2";
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct PlanetaryIndustryPayload {
     pub as_of: String,
+    #[serde(default)]
+    pub hangar_stock: BTreeMap<u64, f64>,
     #[serde(default)]
     pub schematics: Vec<PlanetarySchematic>,
     #[serde(default)]
@@ -98,6 +100,9 @@ pub struct PlanetaryShortageRow {
     pub type_id: u64,
     pub name: String,
     pub projected_inventory: f64,
+    pub hangar_inventory: f64,
+    pub total_inventory: f64,
+    pub net_surplus_per_day: f64,
     pub configured_supply_per_day: f64,
     pub configured_demand_per_day: f64,
     pub net_shortfall_per_day: f64,
@@ -459,10 +464,10 @@ pub fn build_planetary_shortage_report(
             .cloned()
     });
     let included_type_ids: BTreeSet<u64> = match target_type_id {
-        Some(type_id) => collect_dependency_type_ids(type_id, &recipes),
+        Some(type_id) => { let mut ids = collect_dependency_type_ids(type_id, &recipes); ids.insert(type_id); ids },
         None => aggregates
             .values()
-            .filter(|aggregate| aggregate.demand_per_day > 0.0)
+            .filter(|aggregate| aggregate.demand_per_day > 0.0 || aggregate.supply_per_day > 0.0)
             .map(|aggregate| aggregate.type_id)
             .collect(),
     };
@@ -482,10 +487,12 @@ pub fn build_planetary_shortage_report(
         let Some(aggregate) = aggregates.get(&type_id) else {
             continue;
         };
-        if aggregate.demand_per_day <= 0.0 {
+        if aggregate.demand_per_day <= 0.0 && aggregate.supply_per_day <= 0.0 {
             continue;
         }
-        let coverage = aggregate.supply_per_day / aggregate.demand_per_day;
+        let coverage = if aggregate.demand_per_day > 0.0 { aggregate.supply_per_day / aggregate.demand_per_day } else { f64::INFINITY };
+        let hangar_inventory = *data.hangar_stock.get(&type_id).unwrap_or(&0.0);
+        let total_inventory = aggregate.inventory + hangar_inventory;
         let net_shortfall = (aggregate.demand_per_day - aggregate.supply_per_day).max(0.0);
         let processor_gap = if net_shortfall <= 0.0 {
             Some(0)
@@ -499,13 +506,16 @@ pub fn build_planetary_shortage_report(
             type_id: aggregate.type_id,
             name: aggregate.name.clone(),
             projected_inventory: rounded(aggregate.inventory),
+            hangar_inventory: rounded(hangar_inventory),
+            total_inventory: rounded(total_inventory),
+            net_surplus_per_day: rounded((aggregate.supply_per_day - aggregate.demand_per_day).max(0.0)),
             configured_supply_per_day: rounded(aggregate.supply_per_day),
             configured_demand_per_day: rounded(aggregate.demand_per_day),
             net_shortfall_per_day: rounded(net_shortfall),
-            coverage: Some(rounded(coverage)),
-            inventory_days_at_demand: Some(rounded(aggregate.inventory / aggregate.demand_per_day)),
+            coverage: if coverage.is_finite() { Some(rounded(coverage)) } else { None },
+            inventory_days_at_demand: if aggregate.demand_per_day > 0.0 { Some(rounded(total_inventory / aggregate.demand_per_day)) } else { None },
             runway_days_at_net_shortfall: if net_shortfall > 0.0 {
-                Some(rounded(aggregate.inventory / net_shortfall))
+                Some(rounded(total_inventory / net_shortfall))
             } else {
                 None
             },
@@ -524,8 +534,8 @@ pub fn build_planetary_shortage_report(
         severity_order(left.severity)
             .cmp(&severity_order(right.severity))
             .then_with(|| {
-                left.coverage
-                    .partial_cmp(&right.coverage)
+                left.coverage.unwrap_or(f64::INFINITY)
+                    .partial_cmp(&right.coverage.unwrap_or(f64::INFINITY))
                     .unwrap_or(Ordering::Equal)
             })
             .then_with(|| left.name.cmp(&right.name))

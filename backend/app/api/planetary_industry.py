@@ -5,7 +5,8 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, selectinload
 
@@ -51,11 +52,58 @@ from app.services.planetary_simulation import (
     known_pin_capacity_m3,
 )
 from app.services.planetary_simulation_engine import simulate_colony_with_engine
+from app.services.pi_supply import hangar_snapshot, native_calculation
 
 router = APIRouter(prefix="/planetary-industry", tags=["planetary-industry"])
 
 PLANET_SCOPE = "esi-planets.manage_planets.v1"
 PLANETARY_SYNC_JOBS: dict[str, dict[str, Any]] = {}
+
+
+@router.get("/inventory-hangars")
+def inventory_hangars(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    require_planetary_view(current_user, db)
+    return {**hangar_snapshot(current_user, db), "viewer_id": current_user.id}
+
+
+@router.get("/supply-report")
+def supply_report(target_type_id: int | None = Query(None, gt=0), hangar_id: str | None = Query(None, max_length=100),
+                  current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    require_planetary_view(current_user, db)
+    selected = None
+    if hangar_id:
+        selected = next((h for h in hangar_snapshot(current_user, db)["hangars"] if h["id"] == hangar_id), None)
+        if selected is None:
+            raise HTTPException(404, "Hangar is unavailable or not visible")
+    payload = list_planetary_industry(current_user, db)
+    payload["hangar_stock"] = selected["items"] if selected else {}
+    extra = ["--target-type-id", str(target_type_id)] if target_type_id else []
+    result = native_calculation("pi-shortage", payload, extra)
+    result["inventory_source"] = {"id": selected["id"], "name": selected["name"]} if selected else None
+    if selected:
+        result["caveats"].append("Selected hangar inventory is a cached asset snapshot, not live ESI stock; hauling to factories is required.")
+    return result
+
+
+class ProductionRequest(BaseModel):
+    schematic_id: int = Field(gt=0)
+    factories: int = Field(default=1, ge=1, le=10000)
+    inventory: dict[int, int] = Field(default_factory=dict, max_length=32)
+
+
+@router.post("/production-calculator")
+def production_calculator(payload: ProductionRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    require_planetary_view(current_user, db)
+    if any(key <= 0 or value < 0 or value > 10**12 for key, value in payload.inventory.items()):
+        raise HTTPException(422, "Ingredient quantities must be between 0 and 1 trillion")
+    recipe = db.get(EvePlanetSchematic, payload.schematic_id)
+    if recipe is None:
+        raise HTTPException(404, "PI recipe not found; import the SDE schematic catalog")
+    return native_calculation("pi-production", {
+        "cycle_time": recipe.cycle_time, "output_quantity": recipe.output_quantity,
+        "inputs": [{"type_id": i.type_id, "quantity": i.quantity} for i in recipe.inputs],
+        "factories": payload.factories, "inventory": payload.inventory,
+    })
 
 
 def parse_datetime(value: Any) -> datetime | None:

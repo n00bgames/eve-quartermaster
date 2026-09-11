@@ -1068,6 +1068,8 @@ export function FittingsPage({ currentUser, assets, seed, onOpenAssets, onOpenMa
 
     {error && <div className="mini-alert">{error}</div>}
 
+    <p className="scope-warn"><strong>Fitting Simulator: For Informational Purposes Only.</strong> Still in development and not PYFA-complete; it does not yet provide full feature or calculation parity with PYFA.</p>
+
     <FittingSyncControls tokens={payload.sync_tokens} syncToken={syncToken} syncTokenId={syncTokenId} busyTokenId={busyTokenId} onSyncTokenChange={setSyncTokenId} onSync={() => void syncFittings()} />
 
     <FittingImportPanel importCharacterId={importCharacterId} importText={importText} importBusy={importBusy} characterOptions={simulationCharacterOptions} onImportCharacterChange={setImportCharacterId} onImportTextChange={setImportText} onReadClipboard={() => void readFittingClipboard()} onImportText={() => void importFittingText()} />
