@@ -26,7 +26,7 @@ fn value_after(args: &[String], flag: &str) -> Option<String> {
 
 fn usage() -> ! {
     eprintln!(
-        "Usage:\n  eqm-core pi-production --input <payload.json>\n  eqm-core pi-shortage --input <payload.json> [--target-type-id <id>] [--generated-at <ISO-8601>]\n  eqm-core colony-simulation --input <payload.json>\n  eqm-core event-analytics --input <payload.json>\n  eqm-core financial-analytics --input <payload.json>\n  eqm-core planetary-analytics --input <payload.json>\n  eqm-core fitting-math --input <payload.json>\n  eqm-core fitting-resources --input <payload.json>\n  eqm-core fitting-stats --input <payload.json>\n  eqm-core analytics-summary --input <payload.json>\n  eqm-core bounty-analytics --input <payload.json>\n  eqm-core battle-report --input <payload.json>\n  eqm-core hypernet-economics --input <payload.json>\n  eqm-core jump-route --input <payload.json>\n  eqm-core settlement-math --input <payload.json>\n  eqm-core killboard-analytics --input <payload.json>\n  eqm-core srp-analytics --input <payload.json>\n  eqm-core threat-analytics --input <payload.json>"
+        "Usage:\n  eqm-core pi-production-chain --input <payload.json>\n  eqm-core pi-production --input <payload.json>\n  eqm-core pi-shortage --input <payload.json> [--target-type-id <id>] [--generated-at <ISO-8601>]\n  eqm-core colony-simulation --input <payload.json>\n  eqm-core event-analytics --input <payload.json>\n  eqm-core financial-analytics --input <payload.json>\n  eqm-core planetary-analytics --input <payload.json>\n  eqm-core fitting-math --input <payload.json>\n  eqm-core fitting-resources --input <payload.json>\n  eqm-core fitting-stats --input <payload.json>\n  eqm-core analytics-summary --input <payload.json>\n  eqm-core bounty-analytics --input <payload.json>\n  eqm-core battle-report --input <payload.json>\n  eqm-core hypernet-economics --input <payload.json>\n  eqm-core jump-route --input <payload.json>\n  eqm-core settlement-math --input <payload.json>\n  eqm-core killboard-analytics --input <payload.json>\n  eqm-core srp-analytics --input <payload.json>\n  eqm-core threat-analytics --input <payload.json>"
     );
     process::exit(2);
 }
@@ -47,6 +47,10 @@ fn run() -> Result<(), String> {
             .map_err(|error| format!("unable to read {input_path}: {error}"))?
     };
     let output = match command {
+        "pi-production-chain" => {
+            let payload = serde_json::from_str(&input_text).map_err(|e| format!("Invalid production chain input: {e}"))?;
+            Ok(eqm_core::pi_production_chain::calculate(payload)?)
+        }
         "pi-production" => {
             let payload = serde_json::from_str(&input_text).map_err(|e| format!("Invalid production input: {e}"))?;
             Ok(eqm_core::pi_production::calculate(payload)?)

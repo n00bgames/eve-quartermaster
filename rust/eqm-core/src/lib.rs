@@ -12,6 +12,7 @@ pub mod jump_route;
 pub mod killboard_analytics;
 pub mod pi_shortage;
 pub mod pi_production;
+pub mod pi_production_chain;
 pub mod pi_allocation;
 pub mod planetary_analytics;
 pub mod settlement_math;

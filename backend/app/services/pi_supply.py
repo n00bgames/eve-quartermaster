@@ -76,7 +76,7 @@ def native_calculation(command, payload, extra=()):
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0), check=True,
         )
         result = json.loads(completed.stdout)
-        expected = "eqm.pi-production.v1" if command == "pi-production" else "eqm.planetary-shortage-report.v2"
+        expected = "eqm.pi-production.v1" if command in ("pi-production", "pi-production-chain") else "eqm.planetary-shortage-report.v2"
         if result.get("schema_version") != expected:
             raise ValueError("Unsupported native result")
         return {**result, "engine_used": "rust"}

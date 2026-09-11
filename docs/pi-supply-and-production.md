@@ -17,7 +17,9 @@ PI sync only refreshes colonies. Use the existing corporation asset sync to refr
 
 ## Production Calculator
 
-Choose a PI recipe from the SDE catalog, enter ingredient quantities and a factory count, or copy the selected hangar stock. The calculation uses direct recipe ingredients, not a recursive chain. Missing quantities mean zero. Inputs must be whole nonnegative units; factories must be 1–10,000.
+Choose a PI recipe from the SDE catalog, enter ingredient quantities and a factory count, or copy the selected hangar stock. For a P4 product, the calculator defaults to P2 feedstock. Select Materials I feed to expand the recipe chain from P0, P1, P2, or P3 as appropriate, or choose Direct recipe ingredients for the original single-step calculation. Lower-tier inputs used directly remain listed even when feeding P2. Shared ingredients are deduplicated and allocated across the entire chain. Missing quantities mean zero. Inputs must be whole nonnegative units; factories must be 1–10,000.
+
+For direct-input mode:
 
 - Complete batches = minimum of floor(stock / per-cycle ingredient requirement).
 - Total output = batches × recipe output per cycle.
@@ -26,13 +28,17 @@ Choose a PI recipe from the SDE catalog, enter ingredient quantities and a facto
 - A partial last round identifies how many factories can run one additional cycle.
 - Leftovers subtract only complete batches; every tied limiting ingredient is marked.
 
-The calculator assumes ingredients can be distributed between factories. It does not simulate storage/routing limits, travel, ongoing extraction, upstream production, or partially completed jobs. Recipes and cycle quantities come from the server's SDE catalog, not client-submitted recipe definitions.
+Chain mode expands demand through whole upstream batches, aggregates shared ingredient demand before rounding that recipe, and searches for the maximum number of complete final-product batches supported by the feedstock. It produces only the intermediate batches needed for that final output; unused feedstock remains unprocessed. The stage table shows intermediate quantities made, consumed downstream, and left over. Ingredient limits identify shortages preventing the next final-product batch.
+
+Each recipe has its own factory count. The staged completion estimate runs recipes within a tier in parallel and waits for that tier to finish before starting the next. It is a conservative sequential-stage schedule, not a prediction of a continuously overlapping in-game pipeline. Runtime does not change yield. Existing intermediate inventory is not included in feed-tier mode; direct mode remains available for feeding those ingredients.
+
+The calculator assumes ingredients can be distributed between factories. It does not simulate storage/routing limits, travel, ongoing replenishment beyond the entered stock, or partially completed jobs. Recipes and cycle quantities come from the server's SDE catalog, not client-submitted recipe definitions.
 
 ## Engine and deployment
 
 The existing Rust `pi-shortage` evaluator now emits `eqm.planetary-shortage-report.v2`, with `hangar_inventory`, `total_inventory`, and `net_surplus_per_day` on every row and finished products included in scope. The browser's deterministic reference calculation retains report availability if the native engine is missing, with a visible notice. JSON exports identify the calculation engine and selected inventory source. The former v1 fixture is retained as historical evidence.
 
-The new `pi-production` eqm-core command performs complete-batch/runtime/leftover arithmetic. Backend routes enforce PI permissions, read the authorized asset snapshot and SDE recipe, and invoke the Rust binary with bounded time. Calculator engine failure is explicit (503), never a fabricated estimate. Existing `EQM_CORE_BINARY` and `EQM_CORE_TIMEOUT_SECONDS` settings apply. Deploy/rebuild backend including eqm-core and frontend together. No database migration is needed for these additions.
+The `pi-production` eqm-core command performs direct complete-batch/runtime/leftover arithmetic. `pi-production-chain` expands the server-provided SDE recipe graph and allocates feedstock for multi-stage output. Backend routes enforce PI permissions, read the authorized asset snapshot and SDE recipe, and invoke the Rust binary with bounded time. Calculator engine failure is explicit (503), never a fabricated estimate. Existing `EQM_CORE_BINARY` and `EQM_CORE_TIMEOUT_SECONDS` settings apply. Deploy/rebuild backend including eqm-core and frontend together. No database migration is needed for these additions.
 
 ## Verification and production follow-up
 
@@ -44,5 +50,5 @@ Production checks remain pending:
 - Check a user without corporate asset visibility sees no corporate inventory; a previously saved inaccessible selection must show unavailable.
 - Sync corporation assets and confirm monitoring updates; PI sync alone must not claim a new hangar snapshot.
 - Confirm green excess supply and final products; a supply deficit must remain a deficit after selecting a large stockpile.
-- Try a known recipe with unequal ingredients and multiple factories; verify the last partial round and leftovers.
-- Confirm the deployed Rust binary supports both updated pi-shortage and new pi-production commands.
+- Try a P4 recipe fed from P2, including shared P2 requirements and any direct P1 input; verify intermediate batches, final output, leftovers, and per-recipe runtimes. Also confirm direct-input mode still works.
+- Confirm the deployed Rust binary supports pi-shortage, pi-production, and pi-production-chain commands.

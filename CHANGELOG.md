@@ -10,6 +10,8 @@ Planned release title: **v1.0.0 — The Bigger Bite of the PI 1.0 Release!**
 
 ### Changed
 
+- Extended the Production Calculator to turn lower-tier feedstock (including P2) into complete P3/P4 chains, with shared-input accounting, intermediate leftovers, and per-recipe factory counts.
+
 - Prepared EQM 1.0.0 as a regular release, without the beta/prerelease label.
 - Added a visible Fitting Simulator notice: for informational purposes only, still in development, and not PYFA-complete.
 

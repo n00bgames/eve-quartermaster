@@ -88,7 +88,9 @@ def supply_report(target_type_id: int | None = Query(None, gt=0), hangar_id: str
 class ProductionRequest(BaseModel):
     schematic_id: int = Field(gt=0)
     factories: int = Field(default=1, ge=1, le=10000)
-    inventory: dict[int, int] = Field(default_factory=dict, max_length=32)
+    inventory: dict[int, int] = Field(default_factory=dict, max_length=128)
+    feed_tier: int | None = Field(default=None, ge=0, le=3)
+    stage_factories: dict[int, int] = Field(default_factory=dict, max_length=128)
 
 
 @router.post("/production-calculator")
@@ -99,6 +101,19 @@ def production_calculator(payload: ProductionRequest, current_user: User = Depen
     recipe = db.get(EvePlanetSchematic, payload.schematic_id)
     if recipe is None:
         raise HTTPException(404, "PI recipe not found; import the SDE schematic catalog")
+    if any(key <= 0 or count < 1 or count > 10000 for key, count in payload.stage_factories.items()):
+        raise HTTPException(422, "Each recipe needs 1 to 10,000 factories")
+    if payload.feed_tier is not None:
+        catalog = db.scalars(select(EvePlanetSchematic).options(selectinload(EvePlanetSchematic.inputs))).all()
+        return native_calculation("pi-production-chain", {
+            "target_id": payload.schematic_id, "feed_tier": payload.feed_tier,
+            "inventory": payload.inventory,
+            "factories": {**payload.stage_factories, payload.schematic_id: payload.factories},
+            "recipes": [{"id": r.schematic_id, "output_type_id": r.output_type_id,
+                         "output_quantity": r.output_quantity, "cycle_time": r.cycle_time,
+                         "inputs": [{"type_id": i.type_id, "quantity": i.quantity} for i in r.inputs]}
+                        for r in catalog],
+        })
     return native_calculation("pi-production", {
         "cycle_time": recipe.cycle_time, "output_quantity": recipe.output_quantity,
         "inputs": [{"type_id": i.type_id, "quantity": i.quantity} for i in recipe.inputs],

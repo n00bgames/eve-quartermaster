@@ -100,3 +100,23 @@ def test_report_uses_native_stock_and_surplus(client, monkeypatch):
     assert coolant["runway_days_at_net_shortfall"]==2.666667
     assert coolant["net_shortfall_per_day"]==360
     assert next(r for r in report["commodities"] if r["type_id"]==2870)["net_surplus_per_day"]==24
+
+
+def test_p4_from_shared_p2_follows_server_recipes(client, monkeypatch):
+    def recipe(id, output, quantity, inputs):
+        return NS(schematic_id=id, output_type_id=output, output_quantity=quantity, cycle_time=3600,
+                  inputs=[NS(type_id=t, quantity=q) for t, q in inputs])
+    catalog = [recipe(1, 10, 20, [(1, 3000)]), recipe(2, 20, 5, [(10, 40)]),
+               recipe(3, 30, 3, [(20, 10)]), recipe(4, 31, 3, [(20, 10)]),
+               recipe(5, 40, 1, [(30, 4), (31, 4), (10, 2)])]
+    client.app.dependency_overrides[get_db] = lambda: NS(get=lambda *a: catalog[-1], scalars=lambda *a: NS(all=lambda: catalog))
+    response = client.post("/planetary-industry/production-calculator", json={
+        "schematic_id": 5, "feed_tier": 2, "inventory": {"20": 65, "10": 10}, "stage_factories": {"3": 2, "4": 2}})
+    assert response.status_code == 200, response.text
+    r = response.json()
+    assert r["mode"] == "chain" and r["engine_used"] == "rust"
+    assert r["output_quantity"] == 2 and r["duration_seconds"] == 14400
+    assert {s["type_id"]: s["produced"] for s in r["stages"]} == {30: 9, 31: 9, 40: 2}
+    assert {i["type_id"]: i["remaining"] for i in r["ingredients"]} == {20: 5, 10: 6}
+    for change in ({"feed_tier": 4}, {"stage_factories": {"3": 0}}, {"stage_factories": {"3": 10001}}):
+        assert client.post("/planetary-industry/production-calculator", json={"schematic_id": 5, **change}).status_code == 422
