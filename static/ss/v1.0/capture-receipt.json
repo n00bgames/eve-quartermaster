@@ -1,0 +1,16 @@
+{
+  "source_commit": "f894f27ad7fb2ef4956e5bef2e97d3865fe8cfd2",
+  "capture_date": "2026-09-11",
+  "data": "Synthetic demo inventory, pilots and market; catalog fixture; actual current components; Rust chain calculator and planner backend",
+  "images": [
+    "pi-supply.png",
+    "pi-production.png",
+    "pi-planner.png",
+    "pi-recipes.png",
+    "pi-template.png",
+    "skills-exports.png",
+    "fittings-status.png",
+    "pi-production-mobile.png"
+  ],
+  "page_errors": []
+}

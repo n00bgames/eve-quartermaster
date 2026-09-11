@@ -23,20 +23,22 @@
 
 EVE Quartermaster is a containerized, database-first EVE Online quartermaster and alliance operations tool. It tracks characters, corporations, assets, blueprints, recipes, skills, standings/contact sync, wallet snapshots, permissions, audit events, and long-term analytics from EVE ESI plus imported SDE data.
 
-This is an early beta candidate for private/public testing. It is already useful, but the data model and API surface are still moving quickly.
+The 1.0 source build brings the PI Operation Planner, corporate supply monitoring, and production-chain calculations into the wider operations suite. See the [v1.0 release notes](docs/releases/v1.0.md) for **The Bigger Slice of PI Release!** The planned release tag is `v1.0`; application/package versions use `1.0.0`.
 
-> **Fittings feature preview:** The Fittings module is still under active development. Core cold-fit resources, offense, defense, capacitor, targeting, movement, trained skills, loaded charges/scripts, and common command-burst calculations are now checked against Pyfa 2.68.0 and selected EVE-client reference fits. Complete effect-graph, subsystem, implant, booster, fleet-effect, heat, and edge-case coverage is not yet claimed.
+> **Fitting Manager / Simulator: Non-Authoritative. For Informational Use Only.** Still in development and not PYFA-complete. Full feature and calculation parity with PYFA is not claimed; verify consequential fitting decisions against PYFA and the EVE client.
 
 See [CHANGELOG.md](CHANGELOG.md) for version-by-version release notes.
 
 ## Install Time
 
-**Typical first-time setup:**
+**Planning estimates, not benchmark guarantees:**
 
-- About 5 minutes if Docker is already installed.
-- About 15-25 minutes from a clean Windows machine, excluding any required restart.
-- One helper script checks the environment and can install supported prerequisites.
-- The only account-side manual requirement is creating a CCP Developer application for ESI/SSO.
+- Allow about **15–30 minutes with Docker already working**, or **30–60+ minutes for a fresh setup**.
+- Hardware, downloads, prerequisite restarts, SDE import, initial syncs, and public-server configuration can take longer.
+- Difficulty is approachable for someone comfortable following a terminal guide, and moderate if Docker/SSO are new to you.
+- Semi-automated Windows/Linux scripts check prerequisites, prepare local configuration/secrets, and build/start containers. You still create the CCP Developer application, configure callbacks, fetch/import the SDE, and link characters. Public hosting also needs HTTPS/reverse-proxy configuration.
+
+**[Go to installation](#install)**
 
 ## Current Capabilities
 
@@ -52,6 +54,10 @@ See [CHANGELOG.md](CHANGELOG.md) for version-by-version release notes.
 - Historical analytics foundation with scope-aware, hourly-coalesced snapshot runs, selectable full or change-only retention, metric metadata/versioning, organic-versus-coverage change composition, baseline-aware deltas, honest range coverage, exports, composable widgets, and host-controlled legacy-history compaction.
 - ESI-backed Research Projects queue for manufacturing, material/time efficiency, copying, and invention work, with retained installer history and Analytics attribution.
 - Planetary Industry workspace with queued per-character ESI sync, colony layouts, extractor program projections, routed factory warnings, storage totals, character/system/planet filters, and historical P0-P4 production analytics with per-commodity pilot rankings.
+- PI operation planning with ESI order-depth pricing, pilot/colony constraints, private scenarios, recipe graphs, scouting, build/shopping exports, and native template previews requiring in-game validation. See [the planner guide](docs/pi-operation-planner.md).
+- PI supply reports with bright-green surpluses, selected corporate station/Upwell hangar inventory (including nested containers), corporation asset sync, and individual/bulk calculator imports. The Rust-backed Production Calculator expands feedstock tiers into full production chains and shows overlapping, per-tier and per-product timing. [PI workflow and limits](docs/pi-supply-and-production.md).
+- PI character groups: My Characters Only by default, verified My Corp Pilots for authorized directors, and All Characters for admins/hosts. Access is enforced server-side.
+- Character Skills CSV/JSON exports include visible profiles and queues; EVE UTC and local clocks appear in the top bar.
 - Configurable Recruiting workspace with a public corporation page, applicant accounts, limited-scope EVE verification, recruiter review queues, interviews, audited decisions, and capability-based staff access.
 - Calendar and Events workspace with month and upcoming views, local/EVE time presentation, RSVPs, multi-character fleet registration, doctrine and role planning, manager-only composition, post-event attendance, walk-in recording, and participation analytics.
 - Doctrine Management with operator-configurable priority fields, canonical fittings, optional readiness plans, historical fit snapshots, and safe archival.
@@ -80,116 +86,29 @@ See [CHANGELOG.md](CHANGELOG.md) for version-by-version release notes.
 
 ## Screenshots
 
-A quick tour of the current beta surface, ordered roughly the way a new Quartermaster operator would encounter the tool. Private identities and operational data are excluded or replaced with clearly fictitious demo data; public EVE system names and traffic telemetry may come from the live service.
+**[Open the complete gallery](docs/screenshots.md)** · [v1.0 highlights](docs/screenshots.md#v10-highlights) · [Suite/module coverage](docs/screenshots.md#suite-gallery) · [All 63 historical images](docs/screenshots.md#historical-image-index)
 
-### Command Center
+New images show current components with synthetic demo data. Older screenshots and reconstructed examples are preserved in the gallery with explicit status and replacement notes; they are not represented as current UX.
 
-| Overview | Navigation |
+| Corporate supply and surpluses | P2 → P3 → P4 production |
 | --- | --- |
-| ![Quartermaster overview](static/ss/eqm-overview.png) | ![Navigation and threat tools](static/ss/eqm-navigation.png) |
+| [![PI supply demo](static/ss/v1.0/pi-supply.png)](static/ss/v1.0/pi-supply.png) | [![Production Calculator demo](static/ss/v1.0/pi-production.png)](static/ss/v1.0/pi-production.png) |
 
-| Route Traffic Intel | PvP Traffic Intel |
+| Operation planning | Skills and queue exports |
 | --- | --- |
-| ![Route systems with last-hour jumps, ship kills, and pod kills](static/ss/eqm-route-hourly-intel.png) | ![PvP report with last-hour traffic telemetry](static/ss/eqm-pvp-hourly-intel.png) |
-
-| Analytics Platform | Audit Log |
-| --- | --- |
-| ![Analytics platform](static/ss/eqm-analytics.png) | ![Audit log](static/ss/eqm-audit.png) |
-
-### Character Functions
-
-| Characters | Skills |
-| --- | --- |
-| ![Characters](static/ss/eqm-characters.png) | ![Character skills](static/ss/eqm-skills.png) |
-
-| Fittings | Alliance Roster |
-| --- | --- |
-| ![Fittings](static/ss/eqm-fittings.png) | ![Alliance roster](static/ss/eqm-roster.png) |
-
-| ESI Sync | Jump Clones |
-| --- | --- |
-| ![ESI sync](static/ss/eqm-esi-sync.png) | ![Jump clones and implant loadouts](static/ss/eqm-jump-clones.png) |
-
-### Finance And Trade
-
-| Bounty Analytics |
-| --- |
-| ![Private bounty income and authoritative corporation-tax analytics](static/ss/eqm-v019-bounty-analytics.png) |
-
-### Inventory And Industry
-
-| Corporate Exchange | Listing Detail & Appraisal | Owner Listing Editor |
-| --- | --- | --- |
-| ![Corporate Exchange listing board](static/ss/eqm-corporate-exchange.jpg) | ![Corporate Exchange listing detail and five-hub appraisal](static/ss/eqm-corporate-exchange-detail.jpg) | ![Corporate Exchange owner listing editor](static/ss/eqm-corporate-exchange-editor.jpg) |
-
-**Built from user feedback:** The Corporate Exchange module was shaped directly by requests from EVE Quartermaster users, from shareable member listings through stock management, appraisals, auctions, and seller controls.
-| HyperNet Tracker | Offer Detail & Economics |
-| --- | --- |
-| ![HyperNet Tracker dashboard with active offer summary](static/ss/eqm-hypernet-tracker.jpg) | ![HyperNet offer detail with financial and seeded-node risk calculations](static/ss/eqm-hypernet-offer-detail.jpg) |
-
-| Manufacturing | Research Projects |
-| --- | --- |
-| ![Manufacturing ledger and build inputs](static/ss/eqm-manufacturing.png) | ![Research projects and job history](static/ss/eqm-research-projects.png) |
-
-| Mining Ledger | Mining Yield Analytics |
-| --- | --- |
-| ![Mining Ledger controls and extraction totals](static/ss/eqm-mining-ledger.png) | ![Mining yield, residue, value, and efficiency analytics](static/ss/eqm-mining-analytics.png) |
-
-| Mining Op Settlement | Notes & Lists |
-| --- | --- |
-| ![Mining operation settlement calculator](static/ss/eqm-mining-settlement.png) | ![Private notes and item lists](static/ss/eqm-notes-lists.png) |
-
-| Market | Corporations |
-| --- | --- |
-| ![Market appraisal](static/ss/eqm-market.png) | ![Corporations](static/ss/eqm-corporations.png) |
-
-| Ownership | Assets |
-| --- | --- |
-| ![Ownership](static/ss/eqm-ownership.png) | ![Asset ledger](static/ss/eqm-assets.png) |
-
-| Industry | Contracts |
-| --- | --- |
-| ![Blueprints and industry](static/ss/eqm-industry.png) | ![Contracts](static/ss/eqm-contracts.png) |
-
-| Planetary Industry |
-| --- |
-| ![Planetary Industry colony health and production](static/ss/eqm-planetary-industry.png) |
-
-### Fleet Operations
-
-| Doctrine Management | SRP Instances |
-| --- | --- |
-| ![Multi-fit doctrine management with linked skill plans](static/ss/eqm-doctrine-management.png) | ![Operation-linked SRP instances and shareable submission links](static/ss/eqm-srp-operations.png) |
-
-| SRP Analytics | Killboard |
-| --- | --- |
-| ![SRP loss, reimbursement, and doctrine analytics](static/ss/eqm-srp-analytics.png) | ![Canonical ESI Killboard with zKillboard discovery and combat analytics](static/ss/eqm-v019-killboard.png) |
-
-### Community
-
-| Calendar & Events | Recruiting |
-| --- | --- |
-| ![Calendar and upcoming operations](static/ss/eqm-calendar-events.png) | ![Recruiting setup and administration](static/ss/eqm-recruiting.png) |
-
-### Account And Settings
-
-| Profile | Settings |
-| --- | --- |
-| ![Profile](static/ss/eqm-profile.png) | ![Settings](static/ss/eqm-settings.png) |
-
-| EVE Developer Application |
-| --- |
-| ![EVE developer application setup](static/ss/developer.png) |
+| [![PI planner demo](static/ss/v1.0/pi-planner.png)](static/ss/v1.0/pi-planner.png) | [![Skills export demo](static/ss/v1.0/skills-exports.png)](static/ss/v1.0/skills-exports.png) |
 
 ## Stack
 
 - **Frontend:** React, TypeScript, Vite, lucide-react.
-- **Backend:** FastAPI, SQLAlchemy, Alembic.
+- **Backend:** FastAPI, SQLAlchemy, Alembic; Rust calculation engines.
 - **Database:** PostgreSQL.
-- **Worker/cache:** Redis-backed worker placeholder for longer-running sync work.
+- **Worker/cache:** Background workers and Redis. PI planning jobs are persisted in PostgreSQL and execute in the backend process; they are not a distributed job queue.
 - **Runtime:** Docker Compose.
 - **External data:** EVE ESI/SSO and EVE Static Data Export.
 - **Mobile:** Minimal Android WebView shell for sideload testing.
+
+<a id="install"></a>
 
 ## Run Locally
 

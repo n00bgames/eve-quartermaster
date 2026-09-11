@@ -6,9 +6,13 @@ Version sections are written as user-facing release notes first, with implementa
 
 ## Unreleased
 
-Planned release title: **v1.0.0 — The Bigger Bite of the PI 1.0 Release!**
+Planned release title: **v1.0 — The Bigger Slice of PI Release!**
+
+Tag: `v1.0` (not yet published); application/package version: `1.0.0`. [Complete release overview](docs/releases/v1.0.md). The overview uses the actual Git boundary after `v0.1.23.1-beta` (`6d95a7b`), including the later Skills exports commit historically documented under that version below.
 
 ### Changed
+
+- Added the v1.0 release overview and an audited screenshot gallery with eight fresh component captures, all 63 historical images, current module mapping, and explicit provenance/coverage notes. Updated README installation estimates, install anchor and fitting status.
 
 - Replaced the PI chain calculator's sequential headline time with an overlapping-cycle estimate and separate per-tier/per-product production times; sequential timing remains a labeled comparison.
 
