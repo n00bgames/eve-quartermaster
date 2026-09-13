@@ -40,6 +40,9 @@ SDE_FILES = {
     "constellations": ("mapConstellations.yaml",),
     "systems": ("mapSolarSystems.yaml",),
     "stargates": ("mapStargates.yaml",),
+    "planets": ("mapPlanets.yaml",),
+    "moons": ("mapMoons.yaml",),
+    "belts": ("mapAsteroidBelts.yaml",),
     "stations": ("npcStations.yaml",),
     "station_operations": ("stationOperations.yaml",),
     "npc_corporations": ("npcCorporations.yaml",),
@@ -75,6 +78,7 @@ class SdeImportStats:
     systems: int = 0
     stargates: int = 0
     stations: int = 0
+    celestials: int = 0
     blueprint_activities: int = 0
     activity_inputs: int = 0
     skipped_activities: int = 0
@@ -805,6 +809,36 @@ def import_sde(
                     mark(f"systems imported: {stats.systems}")
             db.commit()
             mark("systems complete")
+
+        if "systems" in wanted or "celestials" in wanted:
+            from app.services.system_distances import store_public, position
+            for logical_name, kind in (("planets", "planet"), ("moons", "moon"), ("belts", "belt")):
+                try:
+                    objects = source.load_yaml(logical_name)
+                except FileNotFoundError:
+                    mark(f"{logical_name} absent in this SDE; ESI refresh can fill them")
+                    continue
+                mark(f"loading {logical_name}")
+                for raw_id, payload in objects.items():
+                    system_id = optional_int(payload.get("solarSystemID"))
+                    if system_id is None:
+                        continue
+                    system = ensure_system(db, system_id)
+                    # Modern SDE may omit localized celestial names; use readable indexed labels.
+                    number = int(payload.get("celestialIndex") or 0)
+                    roman = ""
+                    for value, numeral in ((1000, "M"), (900, "CM"), (500, "D"), (400, "CD"), (100, "C"), (90, "XC"), (50, "L"), (40, "XL"), (10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I")):
+                        count, number = divmod(number, value)
+                        roman += numeral * count
+                    fallback = f"{system.name} {roman}" if roman else f"{system.name} — {kind.title()} {raw_id}"
+                    if kind in ("moon", "belt"):
+                        fallback += f" - {'Moon' if kind == 'moon' else 'Asteroid Belt'} {payload.get('orbitIndex', raw_id)}"
+                    store_public(db, int(raw_id), system_id, kind, localized_text(payload.get("name"), fallback), position(payload), "sde")
+                    stats.celestials += 1
+                    if stats.celestials % 2500 == 0:
+                        db.commit()
+                db.commit()
+                mark(f"{logical_name} complete")
 
         if "stargates" in wanted:
             mark("loading stargates")

@@ -23,6 +23,9 @@ Tag: `v1.0` (not yet published); application/package version: `1.0.0`. [Complete
 
 ### Added
 
+- Added System Distances & Warp Time as the bottom Navigation widget, with system autocomplete, origin selection, ordered object lists, AU distances, and an editable warp-speed/align-time reference calculation. The result prominently warns that acceleration and deceleration are excluded.
+- Added persistent SDE celestial positions, public ESI refresh, and token-scoped accessible Upwell positions with optional structure-ID resolution. Unknown positions stay unavailable. Migration `0080_system_distances` is required; existing installations can use Refresh ESI objects without a full SDE reimport.
+
 - Added My Characters Only (default), verified My Corp Pilots for directors, and All Characters for admins/hosts to PI; selected pilots now drive colony totals, supply reports and exports. Corporate membership through an unprivileged alt does not grant corporation-wide PI visibility.
 
 - Added individual ingredient import buttons to the PI Production Calculator alongside the existing bulk hangar import, plus a corporation asset sync action beside the inventory source selector.

@@ -45,3 +45,8 @@ Verify the application version, select a visible corporate station/Upwell hangar
 ## Future context windows
 
 Read this document and the local `CHAT_HANDOFF.md` before deployment work. Check current Git and container state instead of treating dated snapshots as live status. The authoritative Windows publish repository remains `D:\Codex\EVE\_publish\eve-quartermaster-20260628-092452`; `D:\Codex\EVE` is a legacy tree, not an active Git repository or the running EQM server.
+
+
+## Navigation distance widget
+
+The System Distances & Warp Time addition requires migration `0080_system_distances` and backend/frontend rebuilds. Existing installations can select a system and use **Refresh ESI objects** to fill celestial positions; a full SDE reimport also populates planets, moons and belts. Verify the bottom Navigation widget, the acceleration/deceleration exclusion warning, and private structure access with the intended user. See [coverage and setup](system-distances.md).

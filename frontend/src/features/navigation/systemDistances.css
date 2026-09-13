@@ -1,0 +1,36 @@
+.system-distance-calculator { margin-top: 1rem; }
+.distance-controls { display: flex; flex-wrap: wrap; align-items: end; gap: .8rem; }
+.distance-controls > label, .distance-controls > .system-search-field { flex: 1 1 240px; min-width: 0; }
+.distance-controls label { display: grid; gap: .35rem; }
+.distance-controls input, .distance-controls select { width: 100%; min-width: 0; box-sizing: border-box; }
+.distance-object-list { overflow: auto; max-height: 440px; }
+.distance-object-list table { width: 100%; }
+.distance-object-list caption { text-align: left; padding: .7rem 0; }
+.distance-object-list td { vertical-align: middle; }
+.distance-object-list td small { display: block; opacity: .65; }
+.distance-object-list td label { cursor: pointer; overflow-wrap: anywhere; }
+.distance-selected { background: rgba(233, 185, 67, .12); }
+.distance-estimate-card { border: 1px solid var(--border, #333e4b); border-radius: 8px; padding: 1rem; background: rgba(128, 148, 168, .06); }
+.distance-time { font-size: 1.6rem; }
+@media (max-width: 600px) {
+  .distance-controls > button { width: 100%; }
+  .distance-object-list th, .distance-object-list td { padding: .45rem; font-size: .85rem; }
+}
+
+.distance-controls > button { border: 1px solid #b5903a; border-radius: 6px; padding: .65rem .8rem; background: #e7b944; color: #15191f; cursor: pointer; font-weight: 600; }
+.distance-controls > button:disabled { opacity: .55; cursor: default; }
+.distance-object-list input[type="radio"] { width: 18px; height: 18px; min-height: 18px; margin: 0; accent-color: #e7b944; }
+@media (max-width: 600px) {
+  .distance-object-list table { min-width: 0; table-layout: fixed; }
+  .distance-object-list th:first-child { width: 2rem; }
+  .distance-object-list th:nth-child(2) { width: 3.6rem; }
+  .distance-object-list th:last-child { width: 5.4rem; }
+  .distance-object-list th, .distance-object-list td { white-space: normal; overflow-wrap: anywhere; }
+}
+
+@media (max-width: 600px) {
+  .distance-select-heading { display: none; }
+  .distance-object-list th:first-child { width: 1.9rem; }
+  .distance-object-list th:nth-child(2) { width: 4.8rem; }
+  .distance-object-list td:nth-child(2) { overflow-wrap: normal; }
+}

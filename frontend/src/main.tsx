@@ -49,6 +49,7 @@ import { BountyAnalyticsPage } from "./features/bounties/BountyAnalyticsPage";
 import { NextEventBadge } from "./features/events/NextEventBadge";
 import { UpcomingEventsWidget } from "./features/events/UpcomingEventsWidget";
 import { IndustrialSystemThreatWidget, LocalThreatWidget, PvpIntelWidget } from "./features/navigation/ThreatIntelWidgets";
+import { SystemDistanceCalculator } from "./features/navigation/SystemDistanceCalculator";
 import { RouteChecker } from "./features/navigation/RouteChecker";
 import type { CharacterFocus } from "./types/characters";
 import type { Asset, AssetFilter, AssetFilterKey, AssetPagePayload, AssetSortKey, AssetTableSeed, Blueprint, EveType, IndustryActivity, InventoryFamilyFilter, Location, MissingBlueprintCatalog, Owner, OwnerKindFilter, SortDirection, Summary } from "./types/inventory";
@@ -938,6 +939,7 @@ function NavigationPlanner({ currentUser }: { currentUser: UserAccount }) {
     <div id="local-threat-analyzer" className="threat-analyzer-anchor">
       <LocalThreatWidget currentUser={currentUser} api={api} Metric={Metric} EveEntityIcon={EveEntityIcon} CharacterHoverName={CharacterHoverName} />
     </div>
+    <SystemDistanceCalculator api={api} />
   </>;
 }
 function AuditLog({ currentUser }: { currentUser: UserAccount }) {

@@ -1,5 +1,6 @@
 from app.models.analytics import BlueprintSnapshot, CharacterSkillSnapshot, CorporationSnapshot, CorporationWalletSnapshot, SnapshotMetric, SnapshotRun
 from app.models.wallet import CharacterWalletJournalEntry, CharacterWalletSnapshot
+from app.models.system_objects import EveSystemObject, NavigationStructure, SystemObjectSync
 from app.models.assets import Asset, Location
 from app.models.audit import AppSetting, AuditEvent, PrivateMessage
 from app.models.contracts import EveContract

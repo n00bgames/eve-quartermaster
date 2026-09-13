@@ -375,3 +375,40 @@ async def jump_freighter_route(
 
 
 
+
+
+@router.get("/systems/{system_id}/objects")
+def distance_objects(system_id: int, user: User = Depends(require_navigation), db: Session = Depends(get_db)):
+    from app.services.system_distances import system_objects
+    return system_objects(db, system_id, user.id)
+
+
+@router.post("/systems/{system_id}/objects/sync")
+async def sync_distance_objects(system_id: int, user: User = Depends(require_navigation), db: Session = Depends(get_db)):
+    import httpx
+    from app.services.esi_client import EsiClient
+    from app.services.system_distances import refresh_public, refresh_structures, system_objects
+    from sqlalchemy.exc import IntegrityError
+    system_objects(db, system_id, user.id)  # Validate system before external requests.
+    messages = []
+    try:
+        messages.append(await refresh_public(db, system_id, EsiClient()))
+        db.commit()
+    except (HTTPException, httpx.HTTPError, IntegrityError):
+        db.rollback()
+        messages.append("Public ESI refresh unavailable or another refresh finished first; showing stored positions.")
+    count = await refresh_structures(db, system_id, user.id)
+    result = system_objects(db, system_id, user.id)
+    result["message"] = " ".join(messages) + f" {count} accessible structures resolved."
+    return result
+
+
+@router.post("/systems/{system_id}/objects/structures/{structure_id}")
+async def resolve_distance_structure(system_id: int, structure_id: int, user: User = Depends(require_navigation), db: Session = Depends(get_db)):
+    from app.services.system_distances import refresh_structures, system_objects
+    system_objects(db, system_id, user.id)
+    if structure_id <= 0 or structure_id > 9_007_199_254_740_991:
+        raise HTTPException(400, "Enter a valid structure ID.")
+    if not await refresh_structures(db, system_id, user.id, structure_id):
+        raise HTTPException(404, "Structure is unavailable, outside this system, or inaccessible to your linked characters. The read_structures ESI scope is required.")
+    return system_objects(db, system_id, user.id)
