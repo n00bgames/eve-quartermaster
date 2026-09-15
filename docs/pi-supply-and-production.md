@@ -1,6 +1,6 @@
 # PI supply and Production Calculator
 
-Release classification: regular release (not a prerelease). Package and application version: `1.0.0`.
+Release classification: regular release (not a prerelease). Package and application version: `1.0.1`.
 
 Planned release title: **v1.0 — The Bigger Slice of PI Release!**
 Recorded September 11, 2026 for release later today at the user's request. This note does not publish a release or change an existing tag.

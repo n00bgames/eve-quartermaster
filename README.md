@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/n00bgames/eve-quartermaster"><img alt="Project" src="https://img.shields.io/badge/project-eve--quartermaster-e8b84d?style=for-the-badge"></a>
-  <img alt="Version" src="https://img.shields.io/badge/version-1.0.0-4fb3c7?style=for-the-badge">
+  <img alt="Version" src="https://img.shields.io/badge/version-1.0.1-4fb3c7?style=for-the-badge">
   <img alt="License" src="https://img.shields.io/badge/license-AGPL--3.0--or--later-70c894?style=for-the-badge">
 </p>
 
@@ -23,7 +23,7 @@
 
 EVE Quartermaster is a containerized, database-first EVE Online quartermaster and alliance operations tool. It tracks characters, corporations, assets, blueprints, recipes, skills, standings/contact sync, wallet snapshots, permissions, audit events, and long-term analytics from EVE ESI plus imported SDE data.
 
-The 1.0 source build brings the PI Operation Planner, corporate supply monitoring, and production-chain calculations into the wider operations suite. See the [v1.0 release notes](docs/releases/v1.0.md) for **The Bigger Slice of PI Release!** The planned release tag is `v1.0`; application/package versions use `1.0.0`.
+The 1.0 source build brings the PI Operation Planner, corporate supply monitoring, and production-chain calculations into the wider operations suite. See the [v1.0 release notes](docs/releases/v1.0.md) for **The Bigger Slice of PI Release!** The current application/package version is `1.0.1`, adding the Navigation distance and rough warp-time calculator. See the [changelog](CHANGELOG.md) for patch details.
 
 > **Fitting Manager / Simulator: Non-Authoritative. For Informational Use Only.** Still in development and not PYFA-complete. Full feature and calculation parity with PYFA is not claimed; verify consequential fitting decisions against PYFA and the EVE client.
 
