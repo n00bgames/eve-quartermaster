@@ -4,7 +4,15 @@ All notable changes to EVE Quartermaster are tracked here.
 
 Version sections are written as user-facing release notes first, with implementation detail included where it helps operators understand deployment or testing impact.
 
+## [1.0.2] - Unreleased
+
+### Changed
+
+- Prepared application, API, package, Android, export metadata, and service versions for the next development cycle. Android versionCode is now 20.
+
 ## [1.0.1] - 2026-09-15
+
+Release title: **EQM - v1.0.1 - Are We There Yet? Update**
 
 ### Added
 

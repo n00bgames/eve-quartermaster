@@ -19,7 +19,7 @@ from app.services.threat_analytics_engine import evaluate_threat_analytics_with_
 
 ZKILLBOARD_BASE_URL = "https://zkillboard.com/api"
 ESI_BASE_URL = "https://esi.evetech.net/latest"
-USER_AGENT = "EVE-Quartermaster/1.0.1 navigation-intel"
+USER_AGENT = "EVE-Quartermaster/1.0.2 navigation-intel"
 INDUSTRIAL_CACHE_FEED = "zkill_industrial"
 PVP_CACHE_FEED = "zkill_pvp"
 INDUSTRIAL_CACHE_RETENTION_DAYS = 90
