@@ -8,6 +8,8 @@ Version sections are written as user-facing release notes first, with implementa
 
 ### Changed
 
+- Reuse ESI HTTP connections across character syncs, fetch independent PI planets and skills/queue data concurrently, and reuse responses only while ESI's cache headers permit it. Private responses stay credential-isolated; public universe metadata can be reused across pilots.
+- Add response-driven ESI rate-limit handling with a configurable 5% token cushion, a five-error legacy reserve, and bounded retries for rate-limited or temporarily unavailable reads. Database writes remain sequential. See `docs/esi-sync-efficiency.md` for scope and deployment limits.
 - Prepared application, API, package, Android, export metadata, and service versions for the next development cycle. Android versionCode is now 20.
 
 ## [1.0.1] - 2026-09-15

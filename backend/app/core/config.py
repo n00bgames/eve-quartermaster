@@ -1,4 +1,5 @@
 from functools import lru_cache
+from pydantic import Field
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -16,6 +17,8 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:5173"
     eve_sso_callback_url: str = "http://localhost:8000/api/esi/auth/callback"
     esi_compatibility_date: str = "2026-07-22"
+    esi_max_connections: int = Field(default=8, ge=1, le=32)
+    esi_rate_limit_cushion: float = Field(default=0.05, ge=0.01, le=0.25)
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173,https://eqm.easyduneadmin.app"
     auth_secret_key: str = "dev-change-me"
     access_token_minutes: int = 720

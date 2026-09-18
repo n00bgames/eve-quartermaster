@@ -37,7 +37,7 @@ from app.models import (
     User,
 )
 from app.models.enums import SyncStatus
-from app.services.esi_client import EsiClient
+from app.services.esi_client import EsiClient, gather_esi
 from app.services.permissions import can_view_section, role_rank, ROLE_RANK
 from app.services.pi_character_scope import character_scopes, scoped_payload, verified_corporations
 from app.services.planetary_analytics import record_planetary_production_snapshot
@@ -574,9 +574,13 @@ async def sync_planetary_industry_for_token(
     client = EsiClient(access_token=access_token)
     try:
         summaries = await client.get(f"/characters/{character.character_id}/planets/") or []
-        layouts: list[tuple[dict[str, Any], dict[str, Any], str]] = []
-        type_ids: set[int] = set()
-        for summary in summaries:
+        fetch_slots = asyncio.Semaphore(4)
+
+        async def fetch_layout(summary):
+            async with fetch_slots:
+                return await fetch_layout_detail(summary)
+
+        async def fetch_layout_detail(summary):
             planet_id = int(summary["planet_id"])
             detail = await client.get(f"/characters/{character.character_id}/planets/{planet_id}/") or {}
             try:
@@ -584,7 +588,13 @@ async def sync_planetary_industry_for_token(
                 planet_name = str(planet.get("name") or f"Planet {planet_id}")
             except Exception:
                 planet_name = f"Planet {planet_id}"
-            layouts.append((summary, detail, planet_name))
+            return summary, detail, planet_name
+
+        # Fetch independent planets concurrently; all ORM work stays in this
+        # task/session. Cancel and join siblings before surfacing a failure.
+        layouts = await gather_esi(*(fetch_layout(summary) for summary in summaries))
+        type_ids: set[int] = set()
+        for summary, detail, planet_name in layouts:
             for pin in detail.get("pins", []) or []:
                 type_ids.add(int(pin["type_id"]))
                 type_ids.update(int(item["type_id"]) for item in pin.get("contents", []) or [])

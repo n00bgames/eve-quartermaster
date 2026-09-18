@@ -1,15 +1,29 @@
 from __future__ import annotations
 
 from typing import Any
+import asyncio
 
 import httpx
 from fastapi import HTTPException
 
 from app.core.config import get_settings
+from app.services.esi_transport import get_esi_transport
 
 ESI_BASE_URL = "https://esi.evetech.net/latest"
 ESI_DATASOURCE = "tranquility"
 USER_AGENT = "eve-quartermaster/0.1 local development"
+
+
+async def gather_esi(*requests):
+    """Join read-only fetches, preserving HTTP errors and cancelling siblings."""
+    tasks = [asyncio.create_task(request) for request in requests]
+    try:
+        return await asyncio.gather(*tasks)
+    except BaseException:
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        raise
 
 
 class EsiClient:
@@ -27,8 +41,9 @@ class EsiClient:
 
     async def request(self, method: str, path: str, payload: Any | None = None, params: dict[str, Any] | None = None) -> tuple[Any, httpx.Headers]:
         query = {"datasource": ESI_DATASOURCE, **(params or {})}
-        async with httpx.AsyncClient(base_url=ESI_BASE_URL, headers=self.headers(), timeout=30.0) as client:
-            response = await client.request(method, path, params=query, json=payload)
+        response = await get_esi_transport().request(
+            method, path, headers=self.headers(), params=query, payload=payload,
+        )
         if response.status_code >= 400:
             detail = response.text
             raise HTTPException(status_code=response.status_code, detail=f"ESI error for {path}: {detail}")

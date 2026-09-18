@@ -24,7 +24,7 @@ from app.core.security import create_sso_state, decode_sso_state_payload, decryp
 from app.db.session import SessionLocal, get_db
 from app.models import Asset, Blueprint, CharacterFitting, CharacterFittingItem, CharacterSkill, CharacterSkillQueueEntry, CharacterWalletJournalEntry, CorporationWalletDivision, EsiSyncJob, EsiToken, EveAlliance, EveCategory, EveCharacter, EveCorporation, EveGroup, EveSystem, EveType, ExchangeListing, Location, OwnershipEntity, RecruitmentLinkedCharacter, User
 from app.models.enums import AssetSource, LocationKind, OwnerKind, SyncStatus
-from app.services.esi_client import EsiClient, esi_status, resolve_names
+from app.services.esi_client import EsiClient, esi_status, resolve_names, gather_esi
 from app.services.exchange_mail import exchange_mail_body, exchange_mail_subject
 from app.services.eve_sso import validate_eve_access_token
 from app.services.contracts import ACTIVE_CONTRACT_STATUSES, fetch_contract_pages, upsert_contract_rows
@@ -1178,8 +1178,10 @@ async def sync_character_skills_for_token(token_id: int, current_user: User, db:
         character_payload = await client.get(f"/characters/{character.character_id}/")
         character.name = character_payload.get("name", character.name)
         await apply_character_affiliation(client, db, character, character_payload)
-        skills_payload = await client.get(f"/characters/{character.character_id}/skills/")
-        queue_payload = await client.get(f"/characters/{character.character_id}/skillqueue/")
+        skills_payload, queue_payload = await gather_esi(
+            client.get(f"/characters/{character.character_id}/skills/"),
+            client.get(f"/characters/{character.character_id}/skillqueue/"),
+        )
         skill_rows = skills_payload.get("skills", []) or []
         queue_rows = queue_payload or []
         type_ids = {int(row["skill_id"]) for row in skill_rows if row.get("skill_id") is not None}

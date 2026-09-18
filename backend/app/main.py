@@ -14,7 +14,11 @@ async def lifespan(_: FastAPI):
     from app.api.esi import resume_pending_contact_sync_jobs
 
     resume_pending_contact_sync_jobs()
-    yield
+    try:
+        yield
+    finally:
+        from app.services.esi_transport import close_esi_transport
+        await close_esi_transport()
 
 
 app = FastAPI(title="eve-quartermaster", version="1.0.2", lifespan=lifespan)
