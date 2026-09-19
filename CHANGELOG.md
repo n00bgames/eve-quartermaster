@@ -4,13 +4,31 @@ All notable changes to EVE Quartermaster are tracked here.
 
 Version sections are written as user-facing release notes first, with implementation detail included where it helps operators understand deployment or testing impact.
 
-## [1.0.2] - Unreleased
+## [1.0.3] - Unreleased
 
 ### Added
 
 - Added New Eden Atlas in Navigation: a searchable, zoomable SDE star map with security, hourly ESI activity, station and agent layers, system details, and route-planner handoff.
 - Added Missions & LP with agent filters and jump distances, mission-reference links, private linked-pilot LP balances, searchable public rewards with all redemption costs, and corporation-station routes. Deterministic distance traversal uses Rust with a Python fallback.
 - Added migration `0081_mission_atlas` and an **Import agents only** action for existing SDE installations. See [atlas setup and data coverage](docs/navigation-atlas.md).
+- Added desktop and mobile Atlas/Missions previews to the [screenshot gallery](docs/screenshots.md#v103-navigation-atlas), with public-SDE/synthetic-LP provenance.
+
+### Changed
+
+- Bumped application/API, frontend package and lockfile, Android wrapper, export metadata, README badge, and service user agents to `1.0.3`. Android versionCode is now 21.
+
+### Setup: download, then import the SDE
+
+Static data must be imported into the database for the star map, stations, agent finder and item names. Fetch scripts download files only; an app update or ESI sync does not import them.
+
+1. Update/rebuild backend and frontend, and allow backend startup to apply migration `0081_mission_atlas`.
+2. From the EQM checkout on the installation host, run `.\sde-fetch.bat` on Windows, or `sh ./sde-fetch.sh` on Linux/macOS. Both save the latest YAML archive to `./sde/sde.zip` by default. A current archive you already downloaded can be reused. For remote installations, the archive must be on the server in its mounted SDE folder.
+3. Sign in as admin and open **Settings → SDE Import**. Set the path to `/sde/sde.zip` and click **Import SDE**. If you used the fetch script's optional `extract` argument, use `/sde` instead. These are standard Compose paths; custom mounts must match the backend-visible source.
+4. Wait for successful completion, then open **Navigation → New Eden Atlas → Refresh data**. A full import includes agents; **Import agents only** is available if the rest of your SDE is already current.
+
+[Complete fetch/import instructions](README.md#sde-import) · [Copy-ready release blurb](docs/releases/v1.0.3.md)
+
+## [1.0.2]
 
 ### Changed
 

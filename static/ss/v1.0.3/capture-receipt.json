@@ -1,0 +1,39 @@
+{
+  "captured_on": "2026-09-19",
+  "source_commit": "f6131a1be18e808c886f75c380c6ebf646323bfb",
+  "method": "Headless Microsoft Edge, actual NavigationAtlas and RouteChecker React components in a local preview",
+  "data": "Public installed EVE SDE and public ESI activity; synthetic QA pilot, LP balance and LP offers. No authenticated production account data.",
+  "limitations": "Component previews, not a full authenticated deployment. SQLite fixture omits PostgreSQL-specific route-history enrichment; real gate-route computation is used.",
+  "viewports": {
+    "desktop": {
+      "width": 1600,
+      "height": 1120
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844
+    }
+  },
+  "files": [
+    {
+      "file": "star-map.png",
+      "sha256": "8a1f0691fd7b85485e5a3070f048f194f3f9ebbf0d95c606a33be564be09cf29",
+      "bytes": 371474
+    },
+    {
+      "file": "missions-lp.png",
+      "sha256": "8ec2d314407e6e22ca3ba2f992a406a56ee165f163729678fe4c4bfcd61f7a4a",
+      "bytes": 263086
+    },
+    {
+      "file": "mobile-map.png",
+      "sha256": "18b071d13b73654f8ebe9188c4316f101a6f51e55701c24e38a9084fe70d599a",
+      "bytes": 223358
+    },
+    {
+      "file": "mobile-missions.png",
+      "sha256": "911c13fda75378bbd30cdf0e52053bb5f31e1081e2097a8eb75ee5fe67dfa627",
+      "bytes": 271842
+    }
+  ]
+}

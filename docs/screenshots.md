@@ -1,12 +1,34 @@
 # EQM screenshot gallery
 
-Reconciled on **September 11, 2026** against source commit `f894f27ad7fb2ef4956e5bef2e97d3865fe8cfd2`, the v1.0 candidate. [README](../README.md) · [Release notes](releases/v1.0.md) · [Install](../README.md#install)
+Atlas previews added **September 19, 2026**, from source commit `f6131a1be18e808c886f75c380c6ebf646323bfb`. The earlier gallery reconciliation was September 11 against the v1.0 candidate `f894f27ad7fb2ef4956e5bef2e97d3865fe8cfd2`. [README](../README.md) · [v1.0.3 release notes](releases/v1.0.3.md) · [Install](../README.md#install)
 
 ## How to read this gallery
 
 The v1.0 images are fresh browser captures of the actual current React components in a local preview, using synthetic pilots, stock and market data. They are component demonstrations, not authenticated production-server screenshots or live EVE state. The preview header is labeled; the clocks are the actual header-clock component. The calculator images are cropped to that component. Native Rust executed the supply/chain calculations; the planner used the disposable API preview and native allocation worker.
 
 All **63 existing images** remain linked below. They are historical: some are demo illustrations or reconstructed/sanitized panels, and none is certified as an exact v1.0 screenshot. This audit reconciles module names and visible UX coverage; it does not certify runtime or PYFA parity. No old pixels were repainted to suggest a new version.
+
+## v1.0.3 Navigation Atlas
+
+Actual Star Map and Missions/LP components captured in a local browser preview. Geography, stations and agents use the installed public SDE; map activity uses public ESI snapshots. The linked pilot, LP balance and reward offers are **synthetic verification data**, not anyone's production account. These previews do not demonstrate a live private-character LP authorization. No image was repainted or generated.
+
+### Star Map and route handoff
+
+System search and focus, activity, NPC station and agent details, and a Jita-to-Perimeter route handed to the existing route planner. The first map uses a flat X/Z projection.
+
+[Open full resolution](../static/ss/v1.0.3/star-map.png)
+
+![New Eden Star Map — public SDE and local component preview](../static/ss/v1.0.3/star-map.png)
+
+### Missions and LP rewards
+
+Level-4 security agents, jump distances, mission references, corporation stations, reward costs and LP coverage. The preview explicitly identifies its synthetic pilot.
+
+[Open full resolution](../static/ss/v1.0.3/missions-lp.png)
+
+![Missions and LP — real public agent directory, synthetic pilot and rewards](../static/ss/v1.0.3/missions-lp.png)
+
+[Mobile Star Map](../static/ss/v1.0.3/mobile-map.png) · [Mobile Missions & LP](../static/ss/v1.0.3/mobile-missions.png) · [Capture provenance and image hashes](../static/ss/v1.0.3/capture-receipt.json)
 
 ## v1.0 highlights
 

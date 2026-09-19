@@ -29,7 +29,7 @@ from app.services.permissions import role_rank
 
 
 ZKILLBOARD_BASE_URL = "https://zkillboard.com/api"
-KILLBOARD_USER_AGENT = "EVE-Quartermaster/1.0.2 killboard (+https://github.com/n00bgames/eve-quartermaster)"
+KILLBOARD_USER_AGENT = "EVE-Quartermaster/1.0.3 killboard (+https://github.com/n00bgames/eve-quartermaster)"
 ZKILLBOARD_HEADERS = {
     "User-Agent": KILLBOARD_USER_AGENT,
     "Accept-Encoding": "gzip",

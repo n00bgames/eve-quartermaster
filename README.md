@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/n00bgames/eve-quartermaster"><img alt="Project" src="https://img.shields.io/badge/project-eve--quartermaster-e8b84d?style=for-the-badge"></a>
-  <img alt="Version" src="https://img.shields.io/badge/version-1.0.2-4fb3c7?style=for-the-badge">
+  <img alt="Version" src="https://img.shields.io/badge/version-1.0.3-4fb3c7?style=for-the-badge">
   <img alt="License" src="https://img.shields.io/badge/license-AGPL--3.0--or--later-70c894?style=for-the-badge">
 </p>
 
@@ -23,7 +23,7 @@
 
 EVE Quartermaster is a containerized, database-first EVE Online quartermaster and alliance operations tool. It tracks characters, corporations, assets, blueprints, recipes, skills, standings/contact sync, wallet snapshots, permissions, audit events, and long-term analytics from EVE ESI plus imported SDE data.
 
-The 1.0 source build brings the PI Operation Planner, corporate supply monitoring, and production-chain calculations into the wider operations suite. See the [v1.0 release notes](docs/releases/v1.0.md) for **The Bigger Slice of PI Release!** The current development application/package version is `1.0.2`. Version `1.0.1` adds the Navigation distance and rough warp-time calculator. See the [changelog](CHANGELOG.md) for patch details.
+The 1.0 source build brings the PI Operation Planner, corporate supply monitoring, and production-chain calculations into the wider operations suite. See the [v1.0 release notes](docs/releases/v1.0.md) for **The Bigger Slice of PI Release!** The current application/package version is `1.0.3`, adding the New Eden Atlas and Missions & LP. See the [v1.0.3 release blurb and SDE setup](docs/releases/v1.0.3.md) and [changelog](CHANGELOG.md) for details.
 
 > **Fitting Manager / Simulator: Non-Authoritative. For Informational Use Only.** Still in development and not PYFA-complete. Full feature and calculation parity with PYFA is not claimed; verify consequential fitting decisions against PYFA and the EVE client.
 
@@ -88,9 +88,15 @@ See [CHANGELOG.md](CHANGELOG.md) for version-by-version release notes.
 
 ## Screenshots
 
-**[Open the complete gallery](docs/screenshots.md)** · [v1.0 highlights](docs/screenshots.md#v10-highlights) · [Suite/module coverage](docs/screenshots.md#suite-gallery) · [All 63 historical images](docs/screenshots.md#historical-image-index)
+**[Open the complete gallery](docs/screenshots.md)** · [v1.0.3 Atlas previews](docs/screenshots.md#v103-navigation-atlas) · [v1.0 highlights](docs/screenshots.md#v10-highlights) · [Suite/module coverage](docs/screenshots.md#suite-gallery) · [All 63 historical images](docs/screenshots.md#historical-image-index)
 
 New images show current components with synthetic demo data. Older screenshots and reconstructed examples are preserved in the gallery with explicit status and replacement notes; they are not represented as current UX.
+
+| New Eden Star Map | Missions & LP |
+| --- | --- |
+| [![Star Map preview using public SDE](static/ss/v1.0.3/star-map.png)](static/ss/v1.0.3/star-map.png) | [![Missions and LP preview with synthetic pilot and rewards](static/ss/v1.0.3/missions-lp.png)](static/ss/v1.0.3/missions-lp.png) |
+
+[Mobile map](static/ss/v1.0.3/mobile-map.png) · [Mobile Missions & LP](static/ss/v1.0.3/mobile-missions.png) · [Capture provenance](static/ss/v1.0.3/capture-receipt.json)
 
 | Corporate supply and surpluses | P2 → P3 → P4 production |
 | --- | --- |
@@ -343,13 +349,17 @@ Only grant scopes you are comfortable granting. When scopes are added or changed
 
 ## SDE Import
 
-EQM uses the EVE Static Data Export for type names, groups, market/category metadata, blueprints, industry activities, dogma, skills, systems, stargates, stations, and navigation maps. The official EVE Static Data docs list the current download locations and formats: https://developers.eveonline.com/docs/services/static-data/
+EQM uses the EVE Static Data Export for type names, groups, market/category metadata, blueprints, industry activities, dogma, skills, systems, stargates, stations, agents, and navigation maps. The official EVE Static Data docs list the current download locations and formats: https://developers.eveonline.com/docs/services/static-data/
 
 Use the **YAML** SDE for EQM. CCP also offers JSON Lines, but EQM's importer is built around YAML files and YAML zip layouts.
 
+**Downloading and importing are separate steps.** The fetch scripts save CCP's files; they do not import them into EQM's database. Updating the app or using ESI Sync does not import a downloaded SDE either. Fetch and import on first setup and when refreshing static data after EVE updates. The Atlas agent finder needs agent records imported by v1.0.3 or later.
+
+For the v1.0.3 update, rebuild the backend and frontend first. Normal backend startup applies migration `0081_mission_atlas`; wait for the backend to be ready before importing. If you have already downloaded a current YAML SDE, reuse that file and proceed directly to **Import The SDE In EQM** below.
+
 ### Download The Latest YAML SDE
 
-The repository includes helper scripts that download the latest Tranquility SDE zip into the local `sde/` folder mounted by Docker.
+The repository includes helper scripts that download the latest Tranquility SDE zip into the local `sde/` folder mounted by Docker. Run them from the EQM checkout **on the machine hosting the installation**. For a remote server, run the shell script there, or transfer your downloaded archive into that server's mounted SDE folder; a download on your desktop is not automatically available to a remote backend.
 
 Windows from the repository root:
 
@@ -363,6 +373,8 @@ Linux/macOS shell from the repository root:
 chmod +x sde-fetch.sh
 ./sde-fetch.sh
 ```
+
+Windows uses PowerShell's web download and archive tools. The shell script needs `curl` or `wget`; optional extraction also needs `unzip` or `python3`. The default host output is `./sde/sde.zip`.
 
 You may import directly from the zip by using this SDE path in EQM:
 
@@ -423,16 +435,17 @@ Older FSD layouts are also accepted:
 - `fsd/typeIDs.yaml`
 - `fsd/blueprints.yaml`
 
-If you keep the SDE somewhere else, set `SDE_HOST_PATH` in `.env` to that host folder. The container path remains `/sde` unless you also change `SDE_SOURCE_PATH`.
+If you keep the SDE somewhere else, set `SDE_HOST_PATH` in `.env` to that host folder and recreate the affected containers so Docker uses the updated mount. The fetch scripts support `SDE_DIR` and `SDE_ZIP_NAME` environment overrides, but do not read `.env` or automatically follow `SDE_HOST_PATH`; download or copy the file into the folder you actually mount. In the standard Compose setup that host folder is mounted at `/sde`. `SDE_SOURCE_PATH` sets the backend's default import source; it does not change the Docker mount. Enter a backend/container path in Settings, not a Windows host path. Non-container installations should use the path visible to their backend process.
 
 ### Import The SDE In EQM
 
-1. Start EQM and sign in as an admin.
+1. Start the updated EQM backend/frontend, allow startup migrations to finish, and sign in as an admin.
 2. Open **Settings -> SDE Import**.
 3. Use `/sde/sde.zip` if importing the zip, or `/sde` if importing an extracted folder.
-4. Click **Import SDE**.
+4. Click **Import SDE** for a full refresh. This also imports NPC agents after stations. **Import agents only** is an alternative when your systems, stations and other static data are already current and only the agent directory needs populating; it is not a replacement for importing a newly downloaded complete SDE.
 5. Leave Settings open if you want to watch progress. The progress message updates while EQM keeps working.
-6. When the import completes, refresh the page or use **Refresh** in the SDE panel to confirm category, type, system, stargate, recipe, and dogma counts.
+6. Wait for successful completion; downloading the zip alone is not completion. Refresh the page or use **Refresh** in the SDE panel to confirm category, type, system, stargate, recipe, and dogma counts.
+7. Open **Navigation → New Eden Atlas**, click **Refresh data**, and check system details and the agent count. Use **Missions & LP** to find agents and browse rewards. Character LP separately requires a linked pilot with `esi-characters.read_loyalty.v1`.
 
 Navigation, route maps, recipes, blueprint activity, fitting simulation, station guidance, skill grouping, market item matching, and blueprint/category filters all get better as SDE coverage improves. Re-import after major EVE updates or when a new YAML SDE is published.
 
