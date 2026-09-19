@@ -28,6 +28,8 @@ LP reads require `esi-characters.read_loyalty.v1`, an active token owned by the 
 
 No active mission journal, mission eligibility calculation, automatic LP redemption, or profitability estimate is included. The map lists NPC stations, not a complete player-structure directory. ESI/SDE are fetched directly; DOTLAN and zKillboard are linked rather than scraped. Special agents are identified separately; some in-space agent locations are unresolved in this initial importer.
 
+If a pilot still shows **re-link for LP scope** after relinking on v1.0.3, update to the v1.0.4 scope fix first. The original Atlas release omitted loyalty from the normal/core SSO request even though it appeared in the full scope list. Ensure the CCP developer application enables `esi-characters.read_loyalty.v1`, reload EQM to obtain a fresh authorization link, then relink affected pilots through **ESI Sync**. Return to Missions & LP and click **Refresh** to reload the pilot scope status. Refreshing an existing token cannot grant a permission that was never authorized.
+
 ## Rust boundary
 
 `eqm-core atlas-distances --input <payload.json>` computes unweighted directed breadth-first distances from an origin. Its payload is `{"origin":30000142,"edges":[[30000142,30000144]]}`; output uses schema `eqm.atlas-distances.v1` and a system-ID-to-distance map. Unreachable systems are omitted.

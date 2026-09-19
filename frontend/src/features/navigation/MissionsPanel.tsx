@@ -23,11 +23,11 @@ export function MissionsPanel({origin,onMap,onRoute,corporationId,onCorporation}
   const [offerStamp,setOfferStamp]=useState("");const [offerQuery,setOfferQuery]=useState("");const [coveredOnly,setCoveredOnly]=useState(false);
   const [stations,setStations]=useState<StoreStation[]>([]);const [stationError,setStationError]=useState("");
   const [missionQuery,setMissionQuery]=useState("");
-  useEffect(()=>{let cancelled=false;
+  useEffect(()=>{let cancelled=false;setDirectoryError("");
     void Promise.all([api<Corporation[]>("/navigation/atlas/corporations"),api<Pilot[]>("/navigation/atlas/characters")])
       .then(([corps,chars])=>{if(!cancelled){setCorporations(corps);setPilots(chars);}})
       .catch(e=>{if(!cancelled)setDirectoryError(String(e));});return()=>{cancelled=true;};
-  },[]);
+  },[refresh]);
   useEffect(()=>{setOffset(0);},[query,level,division,highsec,radius,corporationId,origin?.system_id]);
   useEffect(()=>{let cancelled=false;setAgents(null);setAgentError("");
     const timer=setTimeout(()=>{const params=new URLSearchParams({q:query,offset:String(offset),limit:"50",highsec_only:String(highsec)});

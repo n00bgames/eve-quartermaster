@@ -201,6 +201,7 @@ CORE_AUTH_SCOPES = [
     "esi-corporations.read_divisions.v1",
     "esi-wallet.read_character_wallet.v1",
     "esi-wallet.read_corporation_wallets.v1",
+    "esi-characters.read_loyalty.v1",
     "esi-industry.read_character_jobs.v1",
     "esi-industry.read_corporation_jobs.v1",
     "esi-industry.read_character_mining.v1",

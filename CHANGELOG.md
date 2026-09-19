@@ -6,6 +6,11 @@ Version sections are written as user-facing release notes first, with implementa
 
 ## [1.0.4] - Unreleased
 
+### Fixed
+
+- Standard EVE SSO relinks now request the loyalty-read scope needed by Missions & LP. Previously the scope was only included in full authorization, so a normal relink could still leave pilots unavailable in the LP selector. Update the backend, ensure the developer app enables `esi-characters.read_loyalty.v1`, then relink affected pilots once more.
+- The Missions & LP Refresh button now reloads linked pilots and their scope status, including clearing an earlier directory-loading error after a successful retry.
+
 ### Changed
 
 - Prepared application/API, frontend package and lockfile, Android wrapper, export metadata, README badge, and service user agents for the `1.0.4` development cycle. Android versionCode is now 22.
