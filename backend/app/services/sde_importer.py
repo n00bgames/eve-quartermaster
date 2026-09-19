@@ -32,6 +32,8 @@ from app.models.enums import ActivityKind
 
 
 SDE_FILES = {
+    "npc_characters": ("npcCharacters.yaml",),
+    "agents": ("agents.yaml", "fsd/agents.yaml"),
     "categories": ("categories.yaml", "categoryIDs.yaml"),
     "groups": ("groups.yaml", "groupIDs.yaml"),
     "types": ("types.yaml", "typeIDs.yaml"),
@@ -70,6 +72,7 @@ ACTIVITY_MAP = {
 @dataclass
 class SdeImportStats:
     source_path: str
+    agents: int = 0
     categories: int = 0
     groups: int = 0
     types: int = 0
@@ -917,6 +920,13 @@ def import_sde(
                     mark(f"blueprint activities imported: {stats.blueprint_activities}")
             db.commit()
             mark("blueprints complete")
+
+        if "agents" in wanted or "stations" in wanted:
+            from app.services.agent_import import import_agents
+            mark("loading NPC agents")
+            stats.agents = import_agents(source, db)
+            db.commit()
+            mark("NPC agents complete")
 
         mark("complete")
         return stats.to_dict()

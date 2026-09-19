@@ -51,6 +51,8 @@ import { UpcomingEventsWidget } from "./features/events/UpcomingEventsWidget";
 import { IndustrialSystemThreatWidget, LocalThreatWidget, PvpIntelWidget } from "./features/navigation/ThreatIntelWidgets";
 import { SystemDistanceCalculator } from "./features/navigation/SystemDistanceCalculator";
 import { RouteChecker } from "./features/navigation/RouteChecker";
+import { NavigationAtlas } from "./features/navigation/NavigationAtlas";
+import type { RouteRequest } from "./features/navigation/atlasTypes";
 import type { CharacterFocus } from "./types/characters";
 import type { Asset, AssetFilter, AssetFilterKey, AssetPagePayload, AssetSortKey, AssetTableSeed, Blueprint, EveType, IndustryActivity, InventoryFamilyFilter, Location, MissingBlueprintCatalog, Owner, OwnerKindFilter, SortDirection, Summary } from "./types/inventory";
 import type { AuditEvent, NotificationInbox, PrivateMessage, ProfileFocus } from "./types/profile";
@@ -923,8 +925,14 @@ function NotificationBubble({ currentUser, onOpenMessages }: { currentUser: User
 
 
 function NavigationPlanner({ currentUser }: { currentUser: UserAccount }) {
+  const [atlasRoute, setAtlasRoute] = useState<RouteRequest | null>(null);
+  const [mapRoute, setMapRoute] = useState<NavigationRoute | null>(null);
   return <>
+    <NavigationAtlas route={mapRoute} onRoute={(request) => { setAtlasRoute(request); document.getElementById("atlas-route-planner")?.scrollIntoView({behavior:"smooth",block:"start"}); }} />
+    <div id="atlas-route-planner">
     <RouteChecker
+      routeRequest={atlasRoute}
+      onRouteChange={setMapRoute}
       currentUser={currentUser}
       api={api}
       numberFormatter={numberFormatter}
@@ -933,6 +941,7 @@ function NavigationPlanner({ currentUser }: { currentUser: UserAccount }) {
       CharacterHoverName={CharacterHoverName}
       UedamaScoutLiveLink={UedamaScoutLiveLink}
     />
+    </div>
     <JumpFreighterPlanner currentUser={currentUser} api={api} numberFormatter={numberFormatter} Metric={Metric} EveEntityIcon={EveEntityIcon} CharacterHoverName={CharacterHoverName} UedamaScoutLiveLink={UedamaScoutLiveLink} />
     <IndustrialSystemThreatWidget currentUser={currentUser} api={api} Metric={Metric} />
     <PvpIntelWidget currentUser={currentUser} api={api} Metric={Metric} />

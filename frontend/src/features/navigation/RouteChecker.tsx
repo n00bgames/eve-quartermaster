@@ -9,6 +9,7 @@ import { formatDateTime, preferredTimeZone } from "../../lib/time";
 import { iskFormatter } from "../../lib/market";
 import type { NavigationGatecheckRoute, NavigationRoute, NavigationSystem, UedamaScoutStatus } from "../../types/navigation";
 import { OperationalMap } from "./OperationalMap";
+import type { RouteRequest } from "./atlasTypes";
 
 type RouteCheckerUser = { timezone?: string };
 type ApiClient = <T>(path: string, options?: RequestInit) => Promise<T>;
@@ -16,6 +17,8 @@ type EveEntityKind = "character" | "corporation" | "alliance";
 type EveIconSize = "tiny" | "sm" | "md" | "lg";
 
 type RouteCheckerProps = {
+  routeRequest?: RouteRequest | null;
+  onRouteChange?: (route: NavigationRoute | null) => void;
   currentUser: RouteCheckerUser;
   api: ApiClient;
   numberFormatter: Intl.NumberFormat;
@@ -32,7 +35,7 @@ export function SystemSearchField({ label, value, options, placeholder, onChange
 
 
 
-export function RouteChecker({ currentUser, api, numberFormatter, Metric, EveEntityIcon, CharacterHoverName, UedamaScoutLiveLink }: RouteCheckerProps) {
+export function RouteChecker({ currentUser, api, numberFormatter, Metric, EveEntityIcon, CharacterHoverName, UedamaScoutLiveLink, routeRequest, onRouteChange }: RouteCheckerProps) {
 
   const [origin, setOrigin] = useState("Jita");
 
@@ -73,6 +76,25 @@ export function RouteChecker({ currentUser, api, numberFormatter, Metric, EveEnt
   const destinationSelectionRef = useRef(destination);
 
   const timeZone = preferredTimeZone(currentUser);
+  const routeGeneration = useRef(0);
+  useEffect(() => { onRouteChange?.(route); }, [route, onRouteChange]);
+  useEffect(() => {
+    if (!routeRequest) return;
+    let cancelled = false;
+    const generation = ++routeGeneration.current;
+    setOrigin(routeRequest.origin); setDestination(routeRequest.destination);
+    originSelectionRef.current = routeRequest.origin; destinationSelectionRef.current = routeRequest.destination;
+    setOriginOptions([]); setDestinationOptions([]); setRoute(null); setGatecheck(null); setGatecheckBusy(false); setExpandedSystems(new Set()); setError(null); setBusy(true);
+    const params = new URLSearchParams({origin:routeRequest.origin, destination:routeRequest.destination,
+      highsec_only:String(highsecOnly), prefer_safer:String(preferSafer)});
+    const relevantAvoids = avoidSystems.filter(s => ![routeRequest.origin,routeRequest.destination].includes(s.name));
+    setAvoidSystems(relevantAvoids);
+    if (relevantAvoids.length) params.set("avoid_systems", relevantAvoids.map(s=>s.name).join(","));
+    void api<NavigationRoute>(`/navigation/route?${params}`).then(result=>{if(!cancelled && generation === routeGeneration.current)setRoute(result);})
+      .catch(err=>{if(!cancelled && generation === routeGeneration.current)setError(err instanceof Error?err.message:"Route planning failed");})
+      .finally(()=>{if(!cancelled && generation === routeGeneration.current)setBusy(false);});
+    return()=>{cancelled=true;};
+  }, [routeRequest]);
 
 
 
@@ -166,6 +188,8 @@ export function RouteChecker({ currentUser, api, numberFormatter, Metric, EveEnt
 
 
   async function planRoute(event?: FormEvent, routeAvoidSystems = avoidSystems) {
+    const generation = ++routeGeneration.current;
+    setGatecheckBusy(false);
 
     event?.preventDefault();
 
@@ -179,17 +203,17 @@ export function RouteChecker({ currentUser, api, numberFormatter, Metric, EveEnt
 
     try {
 
-      setRoute(await api<NavigationRoute>(`/navigation/route?${routeParams(routeAvoidSystems).toString()}`));
+      const result = await api<NavigationRoute>(`/navigation/route?${routeParams(routeAvoidSystems).toString()}`);
+      if (generation === routeGeneration.current) setRoute(result);
 
     } catch (err) {
-
+      if (generation !== routeGeneration.current) return;
       setError(err instanceof Error ? err.message : "Route planning failed");
 
       setRoute(null);
 
     } finally {
-
-      setBusy(false);
+      if (generation === routeGeneration.current) setBusy(false);
 
     }
 
@@ -198,6 +222,7 @@ export function RouteChecker({ currentUser, api, numberFormatter, Metric, EveEnt
 
 
   async function runGatecheck() {
+    const generation = routeGeneration.current;
 
     setGatecheckBusy(true);
 
@@ -211,19 +236,22 @@ export function RouteChecker({ currentUser, api, numberFormatter, Metric, EveEnt
 
       params.set("industrial_only", String(industrialOnly));
 
-      setGatecheck(await api<NavigationGatecheckRoute>(`/navigation/gatecheck?${params.toString()}`));
+      const result = await api<NavigationGatecheckRoute>(`/navigation/gatecheck?${params.toString()}`);
+      if (generation !== routeGeneration.current) return;
+      setGatecheck(result);
 
       setExpandedSystems(new Set());
 
     } catch (err) {
 
+      if (generation !== routeGeneration.current) return;
       setError(err instanceof Error ? err.message : "Gatecheck failed");
 
       setGatecheck(null);
 
     } finally {
 
-      setGatecheckBusy(false);
+      if (generation === routeGeneration.current) setGatecheckBusy(false);
 
     }
 

@@ -18,3 +18,4 @@ pub mod planetary_analytics;
 pub mod settlement_math;
 pub mod srp_analytics;
 pub mod threat_analytics;
+pub mod atlas_distances;

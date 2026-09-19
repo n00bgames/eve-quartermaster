@@ -6,6 +6,12 @@ Version sections are written as user-facing release notes first, with implementa
 
 ## [1.0.2] - Unreleased
 
+### Added
+
+- Added New Eden Atlas in Navigation: a searchable, zoomable SDE star map with security, hourly ESI activity, station and agent layers, system details, and route-planner handoff.
+- Added Missions & LP with agent filters and jump distances, mission-reference links, private linked-pilot LP balances, searchable public rewards with all redemption costs, and corporation-station routes. Deterministic distance traversal uses Rust with a Python fallback.
+- Added migration `0081_mission_atlas` and an **Import agents only** action for existing SDE installations. See [atlas setup and data coverage](docs/navigation-atlas.md).
+
 ### Changed
 
 - Reuse ESI HTTP connections across character syncs, fetch independent PI planets and skills/queue data concurrently, and reuse responses only while ESI's cache headers permit it. Private responses stay credential-isolated; public universe metadata can be reused across pilots.

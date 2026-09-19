@@ -84,10 +84,10 @@ def sde_import_status(_: User = Depends(require_admin)) -> dict[str, Any]:
     return import_state_snapshot()
 
 
-def run_import_job(source_path: str) -> None:
+def run_import_job(source_path: str, sections: set[str] | None = None) -> None:
     db = SessionLocal()
     try:
-        result = import_sde(source_path, db, progress=import_progress)
+        result = import_sde(source_path, db, sections=sections, progress=import_progress)
         update_import_state(running=False, status="success", stage="complete", completed_at=utc_now_iso(), stats=result)
     except FileNotFoundError as exc:
         update_import_state(running=False, status="failed", stage="failed", completed_at=utc_now_iso(), error=str(exc))
@@ -100,6 +100,9 @@ def run_import_job(source_path: str) -> None:
 
 @router.post("/import")
 def import_static_data(payload: dict[str, Any], _: User = Depends(require_admin)) -> dict[str, Any]:
+    if "sections" in payload and payload["sections"] != ["agents"]:
+        raise HTTPException(400, "Supported partial import: sections = ['agents']")
+    sections = {"agents"} if payload.get("sections") == ["agents"] else None
     source_path = str(payload.get("source_path") or get_settings().sde_source_path).strip()
     if not source_path:
         raise HTTPException(status_code=400, detail="An SDE source path is required")
@@ -119,7 +122,7 @@ def import_static_data(payload: dict[str, Any], _: User = Depends(require_admin)
                 "stats": None,
             }
         )
-    Thread(target=run_import_job, args=(source_path,), daemon=True).start()
+    Thread(target=run_import_job, args=(source_path, sections), daemon=True).start()
     return import_state_snapshot()
 
 

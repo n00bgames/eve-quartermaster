@@ -7,6 +7,7 @@ from app.models.contracts import EveContract
 from app.models.corporation_divisions import CorporationDivision
 from app.models.corporate_exchange import ExchangeAppraisal, ExchangeAuditLog, ExchangeBid, ExchangeClaim, ExchangeListing, ExchangeListingItem, ExchangeNotification, ExchangeTransaction
 from app.models.base import Base
+from app.models.mission_atlas import EveAgent
 from app.models.esi import EsiApplication, EsiSyncJob, EsiToken
 from app.models.events import Doctrine, DoctrineFitting, DoctrineSkillPlan, Event, EventAttendanceEntry, EventCharacterRegistration, EventDoctrineRequirement, EventDoctrineRequirementOption, EventLocation, EventRoleRequirement, EventUserResponse
 from app.models.hypernet import HyperNetOffer, HyperNetOfferSnapshot, HyperNetParticipant, HyperNetParticipation, HyperNetSetting

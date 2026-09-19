@@ -87,12 +87,12 @@ export function SettingsPage({ currentUser, api, Metric, ManagedForm, accountLab
     await patchCharacter(character, { wallet_corporation_analytics_opt_in: optedIn }, optedIn ? `${character.name} explicitly opted into corporation Financial Analytics.` : `${character.name} was removed from corporation Financial Analytics.`);
   }
 
-  async function importSde() {
+  async function importSde(agentsOnly = false) {
     setSdeBusy(true);
     setSettingsError(null);
     setMessage("Starting SDE import. Progress will update here while EQM keeps working...");
     try {
-      const state = await api<SdeImportProgress>("/sde/import", { method: "POST", body: JSON.stringify({ source_path: sdePath }) });
+      const state = await api<SdeImportProgress>("/sde/import", { method: "POST", body: JSON.stringify({ source_path: sdePath, ...(agentsOnly ? {sections:["agents"]} : {}) }) });
       setSdeImportState(state);
       setSdeBusy(Boolean(state.running));
       setMessage("SDE import started. You can leave this page open and watch the progress badge.");
@@ -176,6 +176,7 @@ export function SettingsPage({ currentUser, api, Metric, ManagedForm, accountLab
           {sdeImportState && <div className={sdeImportState.status === "failed" ? "mini-alert" : "notice inline"}>{sdeProgressLabel}</div>}
           <label>SDE path<input value={sdePath} onChange={(event) => setSdePath(event.target.value)} placeholder="/sde or /sde/sde.zip" /></label>
           <button type="button" disabled={sdeBusy} onClick={() => void importSde()}><RefreshCw size={18} /> {sdeBusy ? "Importing" : "Import SDE"}</button>
+          <button type="button" disabled={sdeBusy} onClick={() => void importSde(true)}>Import agents only</button>
         </section>
       )}
       {hostAccess && <DatabaseAdministration api={api} />}
