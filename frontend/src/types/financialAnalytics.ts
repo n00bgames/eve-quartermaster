@@ -15,6 +15,8 @@ export type WalletStatistics = {
 };
 
 export type FinancialTimelineEvent = {
+  character_id?: number;
+  character_name?: string;
   id: number;
   occurred_at?: string | null;
   kind: string;
@@ -42,6 +44,14 @@ export type PersonalWalletAnalytics = {
   timeline: FinancialTimelineEvent[];
 };
 
+export type AccountWalletAnalytics = {
+  tracked_characters: number;
+  wallets_with_balance: number;
+  stats: WalletStatistics;
+  points: WalletPoint[];
+  timeline: FinancialTimelineEvent[];
+};
+
 export type CorporationWalletAnalytics = {
   corporation_id: number;
   corporation_eve_id: number;
@@ -60,6 +70,7 @@ export type CorporationWalletAnalytics = {
 export type FinancialAnalytics = {
   days: number;
   personal: PersonalWalletAnalytics[];
+  account?: AccountWalletAnalytics;
   corporations: CorporationWalletAnalytics[];
   privacy: { individual_leaderboards_enabled: false; message: string };
 };

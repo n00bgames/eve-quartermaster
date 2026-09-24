@@ -106,3 +106,25 @@ def distribution(values: list[float]) -> dict[str, float | None]:
     if not values:
         return {"median": None, "average": None}
     return {"median": float(median(values)), "average": sum(values) / len(values)}
+
+
+def account_wallet_summary(personal: list[dict[str, Any]], *, days: int) -> dict[str, Any]:
+    """Combine only the already owner-scoped personal payloads, without extra queries."""
+    points = combine_daily_series(*(row["points"] for row in personal))
+    balances = [row["stats"]["current"] for row in personal if row["stats"]["current"] is not None]
+    stats = wallet_statistics(points, current_balance=sum(balances) if balances else None)
+    income = sum(row["stats"].get("income", 0) for row in personal)
+    spending = sum(row["stats"].get("spending", 0) for row in personal)
+    # A global top 30 can be selected from each character's existing top 30.
+    events = [
+        {**event, "character_id": row["character_id"], "character_name": row["character_name"]}
+        for row in personal for event in row["timeline"]
+    ]
+    notable = sorted(events, key=lambda event: abs(event["amount"]), reverse=True)[:30]
+    return {
+        "tracked_characters": len(personal),
+        "wallets_with_balance": len(balances),
+        "stats": {**stats, "income": income, "spending": spending, "spending_velocity": spending / max(1, days)},
+        "points": points,
+        "timeline": sorted(notable, key=lambda event: event.get("occurred_at") or "", reverse=True),
+    }

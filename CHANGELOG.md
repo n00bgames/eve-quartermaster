@@ -8,6 +8,8 @@ Version sections are written as user-facing release notes first, with implementa
 
 ### Fixed
 
+- Financial Analytics now offers All My Characters under My characters, combining owner-visible wallet balances, history, growth, income/spending, and a character-labelled event timeline.
+
 - Killboard account sync now discovers only the user's linked, sync-enabled characters, including for officers and administrators. Neutral alts no longer pull in entire NPC or player corporation feeds. Personal sync status no longer picks up another user's job.
 - Added Cancel sync to stop an oversized or failed discovery run before starting a fresh character-only sync. Cancellation is respected before requests and imports, including when resuming after a restart; previously cached killmails are preserved and account results remain filtered by character participation.
 

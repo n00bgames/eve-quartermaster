@@ -11,7 +11,7 @@ from app.api.auth import get_current_user
 from app.db.session import get_db
 from app.models import CharacterWalletJournalEntry, CharacterWalletSnapshot, CorporationWalletDivision, CorporationWalletSnapshot, EveCharacter, EveCorporation, User
 from app.services.analytics import analytics_corporation_ids
-from app.services.financial_analytics import combine_daily_series, corporation_daily_points, corporation_division_daily_points, daily_closing_points, distribution, wallet_statistics
+from app.services.financial_analytics import account_wallet_summary, combine_daily_series, corporation_daily_points, corporation_division_daily_points, daily_closing_points, distribution, wallet_statistics
 from app.services.financial_analytics_engine import evaluate_financial_analytics_with_engine
 from app.services.permissions import ROLE_RANK, can_view_section, role_rank
 
@@ -338,9 +338,11 @@ def financial_analytics(
     corporations = list(
         db.scalars(select(EveCorporation).where(EveCorporation.id.in_(corporation_ids)).order_by(EveCorporation.name)).all()
     ) if corporation_ids else []
+    personal = [personal_wallet_payload(db, character, cutoff) for character in personal_characters]
     return {
         "days": days,
-        "personal": [personal_wallet_payload(db, character, cutoff) for character in personal_characters],
+        "personal": personal,
+        "account": account_wallet_summary(personal, days=days),
         "corporations": [corporation_wallet_payload(db, corporation, cutoff, current_user) for corporation in corporations],
         "privacy": {
             "individual_leaderboards_enabled": False,
