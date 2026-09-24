@@ -276,7 +276,9 @@ def sync_targets_for_user(db: Session, user: User, scope: str = "account") -> li
         character_query = character_query.where(EveCharacter.owner_user_id == user.id)
     characters = db.scalars(character_query.order_by(EveCharacter.name)).all()
     targets = [{"owner_type": "character", "owner_id": row.character_id, "owner_name": row.name} for row in characters]
-    if scope in {"corporations", "all"} or role_rank(user, db) >= role_rank("officer"):
+    # Account discovery is always character-only, including for officers/admins.
+    # Corporate membership alone must not expand a neutral alt into a whole feed.
+    if scope in {"corporations", "all"}:
         corporation_ids = {row.corporation_id for row in characters if row.corporation_id is not None}
         if scope == "all" and role_rank(user, db) >= role_rank("admin"):
             corporation_ids.update(db.scalars(select(EveCorporation.id)).all())
@@ -355,7 +357,7 @@ async def _execute_sync_loop(run_id: str, discovery: DiscoveryClient, canonical:
         run = db.get(KillboardSyncRun, run_id)
         if run is None:
             return
-        if run.status == "complete":
+        if run.status in {"complete", "complete_with_errors", "cancelled"}:
             return
         run.status = "running"
         run.started_at = run.started_at or utc_now()
@@ -412,6 +414,8 @@ async def _execute_sync_loop(run_id: str, discovery: DiscoveryClient, canonical:
                     continue
                 with SessionLocal() as db:
                     run = db.get(KillboardSyncRun, run_id)
+                    if run is None or run.status == "cancelled":
+                        return
                     existing = db.get(Killmail, killmail_id)
                     run.discovered_count += 1
                     run.updated_at = utc_now()
@@ -431,6 +435,8 @@ async def _execute_sync_loop(run_id: str, discovery: DiscoveryClient, canonical:
                     canonical_payload, kill_time, _system_id = validate_canonical_payload(payload)
                     with SessionLocal() as db:
                         run = db.get(KillboardSyncRun, run_id)
+                        if run is None or run.status == "cancelled":
+                            return
                         if kill_time < utc_now() - timedelta(days=run.lookback_days):
                             run.skipped_count += 1
                             run.updated_at = utc_now()
@@ -462,7 +468,7 @@ async def _execute_sync_loop(run_id: str, discovery: DiscoveryClient, canonical:
 def _advance_cursor(run_id: str, target_index: int, feed: str, page: int, *, page_complete: bool) -> None:
     with SessionLocal() as db:
         run = db.get(KillboardSyncRun, run_id)
-        if run is None or run.target_index != target_index:
+        if run is None or run.status == "cancelled" or run.target_index != target_index:
             return
         if not page_complete:
             run.page = page + 1
@@ -480,7 +486,7 @@ def _advance_cursor(run_id: str, target_index: int, feed: str, page: int, *, pag
 def _record_item_failure(run_id: str, killmail_id: int | None, message: str) -> None:
     with SessionLocal() as db:
         run = db.get(KillboardSyncRun, run_id)
-        if run is None:
+        if run is None or run.status == "cancelled":
             return
         errors = list(run.errors_json or [])
         errors.append({"killmail_id": killmail_id, "message": message[:1000], "at": utc_now().isoformat()})
@@ -493,7 +499,7 @@ def _record_item_failure(run_id: str, killmail_id: int | None, message: str) -> 
 def _fail_run(run_id: str, message: str) -> None:
     with SessionLocal() as db:
         run = db.get(KillboardSyncRun, run_id)
-        if run is None:
+        if run is None or run.status == "cancelled":
             return
         errors = list(run.errors_json or [])
         errors.append({"message": message[:1000], "at": utc_now().isoformat()})

@@ -32,6 +32,7 @@ export function KillboardPage({ api }: { api: ApiClient }) {
   const [days, setDays] = useState(30);
   const [sync, setSync] = useState<KillboardSync | null>(null);
   const [loading, setLoading] = useState(true);
+  const [cancelling, setCancelling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settings, setSettings] = useState<KillboardSettings | null>(null);
@@ -60,21 +61,32 @@ export function KillboardPage({ api }: { api: ApiClient }) {
   useEffect(() => { if (scope) void loadAnalytics().catch((err) => setError(err instanceof Error ? err.message : "Killboard analytics failed")); }, [scope, days]);
 
   useEffect(() => {
-    if (!sync || !activeStatuses.has(sync.status)) return;
+    if (!sync || !activeStatuses.has(sync.status) || cancelling) return;
+    let stopped = false;
     const timer = window.setInterval(() => {
       void api<KillboardSync>(`/killboard/sync/${sync.job_id}`).then((next) => {
+        if (stopped) return;
         setSync(next);
-        if (!activeStatuses.has(next.status)) void loadAnalytics();
-      }).catch((err) => setError(err instanceof Error ? err.message : "Sync polling failed"));
+        if (!activeStatuses.has(next.status)) void loadAnalytics().catch((err) => setError(err instanceof Error ? err.message : "Killboard analytics failed"));
+      }).catch((err) => { if (!stopped) setError(err instanceof Error ? err.message : "Sync polling failed"); });
     }, 2500);
-    return () => window.clearInterval(timer);
-  }, [sync?.job_id, sync?.status, scope, days]);
+    return () => { stopped = true; window.clearInterval(timer); };
+  }, [sync?.job_id, sync?.status, scope, days, cancelling]);
 
   async function startSync() {
     setError(null);
     try {
       setSync(await api<KillboardSync>("/killboard/sync", { method: "POST", body: JSON.stringify({ scope: "account", lookback_days: context?.settings.lookback_days }) }));
     } catch (err) { setError(err instanceof Error ? err.message : "Could not start sync"); }
+  }
+
+  async function cancelSync() {
+    if (!sync || cancelling) return;
+    setCancelling(true); setError(null);
+    try {
+      setSync(await api<KillboardSync>(`/killboard/sync/${sync.job_id}/cancel`, { method: "POST", body: "{}" }));
+    } catch (err) { setError(err instanceof Error ? err.message : "Could not cancel sync"); }
+    finally { setCancelling(false); }
   }
 
   async function resumeSync() {
@@ -102,12 +114,13 @@ export function KillboardPage({ api }: { api: ApiClient }) {
         <label>Scope<select value={scope ? `${scope.scope_type}:${scope.scope_id}` : ""} onChange={(event) => setScope(context.scopes.find((item) => `${item.scope_type}:${item.scope_id}` === event.target.value) ?? null)}>{context.scopes.map((item) => <option key={`${item.scope_type}:${item.scope_id}`} value={`${item.scope_type}:${item.scope_id}`}>{item.label}</option>)}</select></label>
         <div className="button-row">{[7, 30, 90].map((value) => <button key={value} type="button" className={days === value ? "active" : ""} onClick={() => setDays(value)}>{value}D</button>)}</div>
         <button type="button" onClick={() => void startSync()} disabled={!context.enabled || Boolean(sync && activeStatuses.has(sync.status))}><RefreshCw size={17} /> Sync now</button>
+        {sync && (activeStatuses.has(sync.status) || sync.status === "failed") && <button type="button" onClick={() => void cancelSync()} disabled={cancelling}>{cancelling ? "Stopping…" : "Cancel sync"}</button>}
         {context.can_manage && <button type="button" className="secondary-action" onClick={() => setSettingsOpen((value) => !value)}><Settings2 size={17} /> Configure</button>}
       </div>
     </section>
     <div className="killboard-placard"><AlertTriangle size={18} /><span>{context.coverage_notice} Do not interpret discovery coverage as a complete combat record.{analytics?.engine_used ? ` Analytics: ${analytics.engine_used === "rust" ? "Rust" : analytics.engine_used.replace(/-/g, " ")}.` : ""}</span></div>
     {error && <div className="alert">{error}</div>}
-    {settingsOpen && settings && <section className="panel killboard-settings"><h3>Killboard synchronization</h3><label><input type="checkbox" checked={settings.enabled} onChange={(event) => setSettings({ ...settings, enabled: event.target.checked })} /> Module enabled</label><label>Refresh period (hours)<input type="number" min="1" max="168" value={settings.sync_period_hours} onChange={(event) => setSettings({ ...settings, sync_period_hours: Number(event.target.value) })} /></label><label>Lookback (days)<input type="number" min="1" max="3650" value={settings.lookback_days} onChange={(event) => setSettings({ ...settings, lookback_days: Number(event.target.value) })} /></label><label>Delay between zKill requests (seconds)<input type="number" min="0.2" max="30" step="0.1" value={settings.request_delay_seconds} onChange={(event) => setSettings({ ...settings, request_delay_seconds: Number(event.target.value) })} /></label><label>Maximum pages per feed<input type="number" min="1" max="100" value={settings.max_pages} onChange={(event) => setSettings({ ...settings, max_pages: Number(event.target.value) })} /></label><button type="button" onClick={() => void saveSettings()}>Save settings</button></section>}
+    {settingsOpen && settings && <section className="panel killboard-settings"><h3>Killboard synchronization</h3><p>Automatic sync and Sync now collect kills and losses for your linked characters only, regardless of corporation. The Scope selector changes the displayed results.</p><label><input type="checkbox" checked={settings.enabled} onChange={(event) => setSettings({ ...settings, enabled: event.target.checked })} /> Module enabled</label><label>Refresh period (hours)<input type="number" min="1" max="168" value={settings.sync_period_hours} onChange={(event) => setSettings({ ...settings, sync_period_hours: Number(event.target.value) })} /></label><label>Lookback (days)<input type="number" min="1" max="3650" value={settings.lookback_days} onChange={(event) => setSettings({ ...settings, lookback_days: Number(event.target.value) })} /></label><label>Delay between zKill requests (seconds)<input type="number" min="0.2" max="30" step="0.1" value={settings.request_delay_seconds} onChange={(event) => setSettings({ ...settings, request_delay_seconds: Number(event.target.value) })} /></label><label>Maximum pages per feed<input type="number" min="1" max="100" value={settings.max_pages} onChange={(event) => setSettings({ ...settings, max_pages: Number(event.target.value) })} /></label><button type="button" onClick={() => void saveSettings()}>Save settings</button></section>}
     {sync && <section className={`killboard-sync panel status-${sync.status}`}><div><strong>{activeStatuses.has(sync.status) ? "Sync in progress" : `Last sync: ${sync.status.replace(/_/g, " ")}`}</strong><span>{sync.message}</span>{sync.current_target && <span>{sync.current_target.owner_name} · {sync.feed} · page {sync.page}</span>}</div><div className="killboard-sync-counts"><span>{sync.imported_count} new</span><span>{sync.updated_count} refreshed</span><span>{sync.skipped_count} cached</span><span>{sync.failed_count} failed</span></div>{activeStatuses.has(sync.status) && <progress value={syncProgress} max="100" />}{sync.status === "failed" && <button type="button" onClick={() => void resumeSync()}>Resume from saved cursor</button>}</section>}
     {!context.enabled && <div className="alert">The Killboard module is disabled. An administrator can re-enable it in Configure.</div>}
     {analytics && <>

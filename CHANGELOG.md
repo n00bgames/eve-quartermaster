@@ -8,6 +8,9 @@ Version sections are written as user-facing release notes first, with implementa
 
 ### Fixed
 
+- Killboard account sync now discovers only the user's linked, sync-enabled characters, including for officers and administrators. Neutral alts no longer pull in entire NPC or player corporation feeds. Personal sync status no longer picks up another user's job.
+- Added Cancel sync to stop an oversized or failed discovery run before starting a fresh character-only sync. Cancellation is respected before requests and imports, including when resuming after a restart; previously cached killmails are preserved and account results remain filtered by character participation.
+
 - Standard EVE SSO relinks now request the loyalty-read scope needed by Missions & LP. Previously the scope was only included in full authorization, so a normal relink could still leave pilots unavailable in the LP selector. Update the backend, ensure the developer app enables `esi-characters.read_loyalty.v1`, then relink affected pilots once more.
 - The Missions & LP Refresh button now reloads linked pilots and their scope status, including clearing an earlier directory-loading error after a successful retry.
 

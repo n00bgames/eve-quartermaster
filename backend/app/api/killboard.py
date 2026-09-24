@@ -47,9 +47,10 @@ def require_admin(user: User, db: Session) -> None:
 
 
 def latest_run(db: Session, user: User) -> KillboardSyncRun | None:
-    query = select(KillboardSyncRun).order_by(KillboardSyncRun.created_at.desc()).limit(1)
-    if role_rank(user, db) < ROLE_RANK["admin"]:
-        query = query.where(KillboardSyncRun.initiated_by_user_id == user.id)
+    # The personal page must not auto-resume another user's discovery job.
+    query = select(KillboardSyncRun).where(
+        KillboardSyncRun.initiated_by_user_id == user.id,
+    ).order_by(KillboardSyncRun.created_at.desc()).limit(1)
     return db.scalar(query)
 
 
