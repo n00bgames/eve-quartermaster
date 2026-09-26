@@ -122,7 +122,7 @@ def participation_calculations(
     elif outcome == "lost":
         value = None
         profit_loss = money(-spent)
-    elif outcome == "cancelled":
+    elif outcome in {"expired", "cancelled"}:
         value = None
         profit_loss = money(0)
     else:
@@ -540,6 +540,7 @@ def hypernet_summary(user: User = Depends(require_hypernet), db: Session = Depen
     completed_profit = sum((row.final_profit or Decimal("0")) for row in completed)
     next_expiring = min(active, key=lambda row: row.expires_at, default=None)
     pending_bids = [row for row in participations if row.outcome == "pending"]
+    # Refunded expired/cancelled bids stay in history, outside exposure and performance metrics.
     resolved_bids = [row for row in participations if row.outcome in {"won", "lost"}]
     won_bids = [row for row in resolved_bids if row.outcome == "won"]
     lost_bids = [row for row in resolved_bids if row.outcome == "lost"]
@@ -626,7 +627,7 @@ def list_hypernet_participations(
         .where(HyperNetParticipation.user_id == user.id)
     )
     if outcome != "all":
-        if outcome not in {"pending", "won", "lost", "cancelled"}:
+        if outcome not in {"pending", "won", "lost", "expired", "cancelled"}:
             raise HTTPException(status_code=400, detail="Unsupported bid outcome filter")
         query = query.where(HyperNetParticipation.outcome == outcome)
     rows = db.scalars(query.order_by(HyperNetParticipation.created_at.desc()).limit(limit)).unique().all()

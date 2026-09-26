@@ -125,7 +125,7 @@ export type HyperNetSummary = {
   combined_lifetime_result: number;
 };
 
-export type HyperNetParticipationOutcome = "pending" | "won" | "lost" | "cancelled";
+export type HyperNetParticipationOutcome = "pending" | "won" | "lost" | "expired" | "cancelled";
 
 export type HyperNetParticipation = {
   id: number;

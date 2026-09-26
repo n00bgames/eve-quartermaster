@@ -343,7 +343,7 @@ fn evaluate_participation(input: ParticipationInput) -> Result<Value, String> {
             (Some(value), Some(value - spent))
         }
         "lost" => (None, Some(-spent)),
-        "cancelled" => (None, Some(0)),
+        "expired" | "cancelled" => (None, Some(0)),
         _ => return Err("unsupported participation outcome".to_string()),
     };
     Ok(json!({
@@ -446,6 +446,21 @@ mod tests {
         assert_eq!(progress.hours_to_first_organic_node, Some(4.0));
         assert_eq!(progress.organic_nodes_per_hour, Some(0.25));
         assert_eq!(progress.estimated_hours_to_completion, Some(24.0));
+    }
+
+    #[test]
+    fn expired_participation_keeps_purchase_history_with_zero_result() {
+        let result = evaluate_participation(ParticipationInput {
+            total_nodes: 8,
+            nodes_purchased: 2,
+            node_price_cents: 5_000_000_000,
+            outcome: "expired".to_string(),
+            item_value_at_completion_cents: Some(150_000_000_000),
+        }).unwrap();
+        assert_eq!(result["total_spent_cents"], 10_000_000_000_i64);
+        assert_eq!(result["profit_loss_cents"], 0);
+        assert!(result["item_value_at_completion_cents"].is_null());
+        assert_eq!(result["win_probability_percent_ten_thousandths"], 250_000);
     }
 
     #[test]

@@ -52,7 +52,7 @@ export function HyperNetParticipationForm({ api, meta, bid, onSaved, onCancel }:
   const total = draft.nodePrice * draft.nodesPurchased;
   const odds = draft.totalNodes ? draft.nodesPurchased / draft.totalNodes * 100 : 0;
   return <section className="panel hypernet-offer-form">
-    <div className="section-heading"><div><span className="eyebrow">Buyer-side tracking</span><h3>{bid ? `Edit ${bid.item.name} bid` : "Record HyperNet nodes purchased"}</h3><p>{bid ? "Correct the bid details or outcome; statistics will be recalculated immediately." : "Track a bid you made on another pilot’s offer and reconcile it as won or lost."}</p></div><button type="button" className="icon-button" onClick={onCancel}><X size={18} /></button></div>
+    <div className="section-heading"><div><span className="eyebrow">Buyer-side tracking</span><h3>{bid ? `Edit ${bid.item.name} bid` : "Record HyperNet nodes purchased"}</h3><p>{bid ? "Correct the bid details or outcome; statistics will be recalculated immediately." : "Track a bid you made on another pilot’s offer and reconcile it as won, lost, or expired with a refund."}</p></div><button type="button" className="icon-button" onClick={onCancel}><X size={18} /></button></div>
     <form onSubmit={submit}>
       <div className="hypernet-form-fields">
         <div className="form-grid three">
@@ -65,11 +65,12 @@ export function HyperNetParticipationForm({ api, meta, bid, onSaved, onCancel }:
           <label>Total offer nodes<input type="number" min="1" max="512" value={draft.totalNodes} onChange={(event) => update("totalNodes", Number(event.target.value))} required /></label>
           <label>Nodes purchased<input type="number" min="1" max={draft.totalNodes} value={draft.nodesPurchased} onChange={(event) => update("nodesPurchased", Number(event.target.value))} required /></label>
           <label>Price per node (ISK)<input type="number" min="0" step="0.01" value={draft.nodePrice || ""} onChange={(event) => update("nodePrice", Number(event.target.value))} required /></label>
-          {bid && <label>Outcome<select value={draft.outcome} onChange={(event) => update("outcome", event.target.value as typeof draft.outcome)}><option value="pending">Pending</option><option value="won">Won</option><option value="lost">Lost</option><option value="cancelled">Cancelled</option></select></label>}
-          {bid && draft.outcome !== "pending" && <label>Completed at<input type="datetime-local" value={draft.completedAt} onChange={(event) => update("completedAt", event.target.value)} required /></label>}
+          {bid && <label>Outcome<select value={draft.outcome} onChange={(event) => update("outcome", event.target.value as typeof draft.outcome)}><option value="pending">Pending</option><option value="won">Won</option><option value="lost">Lost</option><option value="expired">Expired · refunded</option><option value="cancelled">Cancelled</option></select></label>}
+          {bid && draft.outcome !== "pending" && <label>{draft.outcome === "expired" ? "Expired at" : "Completed at"}<input type="datetime-local" value={draft.completedAt} onChange={(event) => update("completedAt", event.target.value)} required /></label>}
           {bid && draft.outcome === "won" && <label>Item value when won (ISK)<input type="number" min="0" step="0.01" value={draft.itemValue || ""} onChange={(event) => update("itemValue", Number(event.target.value))} required /></label>}
         </div>
-        <div className="hypernet-bid-preview"><span><small>Total committed</small><strong>{total.toLocaleString()} ISK</strong></span><span><small>Chance to win</small><strong>{odds.toFixed(2)}%</strong></span><span><small>Loss if unsuccessful</small><strong className="hypernet-loss">−{total.toLocaleString()} ISK</strong></span></div>
+        <div className="hypernet-bid-preview"><span><small>Total committed</small><strong>{total.toLocaleString()} ISK</strong></span><span><small>Chance to win</small><strong>{odds.toFixed(2)}%</strong></span><span><small>{draft.outcome === "expired" ? "Refunded in full" : "Loss if unsuccessful"}</small><strong className={draft.outcome === "expired" ? "hypernet-neutral" : "hypernet-loss"}>{draft.outcome === "expired" ? "" : "−"}{total.toLocaleString()} ISK</strong></span></div>
+        {draft.outcome === "expired" && <p className="muted">The original purchase stays in your history. The full refund gives a zero net result and is excluded from bid exposure, spend, win rate, luck, and ROI statistics.</p>}
         <label>Notes<textarea rows={4} value={draft.notes} onChange={(event) => update("notes", event.target.value)} /></label>
       </div>
       {error && <div className="mini-alert">{error}</div>}

@@ -182,7 +182,7 @@ class HyperNetParticipationCreate(BaseModel):
 
 
 class HyperNetParticipationResolve(BaseModel):
-    outcome: Literal["won", "lost", "cancelled"]
+    outcome: Literal["won", "lost", "expired", "cancelled"]
     completed_at: datetime
     item_value_at_completion: Decimal | None = Field(default=None, ge=0)
     notes: str | None = None
@@ -210,7 +210,7 @@ class HyperNetParticipationPatch(BaseModel):
     nodes_purchased: int | None = Field(default=None, gt=0)
     node_price: Decimal | None = Field(default=None, ge=0)
     created_at: datetime | None = None
-    outcome: Literal["pending", "won", "lost", "cancelled"] | None = None
+    outcome: Literal["pending", "won", "lost", "expired", "cancelled"] | None = None
     completed_at: datetime | None = None
     item_value_at_completion: Decimal | None = Field(default=None, ge=0)
     notes: str | None = None

@@ -6,6 +6,10 @@ Version sections are written as user-facing release notes first, with implementa
 
 ## [1.0.4] - Unreleased
 
+### Added
+
+- HyperNet bids can now be marked **Expired · refunded** from a pending bid or the edit form and filtered in history. Original purchase details and the expiry timestamp remain available with a zero net result; refunded bids are excluded from exposure, spend, win/loss, expected-win, luck, and ROI statistics. Python and Rust calculations both support the new outcome; no database migration is required.
+
 ### Fixed
 
 - Financial Analytics now offers All My Characters under My characters, combining owner-visible wallet balances, history, growth, income/spending, and a character-labelled event timeline.
