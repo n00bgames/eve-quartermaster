@@ -583,6 +583,8 @@ def hypernet_summary(
         "hypercore_cost": sum(calculations[row.id]["financials"]["hypercore_cost"] or 0 for row in active),
         "estimated_net_proceeds": sum(calculations[row.id]["financials"]["net_proceeds"] or 0 for row in active),
         "estimated_profit": sum(calculations[row.id]["financials"]["profit"] or 0 for row in active),
+        "active_seller_node_spend": sum(calculations[row.id]["seeded_scenario"]["seller_node_spend"] or 0 for row in active),
+        "active_external_winner_result": sum(calculations[row.id]["seeded_scenario"]["cash_result_if_external_wins"] or 0 for row in active),
         "completed_offers": len(completed),
         "expired_offers": len(expired),
         "lifetime_profit": as_number(lifetime_profit),

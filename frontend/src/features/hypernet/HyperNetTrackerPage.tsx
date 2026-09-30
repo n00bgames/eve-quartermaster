@@ -157,9 +157,13 @@ export function HyperNetTrackerPage({ api }: { api: ApiClient }) {
         <SummaryMetric label="Active offers" value={summary.active_offers.toLocaleString()} detail={`${summary.nearing_expiration} expire within 12h`} />
         <SummaryMetric label="Nodes filled" value={`${summary.nodes_sold}/${summary.total_nodes}`} detail={summary.total_nodes ? `${(summary.nodes_sold / summary.total_nodes * 100).toFixed(1)}% active fill` : "No active nodes"} />
         <SummaryMetric label="Gross active value" value={formatIsk(summary.gross_offer_value, true)} detail={`${formatIsk(summary.expected_payout, true)} after 5% fee`} />
-        <SummaryMetric label="Estimated active profit" value={formatIsk(summary.estimated_profit, true)} detail={`${formatIsk(summary.capital_tied_up, true)} tied up`} tone={profitClass(summary.estimated_profit)} />
+        <SummaryMetric label="Active profit before self-bought nodes" value={formatIsk(summary.estimated_profit, true)} detail="After hull, HyperCores, and completion fee" tone={profitClass(summary.estimated_profit)} />
         <SummaryMetric label="Bid result" value={formatIsk(summary.participation.realized_profit_loss, true)} detail={`${summary.participation.won_bids} won · ${summary.participation.lost_bids} lost`} tone={profitClass(summary.participation.realized_profit_loss)} />
         <SummaryMetric label="Combined lifetime" value={formatIsk(summary.combined_lifetime_result, true)} detail={`${formatIsk(summary.lifetime_profit, true)} seller result`} tone={profitClass(summary.combined_lifetime_result)} />
+      </div>
+      <div className="hypernet-seller-risk-summary">
+        <SummaryMetric label="Self-bought nodes on active offers" value={formatIsk(summary.active_seller_node_spend, true)} detail={`${formatIsk(summary.capital_tied_up, true)} total capital tied up`} />
+        <SummaryMetric label="If outside buyers win all active offers" value={formatIsk(summary.active_external_winner_result, true)} detail="Assumes every offer fills; includes hulls, cores, fees, and self-bought nodes" tone={profitClass(summary.active_external_winner_result)} />
       </div>
       <div className="hypernet-bid-analytics">
         <SummaryMetric label="Open bid exposure" value={formatIsk(summary.participation.active_spend, true)} detail={`${summary.participation.active_bids} bids · ${summary.participation.active_nodes} nodes`} />

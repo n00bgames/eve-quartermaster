@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.api import hypernet
 from app.models import Base, EsiToken, EveCharacter, HyperNetOffer, HyperNetParticipation
+from app.services.hypernet import offer_financials, seeded_node_scenario
 
 
 class HyperNetCharacterFilterTests(unittest.TestCase):
@@ -55,7 +56,11 @@ class HyperNetCharacterFilterTests(unittest.TestCase):
             ("offer_calculations", lambda row: {
                 "financials": {key: float(row.total_offer_price) for key in
                     ["payout_after_fee", "hypercore_cost", "net_proceeds", "profit"]},
-                "seeded_scenario": {"capital_tied_up": float(row.total_offer_price)},
+                "seeded_scenario": {
+                    "capital_tied_up": float(row.total_offer_price),
+                    "seller_node_spend": float(row.total_offer_price) * .375,
+                    "cash_result_if_external_wins": float(row.total_offer_price) * .625,
+                },
                 "progress": {"hours_to_first_organic_node": row.seller_character_id},
             }),
         ]:
@@ -84,6 +89,8 @@ class HyperNetCharacterFilterTests(unittest.TestCase):
             self.assertEqual(stats["participation"]["realized_profit_loss"], -amount)
             self.assertEqual(stats["participation"]["resolved_bids"], 1)
             self.assertEqual(stats["combined_lifetime_result"], 0)
+            self.assertEqual(stats["active_seller_node_spend"], amount * .375)
+            self.assertEqual(stats["active_external_winner_result"], amount * .625)
 
     def test_empty_and_foreign_character_cannot_expose_another_users_records(self):
         for character in [3, 4, 999]:
@@ -92,6 +99,8 @@ class HyperNetCharacterFilterTests(unittest.TestCase):
             self.assertEqual(stats["lifetime_profit"], 0)
             self.assertEqual(stats["participation"]["active_spend"], 0)
             self.assertIsNone(stats["next_expiring_offer"])
+            self.assertEqual(stats["active_seller_node_spend"], 0)
+            self.assertEqual(stats["active_external_winner_result"], 0)
             self.assertEqual(hypernet.list_hypernet_offers(
                 seller_character_id=character, limit=100, user=self.user, db=self.db), [])
             self.assertEqual(hypernet.list_hypernet_participations(
@@ -106,6 +115,46 @@ class HyperNetCharacterFilterTests(unittest.TestCase):
         self.assertEqual(offers[0]["character_id"], 2)
         self.assertEqual(len(bids), 1)
         self.assertEqual(bids[0]["character_id"], 2)
+
+    def test_active_risk_matches_vindicator_and_injector_costs(self):
+        for row, price, cost, cores, core_price in [
+            (self.offers[0], 1430000000, 902100000, 152, 306100),
+            (self.offers[2], 995000000, 739000000, 106, 304600),
+        ]:
+            row.total_offer_price = Decimal(price)
+            row.acquisition_cost = Decimal(cost)
+            row.hypercores_required = cores
+            row.hypercore_unit_cost = Decimal(core_price)
+        self.db.flush()
+
+        def calculate(row):
+            financials = offer_financials(
+                total_offer_price=row.total_offer_price, total_nodes=row.total_nodes,
+                hypercores_required=row.hypercores_required, hypercore_unit_cost=row.hypercore_unit_cost,
+                acquisition_cost=row.acquisition_cost,
+            )
+            scenario = seeded_node_scenario(
+                total_nodes=row.total_nodes, seller_owned_nodes=row.seller_owned_nodes,
+                node_price=financials["node_price"], acquisition_cost=row.acquisition_cost,
+                hypercore_cost=financials["hypercore_cost"], payout_after_fee=financials["payout_after_fee"],
+            )
+            return {"financials": financials, "seeded_scenario": scenario,
+                    "progress": {"hours_to_first_organic_node": None}}
+
+        with patch.object(hypernet, "offer_calculations", calculate):
+            result = self.summary()
+            self.assertEqual(result["estimated_profit"], Decimal("583835200"))
+            self.assertEqual(result["active_seller_node_spend"], Decimal("909375000"))
+            self.assertEqual(result["active_external_winner_result"], Decimal("-325539800"))
+            self.assertEqual(self.summary(1)["active_external_winner_result"], Decimal("-126377200"))
+            self.assertEqual(self.summary(2)["active_external_winner_result"], Decimal("-199162600"))
+            # With no self-purchases, the outside-winner result equals the unseeded profit.
+            self.offers[0].seller_owned_nodes = 0
+            self.offers[2].seller_owned_nodes = 0
+            self.db.flush()
+            unseeded = self.summary()
+            self.assertEqual(unseeded["active_seller_node_spend"], 0)
+            self.assertEqual(unseeded["active_external_winner_result"], unseeded["estimated_profit"])
 
     def test_filter_choices_include_history_without_active_esi_tokens(self):
         # Character 2 has been unlinked/transferred; the user's recorded history remains accessible.

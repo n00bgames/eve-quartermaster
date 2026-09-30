@@ -112,6 +112,8 @@ export type HyperNetSummary = {
   hypercore_cost: number;
   estimated_net_proceeds: number;
   estimated_profit: number;
+  active_seller_node_spend: number;
+  active_external_winner_result: number;
   completed_offers: number;
   expired_offers: number;
   lifetime_profit: number;
