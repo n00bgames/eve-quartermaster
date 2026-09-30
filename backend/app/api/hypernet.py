@@ -6,7 +6,7 @@ from statistics import mean
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import case, delete, func, select
+from sqlalchemy import case, delete, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.auth import get_current_user
@@ -390,6 +390,14 @@ def validate_character(db: Session, character_id: int, user: User) -> EveCharact
 
 @router.get("/meta")
 def hypernet_meta(user: User = Depends(require_hypernet), db: Session = Depends(get_db)) -> dict[str, Any]:
+    # History remains filterable even when a character no longer has an active token.
+    filter_characters = db.scalars(
+        select(EveCharacter).where(or_(
+            EveCharacter.owner_user_id == user.id,
+            EveCharacter.id.in_(select(HyperNetOffer.seller_character_id).where(HyperNetOffer.owner_user_id == user.id)),
+            EveCharacter.id.in_(select(HyperNetParticipation.character_id).where(HyperNetParticipation.user_id == user.id)),
+        )).order_by(EveCharacter.name, EveCharacter.id)
+    ).all()
     characters = db.scalars(
         select(EveCharacter)
         .where(
@@ -406,6 +414,7 @@ def hypernet_meta(user: User = Depends(require_hypernet), db: Session = Depends(
             for row in characters
         ],
         "fee_rate": 0.05,
+        "filter_characters": [{"id": row.id, "name": row.name} for row in filter_characters],
         "manual_only": True,
         "economics_engine": get_settings().eqm_hypernet_engine,
     }
@@ -517,18 +526,25 @@ def hypernet_calculator(payload: HyperNetCalculatorRequest, _: User = Depends(re
 
 
 @router.get("/summary")
-def hypernet_summary(user: User = Depends(require_hypernet), db: Session = Depends(get_db)) -> dict[str, Any]:
-    offers = db.scalars(
+def hypernet_summary(
+    user: User = Depends(require_hypernet), db: Session = Depends(get_db), character_id: int | None = None,
+) -> dict[str, Any]:
+    offer_query = (
         select(HyperNetOffer)
         .options(*offer_options())
         .where(HyperNetOffer.owner_user_id == user.id)
         .order_by(HyperNetOffer.created_offer_at.desc())
-    ).unique().all()
-    participations = db.scalars(
+    )
+    participation_query = (
         select(HyperNetParticipation)
         .where(HyperNetParticipation.user_id == user.id)
         .order_by(HyperNetParticipation.created_at.desc())
-    ).all()
+    )
+    if character_id is not None:
+        offer_query = offer_query.where(HyperNetOffer.seller_character_id == character_id)
+        participation_query = participation_query.where(HyperNetParticipation.character_id == character_id)
+    offers = db.scalars(offer_query).unique().all()
+    participations = db.scalars(participation_query).all()
     now = datetime.now(timezone.utc)
     active = [row for row in offers if row.status in ACTIVE_STATUSES]
     completed = [row for row in offers if row.status == "completed"]
@@ -626,6 +642,7 @@ def list_hypernet_offers(
 @router.get("/participations")
 def list_hypernet_participations(
     outcome: str = "all",
+    character_id: int | None = None,
     limit: int = Query(500, ge=1, le=1000),
     user: User = Depends(require_hypernet),
     db: Session = Depends(get_db),
@@ -639,6 +656,8 @@ def list_hypernet_participations(
         if outcome not in {"pending", "won", "lost", "expired", "cancelled"}:
             raise HTTPException(status_code=400, detail="Unsupported bid outcome filter")
         query = query.where(HyperNetParticipation.outcome == outcome)
+    if character_id is not None:
+        query = query.where(HyperNetParticipation.character_id == character_id)
     rows = db.scalars(query.order_by(HyperNetParticipation.created_at.desc()).limit(limit)).unique().all()
     return [serialize_participation(row) for row in rows]
 

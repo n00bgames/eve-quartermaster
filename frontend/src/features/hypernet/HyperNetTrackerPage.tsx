@@ -1,5 +1,5 @@
 import { BarChart3, Calculator, Clock3, Coins, Dice5, History, LayoutGrid, List, Pencil, Plus, RefreshCw, TicketCheck, Trophy, XCircle } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ModuleFinder } from "../../components/ModuleFinder";
 import { matchesSearchTerms } from "../../lib/search";
@@ -49,6 +49,8 @@ export function HyperNetTrackerPage({ api }: { api: ApiClient }) {
   const [selected, setSelected] = useState<HyperNetOffer | null>(null);
   const [status, setStatus] = useState("active");
   const [bidOutcome, setBidOutcome] = useState("all");
+  const [characterId, setCharacterId] = useState("");
+  const boardRequest = useRef(0);
   const [side, setSide] = useState<"seller" | "buyer">("seller");
   const [mode, setMode] = useState<"cards" | "table">("cards");
   const [query, setQuery] = useState("");
@@ -61,16 +63,19 @@ export function HyperNetTrackerPage({ api }: { api: ApiClient }) {
   }, []);
 
   const loadBoard = useCallback(async () => {
+    const request = ++boardRequest.current;
     setBusy(true); setError(null);
     try {
+      const characterFilter = characterId ? `character_id=${encodeURIComponent(characterId)}` : "";
       const [nextMeta, nextSummary, nextOffers, nextParticipations] = await Promise.all([
-        api<HyperNetMeta>("/hypernet/meta"), api<HyperNetSummary>("/hypernet/summary"), api<HyperNetOffer[]>(`/hypernet/offers?status=${encodeURIComponent(status)}`),
-        api<HyperNetParticipation[]>(`/hypernet/participations?outcome=${encodeURIComponent(bidOutcome)}`),
+        api<HyperNetMeta>("/hypernet/meta"), api<HyperNetSummary>(`/hypernet/summary?${characterFilter}`), api<HyperNetOffer[]>(`/hypernet/offers?status=${encodeURIComponent(status)}${characterId ? `&seller_${characterFilter}` : ""}`),
+        api<HyperNetParticipation[]>(`/hypernet/participations?outcome=${encodeURIComponent(bidOutcome)}&${route.kind === "edit-bid" ? "" : characterFilter}`),
       ]);
+      if (request !== boardRequest.current) return;
       setMeta(nextMeta); setSummary(nextSummary); setOffers(nextOffers); setParticipations(nextParticipations);
-    } catch (err) { setError(err instanceof Error ? err.message : "Unable to load HyperNet Tracker"); }
-    finally { setBusy(false); }
-  }, [api, status, bidOutcome]);
+    } catch (err) { if (request === boardRequest.current) setError(err instanceof Error ? err.message : "Unable to load HyperNet Tracker"); }
+    finally { if (request === boardRequest.current) setBusy(false); }
+  }, [api, status, bidOutcome, characterId, route.kind]);
 
   const resolveBid = useCallback(async (bid: HyperNetParticipation, outcome: "won" | "lost" | "expired") => {
     let itemValue: number | null = null;
@@ -141,6 +146,11 @@ export function HyperNetTrackerPage({ api }: { api: ApiClient }) {
   return <div className="hypernet-page">
     <div className="hypernet-toolbar"><div><span className="eyebrow">Finance and trade</span><h3>HyperNet Tracker</h3><p>Seller offers, nodes purchased, win/loss history, seeded-node risk, and combined HyperNet performance.</p></div><div className="button-row"><button type="button" disabled={busy} onClick={() => void loadBoard()}><RefreshCw className={busy ? "spin" : ""} size={17} /> Refresh</button><button type="button" onClick={() => navigate("hypernet/bids/new")}><Dice5 size={17} /> Record bid</button><button type="button" onClick={() => navigate("hypernet/new")}><Plus size={17} /> Plan or record offer</button></div></div>
     <div className="hypernet-manual-placard"><TicketCheck size={21} /><span><strong>Manual data source active.</strong> ESI supports character, item, location, and market context, but EQM does not assume it can read HyperNet offers. Reconcile outcomes from the in-game offer.</span></div>
+    <div className="hypernet-character-filter"><label><span>Character</span><select aria-label="Character" value={characterId} onChange={(event) => {
+      ++boardRequest.current;
+      setSummary(null); setOffers([]); setParticipations([]); setBusy(true);
+      setCharacterId(event.target.value);
+    }}><option value="">All My Characters</option>{(meta?.filter_characters ?? meta?.seller_characters ?? []).map((character) => <option key={character.id} value={character.id}>{character.name}</option>)}</select></label><span className="muted">Filters seller and buyer stats, offers, and bid history.</span></div>
     {error && <div className="mini-alert">{error}</div>}
     {summary && <>
       <div className="hypernet-summary-grid">

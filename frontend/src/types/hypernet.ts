@@ -165,6 +165,7 @@ export type HyperNetParticipationSummary = {
 };
 
 export type HyperNetMeta = {
+  filter_characters?: Array<{ id: number; name: string }>;
   statuses: HyperNetStatus[];
   data_sources: Array<{ key: string; label: string; available: boolean }>;
   seller_characters: Array<{ id: number; character_id: number; name: string; portrait_url?: string | null }>;
