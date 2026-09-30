@@ -6,7 +6,7 @@ from statistics import mean
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import delete, func, select
+from sqlalchemy import case, delete, func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.auth import get_current_user
@@ -418,11 +418,20 @@ def hypernet_type_search(
     _: User = Depends(require_hypernet),
     db: Session = Depends(get_db),
 ) -> list[dict[str, Any]]:
+    term = q.strip()
     rows = db.scalars(
         select(EveType)
         .options(selectinload(EveType.group).selectinload(EveGroup.category))
-        .where(EveType.name.ilike(f"%{q.strip()}%"), EveType.published.is_(True))
-        .order_by(EveType.name)
+        .where(EveType.name.ilike(f"%{term}%"), EveType.published.is_(True))
+        .order_by(
+            case(
+                (func.lower(EveType.name) == term.lower(), 0),
+                (EveType.name.ilike(f"{term}%"), 1),
+                else_=2,
+            ),
+            EveType.name,
+            EveType.type_id,
+        )
         .limit(limit)
     ).all()
     return [
