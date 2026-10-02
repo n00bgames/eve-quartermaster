@@ -10,7 +10,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from app.api import hypernet
-from app.models import Base, EveType, HyperNetOffer, HyperNetOfferSnapshot, HyperNetParticipant
+from app.models import Base, EveType, HyperNetOffer, HyperNetOfferSnapshot, HyperNetParticipant, Location
 from app.schemas.hypernet import HyperNetOfferPatch
 
 
@@ -18,7 +18,7 @@ class HyperNetOfferEditTests(unittest.TestCase):
     def setUp(self):
         self.engine = create_engine("sqlite+pysqlite:///:memory:")
         Base.metadata.create_all(self.engine, tables=[row.__table__ for row in
-            (EveType, HyperNetOffer, HyperNetOfferSnapshot, HyperNetParticipant)])
+            (EveType, HyperNetOffer, HyperNetOfferSnapshot, HyperNetParticipant, Location)])
         self.db = Session(self.engine, expire_on_commit=False)
         self.addCleanup(self.engine.dispose)
         self.addCleanup(self.db.close)
@@ -123,3 +123,42 @@ class HyperNetOfferEditTests(unittest.TestCase):
                         dict(hypercores_required=-1), dict(quantity=0), dict(total_offer_price=-1)]:
             with self.assertRaises(ValidationError):
                 HyperNetOfferPatch(**changes)
+
+    def test_location_selection_replaces_loaded_relationship_and_is_audited(self):
+        old = Location(name="Old station", eve_location_id=60000001)
+        new = Location(name="Jita IV - Moon 4 - Caldari Navy Assembly Plant", eve_location_id=60003760)
+        self.db.add_all([old, new])
+        self.db.flush()
+        self.offer.location = old
+        self.offer.location_name_snapshot = old.name
+        self.db.commit()
+        self.edit(location_id=new.id, location_name="Untrusted display label")
+        self.assertEqual(self.offer.location_id, new.id)
+        self.assertEqual(self.offer.location.name, new.name)
+        self.assertEqual(self.offer.location_name_snapshot, new.name)
+        self.assertIn("Old station", self.audit.call_args.kwargs["body"])
+        self.assertIn(new.name, self.audit.call_args.kwargs["body"])
+
+    def test_manual_location_detaches_existing_link_and_can_be_cleared(self):
+        location = Location(name="Old station", eve_location_id=60000001)
+        self.db.add(location)
+        self.offer.location = location
+        self.db.commit()
+        self.edit(location_name="  Manually entered station  ")
+        self.assertIsNone(self.offer.location_id)
+        self.assertIsNone(self.offer.location)
+        self.assertEqual(self.offer.location_name_snapshot, "Manually entered station")
+        self.edit(location_id=None, location_name=None)
+        self.assertIsNone(self.offer.location_name_snapshot)
+
+    def test_unrelated_edits_preserve_location(self):
+        self.offer.location_name_snapshot = "SDE station"
+        self.edit(total_nodes=16)
+        self.assertEqual(self.offer.location_name_snapshot, "SDE station")
+
+    def test_invalid_location_rejected_before_other_changes(self):
+        with self.assertRaises(HTTPException) as caught:
+            self.edit(location_id=9999, total_nodes=16)
+        self.assertEqual(caught.exception.status_code, 400)
+        self.assertEqual(self.offer.total_nodes, 8)
+        self.audit.assert_not_called()

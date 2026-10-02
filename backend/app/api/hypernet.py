@@ -922,11 +922,22 @@ def patch_hypernet_offer(
         raise HTTPException(status_code=400, detail="Total nodes cannot be less than recorded sold, seeded, or participant nodes")
     if updates.get("expires_at", offer.expires_at) <= offer.created_offer_at:
         raise HTTPException(status_code=400, detail="expires_at must be after created_offer_at")
+    location_changed = "location_id" in updates or "location_name" in updates
+    if location_changed:
+        location_id = updates.get("location_id")
+        location = db.get(Location, location_id) if location_id is not None else None
+        if location_id is not None and location is None:
+            raise HTTPException(status_code=400, detail="Location was not found")
+        location_name = (updates.pop("location_name", None) or "").strip() or None
+        updates["location_id"] = location.id if location else None
+        updates["location_name_snapshot"] = location.name if location else location_name
     before = {field: str(getattr(offer, field)) for field in set(updates) | {"status"}}
     for field, value in updates.items():
         if field in {"total_offer_price", "hypercore_unit_cost", "acquisition_cost", "desired_profit"} and value is not None:
             value = money(value)
         setattr(offer, field, value)
+    if location_changed:
+        offer.location = location
     if offer.status in {"active", "awaiting_reconciliation"}:
         offer.status = "awaiting_reconciliation" if offer.nodes_sold == offer.total_nodes else "active"
     calculations = authoritative_offer_financials(

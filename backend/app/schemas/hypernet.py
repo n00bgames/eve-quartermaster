@@ -75,6 +75,8 @@ class HyperNetOfferCreate(HyperNetCalculatorRequest):
 
 
 class HyperNetOfferPatch(BaseModel):
+    location_id: int | None = Field(default=None, gt=0)
+    location_name: str | None = Field(default=None, max_length=500)
     total_nodes: int | None = Field(default=None, gt=0, le=512)
     total_offer_price: Decimal | None = Field(default=None, ge=0)
     hypercores_required: int | None = Field(default=None, ge=0)
@@ -88,7 +90,7 @@ class HyperNetOfferPatch(BaseModel):
 
     @model_validator(mode="after")
     def reject_null_values(self) -> "HyperNetOfferPatch":
-        for field in self.model_fields_set - {"notes"}:
+        for field in self.model_fields_set - {"notes", "location_id", "location_name"}:
             if getattr(self, field) is None:
                 raise ValueError(f"{field} cannot be null")
         return self

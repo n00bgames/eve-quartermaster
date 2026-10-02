@@ -8,6 +8,8 @@ Version sections are written as user-facing release notes first, with implementa
 
 ### Added
 
+- HyperNet's **Edit offer** form now supports location search, manual location corrections, and clearing an incorrect location. Saved corrections update the offer card and detail view and are included in the edit audit trail.
+
 - Active and draft HyperNet offers now have an **Edit offer** action for correcting total nodes, total offer price, quantity, HyperCore costs, acquisition cost, desired profit, expiry, and notes. Correcting an eight-node offer to sixteen preserves sold/seeded counts, recalculates prices and odds, and returns an incorrectly full offer to active status. Corrections are audited and cannot reduce capacity below recorded progress. Rebuild backend and frontend together; no database migration is required.
 
 ### Changed
