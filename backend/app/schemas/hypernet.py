@@ -137,6 +137,7 @@ class HyperNetReconcileRequest(BaseModel):
     actual_hypercore_cost: Decimal | None = Field(default=None, ge=0)
     final_market_value: Decimal | None = Field(default=None, ge=0)
     final_profit: Decimal | None = None
+    acquisition_cost: Decimal | None = Field(default=None, ge=0)
     note: str | None = None
 
     @field_validator("reconciled_at")

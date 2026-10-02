@@ -1013,16 +1013,48 @@ def reconcile_hypernet_offer(
     offer = owned_offer(db, offer_id, user)
     if offer.status in TERMINAL_STATUSES:
         raise HTTPException(status_code=409, detail="Offer is already reconciled")
+    return apply_hypernet_reconciliation(offer, payload, user, db)
+
+
+@router.patch("/offers/{offer_id}/reconcile")
+def edit_hypernet_reconciliation(
+    offer_id: int,
+    payload: HyperNetReconcileRequest,
+    user: User = Depends(require_hypernet),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    offer = owned_offer(db, offer_id, user)
+    if offer.status not in TERMINAL_STATUSES:
+        raise HTTPException(status_code=409, detail="Only ended offers can be corrected")
+    if payload.status != offer.status:
+        raise HTTPException(status_code=400, detail="Corrections must preserve the ended offer status")
+    return apply_hypernet_reconciliation(offer, payload, user, db, correction=True)
+
+
+def apply_hypernet_reconciliation(
+    offer: HyperNetOffer, payload: HyperNetReconcileRequest, user: User, db: Session,
+    *, correction: bool = False,
+) -> dict[str, Any]:
     seeded_nodes = payload.seller_owned_nodes if payload.seller_owned_nodes is not None else offer.seller_owned_nodes
     if seeded_nodes > offer.total_nodes:
         raise HTTPException(status_code=400, detail="seller_owned_nodes cannot exceed total_nodes")
+    if payload.status != "completed" and seeded_nodes > offer.nodes_sold:
+        raise HTTPException(status_code=400, detail="seller_owned_nodes cannot exceed nodes_sold")
+    if payload.reconciled_at < offer.created_offer_at:
+        raise HTTPException(status_code=400, detail="Reconciliation time cannot precede offer creation")
+    before = {field: str(getattr(offer, field)) for field in (
+        "acquisition_cost", "payout", "actual_hypercore_cost", "final_market_value",
+        "final_profit", "winner", "seller_owned_nodes", "unique_participants", "reconciled_at",
+    )}
+    if payload.acquisition_cost is not None:
+        offer.acquisition_cost = money(payload.acquisition_cost)
     offer.status = payload.status
     offer.reconciled_at = payload.reconciled_at
     offer.seller_owned_nodes = seeded_nodes
     if payload.unique_participants is not None:
         offer.unique_participants = payload.unique_participants
     offer.winner = payload.winner
-    actual_hypercore_cost = money(payload.actual_hypercore_cost) if payload.actual_hypercore_cost is not None else money(offer.hypercores_required * offer.hypercore_unit_cost)
+    actual_hypercore_cost = money(payload.actual_hypercore_cost) if payload.actual_hypercore_cost is not None else money(offer.actual_hypercore_cost if correction and offer.actual_hypercore_cost is not None else offer.hypercores_required * offer.hypercore_unit_cost)
     offer.final_market_value = money(payload.final_market_value) if payload.final_market_value is not None else None
     if payload.status == "completed":
         offer.completed_at = payload.reconciled_at
@@ -1034,7 +1066,7 @@ def reconcile_hypernet_offer(
         elif payload.winner == "external":
             final_profit = money((offer.payout or 0) - actual_hypercore_cost - seeded_spend - offer.acquisition_cost)
         else:
-            final_profit = money((offer.payout or 0) - actual_hypercore_cost - seeded_spend + (offer.final_market_value or offer.acquisition_cost) - offer.acquisition_cost)
+            final_profit = money((offer.payout or 0) - actual_hypercore_cost - seeded_spend + (offer.final_market_value if offer.final_market_value is not None else offer.acquisition_cost) - offer.acquisition_cost)
         item_outcome = "transferred" if payload.winner == "external" else "retained"
     elif payload.status == "expired":
         seeded_spend = money(offer.seller_owned_nodes * (offer.total_offer_price / offer.total_nodes))
@@ -1071,9 +1103,9 @@ def reconcile_hypernet_offer(
         offer.notes = "\n\n".join(value for value in [offer.notes, payload.note.strip()] if value)
     record_audit_event(
         db,
-        event_kind="hypernet_offer_reconciled",
+        event_kind="hypernet_offer_corrected" if correction else "hypernet_offer_reconciled",
         title=f"HyperNet offer {payload.status}: {offer.item_type.name if offer.item_type else offer.type_id}",
-        body=f"Winner: {payload.winner} · final result {offer.final_profit if offer.final_profit is not None else 'unresolved'} ISK",
+        body=(f"Before: {before}\nAfter: " + str({field: str(getattr(offer, field)) for field in before})) if correction else f"Winner: {payload.winner} · final result {offer.final_profit if offer.final_profit is not None else 'unresolved'} ISK",
         actor_user=user,
     )
     db.commit()

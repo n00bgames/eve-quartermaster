@@ -8,6 +8,8 @@ Version sections are written as user-facing release notes first, with implementa
 
 ### Added
 
+- Ended HyperNet offers now have an **Edit ended offer** action for correcting acquisition cost, payout, actual HyperCore cost, winner, node counts, and final profit. Existing results are prefilled; clearing the profit override recalculates it, while an explicit zero is preserved. Corrections retain the ended status, update history/summary results, and create an audit entry. Rebuild backend and frontend together; no database migration is required.
+
 - HyperNet bids can now be marked **Expired · refunded** from a pending bid or the edit form and filtered in history. Original purchase details and the expiry timestamp remain available with a zero net result; refunded bids are excluded from exposure, spend, win/loss, expected-win, luck, and ROI statistics. Python and Rust calculations both support the new outcome; no database migration is required.
 
 ### Fixed
