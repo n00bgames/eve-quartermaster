@@ -75,12 +75,23 @@ class HyperNetOfferCreate(HyperNetCalculatorRequest):
 
 
 class HyperNetOfferPatch(BaseModel):
+    total_nodes: int | None = Field(default=None, gt=0, le=512)
+    total_offer_price: Decimal | None = Field(default=None, ge=0)
+    hypercores_required: int | None = Field(default=None, ge=0)
+    quantity: int | None = Field(default=None, gt=0)
     status: Literal["draft", "active", "cancelled", "invalid", "awaiting_reconciliation"] | None = None
     expires_at: datetime | None = None
     hypercore_unit_cost: Decimal | None = Field(default=None, ge=0)
     acquisition_cost: Decimal | None = Field(default=None, ge=0)
     desired_profit: Decimal | None = None
     notes: str | None = None
+
+    @model_validator(mode="after")
+    def reject_null_values(self) -> "HyperNetOfferPatch":
+        for field in self.model_fields_set - {"notes"}:
+            if getattr(self, field) is None:
+                raise ValueError(f"{field} cannot be null")
+        return self
 
     @field_validator("expires_at")
     @classmethod

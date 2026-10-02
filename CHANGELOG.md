@@ -6,6 +6,10 @@ Version sections are written as user-facing release notes first, with implementa
 
 ## [1.0.5] - Unreleased
 
+### Added
+
+- Active and draft HyperNet offers now have an **Edit offer** action for correcting total nodes, total offer price, quantity, HyperCore costs, acquisition cost, desired profit, expiry, and notes. Correcting an eight-node offer to sixteen preserves sold/seeded counts, recalculates prices and odds, and returns an incorrectly full offer to active status. Corrections are audited and cannot reduce capacity below recorded progress. Rebuild backend and frontend together; no database migration is required.
+
 ### Changed
 
 - Prepared application/API, frontend package and lockfile, Android wrapper, export metadata, README badge, and service user agents for the `1.0.5` development cycle. Android versionCode is now 23.

@@ -912,12 +912,23 @@ def patch_hypernet_offer(
     if offer.status in TERMINAL_STATUSES:
         raise HTTPException(status_code=409, detail="Reconciled offers cannot be edited")
     updates = payload.model_dump(exclude_unset=True)
+    total_nodes = updates.get("total_nodes", offer.total_nodes)
+    recorded_nodes = max(
+        [offer.nodes_sold, offer.seller_owned_nodes]
+        + [max(row.nodes_sold, row.seller_owned_nodes) for row in offer.snapshots]
+        + [sum(row.nodes_owned for row in offer.participants)]
+    )
+    if total_nodes < recorded_nodes:
+        raise HTTPException(status_code=400, detail="Total nodes cannot be less than recorded sold, seeded, or participant nodes")
+    if updates.get("expires_at", offer.expires_at) <= offer.created_offer_at:
+        raise HTTPException(status_code=400, detail="expires_at must be after created_offer_at")
+    before = {field: str(getattr(offer, field)) for field in set(updates) | {"status"}}
     for field, value in updates.items():
-        if field in {"hypercore_unit_cost", "acquisition_cost", "desired_profit"} and value is not None:
+        if field in {"total_offer_price", "hypercore_unit_cost", "acquisition_cost", "desired_profit"} and value is not None:
             value = money(value)
         setattr(offer, field, value)
-    if offer.expires_at <= offer.created_offer_at:
-        raise HTTPException(status_code=400, detail="expires_at must be after created_offer_at")
+    if offer.status in {"active", "awaiting_reconciliation"}:
+        offer.status = "awaiting_reconciliation" if offer.nodes_sold == offer.total_nodes else "active"
     calculations = authoritative_offer_financials(
         total_offer_price=offer.total_offer_price,
         total_nodes=offer.total_nodes,
@@ -929,6 +940,13 @@ def patch_hypernet_offer(
     )
     offer.completion_fee = calculations["completion_fee"]
     offer.payout = calculations["payout_after_fee"]
+    record_audit_event(
+        db,
+        event_kind="hypernet_offer_edited",
+        title=f"HyperNet offer edited: {offer.item_type.name if offer.item_type else offer.type_id}",
+        body=f"Before: {before}\nAfter: " + str({field: str(getattr(offer, field)) for field in before}),
+        actor_user=user,
+    )
     db.commit()
     return serialize_offer(owned_offer(db, offer.id, user), detail=True)
 
