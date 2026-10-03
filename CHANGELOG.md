@@ -20,6 +20,8 @@ Version sections are written as user-facing release notes first, with implementa
 
 ### Changed
 
+- HyperNet **Edit offer** now lets you correct the seller character on active or draft offers using your linked pilots. Corrections update the displayed identity and character filters, are audited, and preserve costs, node maps, counts, and participant observations. Rebuild backend and frontend together; no new migration is required.
+
 - Screenshot import now receives keyboard focus when opened, so Ctrl+V works immediately. Pasting an image into the HyperNet Participants field also opens the importer; ordinary text paste remains unchanged.
 
 - Prepared application/API, frontend package and lockfile, Android wrapper, export metadata, README badge, and service user agents for the `1.0.5` development cycle. Android versionCode is now 23.

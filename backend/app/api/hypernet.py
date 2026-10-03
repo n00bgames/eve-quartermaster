@@ -916,6 +916,9 @@ def patch_hypernet_offer(
     if offer.status in TERMINAL_STATUSES:
         raise HTTPException(status_code=409, detail="Reconciled offers cannot be edited")
     updates = payload.model_dump(exclude_unset=True)
+    seller = None
+    if "seller_character_id" in updates and updates["seller_character_id"] != offer.seller_character_id:
+        seller = validate_character(db, updates["seller_character_id"], user)
     total_nodes = updates.get("total_nodes", offer.total_nodes)
     if offer.node_map:
         positions = offer.node_map.get("seeded_positions", []) + [offer.node_map.get("winning_position") or 0]
@@ -946,6 +949,9 @@ def patch_hypernet_offer(
         setattr(offer, field, value)
     if location_changed:
         offer.location = location
+    if seller is not None:
+        # Replace a relationship that may already be loaded for this request.
+        offer.seller_character = seller
     if offer.status in {"active", "awaiting_reconciliation"}:
         offer.status = "awaiting_reconciliation" if offer.nodes_sold == offer.total_nodes else "active"
     calculations = authoritative_offer_financials(

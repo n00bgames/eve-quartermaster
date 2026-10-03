@@ -75,6 +75,7 @@ class HyperNetOfferCreate(HyperNetCalculatorRequest):
 
 
 class HyperNetOfferPatch(BaseModel):
+    seller_character_id: int | None = Field(default=None, gt=0)
     location_id: int | None = Field(default=None, gt=0)
     location_name: str | None = Field(default=None, max_length=500)
     total_nodes: int | None = Field(default=None, gt=0, le=512)

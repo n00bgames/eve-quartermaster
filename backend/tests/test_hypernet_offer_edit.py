@@ -10,7 +10,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from app.api import hypernet
-from app.models import Base, EveType, HyperNetOffer, HyperNetOfferSnapshot, HyperNetParticipant, Location
+from app.models import Base, EsiToken, EveCharacter, EveType, HyperNetOffer, HyperNetOfferSnapshot, HyperNetParticipant, Location
 from app.schemas.hypernet import HyperNetOfferPatch
 
 
@@ -18,7 +18,7 @@ class HyperNetOfferEditTests(unittest.TestCase):
     def setUp(self):
         self.engine = create_engine("sqlite+pysqlite:///:memory:")
         Base.metadata.create_all(self.engine, tables=[row.__table__ for row in
-            (EveType, HyperNetOffer, HyperNetOfferSnapshot, HyperNetParticipant, Location)])
+            (EveType, HyperNetOffer, HyperNetOfferSnapshot, HyperNetParticipant, Location, EveCharacter, EsiToken)])
         self.db = Session(self.engine, expire_on_commit=False)
         self.addCleanup(self.engine.dispose)
         self.addCleanup(self.db.close)
@@ -38,6 +38,7 @@ class HyperNetOfferEditTests(unittest.TestCase):
         self.db.add(self.offer)
         self.db.commit()
         self.audit = Mock()
+        self.real_serialize = hypernet.serialize_offer
         for name, replacement in [
             ("offer_options", lambda: ()),
             ("serialize_offer", lambda row, **kw: hypernet.offer_calculations(row)),
@@ -119,6 +120,7 @@ class HyperNetOfferEditTests(unittest.TestCase):
 
     def test_invalid_schema_inputs(self):
         for changes in [dict(total_nodes=0), dict(total_nodes=513), dict(total_nodes=8.5),
+                        dict(seller_character_id=None), dict(seller_character_id=0), dict(seller_character_id=1.5),
                         dict(total_nodes=None), dict(total_offer_price=None), dict(expires_at=None),
                         dict(hypercores_required=-1), dict(quantity=0), dict(total_offer_price=-1)]:
             with self.assertRaises(ValidationError):
@@ -162,3 +164,59 @@ class HyperNetOfferEditTests(unittest.TestCase):
         self.assertEqual(caught.exception.status_code, 400)
         self.assertEqual(self.offer.total_nodes, 8)
         self.audit.assert_not_called()
+
+    def character(self, id, owner=1, linked=True):
+        row = EveCharacter(id=id, character_id=90000 + id, name=f"Pilot {id}", owner_user_id=owner)
+        self.db.add(row)
+        if linked:
+            self.db.add(EsiToken(user_id=owner, character_id=id, scopes="", encrypted_refresh_token="test"))
+        self.db.commit()
+        return row
+
+    def test_seller_correction_refreshes_loaded_identity_and_preserves_observations(self):
+        old = self.character(1)
+        new = self.character(2)
+        self.offer.seller_character = old
+        self.offer.participants[0].character_id = old.id
+        self.offer.node_map = {"columns": 4, "seeded_positions": [1, 2], "winning_position": None}
+        self.db.commit()
+        original_cost = self.offer.acquisition_cost
+        with patch.object(hypernet, "serialize_offer", self.real_serialize):
+            result = self.edit(seller_character_id=new.id)
+        self.assertEqual(result["seller"], {"id": new.id, "character_id": new.character_id, "name": new.name})
+        self.assertEqual(self.offer.owner_user_id, 1)
+        self.assertEqual(self.offer.acquisition_cost, original_cost)
+        self.assertEqual(self.offer.nodes_sold, 8)
+        self.assertEqual(self.offer.seller_owned_nodes, 8)
+        self.assertEqual(self.offer.participants[0].character_id, old.id)
+        self.assertEqual(self.offer.participants[0].participant_name, "Seller")
+        self.assertEqual(len(self.offer.snapshots), 1)
+        self.assertEqual(self.offer.node_map["seeded_positions"], [1, 2])
+        self.assertIn("'seller_character_id': '1'", self.audit.call_args.kwargs["body"])
+        self.assertIn("'seller_character_id': '2'", self.audit.call_args.kwargs["body"])
+        self.assertEqual(hypernet.list_hypernet_offers(seller_character_id=1, limit=10, user=self.user, db=self.db), [])
+        self.assertEqual(len(hypernet.list_hypernet_offers(seller_character_id=2, limit=10, user=self.user, db=self.db)), 1)
+
+    def test_invalid_seller_rejected_before_mutations(self):
+        self.character(2, owner=2)
+        self.character(3, linked=False)
+        for id in [2, 3, 9999]:
+            with self.assertRaises(HTTPException) as caught:
+                self.edit(seller_character_id=id, total_nodes=16)
+            self.assertEqual(caught.exception.status_code, 400)
+            self.assertEqual(self.offer.seller_character_id, 1)
+            self.assertEqual(self.offer.total_nodes, 8)
+        self.audit.assert_not_called()
+
+    def test_retaining_unlinked_current_seller_does_not_block_other_edits(self):
+        self.character(1, linked=False)
+        self.edit(seller_character_id=1, total_nodes=16)
+        self.assertEqual(self.offer.seller_character_id, 1)
+        self.assertEqual(self.offer.total_nodes, 16)
+
+    def test_seller_only_correction_still_requires_offer_ownership(self):
+        self.character(2)
+        with self.assertRaises(HTTPException) as caught:
+            hypernet.patch_hypernet_offer(self.offer.id, HyperNetOfferPatch(seller_character_id=2),
+                                         SimpleNamespace(id=2), self.db)
+        self.assertEqual(caught.exception.status_code, 404)
