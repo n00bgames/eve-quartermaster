@@ -64,3 +64,7 @@ The System Distances & Warp Time addition requires migration `0080_system_distan
 Rebuild backend and frontend together. Migration `0082_hypernet_node_positions` adds a nullable JSON map to `hypernet_offers`; normal backend startup applies it with `alembic upgrade head`. Existing offers start untracked and retain their financial results. No SDE fetch/import is needed for this feature.
 
 After deployment, open an offer, mark seeded positions and a winner, save, and reload to verify persistence. Completed offers also allow map corrections. Reconcile an offer separately, then check **Node position history** on the seller board with the appropriate character selected. See [usage and sample definitions](hypernet-node-positions.md). This note does not assert that a remote deployment has occurred.
+
+## HyperNet temporary grid references (October 3, 2026)
+
+Rebuild backend and frontend together. Migration `0085_hypernet_grid_reference` follows `0084_hypernet_market_sale` and adds nullable metadata and PNG byte columns to offers. Backend requirements add Pillow 12.3.0. Existing offers need no image or backfill. The frontend Nginx API location now allows 10 MB request bodies; any outer reverse proxy must also allow 10 MB image uploads. Images are privately stored in the database, fetched on demand, and deleted transactionally once the offer is completed and its winning position is saved. No external OCR, image service, or upload directory is required. See [node tracking](hypernet-node-positions.md).

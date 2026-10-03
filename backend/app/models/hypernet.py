@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import BigInteger, Boolean, CheckConstraint, DateTime, ForeignKey, Integer, JSON, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import BigInteger, Boolean, CheckConstraint, DateTime, ForeignKey, Integer, JSON, LargeBinary, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -39,6 +39,8 @@ class HyperNetOffer(Base):
     seller_owned_nodes: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     unique_participants: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     node_map: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    grid_reference: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    grid_reference_data: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True, deferred=True)
     market_sale: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     hypercores_required: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     hypercore_unit_cost: Mapped[Decimal] = mapped_column(Numeric(24, 2), default=0, nullable=False)

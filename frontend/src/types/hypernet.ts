@@ -64,6 +64,7 @@ export type HyperNetSnapshot = {
 };
 
 export type HyperNetOffer = {
+  grid_reference?: { version: string; width: number; height: number; bytes: number } | null;
   market_sale?: HyperNetMarketSale | null;
   node_map?: HyperNetNodeMap | null;
   id: number;

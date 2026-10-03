@@ -8,6 +8,8 @@ Version sections are written as user-facing release notes first, with implementa
 
 ### Added
 
+- HyperNet node tracking now retains a cropped screenshot of the in-game grid. Upload or paste, crop before saving, and view the lossless image at original size to match a winning code. Images are automatically removed after both completion and winning-position save, in either order. Requires migration `0085_hypernet_grid_reference` and backend/frontend rebuilds.
+
 - Expired HyperNet offers can now record an editable **Sold on market** disposition with gross proceeds, sales tax, broker and other fees. A lifecycle result includes acquisition and HyperCore costs, updates history and lifetime totals once, and preserves the expired outcome. Requires migration `0084_hypernet_market_sale` and backend/frontend rebuilds; see [market dispositions](docs/hypernet-market-disposition.md).
 
 - Finance & Trade now includes a private **PLEX Tracker** with global ESI bids/asks and daily history, editable purchases/sales/opening holdings/consumption, FIFO costs, realized profit, CSV export, and fee-adjusted future-sale scenarios. Unknown acquisition costs remain unknown. Requires backend/frontend rebuilds and migration `0083_plex_tracker`; see [PLEX Tracker](docs/plex-tracker.md).

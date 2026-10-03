@@ -11,4 +11,5 @@ redis==5.2.1
 rq==2.0.0
 cryptography==44.0.0
 PyYAML==6.0.2
+Pillow==12.3.0
 

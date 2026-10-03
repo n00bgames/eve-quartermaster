@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import type { ApiClient, HyperNetNodeMap, HyperNetOffer } from "../../types/hypernet";
+import { HyperNetGridReference } from "./HyperNetGridReference";
 
 const emptyMap: HyperNetNodeMap = { columns: 4, seeded_positions: [], winning_position: null };
 
@@ -43,6 +44,7 @@ export function HyperNetNodeTracker({ api, offer, onChanged }: { api: ApiClient;
   return <section className="panel hypernet-node-tracker" aria-label="Node position tracker">
     <div className="section-heading compact"><div><h4>Node position tracker</h4><p>Record the layout you see in-game, left-to-right then top-to-bottom. Numbers identify positions, not the node’s code.</p></div></div>
     <p className="muted">Keep “Hide unavailable” off in-game. Match the column count before selecting nodes; changing columns rearranges these numbered positions. Only compare offers captured in the same order.</p>
+    <HyperNetGridReference api={api} offer={offer} onChanged={onChanged} disabled={busy} />
     <div className="hypernet-node-controls">
       <label>Grid columns<select value={draft.columns} disabled={busy} onChange={(event) => change({ ...draft, columns: Number(event.target.value) as HyperNetNodeMap["columns"] })}>{[2, 4, 8, 16].map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
       <div className="button-row" aria-label="Node selection mode"><button type="button" aria-pressed={mode === "seed"} disabled={busy} onClick={() => setMode("seed")}>Mark seeded nodes</button><button type="button" aria-pressed={mode === "winner"} disabled={busy} onClick={() => setMode("winner")}>Mark winning node</button></div>

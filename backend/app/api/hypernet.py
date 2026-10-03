@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import base64
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from statistics import mean
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
 from sqlalchemy import case, delete, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
@@ -47,6 +50,7 @@ from app.services.hypernet_economics_engine import (
 from app.services.permissions import can_view_section
 from app.services.hypernet_nodes import node_position_summary
 from app.services.hypernet_disposition import realized_item_result, serialize_market_sale, utc
+from app.services.hypernet_grid_reference import MAX_BYTES, normalize_grid_reference, clear_finished_grid_reference
 
 
 router = APIRouter(prefix="/hypernet", tags=["hypernet"])
@@ -73,12 +77,12 @@ def offer_options() -> tuple[Any, ...]:
     )
 
 
-def owned_offer(db: Session, offer_id: int, user: User) -> HyperNetOffer:
-    row = db.scalar(
-        select(HyperNetOffer)
-        .options(*offer_options())
-        .where(HyperNetOffer.id == offer_id, HyperNetOffer.owner_user_id == user.id)
-    )
+def owned_offer(db: Session, offer_id: int, user: User, *, lock: bool = False) -> HyperNetOffer:
+    query = select(HyperNetOffer).options(*offer_options()).where(
+        HyperNetOffer.id == offer_id, HyperNetOffer.owner_user_id == user.id)
+    if lock:
+        query = query.with_for_update().execution_options(populate_existing=True)
+    row = db.scalar(query)
     if row is None:
         raise HTTPException(status_code=404, detail="HyperNet offer not found")
     return row
@@ -314,7 +318,7 @@ def serialize_snapshot(row: HyperNetOfferSnapshot) -> dict[str, Any]:
 
 def serialize_offer(offer: HyperNetOffer, *, detail: bool = False) -> dict[str, Any]:
     now = datetime.now(timezone.utc)
-    remaining_seconds = max(0, (offer.expires_at - now).total_seconds()) if offer.status in ACTIVE_STATUSES else 0
+    remaining_seconds = max(0, (utc(offer.expires_at) - now).total_seconds()) if offer.status in ACTIVE_STATUSES else 0
     payload = {
         "id": offer.id,
         "status": offer.status,
@@ -350,6 +354,7 @@ def serialize_offer(offer: HyperNetOffer, *, detail: bool = False) -> dict[str, 
         "filled_percent": round(offer.nodes_sold / offer.total_nodes * 100, 2),
         "unique_participants": offer.unique_participants,
         "node_map": offer.node_map,
+        "grid_reference": offer.grid_reference,
         "market_sale": serialize_market_sale(offer),
         "hypercores_required": offer.hypercores_required,
         "hypercore_unit_cost": as_number(offer.hypercore_unit_cost),
@@ -987,17 +992,60 @@ def update_hypernet_node_map(
     user: User = Depends(require_hypernet),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    offer = owned_offer(db, offer_id, user)
+    offer = owned_offer(db, offer_id, user, lock=True)
     positions = payload.seeded_positions + [payload.winning_position or 0]
     if max(positions, default=0) > offer.total_nodes:
         raise HTTPException(status_code=400, detail="Node positions must be within this offer’s total nodes")
     before = offer.node_map
     offer.node_map = payload.model_dump()
+    clear_finished_grid_reference(offer)
     record_audit_event(
         db, event_kind="hypernet_node_map_edited",
         title=f"HyperNet node positions updated: offer {offer.id}",
         body=f"Before: {before}\nAfter: {offer.node_map}", actor_user=user,
     )
+    db.commit()
+    return serialize_offer(owned_offer(db, offer.id, user), detail=True)
+
+
+@router.get("/offers/{offer_id}/grid-reference")
+def get_hypernet_grid_reference(offer_id: int, user: User = Depends(require_hypernet), db: Session = Depends(get_db)):
+    offer = owned_offer(db, offer_id, user)
+    if not offer.grid_reference or not offer.grid_reference_data:
+        raise HTTPException(404, "No grid reference saved for this offer.")
+    return JSONResponse({"data_url": "data:image/png;base64," + base64.b64encode(offer.grid_reference_data).decode("ascii")}, headers={"Cache-Control": "private, no-store"})
+
+
+@router.put("/offers/{offer_id}/grid-reference")
+async def save_hypernet_grid_reference(offer_id: int, request: Request, user: User = Depends(require_hypernet), db: Session = Depends(get_db)):
+    offer = owned_offer(db, offer_id, user)
+    if offer.status == "completed" and (offer.node_map or {}).get("winning_position") is not None:
+        raise HTTPException(409, "The offer is complete and its winning position is already recorded.")
+    if request.headers.get("content-type", "").split(";")[0] != "image/png":
+        raise HTTPException(415, "Upload the selected crop as a PNG image.")
+    data = bytearray()
+    async for chunk in request.stream():
+        if len(data) + len(chunk) > MAX_BYTES:
+            raise HTTPException(413, "Selected crop exceeds 10 MB.")
+        data.extend(chunk)
+    normalized, metadata = await run_in_threadpool(normalize_grid_reference, bytes(data))
+    # Recheck under the same row lock as node/reconciliation edits after receiving the body.
+    offer = owned_offer(db, offer_id, user, lock=True)
+    if offer.status == "completed" and (offer.node_map or {}).get("winning_position") is not None:
+        raise HTTPException(409, "The offer is complete and its winning position is already recorded.")
+    offer.grid_reference_data = normalized
+    offer.grid_reference = metadata
+    record_audit_event(db, event_kind="hypernet_grid_reference_saved", title=f"Grid reference saved: offer {offer.id}", body=str(metadata), actor_user=user)
+    db.commit()
+    return serialize_offer(owned_offer(db, offer.id, user), detail=True)
+
+
+@router.delete("/offers/{offer_id}/grid-reference")
+def remove_hypernet_grid_reference(offer_id: int, user: User = Depends(require_hypernet), db: Session = Depends(get_db)):
+    offer = owned_offer(db, offer_id, user, lock=True)
+    offer.grid_reference = None
+    offer.grid_reference_data = None
+    record_audit_event(db, event_kind="hypernet_grid_reference_removed", title=f"Grid reference removed: offer {offer.id}", actor_user=user)
     db.commit()
     return serialize_offer(owned_offer(db, offer.id, user), detail=True)
 
@@ -1116,7 +1164,7 @@ def reconcile_hypernet_offer(
     user: User = Depends(require_hypernet),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    offer = owned_offer(db, offer_id, user)
+    offer = owned_offer(db, offer_id, user, lock=True)
     if offer.status in TERMINAL_STATUSES:
         raise HTTPException(status_code=409, detail="Offer is already reconciled")
     return apply_hypernet_reconciliation(offer, payload, user, db)
@@ -1129,7 +1177,7 @@ def edit_hypernet_reconciliation(
     user: User = Depends(require_hypernet),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    offer = owned_offer(db, offer_id, user)
+    offer = owned_offer(db, offer_id, user, lock=True)
     if offer.status not in TERMINAL_STATUSES:
         raise HTTPException(status_code=409, detail="Only ended offers can be corrected")
     if payload.status != offer.status:
@@ -1146,7 +1194,7 @@ def apply_hypernet_reconciliation(
         raise HTTPException(status_code=400, detail="seller_owned_nodes cannot exceed total_nodes")
     if payload.status != "completed" and seeded_nodes > offer.nodes_sold:
         raise HTTPException(status_code=400, detail="seller_owned_nodes cannot exceed nodes_sold")
-    if payload.reconciled_at < offer.created_offer_at:
+    if utc(payload.reconciled_at) < utc(offer.created_offer_at):
         raise HTTPException(status_code=400, detail="Reconciliation time cannot precede offer creation")
     if offer.market_sale and utc(payload.reconciled_at) > utc(datetime.fromisoformat(offer.market_sale["sold_at"])):
         raise HTTPException(400, "Recorded expiration cannot follow the market sale; correct the sale time first")
@@ -1207,6 +1255,7 @@ def apply_hypernet_reconciliation(
     offer.actual_hypercore_cost = economics["actual_hypercore_cost"]
     offer.final_profit = economics["final_profit"]
     offer.item_outcome = "market_sold" if offer.market_sale else economics["item_outcome"]
+    clear_finished_grid_reference(offer)
     if payload.note:
         offer.notes = "\n\n".join(value for value in [offer.notes, payload.note.strip()] if value)
     record_audit_event(
