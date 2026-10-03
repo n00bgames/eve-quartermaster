@@ -8,6 +8,8 @@ Version sections are written as user-facing release notes first, with implementa
 
 ### Added
 
+- HyperNet offers now include a numbered node grid for marking seeded positions and the winning position, including corrections on completed offers. Shift-click selects ranges; layout columns are configurable. A character-filtered history heatmap compares winning and seeded positions across matching layouts, with observed versus expected seeded wins and separate handling for incomplete records. Rebuild backend and frontend together; migration `0082_hypernet_node_positions` is required. See [node position tracking](docs/hypernet-node-positions.md).
+
 - HyperNet participant entry now accepts pasted or selected screenshots with a crop selector and browser-based OCR. Review names and cumulative node counts before merging them into the participant field; matching names replace counts without dropping off-screen participants. OCR files are served by EQM and images remain in the browser. English recognition can misread character names, so imports never save snapshots or alter totals automatically. Rebuild the frontend; no database migration or external AI account is required.
 
 - HyperNet's **Edit offer** form now supports location search, manual location corrections, and clearing an incorrect location. Saved corrections update the offer card and detail view and are included in the edit audit trail.

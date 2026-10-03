@@ -6,6 +6,7 @@ import { countdown, formatIsk, localInputValue, profitClass } from "./hypernetPr
 import { HyperNetOfferEdit } from "./HyperNetOfferEdit";
 import { HyperNetParticipantInput, reviewRows } from "./HyperNetParticipantInput";
 import type { ParticipantDraft } from "./hypernetOcr";
+import { HyperNetNodeTracker } from "./HyperNetNodeTracker";
 
 
 function FinancialFact({ label, value, formula, tone }: { label: string; value: string; formula: string; tone?: string }) {
@@ -139,6 +140,8 @@ export function HyperNetOfferDetail({ api, offer, onBack, onChanged }: { api: Ap
       <FinancialFact label="Break-even offer" value={formatIsk(f.break_even_offer_price)} formula="(acquisition + HyperCores) / 0.95" />
       <FinancialFact label="Final recorded result" value={formatIsk(offer.final_profit)} formula="manual reconciliation; expired offers default to realized HyperCore loss" tone={profitClass(offer.final_profit)} />
     </div></section>
+
+    <HyperNetNodeTracker key={`${offer.id}:${offer.total_nodes}`} api={api} offer={offer} onChanged={onChanged} />
 
     <div className="hypernet-detail-columns">
       <section className="panel"><div className="section-heading compact"><div><h4>Seeded-node risk</h4><p>Seller purchases remain separate from organic demand.</p></div></div><dl className="hypernet-scenario-list"><dt>Seller win probability</dt><dd>{scenario.seller_win_probability_percent.toFixed(2)}%</dd><dt>Seeded-node spend</dt><dd>{formatIsk(scenario.seller_node_spend)}</dd><dt>External buyer wins</dt><dd className={profitClass(scenario.cash_result_if_external_wins)}>{formatIsk(scenario.cash_result_if_external_wins)}</dd><dt>Seller wins · cash</dt><dd>{formatIsk(scenario.cash_result_if_seller_wins)}</dd><dt>Seller wins · mark to Jita</dt><dd className={profitClass(scenario.seller_win_mark_to_jita_result)}>{formatIsk(scenario.seller_win_mark_to_jita_result)}</dd><dt>Expected monetary result</dt><dd className={profitClass(scenario.expected_monetary_result)}>{formatIsk(scenario.expected_monetary_result)}</dd><dt>Capital tied up</dt><dd>{formatIsk(scenario.capital_tied_up)}</dd></dl><p className="muted">If the seller wins, the item remains an asset. Cash and mark-to-market outcomes are shown independently.</p></section>

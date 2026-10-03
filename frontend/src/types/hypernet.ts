@@ -1,5 +1,16 @@
 export type ApiClient = <T>(path: string, options?: RequestInit) => Promise<T>;
 
+export type HyperNetNodeMap = { columns: 2 | 4 | 8 | 16; seeded_positions: number[]; winning_position: number | null };
+export type HyperNetNodePositionSummary = {
+  tracked_offers: number;
+  excluded: Record<string, number>;
+  groups: Array<{
+    total_nodes: number; columns: number; draws: number; complete_seed_maps: number;
+    seeded_wins: number; expected_seeded_wins: number; incomplete_seed_maps: number; outcome_conflicts: number;
+    positions: Array<{ position: number; wins: number; seeded: number; seeded_wins: number }>;
+  }>;
+};
+
 export type HyperNetStatus = "draft" | "active" | "awaiting_reconciliation" | "completed" | "expired" | "cancelled" | "invalid";
 
 export type HyperNetFinancials = {
@@ -53,6 +64,7 @@ export type HyperNetSnapshot = {
 };
 
 export type HyperNetOffer = {
+  node_map?: HyperNetNodeMap | null;
   id: number;
   status: HyperNetStatus;
   visibility: string;
@@ -103,6 +115,7 @@ export type HyperNetOffer = {
 };
 
 export type HyperNetSummary = {
+  node_positions?: HyperNetNodePositionSummary;
   active_offers: number;
   nearing_expiration: number;
   nodes_sold: number;

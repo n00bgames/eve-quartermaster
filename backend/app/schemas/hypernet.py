@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 HyperNetStatus = Literal[
@@ -106,6 +106,24 @@ class HyperNetParticipantInput(BaseModel):
     participant_name: str = Field(min_length=1, max_length=255)
     nodes_owned: int = Field(ge=0)
     is_seller: bool = False
+
+
+NodePosition = Annotated[int, Field(strict=True, ge=1, le=512)]
+
+
+class HyperNetNodeMapUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    columns: Literal[2, 4, 8, 16] = 4
+    seeded_positions: list[NodePosition] = Field(max_length=512)
+    winning_position: NodePosition | None = None
+
+    @field_validator("seeded_positions")
+    @classmethod
+    def unique_positions(cls, value: list[int]) -> list[int]:
+        if len(value) != len(set(value)):
+            raise ValueError("Seeded positions must be unique")
+        return sorted(value)
 
 
 class HyperNetSnapshotCreate(BaseModel):

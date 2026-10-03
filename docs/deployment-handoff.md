@@ -50,3 +50,9 @@ Read this document and the local `CHAT_HANDOFF.md` before deployment work. Check
 ## Navigation distance widget
 
 The System Distances & Warp Time addition requires migration `0080_system_distances` and backend/frontend rebuilds. Existing installations can select a system and use **Refresh ESI objects** to fill celestial positions; a full SDE reimport also populates planets, moons and belts. Verify the bottom Navigation widget, the acceleration/deceleration exclusion warning, and private structure access with the intended user. See [coverage and setup](system-distances.md).
+
+## HyperNet node position tracking (1.0.5 development)
+
+Rebuild backend and frontend together. Migration `0082_hypernet_node_positions` adds a nullable JSON map to `hypernet_offers`; normal backend startup applies it with `alembic upgrade head`. Existing offers start untracked and retain their financial results. No SDE fetch/import is needed for this feature.
+
+After deployment, open an offer, mark seeded positions and a winner, save, and reload to verify persistence. Completed offers also allow map corrections. Reconcile an offer separately, then check **Node position history** on the seller board with the appropriate character selected. See [usage and sample definitions](hypernet-node-positions.md). This note does not assert that a remote deployment has occurred.

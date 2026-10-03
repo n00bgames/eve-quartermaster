@@ -29,6 +29,7 @@ from app.schemas.hypernet import (
     HyperNetCalculatorRequest,
     HyperNetOfferCreate,
     HyperNetOfferPatch,
+    HyperNetNodeMapUpdate,
     HyperNetReconcileRequest,
     HyperNetSnapshotCreate,
     HyperNetParticipationCreate,
@@ -43,6 +44,7 @@ from app.services.hypernet_economics_engine import (
     evaluate_reconciliation_with_engine,
 )
 from app.services.permissions import can_view_section
+from app.services.hypernet_nodes import node_position_summary
 
 
 router = APIRouter(prefix="/hypernet", tags=["hypernet"])
@@ -345,6 +347,7 @@ def serialize_offer(offer: HyperNetOffer, *, detail: bool = False) -> dict[str, 
         "organic_nodes_sold": max(0, offer.nodes_sold - offer.seller_owned_nodes),
         "filled_percent": round(offer.nodes_sold / offer.total_nodes * 100, 2),
         "unique_participants": offer.unique_participants,
+        "node_map": offer.node_map,
         "hypercores_required": offer.hypercores_required,
         "hypercore_unit_cost": as_number(offer.hypercore_unit_cost),
         "acquisition_cost": as_number(offer.acquisition_cost),
@@ -610,6 +613,7 @@ def hypernet_summary(
             "return_on_spend_percent": round(float(bid_result / bid_spend * 100), 2) if bid_spend else None,
         },
         "combined_lifetime_result": as_number(lifetime_profit + bid_result),
+        "node_positions": node_position_summary(offers),
     }
 
 
@@ -913,6 +917,10 @@ def patch_hypernet_offer(
         raise HTTPException(status_code=409, detail="Reconciled offers cannot be edited")
     updates = payload.model_dump(exclude_unset=True)
     total_nodes = updates.get("total_nodes", offer.total_nodes)
+    if offer.node_map:
+        positions = offer.node_map.get("seeded_positions", []) + [offer.node_map.get("winning_position") or 0]
+        if max(positions, default=0) > total_nodes:
+            raise HTTPException(status_code=400, detail="Clear or correct node positions outside the new total before resizing this offer")
     recorded_nodes = max(
         [offer.nodes_sold, offer.seller_owned_nodes]
         + [max(row.nodes_sold, row.seller_owned_nodes) for row in offer.snapshots]
@@ -957,6 +965,28 @@ def patch_hypernet_offer(
         title=f"HyperNet offer edited: {offer.item_type.name if offer.item_type else offer.type_id}",
         body=f"Before: {before}\nAfter: " + str({field: str(getattr(offer, field)) for field in before}),
         actor_user=user,
+    )
+    db.commit()
+    return serialize_offer(owned_offer(db, offer.id, user), detail=True)
+
+
+@router.put("/offers/{offer_id}/nodes")
+def update_hypernet_node_map(
+    offer_id: int,
+    payload: HyperNetNodeMapUpdate,
+    user: User = Depends(require_hypernet),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    offer = owned_offer(db, offer_id, user)
+    positions = payload.seeded_positions + [payload.winning_position or 0]
+    if max(positions, default=0) > offer.total_nodes:
+        raise HTTPException(status_code=400, detail="Node positions must be within this offer’s total nodes")
+    before = offer.node_map
+    offer.node_map = payload.model_dump()
+    record_audit_event(
+        db, event_kind="hypernet_node_map_edited",
+        title=f"HyperNet node positions updated: offer {offer.id}",
+        body=f"Before: {before}\nAfter: {offer.node_map}", actor_user=user,
     )
     db.commit()
     return serialize_offer(owned_offer(db, offer.id, user), detail=True)

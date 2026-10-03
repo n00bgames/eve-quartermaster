@@ -106,6 +106,15 @@ class HyperNetCharacterFilterTests(unittest.TestCase):
             self.assertEqual(hypernet.list_hypernet_participations(
                 character_id=character, limit=100, user=self.user, db=self.db), [])
 
+    def test_node_research_respects_owner_and_character(self):
+        for offer in self.offers:
+            offer.node_map = {"columns": 4, "seeded_positions": [1, 2, 3, 4, 5, 6], "winning_position": 1}
+            offer.winner = "seller"
+        self.db.commit()
+        self.assertEqual(self.summary()["node_positions"]["groups"][0]["draws"], 2)
+        self.assertEqual(self.summary(2)["node_positions"]["groups"][0]["draws"], 1)
+        self.assertEqual(self.summary(3)["node_positions"]["groups"], [])
+
     def test_lists_combine_character_with_existing_status_filters(self):
         offers = hypernet.list_hypernet_offers(
             status="active", seller_character_id=2, limit=100, user=self.user, db=self.db)
