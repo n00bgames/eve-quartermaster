@@ -32,10 +32,13 @@ export function HyperNetParticipantInput({ offer }: { offer: HyperNetOffer }) {
   const objectUrl = useRef<string | null>(null);
   const start = useRef<{ x: number; y: number } | null>(null);
   const image = useRef<HTMLImageElement | null>(null);
+  const importArea = useRef<HTMLDivElement | null>(null);
   const rows = reviewRows(review);
   const merged = rows ? mergeParticipantText(text, rows) : "";
   const mergedRows = reviewRows(merged);
   const exceedsTotal = !!mergedRows && mergedRows.reduce((sum, row) => sum + row.nodes, 0) > offer.total_nodes;
+
+  useEffect(() => { if (open) importArea.current?.focus(); }, [open]);
 
   function cancelScan() {
     run.current++; setScanning(false);
@@ -67,7 +70,7 @@ export function HyperNetParticipantInput({ offer }: { offer: HyperNetOffer }) {
   }
   function paste(event: ClipboardEvent<HTMLDivElement>) {
     const file = Array.from(event.clipboardData.items).find((item) => item.type.startsWith("image/"))?.getAsFile();
-    if (file) { event.preventDefault(); loadFile(file); }
+    if (file) { event.preventDefault(); setOpen(true); loadFile(file); }
   }
   function point(event: PointerEvent<HTMLDivElement>) {
     const bounds = event.currentTarget.getBoundingClientRect();
@@ -118,11 +121,11 @@ export function HyperNetParticipantInput({ offer }: { offer: HyperNetOffer }) {
     }
   }
 
-  return <div className="hypernet-participant-input">
+  return <div className="hypernet-participant-input" onPaste={paste}>
     <label>Participants (optional)<textarea name="participants" rows={4} value={text} onChange={(event) => setText(event.target.value)} placeholder={`Character Name | 1\n${offer.seller.name} | ${offer.seller_owned_nodes} | seeded`} /><small>One participant per line: name | cumulative nodes | optional “seeded”.</small></label>
     <button type="button" onClick={() => { if (open) cancelScan(); setOpen(!open); }}> {open ? "Close screenshot import" : "Import participants from screenshot"}</button>
-    {open && <div className="hypernet-ocr" onPaste={paste} tabIndex={0} aria-label="Screenshot import; paste an image here">
-      <p>Choose a screenshot or paste one here. Recognition runs in your browser; the image is not uploaded. Drag over the participant names and counts, excluding portraits and other panels.</p>
+    {open && <div ref={importArea} className="hypernet-ocr" tabIndex={0} aria-label="Screenshot import; paste an image here">
+      <p>Press Ctrl+V (⌘V on Mac) to paste a screenshot, or choose an image file below. You can also paste an image directly into the Participants field to open this importer. Recognition runs in your browser; the image is not uploaded. Drag over the participant names and counts, excluding portraits and other panels.</p>
       <label>Screenshot<input type="file" accept="image/png,image/jpeg,image/webp" disabled={scanning} onChange={(event) => { const file = event.target.files?.[0]; if (file) loadFile(file); event.target.value = ""; }} /></label>
       {picture && <>
         <div className="hypernet-ocr-crop" onPointerDown={(event) => { if (scanning) return; start.current = point(event); event.currentTarget.setPointerCapture(event.pointerId); }} onPointerMove={drag} onPointerUp={(event) => { drag(event); start.current = null; }} onPointerCancel={() => { start.current = null; }}>

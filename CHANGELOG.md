@@ -16,6 +16,8 @@ Version sections are written as user-facing release notes first, with implementa
 
 ### Changed
 
+- Screenshot import now receives keyboard focus when opened, so Ctrl+V works immediately. Pasting an image into the HyperNet Participants field also opens the importer; ordinary text paste remains unchanged.
+
 - Prepared application/API, frontend package and lockfile, Android wrapper, export metadata, README badge, and service user agents for the `1.0.5` development cycle. Android versionCode is now 23.
 
 ## [1.0.4] - 2026-10-02

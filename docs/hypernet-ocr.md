@@ -2,7 +2,7 @@
 
 Open an active offer, find **Add progress snapshot**, and choose **Import participants from screenshot**.
 
-1. Choose a PNG, JPEG or WebP, or paste an image while the import area is focused. Files are limited to 10 MB and 16 megapixels.
+1. Open the importer and immediately press **Ctrl+V** (**⌘V** on Mac), or choose a PNG, JPEG or WebP file. You can also paste an image directly into the Participants field to open the importer; ordinary text still pastes normally. Files are limited to 10 MB and 16 megapixels.
 2. Drag a rectangle around participant names and the HyperNode counts beneath them. Avoid portraits, node tickets and unrelated panels. Percentage inputs provide keyboard-accessible crop controls; **Use full image** resets the selection.
 3. Choose **Scan selected area**. The English OCR engine loads only when scanning starts. Images are processed locally in the browser, with all engine/language files supplied by EQM.
 4. Review the extracted `name | nodes | optional seeded` lines. Correct character names and seller flags. OCR can confuse similar letters, particularly through EVE's transparent windows. Raw recognized text is available for inspection. Empty/unrecognized scans leave the original participant field untouched.
