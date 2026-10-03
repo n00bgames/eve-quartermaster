@@ -1,7 +1,7 @@
 import { ClipboardEvent, PointerEvent, useEffect, useRef, useState } from "react";
 import type { Worker } from "tesseract.js";
 import type { HyperNetOffer } from "../../types/hypernet";
-import { mergeParticipantText, parseParticipantOcr, type ParticipantDraft } from "./hypernetOcr";
+import { mergeParticipantText, parseParticipantOcr, participantTextFromLayout, type ParticipantDraft } from "./hypernetOcr";
 
 type Crop = { x: number; y: number; width: number; height: number };
 const full: Crop = { x: 0, y: 0, width: 100, height: 100 };
@@ -89,12 +89,22 @@ export function HyperNetParticipantInput({ offer }: { offer: HyperNetOffer }) {
     let timeout: ReturnType<typeof setTimeout> | undefined;
     try {
       const canvas = document.createElement("canvas");
-      const width = picture.width * crop.width / 100, height = picture.height * crop.height / 100;
+      const left = Math.round(picture.width * crop.x / 100), top = Math.round(picture.height * crop.y / 100);
+      const width = Math.min(picture.width - left, Math.max(1, Math.round(picture.width * crop.width / 100)));
+      const height = Math.min(picture.height - top, Math.max(1, Math.round(picture.height * crop.height / 100)));
       const scale = Math.min(2, Math.sqrt(4_000_000 / (width * height)));
       canvas.width = Math.max(1, Math.round(width * scale)); canvas.height = Math.max(1, Math.round(height * scale));
       const context = canvas.getContext("2d");
       if (!context) throw new Error("Your browser could not prepare the screenshot.");
-      context.drawImage(image.current, picture.width * crop.x / 100, picture.height * crop.y / 100, width, height, 0, 0, canvas.width, canvas.height);
+      context.drawImage(image.current, left, top, width, height, 0, 0, canvas.width, canvas.height);
+      // EVE uses light text on dark/translucent backgrounds. Invert brightness
+      // before recognition so highlighted names remain visible to the engine.
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
+      for (let i = 0; i < pixels.data.length; i += 4) {
+        const value = 255 - Math.max(pixels.data[i], pixels.data[i + 1], pixels.data[i + 2]);
+        pixels.data[i] = pixels.data[i + 1] = pixels.data[i + 2] = value;
+      }
+      context.putImageData(pixels, 0, 0);
       const task = async () => {
         const { createWorker, PSM } = await import("tesseract.js");
         if (current !== run.current) throw new Error("Scan cancelled");
@@ -104,13 +114,23 @@ export function HyperNetParticipantInput({ offer }: { offer: HyperNetOffer }) {
         });
         if (current !== run.current) { await activeWorker.terminate(); throw new Error("Scan cancelled"); }
         worker.current = activeWorker;
+        await activeWorker.setParameters({ tessedit_pageseg_mode: PSM.SPARSE_TEXT });
+        const { data } = await activeWorker.recognize(canvas, {}, { blocks: true });
+        const lines = (data.blocks ?? []).flatMap((block) => block.paragraphs.flatMap((paragraph) => paragraph.lines));
+        const paired = participantTextFromLayout(lines);
+        if (current !== run.current) throw new Error("Scan cancelled");
+        // A tight text-only crop can favor the original colors/block layout.
+        // Keep the spatial result on ties; never combine competing spellings.
+        context.drawImage(image.current!, left, top, width, height, 0, 0, canvas.width, canvas.height);
         await activeWorker.setParameters({ tessedit_pageseg_mode: PSM.SINGLE_BLOCK });
-        return (await activeWorker.recognize(canvas)).data.text;
+        const original = (await activeWorker.recognize(canvas)).data.text;
+        return parseParticipantOcr(original, offer.seller.name).length > parseParticipantOcr(paired, offer.seller.name).length
+          ? { raw: original, paired: original } : { raw: data.text, paired };
       };
       const result = await Promise.race([task(), new Promise<never>((_, reject) => { timeout = setTimeout(() => reject(new Error("Recognition timed out. Select a smaller area and try again.")), 90_000); })]);
       if (current !== run.current) return;
-      setRaw(result);
-      const extracted = parseParticipantOcr(result, offer.seller.name);
+      setRaw(result.raw);
+      const extracted = parseParticipantOcr(result.paired, offer.seller.name);
       setReview(mergeParticipantText("", extracted));
       if (!extracted.length) setError("No name/node pairs found. Select only the participant names and their HyperNode counts, then try again.");
     } catch (err) {
@@ -125,7 +145,7 @@ export function HyperNetParticipantInput({ offer }: { offer: HyperNetOffer }) {
     <label>Participants (optional)<textarea name="participants" rows={4} value={text} onChange={(event) => setText(event.target.value)} placeholder={`Character Name | 1\n${offer.seller.name} | ${offer.seller_owned_nodes} | seeded`} /><small>One participant per line: name | cumulative nodes | optional “seeded”.</small></label>
     <button type="button" onClick={() => { if (open) cancelScan(); setOpen(!open); }}> {open ? "Close screenshot import" : "Import participants from screenshot"}</button>
     {open && <div ref={importArea} className="hypernet-ocr" tabIndex={0} aria-label="Screenshot import; paste an image here">
-      <p>Press Ctrl+V (⌘V on Mac) to paste a screenshot, or choose an image file below. You can also paste an image directly into the Participants field to open this importer. Recognition runs in your browser; the image is not uploaded. Drag over the participant names and counts, excluding portraits and other panels.</p>
+      <p>Press Ctrl+V (⌘V on Mac) to paste a screenshot, or choose an image file below. You can also paste an image directly into the Participants field to open this importer. Recognition runs in your browser; the image is not uploaded. Drag over the participant list, including names and counts. Portraits and the heading are OK; exclude other panels.</p>
       <label>Screenshot<input type="file" accept="image/png,image/jpeg,image/webp" disabled={scanning} onChange={(event) => { const file = event.target.files?.[0]; if (file) loadFile(file); event.target.value = ""; }} /></label>
       {picture && <>
         <div className="hypernet-ocr-crop" onPointerDown={(event) => { if (scanning) return; start.current = point(event); event.currentTarget.setPointerCapture(event.pointerId); }} onPointerMove={drag} onPointerUp={(event) => { drag(event); start.current = null; }} onPointerCancel={() => { start.current = null; }}>

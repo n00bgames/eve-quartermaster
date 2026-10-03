@@ -20,6 +20,10 @@ Version sections are written as user-facing release notes first, with implementa
 
 - Prepared application/API, frontend package and lockfile, Android wrapper, export metadata, README badge, and service user agents for the `1.0.5` development cycle. Android versionCode is now 23.
 
+### Fixed
+
+- HyperNet screenshot recognition now handles participant-panel crops containing portraits and a heading. Contrast preprocessing and positional name/count pairing reduce portrait noise and recover highlighted seller rows, with an original-color fallback for tight crops. Extracted names still require review. Rebuild the frontend.
+
 ## [1.0.4] - 2026-10-02
 
 Release title: **EQM - v1.0.4 - "Gamble the Night Away!" Update**
