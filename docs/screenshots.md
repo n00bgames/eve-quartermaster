@@ -1,12 +1,80 @@
 # EQM screenshot gallery
 
-Atlas previews added **September 19, 2026**, from source commit `f6131a1be18e808c886f75c380c6ebf646323bfb`. The earlier gallery reconciliation was September 11 against the v1.0 candidate `f894f27ad7fb2ef4956e5bef2e97d3865fe8cfd2`. [README](../README.md) · [v1.0.3 release notes](releases/v1.0.3.md) · [Install](../README.md#install)
+HyperNet and PLEX previews added **October 3, 2026**, from source commit `4ec0931cda1f800afb1d83560e19862809148ccd`. Atlas previews were added September 19 from `f6131a1be18e808c886f75c380c6ebf646323bfb`; the earlier gallery reconciliation was September 11 against the v1.0 candidate `f894f27ad7fb2ef4956e5bef2e97d3865fe8cfd2`. [README](../README.md) · [v1.0.5 release notes](releases/v1.0.5.md) · [Install](../README.md#install)
 
 ## How to read this gallery
 
 The v1.0 images are fresh browser captures of the actual current React components in a local preview, using synthetic pilots, stock and market data. They are component demonstrations, not authenticated production-server screenshots or live EVE state. The preview header is labeled; the clocks are the actual header-clock component. The calculator images are cropped to that component. Native Rust executed the supply/chain calculations; the planner used the disposable API preview and native allocation worker.
 
 All **63 existing images** remain linked below. They are historical: some are demo illustrations or reconstructed/sanitized panels, and none is certified as an exact v1.0 screenshot. This audit reconciles module names and visible UX coverage; it does not certify runtime or PYFA parity. No old pixels were repainted to suggest a new version.
+
+## v1.0.5 HyperNet and PLEX
+
+Ten fresh browser captures of the current React components in a disposable local preview, covering changes since the published `v1.0.4` tag. Pilot and financial activity, PLEX quotes, and market history are **sample data**. HyperNet results, node history, and PLEX FIFO totals were computed by the current backend functions using an in-memory database. The Vindicator example reuses author-provided sale proceeds with explicitly illustrative acquisition and core costs; its loss is not the author's actual result. No live account records were changed.
+
+The grid and participant images are author-supplied in-game screenshots processed through the current crop/import controls. OCR ran locally, recovered three participant rows, and the missing seller row was added during manual review. The reviewed import is not a claim of perfect recognition. No screenshots were generated or repainted.
+
+### HyperNet overview
+
+Sample offers show organic progress separately from seeded nodes, financial exposure, and combined lifetime results including a market disposition.
+
+![HyperNet overview with sample activity](../static/ss/v1.0.5/hypernet-overview.png)
+
+### Offer corrections
+
+Correct the seller character, location, node total, prices, costs, expiry, and notes on an active or draft offer.
+
+![HyperNet offer correction form](../static/ss/v1.0.5/hypernet-edit.png)
+
+### Screenshot participant import
+
+Upload or paste, crop the participant list, scan in the browser, and review names and counts before applying them. The screenshot shows the reviewed result with the missing seller row manually restored.
+
+![Participant screenshot import and review](../static/ss/v1.0.5/hypernet-participant-import.png)
+
+### Grid screenshot and node positions
+
+The app retains an original-resolution lossless crop for matching node codes to numbered positions. This preview shows eight seeded positions and a sample winner selected while the offer is still active; saving a position alone does not complete the offer.
+
+![Saved grid reference and numbered node tracker](../static/ss/v1.0.5/hypernet-node-reference.png)
+
+### Node position history
+
+Twelve synthetic completed draws demonstrate layout-specific winning positions and six observed seeded wins against six expected. The heatmap describes the sample and does not predict later draws.
+
+![Node position history from synthetic completed offers](../static/ss/v1.0.5/hypernet-node-history.png)
+
+### Market disposition after expiration
+
+Gross proceeds, individual fees, net proceeds, acquisition and HyperCore costs produce one lifecycle result. The original offer stays expired.
+
+![Expired Vindicator with a recorded market sale and illustrative costs](../static/ss/v1.0.5/hypernet-market-sale.png)
+
+### Updated bid board preview
+
+A fresh capture of the existing buyer workflow with illustrative wins, a pending bid, and a refunded bid. Refund handling was introduced in v1.0.4; it is shown for context, not as a new v1.0.5 feature.
+
+![HyperNet bid history with sample outcomes](../static/ss/v1.0.5/hypernet-bids.png)
+
+### PLEX prices and holdings
+
+Illustrative global bid/ask quotes, holdings, FIFO costs, a sale scenario with 3% combined fees, and thirty days of sample market history. The amounts are fixture data, not current ESI quotes.
+
+![PLEX overview and future-sale scenario with sample prices](../static/ss/v1.0.5/plex-overview.png)
+
+### PLEX transaction ledger
+
+Six sample purchases, sales, and consumption entries leave 950 PLEX and 313,350,000 ISK in realized trading profit, calculated by the current backend FIFO service.
+
+![PLEX transaction ledger with six sample entries](../static/ss/v1.0.5/plex-ledger.png)
+
+### PLEX transaction entry
+
+Record a completed transaction's quantity, actual ISK price, fees, and notes. Opening holdings can retain unknown acquisition costs.
+
+![PLEX transaction form with an illustrative purchase](../static/ss/v1.0.5/plex-record-transaction.png)
+
+[Capture provenance and image hashes](../static/ss/v1.0.5/capture-receipt.json) · [Illustrated release notes](releases/v1.0.5.md) · [PLEX guide](plex-tracker.md) · [Node tracking guide](hypernet-node-positions.md) · [Market disposition guide](hypernet-market-disposition.md)
 
 ## v1.0.3 Navigation Atlas
 

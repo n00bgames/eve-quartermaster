@@ -6,6 +6,10 @@ Version sections are written as user-facing release notes first, with implementa
 
 ## [1.0.5] - Unreleased
 
+Release title: **EQM - v1.0.5 - "Moar HyperNets and PLEX Galore!" Update**
+
+[Illustrated release notes](docs/releases/v1.0.5.md) · [New screenshots](docs/screenshots.md#v105-hypernet-and-plex)
+
 ### Added
 
 - HyperNet node tracking now retains a cropped screenshot of the in-game grid. Upload or paste, crop before saving, and view the lossless image at original size to match a winning code. Images are automatically removed after both completion and winning-position save, in either order. Requires migration `0085_hypernet_grid_reference` and backend/frontend rebuilds.

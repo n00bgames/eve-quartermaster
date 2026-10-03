@@ -1,0 +1,72 @@
+{
+  "version": "1.0.5",
+  "source_commit": "4ec0931cda1f800afb1d83560e19862809148ccd",
+  "baseline_tag": "v1.0.4",
+  "baseline_commit": "399fa84fe83fcbd631e90a82092963d4590f2782",
+  "captured_at": "2026-10-03T17:54:19.615Z",
+  "provenance": "Current unmodified React components captured in a disposable local Vite preview. Pilot/offer activity and PLEX market data are illustrative. The Vindicator example reuses author-provided sale proceeds with synthetic acquisition and core costs. Grid and participant images come from an author-supplied screenshot; crop and OCR used current application code. No production database access or writes. No image generation or pixel repainting.",
+  "calculations": "HyperNet financials, summary, node-history and PLEX FIFO ledger produced by current backend functions in a disposable in-memory SQLite fixture.",
+  "images": [
+    {
+      "file": "hypernet-overview.png",
+      "description": "Current HyperNet board, sample organic progress, seeded exposure, and lifecycle totals.",
+      "sha256": "52c62b851a627988d765b32732368cba1dbed52d818e5aab14f293924288cc42"
+    },
+    {
+      "file": "hypernet-bids.png",
+      "description": "Illustrative Golem win, active bid, Broadsword win and refunded Vindicator bid.",
+      "sha256": "fdb1a53b4519f24d1314039063ee4ca892eb9e41d5f5a2e2bf65eaf31f4fe1dc"
+    },
+    {
+      "file": "hypernet-edit.png",
+      "description": "Offer corrections including seller, location, nodes and costs.",
+      "sha256": "0dcdec1588109d67be1440340ce7e5ffa70f913c5b4cc3636588004fec2972b3"
+    },
+    {
+      "file": "hypernet-market-sale.png",
+      "description": "Expired Vindicator market disposition with separate fees, net proceeds and full lifecycle result.",
+      "sha256": "57fb203969ff83e5d19af06a6cad9d20385890a43bbd6fa3b59d68268a2d4ed3"
+    },
+    {
+      "file": "hypernet-node-reference.png",
+      "description": "Author-supplied in-game grid cropped by the current upload UI; sample seeds and winning position.",
+      "sha256": "0da029764da4bcea4da86379320b46c5fe07a620fa06f5ea81d8237bf5aa66b3"
+    },
+    {
+      "file": "hypernet-node-history.png",
+      "description": "Twelve synthetic draws calculated by the current backend node-history service.",
+      "sha256": "fa44428e26ebfaca2c64e170089d39a3c8dbdbf98483cd1a395eda13a3b3b85f"
+    },
+    {
+      "file": "hypernet-participant-import.png",
+      "description": "Actual local OCR execution on an author-supplied screenshot, followed by manual review of extracted text.",
+      "sha256": "62b30eccfd4205acb232b9ee71d33c5db1f2f439def77d40de1fe889a476321d"
+    },
+    {
+      "file": "plex-overview.png",
+      "description": "Private holdings, illustrative global quotes, FIFO costs, fee-aware scenario and sample daily history.",
+      "sha256": "406334b80be1ecfaee7b4ff1d21f493289567e847656f0343628b6acaaa83342"
+    },
+    {
+      "file": "plex-ledger.png",
+      "description": "Six synthetic transactions: purchases, sales and consumption with actual backend FIFO accounting.",
+      "sha256": "1247121a7f138813049e2d59dca3367565c12529cf8428b96b0305a8ec63ebde"
+    },
+    {
+      "file": "plex-record-transaction.png",
+      "description": "Manual PLEX transaction entry with quantity, unit cost, fees and notes.",
+      "sha256": "555e6000e22242273ae10e8f17961d09a4ca550a581022297f12b61f2b912d24"
+    }
+  ],
+  "page_errors": [],
+  "ocr_review": {
+    "recognized_rows": [
+      "Severin2011 | 2",
+      "titan enthusiast | 1",
+      "Maegwynn Swift | 1"
+    ],
+    "manually_added": "LabRat2213 | 8 | seeded",
+    "reviewed_import_enabled": true
+  },
+  "visual_review": "All ten captures inspected. Overview clipping corrected, node history cropped to its panel, and participant review checked without a validation error."
+}
