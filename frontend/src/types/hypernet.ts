@@ -64,6 +64,7 @@ export type HyperNetSnapshot = {
 };
 
 export type HyperNetOffer = {
+  market_sale?: HyperNetMarketSale | null;
   node_map?: HyperNetNodeMap | null;
   id: number;
   status: HyperNetStatus;
@@ -115,6 +116,7 @@ export type HyperNetOffer = {
 };
 
 export type HyperNetSummary = {
+  market_sold_items?: number;
   node_positions?: HyperNetNodePositionSummary;
   active_offers: number;
   nearing_expiration: number;
@@ -138,6 +140,11 @@ export type HyperNetSummary = {
   next_expiring_offer?: HyperNetOffer | null;
   participation: HyperNetParticipationSummary;
   combined_lifetime_result: number;
+};
+
+export type HyperNetMarketSale = {
+  sold_at: string; gross_proceeds: number; sales_tax: number; broker_fee: number; other_fees: number;
+  note?: string | null; net_proceeds: number; acquisition_cost: number; hypercore_cost: number; lifecycle_profit: number;
 };
 
 export type HyperNetParticipationOutcome = "pending" | "won" | "lost" | "expired" | "cancelled";

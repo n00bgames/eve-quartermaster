@@ -39,6 +39,7 @@ class HyperNetOffer(Base):
     seller_owned_nodes: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     unique_participants: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     node_map: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    market_sale: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     hypercores_required: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     hypercore_unit_cost: Mapped[Decimal] = mapped_column(Numeric(24, 2), default=0, nullable=False)
     acquisition_cost: Mapped[Decimal] = mapped_column(Numeric(24, 2), default=0, nullable=False)

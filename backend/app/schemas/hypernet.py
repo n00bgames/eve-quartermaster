@@ -184,6 +184,21 @@ class HyperNetReconcileRequest(BaseModel):
         return self
 
 
+class HyperNetMarketSaleInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    sold_at: datetime
+    gross_proceeds: Decimal = Field(ge=0, max_digits=24, decimal_places=2)
+    sales_tax: Decimal = Field(default=Decimal("0"), ge=0, max_digits=24, decimal_places=2)
+    broker_fee: Decimal = Field(default=Decimal("0"), ge=0, max_digits=24, decimal_places=2)
+    other_fees: Decimal = Field(default=Decimal("0"), ge=0, max_digits=24, decimal_places=2)
+    note: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("sold_at")
+    @classmethod
+    def sale_timezone_required(cls, value: datetime):
+        return require_aware(value, "sold_at")
+
+
 class HyperNetParticipationCreate(BaseModel):
     character_id: int = Field(gt=0)
     external_offer_reference: str | None = Field(default=None, max_length=255)

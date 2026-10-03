@@ -31,6 +31,7 @@ from app.schemas.hypernet import (
     HyperNetOfferPatch,
     HyperNetNodeMapUpdate,
     HyperNetReconcileRequest,
+    HyperNetMarketSaleInput,
     HyperNetSnapshotCreate,
     HyperNetParticipationCreate,
     HyperNetParticipationPatch,
@@ -45,6 +46,7 @@ from app.services.hypernet_economics_engine import (
 )
 from app.services.permissions import can_view_section
 from app.services.hypernet_nodes import node_position_summary
+from app.services.hypernet_disposition import realized_item_result, serialize_market_sale, utc
 
 
 router = APIRouter(prefix="/hypernet", tags=["hypernet"])
@@ -348,6 +350,7 @@ def serialize_offer(offer: HyperNetOffer, *, detail: bool = False) -> dict[str, 
         "filled_percent": round(offer.nodes_sold / offer.total_nodes * 100, 2),
         "unique_participants": offer.unique_participants,
         "node_map": offer.node_map,
+        "market_sale": serialize_market_sale(offer),
         "hypercores_required": offer.hypercores_required,
         "hypercore_unit_cost": as_number(offer.hypercore_unit_cost),
         "acquisition_cost": as_number(offer.acquisition_cost),
@@ -564,7 +567,7 @@ def hypernet_summary(
         for row in offers
         if calculations[row.id]["progress"]["hours_to_first_organic_node"] is not None
     ]
-    lifetime_profit = sum((row.final_profit or Decimal("0")) for row in resolved)
+    lifetime_profit = sum((realized_item_result(row) for row in resolved), Decimal("0"))
     completed_profit = sum((row.final_profit or Decimal("0")) for row in completed)
     next_expiring = min(active, key=lambda row: row.expires_at, default=None)
     pending_bids = [row for row in participations if row.outcome == "pending"]
@@ -591,6 +594,7 @@ def hypernet_summary(
         "completed_offers": len(completed),
         "expired_offers": len(expired),
         "lifetime_profit": as_number(lifetime_profit),
+        "market_sold_items": sum(bool(row.market_sale) for row in expired),
         "average_profit_per_completed_offer": as_number(completed_profit / len(completed)) if completed else None,
         "completion_rate_percent": round(len(completed) / len(resolved) * 100, 2) if resolved else None,
         "average_hours_to_first_node": mean(first_sale_hours) if first_sale_hours else None,
@@ -1068,6 +1072,43 @@ def add_hypernet_snapshot(
     return serialize_offer(owned_offer(db, offer.id, user), detail=True)
 
 
+@router.put("/offers/{offer_id}/market-sale")
+def record_hypernet_market_sale(
+    offer_id: int, payload: HyperNetMarketSaleInput,
+    user: User = Depends(require_hypernet), db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    offer = owned_offer(db, offer_id, user)
+    if offer.status != "expired":
+        raise HTTPException(409, "Record expiration before adding a market sale")
+    if utc(payload.sold_at) < utc(offer.reconciled_at or offer.created_offer_at):
+        raise HTTPException(400, "Market sale time cannot precede the recorded expiration")
+    if utc(payload.sold_at) > datetime.now(timezone.utc):
+        raise HTTPException(400, "Record a completed sale, not a future market order")
+    before = offer.market_sale
+    offer.market_sale = payload.model_dump(mode="json")
+    offer.item_outcome = "market_sold"
+    record_audit_event(db, event_kind="hypernet_market_sale_saved", title=f"HyperNet item sold on market: offer {offer.id}",
+                       body=f"Before: {before}\nAfter: {offer.market_sale}", actor_user=user)
+    db.commit()
+    return serialize_offer(owned_offer(db, offer.id, user), detail=True)
+
+
+@router.delete("/offers/{offer_id}/market-sale")
+def remove_hypernet_market_sale(
+    offer_id: int, user: User = Depends(require_hypernet), db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    offer = owned_offer(db, offer_id, user)
+    if offer.status != "expired":
+        raise HTTPException(409, "Only expired offers can have a market sale removed")
+    before = offer.market_sale
+    offer.market_sale = None
+    offer.item_outcome = "retained"
+    record_audit_event(db, event_kind="hypernet_market_sale_removed", title=f"HyperNet market sale corrected: offer {offer.id}",
+                       body=f"Removed: {before}", actor_user=user)
+    db.commit()
+    return serialize_offer(owned_offer(db, offer.id, user), detail=True)
+
+
 @router.post("/offers/{offer_id}/reconcile")
 def reconcile_hypernet_offer(
     offer_id: int,
@@ -1107,6 +1148,8 @@ def apply_hypernet_reconciliation(
         raise HTTPException(status_code=400, detail="seller_owned_nodes cannot exceed nodes_sold")
     if payload.reconciled_at < offer.created_offer_at:
         raise HTTPException(status_code=400, detail="Reconciliation time cannot precede offer creation")
+    if offer.market_sale and utc(payload.reconciled_at) > utc(datetime.fromisoformat(offer.market_sale["sold_at"])):
+        raise HTTPException(400, "Recorded expiration cannot follow the market sale; correct the sale time first")
     before = {field: str(getattr(offer, field)) for field in (
         "acquisition_cost", "payout", "actual_hypercore_cost", "final_market_value",
         "final_profit", "winner", "seller_owned_nodes", "unique_participants", "reconciled_at",
@@ -1163,7 +1206,7 @@ def apply_hypernet_reconciliation(
     )
     offer.actual_hypercore_cost = economics["actual_hypercore_cost"]
     offer.final_profit = economics["final_profit"]
-    offer.item_outcome = economics["item_outcome"]
+    offer.item_outcome = "market_sold" if offer.market_sale else economics["item_outcome"]
     if payload.note:
         offer.notes = "\n\n".join(value for value in [offer.notes, payload.note.strip()] if value)
     record_audit_event(

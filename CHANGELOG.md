@@ -8,6 +8,8 @@ Version sections are written as user-facing release notes first, with implementa
 
 ### Added
 
+- Expired HyperNet offers can now record an editable **Sold on market** disposition with gross proceeds, sales tax, broker and other fees. A lifecycle result includes acquisition and HyperCore costs, updates history and lifetime totals once, and preserves the expired outcome. Requires migration `0084_hypernet_market_sale` and backend/frontend rebuilds; see [market dispositions](docs/hypernet-market-disposition.md).
+
 - Finance & Trade now includes a private **PLEX Tracker** with global ESI bids/asks and daily history, editable purchases/sales/opening holdings/consumption, FIFO costs, realized profit, CSV export, and fee-adjusted future-sale scenarios. Unknown acquisition costs remain unknown. Requires backend/frontend rebuilds and migration `0083_plex_tracker`; see [PLEX Tracker](docs/plex-tracker.md).
 
 - HyperNet offers now include a numbered node grid for marking seeded positions and the winning position, including corrections on completed offers. Shift-click selects ranges; layout columns are configurable. A character-filtered history heatmap compares winning and seeded positions across matching layouts, with observed versus expected seeded wins and separate handling for incomplete records. Rebuild backend and frontend together; migration `0082_hypernet_node_positions` is required. See [node position tracking](docs/hypernet-node-positions.md).
