@@ -8,6 +8,8 @@ Version sections are written as user-facing release notes first, with implementa
 
 ### Added
 
+- HyperNet participant entry now accepts pasted or selected screenshots with a crop selector and browser-based OCR. Review names and cumulative node counts before merging them into the participant field; matching names replace counts without dropping off-screen participants. OCR files are served by EQM and images remain in the browser. English recognition can misread character names, so imports never save snapshots or alter totals automatically. Rebuild the frontend; no database migration or external AI account is required.
+
 - HyperNet's **Edit offer** form now supports location search, manual location corrections, and clearing an incorrect location. Saved corrections update the offer card and detail view and are included in the edit audit trail.
 
 - Active and draft HyperNet offers now have an **Edit offer** action for correcting total nodes, total offer price, quantity, HyperCore costs, acquisition cost, desired profit, expiry, and notes. Correcting an eight-node offer to sixteen preserves sold/seeded counts, recalculates prices and odds, and returns an incorrectly full offer to active status. Corrections are audited and cannot reduce capacity below recorded progress. Rebuild backend and frontend together; no database migration is required.

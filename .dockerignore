@@ -9,6 +9,7 @@ _publish
 **/*.pyc
 **/node_modules
 **/dist
+static/ocr
 **/target
 frontend/npm-debug.log
 sde

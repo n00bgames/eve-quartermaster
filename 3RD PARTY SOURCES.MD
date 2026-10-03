@@ -32,6 +32,8 @@ EVE Online, EVE, CCP, and related marks and imagery are trademarks or registered
 
 ## Packaged dependencies
 
+HyperNet screenshot import incorporates [Tesseract.js](https://github.com/naptha/tesseract.js) 7.0.0 and its Tesseract WebAssembly core (Apache-2.0), plus `@tesseract.js-data/eng` 1.0.0 English recognition data (package-declared MIT). The lockfile pins the dependency tree. Build scripts copy the worker, core variants, English data and supplied license/metadata files into EQM's static assets; no third-party CDN or remote image processing is used at runtime. See [local OCR hosting documentation](https://github.com/naptha/tesseract.js/blob/master/docs/local-installation.md) and [EQM usage notes](docs/hypernet-ocr.md).
+
 EQM also uses normal open-source runtime and build dependencies declared in its Python requirements, `package.json`, Gradle files, container images, and lockfiles. Those manifests are the authoritative dependency inventory; each dependency remains governed by its own license. This research ledger does not replace license notices that a dependency requires in a distributed binary.
 
 ## Contribution rule
