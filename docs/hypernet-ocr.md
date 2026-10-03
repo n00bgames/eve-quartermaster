@@ -7,7 +7,9 @@ Open an active offer, find **Add progress snapshot**, and choose **Import partic
 3. Choose **Scan selected area**. The English OCR engine loads only when scanning starts. Images are processed locally in the browser, with all engine/language files supplied by EQM.
 4. Review the extracted `name | nodes | optional seeded` lines. Correct character names and seller flags. OCR can confuse similar letters, particularly through EVE's transparent windows. Raw recognized text is available for inspection. Empty/unrecognized scans leave the original participant field untouched.
 5. Choose **Use reviewed participants**. Existing names are matched case-insensitively and their cumulative counts are replaced, not added. Other participants remain in the field, so additional screenshots can extend a scrolled list.
-6. Check **Nodes sold**, **Seeded nodes**, and **Unique participants**, then **Save snapshot**. Import does not infer whole-offer totals from a possibly incomplete screenshot or submit anything automatically.
+6. Choose **Update totals from participant list** if the listed counts exceed the snapshot totals. This raises **Nodes sold** and **Unique participants** as needed, preserves higher totals for participants outside the list, and updates **Seeded nodes** from seller rows. If the seller is absent, the existing seeded count is retained and included. Check these fields against the in-game offer, then **Save snapshot**. Import does not change totals or submit anything automatically.
+
+Snapshot validation explains mismatched counts beside **Save snapshot**, before sending the request. For example, a list containing 8 + 2 + 1 + 1 nodes requires at least 12 sold nodes and four participants. Invalid/duplicate rows, seller count mismatches, and lists above the offer capacity must be corrected first.
 
 OCR is a transcription aid, not an ESI import or verification of the in-game offer. Each screenshot covers only the visible names. Review duplicate/misspelled names before merging; a spelling difference can produce a second entry. Counts above the offer capacity block application.
 

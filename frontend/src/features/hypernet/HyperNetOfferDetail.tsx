@@ -1,10 +1,11 @@
 import { ArrowLeft, CheckCircle2, Clock3, RefreshCw, Save, Pencil, ShieldAlert, XCircle } from "lucide-react";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useMemo, useRef, useState } from "react";
 
 import type { ApiClient, HyperNetOffer } from "../../types/hypernet";
 import { countdown, formatIsk, localInputValue, profitClass } from "./hypernetPresentation";
 import { HyperNetOfferEdit } from "./HyperNetOfferEdit";
-import { HyperNetParticipantInput } from "./HyperNetParticipantInput";
+import { HyperNetParticipantInput, reviewRows } from "./HyperNetParticipantInput";
+import type { ParticipantDraft } from "./hypernetOcr";
 
 
 function FinancialFact({ label, value, formula, tone }: { label: string; value: string; formula: string; tone?: string }) {
@@ -29,6 +30,8 @@ export function HyperNetOfferDetail({ api, offer, onBack, onChanged }: { api: Ap
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [snapshotError, setSnapshotError] = useState<string | null>(null);
+  const snapshotForm = useRef<HTMLFormElement | null>(null);
   const [reconcileStatus, setReconcileStatus] = useState<"completed" | "expired" | "cancelled" | "invalid" | null>(null);
   const terminal = ["completed", "expired", "cancelled", "invalid"].includes(offer.status);
   const f = offer.calculations.financials;
@@ -45,29 +48,50 @@ export function HyperNetOfferDetail({ api, offer, onBack, onChanged }: { api: Ap
   }
 
   async function addSnapshot(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setBusy(true); setError(null);
+    event.preventDefault(); setSnapshotError(null); setError(null);
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
     const nodesSold = Number(form.get("nodes_sold") || 0);
     const seeded = Number(form.get("seller_owned_nodes") || 0);
-    const participantLines = String(form.get("participants") || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-    const participants = participantLines.map((line) => {
-      const [name, nodes = "0", marker = ""] = line.split("|").map((value) => value.trim());
-      return { participant_name: name, nodes_owned: Number(nodes || 0), is_seller: marker.toLowerCase() === "seeded" };
-    });
+    const participantText = String(form.get("participants") || "").trim();
+    const parsed = reviewRows(participantText);
+    if (participantText && !parsed) { setSnapshotError("Correct the participant list: use unique names and whole node counts, with an optional | seeded marker."); return; }
+    const participants = (parsed ?? []).map((row) => ({ participant_name: row.name, nodes_owned: row.nodes, is_seller: row.seeded || row.name.toLowerCase() === offer.seller.name.toLowerCase() }));
     if (seeded > 0 && !participants.some((row) => row.is_seller)) participants.push({ participant_name: offer.seller.name, nodes_owned: seeded, is_seller: true });
+    const listedNodes = participants.reduce((sum, row) => sum + row.nodes_owned, 0);
+    const listedSeeded = participants.filter((row) => row.is_seller).reduce((sum, row) => sum + row.nodes_owned, 0);
+    const unique = Number(form.get("unique_participants") || participants.length);
+    if (listedNodes > offer.total_nodes) { setSnapshotError(`The participant list totals ${listedNodes} nodes, exceeding this offer’s ${offer.total_nodes}. Correct the list before saving.`); return; }
+    if (listedNodes > nodesSold) { setSnapshotError(`The participant list totals ${listedNodes} nodes, but Nodes sold is ${nodesSold}. Use “Update totals from participant list” or correct Nodes sold before saving.`); return; }
+    if (listedSeeded !== seeded || seeded > nodesSold) { setSnapshotError(`The seller rows total ${listedSeeded} seeded nodes. Check Seeded nodes (${seeded}) and Nodes sold (${nodesSold}) before saving.`); return; }
+    if (unique < participants.length) { setSnapshotError(`The list contains ${participants.length} participants, but Unique participants is ${unique}. Update the totals before saving.`); return; }
+    setBusy(true);
     try {
       onChanged(await api<HyperNetOffer>(`/hypernet/offers/${offer.id}/snapshots`, { method: "POST", body: JSON.stringify({
         captured_at: new Date(String(form.get("captured_at"))).toISOString(), nodes_sold: nodesSold, seller_owned_nodes: seeded,
-        unique_participants: Number(form.get("unique_participants") || participants.length),
+        unique_participants: unique,
         jita_buy: Number(form.get("jita_buy")) || null, jita_sell: Number(form.get("jita_sell")) || null,
         local_buy: Number(form.get("local_buy")) || null, local_sell: Number(form.get("local_sell")) || null,
         hypercore_buy: Number(form.get("hypercore_buy")) || null, hypercore_sell: Number(form.get("hypercore_sell")) || null,
         note: form.get("note") || null, participants,
       }) }));
       formElement.reset();
-    } catch (err) { setError(err instanceof Error ? err.message : "Unable to save progress snapshot"); }
+    } catch (err) { setSnapshotError(err instanceof Error ? err.message : "Unable to save progress snapshot"); }
     finally { setBusy(false); }
+  }
+
+  function updateParticipantTotals(rows: ParticipantDraft[]) {
+    const form = snapshotForm.current;
+    if (!form) return;
+    const field = (name: string) => form.elements.namedItem(name) as HTMLInputElement;
+    const sellers = rows.filter((row) => row.seeded || row.name.toLowerCase() === offer.seller.name.toLowerCase());
+    const seeded = sellers.length ? sellers.reduce((sum, row) => sum + row.nodes, 0) : Number(field("seller_owned_nodes").value || 0);
+    const total = rows.reduce((sum, row) => sum + row.nodes, 0) + (sellers.length ? 0 : seeded);
+    if (total > offer.total_nodes) { setSnapshotError(`The participant list totals ${total} nodes including the seller, exceeding this offer’s ${offer.total_nodes}. Correct the list before updating totals.`); return; }
+    field("nodes_sold").value = String(Math.max(Number(field("nodes_sold").value || 0), total));
+    field("seller_owned_nodes").value = String(seeded);
+    field("unique_participants").value = String(Math.max(Number(field("unique_participants").value || 0), rows.length + (!sellers.length && seeded > 0 ? 1 : 0)));
+    setSnapshotError(null);
   }
 
   async function reconcile(event: FormEvent<HTMLFormElement>) {
@@ -123,7 +147,7 @@ export function HyperNetOfferDetail({ api, offer, onBack, onChanged }: { api: Ap
 
     <section className="panel"><div className="section-heading compact"><div><h4>Progress history</h4><p>Manual snapshots keep seeded and organic nodes distinct.</p></div></div><ProgressChart offer={offer} /><div className="hypernet-timeline">{timeline.map((row) => <article key={row.id}><span>{new Date(row.captured_at).toLocaleString()}</span><strong>{row.nodes_sold}/{offer.total_nodes} sold</strong><em>{row.organic_nodes_sold} organic · {row.seller_owned_nodes} seeded</em><small>{row.note || `${row.unique_participants} unique participants`}</small></article>)}</div></section>
 
-    {!terminal && !editing && <section className="panel"><div className="section-heading compact"><div><h4>Add progress snapshot</h4><p>Use cumulative counts from the in-game offer.</p></div></div><form className="stacked-form" onSubmit={addSnapshot}><div className="form-grid three"><label>Captured at<input name="captured_at" type="datetime-local" defaultValue={localInputValue(new Date())} required /></label><label>Nodes sold<input name="nodes_sold" type="number" min="0" max={offer.total_nodes} defaultValue={offer.nodes_sold} required /></label><label>Seeded nodes<input name="seller_owned_nodes" type="number" min="0" max={offer.total_nodes} defaultValue={offer.seller_owned_nodes} required /></label><label>Unique participants<input name="unique_participants" type="number" min="0" defaultValue={offer.unique_participants} /></label><label>Jita buy<input name="jita_buy" type="number" min="0" step="0.01" /></label><label>Jita sell<input name="jita_sell" type="number" min="0" step="0.01" defaultValue={latestMarket?.jita_sell ?? ""} /></label><label>Local buy<input name="local_buy" type="number" min="0" step="0.01" /></label><label>Local sell<input name="local_sell" type="number" min="0" step="0.01" defaultValue={latestMarket?.local_sell ?? ""} /></label><label>HyperCore buy<input name="hypercore_buy" type="number" min="0" step="0.01" /></label><label>HyperCore sell<input name="hypercore_sell" type="number" min="0" step="0.01" /></label></div><HyperNetParticipantInput key={`${offer.id}:${offer.updated_at}`} offer={offer} /><label>Observation<textarea name="note" rows={3} placeholder="Shared in corp chat; first organic node arrived after promotion…" /></label><button disabled={busy}><Save size={17} /> {busy ? "Saving" : "Save snapshot"}</button></form></section>}
+    {!terminal && !editing && <section className="panel"><div className="section-heading compact"><div><h4>Add progress snapshot</h4><p>Use cumulative counts from the in-game offer.</p></div></div><form ref={snapshotForm} className="stacked-form" onSubmit={addSnapshot}><div className="form-grid three"><label>Captured at<input name="captured_at" type="datetime-local" defaultValue={localInputValue(new Date())} required /></label><label>Nodes sold<input name="nodes_sold" type="number" min="0" max={offer.total_nodes} defaultValue={offer.nodes_sold} required /></label><label>Seeded nodes<input name="seller_owned_nodes" type="number" min="0" max={offer.total_nodes} defaultValue={offer.seller_owned_nodes} required /></label><label>Unique participants<input name="unique_participants" type="number" min="0" defaultValue={offer.unique_participants} /></label><label>Jita buy<input name="jita_buy" type="number" min="0" step="0.01" /></label><label>Jita sell<input name="jita_sell" type="number" min="0" step="0.01" defaultValue={latestMarket?.jita_sell ?? ""} /></label><label>Local buy<input name="local_buy" type="number" min="0" step="0.01" /></label><label>Local sell<input name="local_sell" type="number" min="0" step="0.01" defaultValue={latestMarket?.local_sell ?? ""} /></label><label>HyperCore buy<input name="hypercore_buy" type="number" min="0" step="0.01" /></label><label>HyperCore sell<input name="hypercore_sell" type="number" min="0" step="0.01" /></label></div><HyperNetParticipantInput key={`${offer.id}:${offer.updated_at}`} offer={offer} onUseTotals={updateParticipantTotals} /><label>Observation<textarea name="note" rows={3} placeholder="Shared in corp chat; first organic node arrived after promotion…" /></label>{snapshotError && <div className="mini-alert" role="alert">{snapshotError}</div>}<button disabled={busy}><Save size={17} /> {busy ? "Saving" : "Save snapshot"}</button></form></section>}
 
     <section className="panel"><div className="section-heading compact"><div><h4>Participant list</h4><p>Manual observations only; no HyperNet participant data is assumed from ESI.</p></div></div><div className="hypernet-participant-list">{(offer.participants ?? []).map((row) => <article key={row.id} className={row.is_seller ? "seeded" : "organic"}><strong>{row.participant_name}</strong><span>{row.nodes_owned} node{row.nodes_owned === 1 ? "" : "s"}</span><em>{row.is_seller ? "Seeded nodes" : "External participant"}</em></article>)}{externalParticipants.length === 0 && offer.seller_owned_nodes === 0 && <p className="empty">No participant identities recorded yet.</p>}</div></section>
 

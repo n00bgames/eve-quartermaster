@@ -22,6 +22,8 @@ Version sections are written as user-facing release notes first, with implementa
 
 ### Fixed
 
+- HyperNet snapshots now catch participant/count mismatches before saving and show an actionable message beside Save. **Update totals from participant list** raises sold/participant counts when needed and fills seeded counts without reducing higher totals for a partial list. This resolves imported lists failing with a raw API validation error when the old sold count was lower. Rebuild the frontend.
+
 - HyperNet screenshot recognition now handles participant-panel crops containing portraits and a heading. Contrast preprocessing and positional name/count pairing reduce portrait noise and recover highlighted seller rows, with an original-color fallback for tight crops. Extracted names still require review. Rebuild the frontend.
 
 ## [1.0.4] - 2026-10-02

@@ -6,7 +6,7 @@ import { mergeParticipantText, parseParticipantOcr, participantTextFromLayout, t
 type Crop = { x: number; y: number; width: number; height: number };
 const full: Crop = { x: 0, y: 0, width: 100, height: 100 };
 
-function reviewRows(text: string): ParticipantDraft[] | null {
+export function reviewRows(text: string): ParticipantDraft[] | null {
   const rows: ParticipantDraft[] = [];
   for (const line of text.split(/\r?\n/).filter((value) => value.trim())) {
     const parts = line.split("|").map((value) => value.trim());
@@ -17,7 +17,7 @@ function reviewRows(text: string): ParticipantDraft[] | null {
   return rows.length && new Set(rows.map((row) => row.name.toLowerCase())).size === rows.length ? rows : null;
 }
 
-export function HyperNetParticipantInput({ offer }: { offer: HyperNetOffer }) {
+export function HyperNetParticipantInput({ offer, onUseTotals }: { offer: HyperNetOffer; onUseTotals?: (rows: ParticipantDraft[]) => void }) {
   const [text, setText] = useState(() => mergeParticipantText("", (offer.participants ?? []).map((row) => ({ name: row.participant_name, nodes: row.nodes_owned, seeded: row.is_seller }))));
   const [open, setOpen] = useState(false);
   const [picture, setPicture] = useState<{ url: string; width: number; height: number } | null>(null);
@@ -34,6 +34,7 @@ export function HyperNetParticipantInput({ offer }: { offer: HyperNetOffer }) {
   const image = useRef<HTMLImageElement | null>(null);
   const importArea = useRef<HTMLDivElement | null>(null);
   const rows = reviewRows(review);
+  const enteredRows = reviewRows(text);
   const merged = rows ? mergeParticipantText(text, rows) : "";
   const mergedRows = reviewRows(merged);
   const exceedsTotal = !!mergedRows && mergedRows.reduce((sum, row) => sum + row.nodes, 0) > offer.total_nodes;
@@ -143,6 +144,7 @@ export function HyperNetParticipantInput({ offer }: { offer: HyperNetOffer }) {
 
   return <div className="hypernet-participant-input" onPaste={paste}>
     <label>Participants (optional)<textarea name="participants" rows={4} value={text} onChange={(event) => setText(event.target.value)} placeholder={`Character Name | 1\n${offer.seller.name} | ${offer.seller_owned_nodes} | seeded`} /><small>One participant per line: name | cumulative nodes | optional “seeded”.</small></label>
+    {onUseTotals && enteredRows && <div><p>{enteredRows.length} listed participants · {enteredRows.reduce((sum, row) => sum + row.nodes, 0)} listed nodes.</p><button type="button" onClick={() => onUseTotals(enteredRows)}>Update totals from participant list</button><p className="muted">Raises sold and participant totals when needed; keeps higher totals for people outside this list. Seller rows update seeded nodes. Review the totals before saving.</p></div>}
     <button type="button" onClick={() => { if (open) cancelScan(); setOpen(!open); }}> {open ? "Close screenshot import" : "Import participants from screenshot"}</button>
     {open && <div ref={importArea} className="hypernet-ocr" tabIndex={0} aria-label="Screenshot import; paste an image here">
       <p>Press Ctrl+V (⌘V on Mac) to paste a screenshot, or choose an image file below. You can also paste an image directly into the Participants field to open this importer. Recognition runs in your browser; the image is not uploaded. Drag over the participant list, including names and counts. Portraits and the heading are OK; exclude other panels.</p>
