@@ -8,6 +8,8 @@ Version sections are written as user-facing release notes first, with implementa
 
 ### Added
 
+- Finance & Trade now includes a private **PLEX Tracker** with global ESI bids/asks and daily history, editable purchases/sales/opening holdings/consumption, FIFO costs, realized profit, CSV export, and fee-adjusted future-sale scenarios. Unknown acquisition costs remain unknown. Requires backend/frontend rebuilds and migration `0083_plex_tracker`; see [PLEX Tracker](docs/plex-tracker.md).
+
 - HyperNet offers now include a numbered node grid for marking seeded positions and the winning position, including corrections on completed offers. Shift-click selects ranges; layout columns are configurable. A character-filtered history heatmap compares winning and seeded positions across matching layouts, with observed versus expected seeded wins and separate handling for incomplete records. Rebuild backend and frontend together; migration `0082_hypernet_node_positions` is required. See [node position tracking](docs/hypernet-node-positions.md).
 
 - HyperNet participant entry now accepts pasted or selected screenshots with a crop selector and browser-based OCR. Review names and cumulative node counts before merging them into the participant field; matching names replace counts without dropping off-screen participants. OCR files are served by EQM and images remain in the browser. English recognition can misread character names, so imports never save snapshots or alter totals automatically. Rebuild the frontend; no database migration or external AI account is required.

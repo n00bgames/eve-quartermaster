@@ -46,6 +46,10 @@ Verify the application version, select a visible corporate station/Upwell hangar
 
 Read this document and the local `CHAT_HANDOFF.md` before deployment work. Check current Git and container state instead of treating dated snapshots as live status. The authoritative Windows publish repository remains `D:\Codex\EVE\_publish\eve-quartermaster-20260628-092452`; `D:\Codex\EVE` is a legacy tree, not an active Git repository or the running EQM server.
 
+## PLEX Tracker (1.0.5 development)
+
+Rebuild backend and frontend together and apply migration `0083_plex_tracker` through normal backend startup. Open **Finance & Trade → PLEX Tracker**, verify the global ESI bid/ask and history timestamps, then record a purchase and confirm it persists after reload. An unknown-basis opening holding must not produce a fictional profit. Public market requests require no new ESI scopes; user ledgers remain private under section permission `plex`. See [usage and accounting](plex-tracker.md). No remote deployment is implied by this note.
+
 
 ## Navigation distance widget
 

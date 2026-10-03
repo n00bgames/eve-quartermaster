@@ -11,6 +11,7 @@ from app.models.mission_atlas import EveAgent
 from app.models.esi import EsiApplication, EsiSyncJob, EsiToken
 from app.models.events import Doctrine, DoctrineFitting, DoctrineSkillPlan, Event, EventAttendanceEntry, EventCharacterRegistration, EventDoctrineRequirement, EventDoctrineRequirementOption, EventLocation, EventRoleRequirement, EventUserResponse
 from app.models.hypernet import HyperNetOffer, HyperNetOfferSnapshot, HyperNetParticipant, HyperNetParticipation, HyperNetSetting
+from app.models.plex import PlexMarketCache, PlexTransaction
 from app.models.eve_static import EveCategory, EveConstellation, EveDogmaAttribute, EveDogmaEffect, EveGroup, EveRegion, EveStargate, EveStation, EveSystem, EveType, EveTypeDogmaAttribute, EveTypeDogmaEffect
 from app.models.fittings import CharacterFitting, CharacterFittingItem
 from app.models.fleet_operations import DoctrinePriorityField, DoctrinePriorityOption, SkillPlan, SkillPlanEntry, SrpLossReason, SrpOperation, SrpRequest, SrpRequestEvent
@@ -33,6 +34,8 @@ from app.models.skills import CharacterSkill, CharacterSkillQueueEntry
 from app.models.standings import CharacterStanding
 
 __all__ = [
+    "PlexMarketCache",
+    "PlexTransaction",
     "PiPlanningJob",
     "PiPlanningScenario",
     "AppSetting",

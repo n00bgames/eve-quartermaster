@@ -1,0 +1,28 @@
+.plex-page { display: grid; gap: 18px; min-width: 0; }
+.plex-page h2, .plex-page h3 { margin: 0 0 10px; }
+.plex-page h2 { font-size: 1.8rem; }
+.plex-page h2, .plex-actions, .plex-page button { display: flex; align-items: center; gap: 8px; }
+.plex-page button { border: 1px solid #d5a735; border-radius: 6px; background: #ebbd4a; color: #101820; padding: 9px 12px; font: inherit; font-weight: 600; cursor: pointer; }
+.plex-page button:hover:not(:disabled) { background: #f7cf68; }
+.plex-page button:disabled { opacity: .5; cursor: default; }
+.plex-page button:focus-visible { outline: 2px solid #64d7e5; outline-offset: 3px; }
+.plex-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+.plex-actions { flex-wrap: wrap; }
+.plex-panel { background: #151e27; border: 1px solid #34414e; border-radius: 10px; padding: 20px; min-width: 0; }
+.plex-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+.plex-metric { display: grid; align-content: start; gap: 8px; background: #0c161f; border-radius: 8px; padding: 16px; }
+.plex-metric span, .plex-muted, .plex-metric small { color: #acbfd0; }
+.plex-metric strong { font-size: 1.18rem; overflow-wrap: anywhere; }
+.plex-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; border: 0; margin: 0; padding: 0; }
+.plex-page label { display: grid; gap: 7px; color: #c6d6e4; }
+.plex-page input, .plex-page select, .plex-page textarea { width: 100%; min-width: 0; box-sizing: border-box; }
+.plex-wide { grid-column: 1 / -1; }
+.plex-warning { border-left: 3px solid #ecc04e; background: #302a19; padding: 12px; color: #ffe4a4; }
+.plex-chart { width: 100%; height: 190px; color: #53caba; }
+.plex-chart-labels { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; color: #b8c9da; font-size: .85rem; margin-top: 12px; }
+.plex-table-wrap { overflow-x: auto; }
+.plex-page table { width: 100%; border-collapse: collapse; }
+.plex-page th, .plex-page td { text-align: left; padding: 12px 10px; border-bottom: 1px solid #34414e; white-space: nowrap; }
+.plex-page td.plex-note { white-space: pre-wrap; min-width: 160px; max-width: 300px; overflow-wrap: anywhere; }
+.plex-page summary { cursor: pointer; padding: 10px 0; }
+@media (max-width: 600px) { .plex-panel { padding: 14px; } .plex-metrics, .plex-fields { grid-template-columns: 1fr; } .plex-heading { align-items: stretch; } }

@@ -24,6 +24,7 @@ SECTION_DEFINITIONS: dict[str, dict[str, object]] = {
     "roster": {"label": "Roster", "default_roles": ["admin", "director", "officer", "member", "view_only"]},
     "navigation": {"label": "Navigation", "default_roles": ["admin", "director", "officer", "member", "view_only"]},
     "market": {"label": "Market", "default_roles": ["admin", "director", "officer", "member", "view_only"]},
+    "plex": {"label": "PLEX Tracker", "default_roles": ["admin", "director", "officer", "member", "view_only"]},
     "exchange": {"label": "Corporate Exchange", "default_roles": ["admin", "director", "officer", "member", "view_only"]},
     "hypernet": {"label": "HyperNet Tracker", "default_roles": ["admin", "director", "officer", "member", "view_only"]},
     "bounty_analytics": {"label": "Bounty Analytics", "default_roles": ["admin", "director", "officer", "member"]},
