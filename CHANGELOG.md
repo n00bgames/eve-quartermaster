@@ -6,6 +6,10 @@ Version sections are written as user-facing release notes first, with implementa
 
 ## [1.0.6] - Unreleased
 
+### Added
+
+- HyperNet now has Selling, Bidding, and Combined views beside the character selector. Each view shows its relevant metrics and records; Combined displays both activity groups and the combined lifetime result, with independent offer-status and bid-outcome filters. Search applies to both groups, while summary totals retain their character-wide scope. Rebuild the frontend; no migration required.
+
 ### Changed
 
 - Prepared application/API, frontend package and lockfile, Android wrapper, export metadata, README badge, and service user agents for the `1.0.6` development cycle. Android versionCode is now 24.

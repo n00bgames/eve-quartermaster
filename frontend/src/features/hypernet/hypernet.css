@@ -1,4 +1,8 @@
 .hypernet-status-refunded{background:#17212c;border-color:#607083;color:#bdc9d7}
+.hypernet-page .hypernet-summary-grid{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+.hypernet-page .hypernet-board-controls{flex-wrap:wrap;min-width:0}
+.hypernet-activity-heading{margin:8px 0 0;padding-top:12px;border-top:1px solid var(--border);color:var(--accent)}
+@media(max-width:760px){.hypernet-page .hypernet-summary-grid,.hypernet-page .hypernet-bid-analytics{grid-template-columns:1fr}.hypernet-board-controls>label{flex:1;min-width:140px}}
 .hypernet-status-market-sold{display:inline-block;white-space:nowrap;background:#172b32;border-color:#4b91a1;color:#b0e3ed}
 .hypernet-offer-card-heading .hypernet-status-market-sold{grid-column:2 / -1;justify-self:start}
 .hypernet-market-sale .hypernet-warning{flex-wrap:wrap}
