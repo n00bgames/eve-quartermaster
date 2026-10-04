@@ -559,6 +559,8 @@ def hypernet_summary(
     now = datetime.now(timezone.utc)
     active = [row for row in offers if row.status in ACTIVE_STATUSES]
     completed = [row for row in offers if row.status == "completed"]
+    retained_offers = [row for row in completed if row.winner == "seller"]
+    lost_offers = [row for row in completed if row.winner == "external"]
     expired = [row for row in offers if row.status == "expired"]
     resolved = completed + expired
     calculations = {row.id: offer_calculations(row) for row in offers}
@@ -597,6 +599,13 @@ def hypernet_summary(
         "active_seller_node_spend": sum(calculations[row.id]["seeded_scenario"]["seller_node_spend"] or 0 for row in active),
         "active_external_winner_result": sum(calculations[row.id]["seeded_scenario"]["cash_result_if_external_wins"] or 0 for row in active),
         "completed_offers": len(completed),
+        "seller_outcomes": {
+            "retained_items": sum(row.quantity for row in retained_offers),
+            "lost_items": sum(row.quantity for row in lost_offers),
+            "retained_offers": len(retained_offers),
+            "lost_offers": len(lost_offers),
+            "unknown_offers": len(completed) - len(retained_offers) - len(lost_offers),
+        },
         "expired_offers": len(expired),
         "lifetime_profit": as_number(lifetime_profit),
         "market_sold_items": sum(bool(row.market_sale) for row in expired),
@@ -652,6 +661,55 @@ def list_hypernet_offers(
         query = query.where(HyperNetOffer.created_offer_at <= to_date)
     offers = db.scalars(query.order_by(HyperNetOffer.expires_at.desc()).limit(limit)).unique().all()
     return [serialize_offer(row) for row in offers]
+
+
+@router.get("/bid-history")
+def hypernet_item_bid_history(
+    type_id: int = Query(..., gt=0),
+    character_id: int | None = None,
+    offset: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    user: User = Depends(require_hypernet), db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Whole-history totals and a bounded page, scoped to this user's exact item type."""
+    bid = HyperNetParticipation
+    filters = [bid.user_id == user.id, bid.item_type_id == type_id]
+    if character_id is not None:
+        filters.append(bid.character_id == character_id)
+
+    def subtotal(outcomes: tuple[str, ...], value: Any) -> Any:
+        return func.coalesce(func.sum(case((bid.outcome.in_(outcomes), value), else_=0)), 0)
+
+    metrics = db.execute(select(
+        func.count(bid.id).label("total_bids"),
+        subtotal(("won",), 1).label("won_bids"),
+        subtotal(("lost",), 1).label("lost_bids"),
+        subtotal(("pending",), 1).label("pending_bids"),
+        subtotal(("expired",), 1).label("expired_bids"),
+        subtotal(("cancelled",), 1).label("cancelled_bids"),
+        subtotal(("won", "lost"), bid.total_spent).label("resolved_spend"),
+        subtotal(("lost",), bid.total_spent).label("lost_spend"),
+        subtotal(("won",), bid.profit_loss).label("won_profit"),
+        subtotal(("won",), bid.item_value_at_completion).label("item_value_won"),
+        subtotal(("won", "lost"), bid.profit_loss).label("net_result"),
+        subtotal(("pending",), bid.total_spent).label("pending_spend"),
+        subtotal(("expired", "cancelled"), bid.total_spent).label("refunded_spend"),
+    ).where(*filters)).mappings().one()
+    counts = {key: int(metrics[key]) for key in (
+        "total_bids", "won_bids", "lost_bids", "pending_bids", "expired_bids", "cancelled_bids",
+    )}
+    resolved_count = counts["won_bids"] + counts["lost_bids"]
+    summary = {**counts, **{key: as_number(metrics[key]) for key in (
+        "resolved_spend", "lost_spend", "won_profit", "item_value_won", "net_result",
+        "pending_spend", "refunded_spend",
+    )},
+        "win_rate_percent": round(counts["won_bids"] / resolved_count * 100, 2) if resolved_count else None,
+        "roi_percent": round(float(metrics["net_result"] / metrics["resolved_spend"] * 100), 2) if metrics["resolved_spend"] else None,
+    }
+    rows = db.scalars(select(bid).options(*participation_options()).where(*filters)
+                      .order_by(bid.created_at.desc(), bid.id.desc()).offset(offset).limit(limit)).unique().all()
+    return {"type_id": type_id, "character_id": character_id, "summary": summary,
+            "offset": offset, "limit": limit, "history": [serialize_participation(row) for row in rows]}
 
 
 @router.get("/participations")

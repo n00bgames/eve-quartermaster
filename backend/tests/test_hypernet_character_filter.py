@@ -101,10 +101,57 @@ class HyperNetCharacterFilterTests(unittest.TestCase):
             self.assertIsNone(stats["next_expiring_offer"])
             self.assertEqual(stats["active_seller_node_spend"], 0)
             self.assertEqual(stats["active_external_winner_result"], 0)
+            self.assertEqual(stats["seller_outcomes"], {
+                "retained_items": 0, "lost_items": 0, "retained_offers": 0,
+                "lost_offers": 0, "unknown_offers": 0,
+            })
             self.assertEqual(hypernet.list_hypernet_offers(
                 seller_character_id=character, limit=100, user=self.user, db=self.db), [])
             self.assertEqual(hypernet.list_hypernet_participations(
                 character_id=character, limit=100, user=self.user, db=self.db), [])
+
+    def test_running_tallies_keep_seller_items_and_buyer_results_separate(self):
+        # Active offers must not count even if they contain a stale winner.
+        for row in self.offers:
+            row.winner = "seller" if row.seller_character_id == 1 else "external"
+            row.quantity = 3 if row.seller_character_id == 1 else 2
+        now = datetime.now(timezone.utc)
+        for status, winner in [("expired", "seller"), ("cancelled", "external"),
+                               ("awaiting_reconciliation", "seller"), ("completed", "unknown")]:
+            self.offers.append(HyperNetOffer(
+                owner_user_id=1, seller_character_id=1, type_id=1, status=status,
+                winner=winner, quantity=10, created_offer_at=now,
+                expires_at=now + timedelta(hours=1), total_offer_price=100, total_nodes=16,
+            ))
+        self.db.add_all(self.offers)
+        # A winning bid may still lose ISK; classify the draw outcome, not its profit.
+        for owner, character, outcome in [(1, 1, "won"), (1, 2, "cancelled"), (2, 3, "won")]:
+            self.db.add(HyperNetParticipation(
+                user_id=owner, character_id=character, item_type_id=1, seller_name="Seller",
+                total_nodes=8, nodes_purchased=2, node_price=50, total_spent=100,
+                outcome=outcome, profit_loss=-10 if outcome == "won" else 0,
+                item_value_at_completion=90 if outcome == "won" else None, created_at=now,
+            ))
+        self.db.commit()
+        aggregate = self.summary()
+        self.assertEqual(aggregate["seller_outcomes"], {
+            "retained_items": 3, "lost_items": 2, "retained_offers": 1,
+            "lost_offers": 1, "unknown_offers": 1,
+        })
+        self.assertEqual(aggregate["participation"]["won_bids"], 1)
+        self.assertEqual(aggregate["participation"]["lost_bids"], 2)
+        self.assertEqual(aggregate["participation"]["resolved_bids"], 3)
+        self.assertEqual(self.summary(1)["seller_outcomes"]["retained_items"], 3)
+        self.assertEqual(self.summary(1)["seller_outcomes"]["lost_items"], 0)
+        self.assertEqual(self.summary(2)["seller_outcomes"]["lost_items"], 2)
+        self.assertEqual(self.summary(2)["participation"]["won_bids"], 0)
+        # Correcting the recorded winner moves the existing items without adding a draw.
+        self.offers[1].winner = "external"
+        self.db.commit()
+        corrected = self.summary(1)["seller_outcomes"]
+        self.assertEqual(corrected["retained_items"], 0)
+        self.assertEqual(corrected["lost_items"], 3)
+        self.assertEqual(corrected["lost_offers"], 1)
 
     def test_node_research_respects_owner_and_character(self):
         for offer in self.offers:

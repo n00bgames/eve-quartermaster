@@ -8,6 +8,10 @@ Version sections are written as user-facing release notes first, with implementa
 
 ### Added
 
+- HyperNet running tallies separately show buying wins/losses and selling items retained/lost, for each selected character or All My Characters. Combined view shows both. Seller counts use completed draws and item quantities, with unknown winners excluded; pending and refunded bids do not count as buying losses. Totals follow full history regardless of board filters and update after recording or correcting outcomes. Rebuild backend and frontend together; no migration required.
+
+- HyperNet **Item bid history** shows every recorded bid for an exact item across one character or all your characters, with wins/losses, settled spending, losing stakes, winning results, total prize value, net result, pending exposure, refunds, win rate, and ROI. Open it from bid cards/tables or an offer's detail view. Totals cover the full history while records are paginated; board search/outcome filters do not restrict it. Rebuild backend and frontend together; no migration required.
+
 - HyperNet now has Selling, Bidding, and Combined views beside the character selector. Each view shows its relevant metrics and records; Combined displays both activity groups and the combined lifetime result, with independent offer-status and bid-outcome filters. Search applies to both groups, while summary totals retain their character-wide scope. Rebuild the frontend; no migration required.
 
 ### Changed

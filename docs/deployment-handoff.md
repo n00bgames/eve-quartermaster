@@ -42,6 +42,16 @@ Verify the application version, select a visible corporate station/Upwell hangar
 - Remote checkout was clean at `003f4c5` when inspected on September 11. The new PI changes have not been deployed during this handoff update; recheck current state next time.
 - GitHub publication/tagging remains separate from testing the pushed code on the remote server.
 
+## HyperNet item bid history (1.0.6 development)
+
+Rebuild backend and frontend together for the new `/api/hypernet/bid-history` endpoint and **Item bid history** window. No database migration or additional ESI scope is required. From a bid card/table or seller offer detail, open the window and select one character or All My Characters. Summary totals cover all owner-visible records for the exact item type; history pages contain up to 50 records. Pending and refunded/cancelled bids stay separate from settled spending, net result, win rate, and ROI. Winning results use recorded item valuations and do not imply cash realized from a later market sale.
+
+Verify a known item with won/lost/pending/refunded bids, switch character scope, and page through history. Board search/status/outcome filters must not narrow item-history totals.
+
+## HyperNet running outcome tallies (1.0.6 development)
+
+Rebuild backend and frontend together; no migration or new scopes. The summary now includes `seller_outcomes`: quantities retained/lost and offer counts from completed draws classified by seller/external winner, plus the count of completed offers missing a known winner. Buying uses existing won/lost bid-record counts. Selling, Bidding, and Combined show separate tallies scoped to the selected character or All My Characters. These use full history independently of board search/status filters. Seller expired/cancelled/unresolved offers are excluded, including expired items later sold on the market; item loss is not a financial-loss classification. Verify a seller-won and outside-won offer (including stacked item quantities), a corrected winner, buyer won/lost/pending/refunded records, and both character and aggregate scopes.
+
 ## Future context windows
 
 Read this document and the local `CHAT_HANDOFF.md` before deployment work. Check current Git and container state instead of treating dated snapshots as live status. The authoritative Windows publish repository remains `D:\Codex\EVE\_publish\eve-quartermaster-20260628-092452`; `D:\Codex\EVE` is a legacy tree, not an active Git repository or the running EQM server.

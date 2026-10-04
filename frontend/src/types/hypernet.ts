@@ -117,6 +117,13 @@ export type HyperNetOffer = {
 };
 
 export type HyperNetSummary = {
+  seller_outcomes: {
+    retained_items: number;
+    lost_items: number;
+    retained_offers: number;
+    lost_offers: number;
+    unknown_offers: number;
+  };
   market_sold_items?: number;
   node_positions?: HyperNetNodePositionSummary;
   active_offers: number;
@@ -185,6 +192,20 @@ export type HyperNetParticipationSummary = {
   item_value_won: number;
   realized_profit_loss: number;
   return_on_spend_percent: number | null;
+};
+
+export type HyperNetItemBidHistory = {
+  type_id: number;
+  character_id: number | null;
+  offset: number;
+  limit: number;
+  history: HyperNetParticipation[];
+  summary: {
+    total_bids: number; won_bids: number; lost_bids: number; pending_bids: number;
+    expired_bids: number; cancelled_bids: number; resolved_spend: number; lost_spend: number;
+    won_profit: number; item_value_won: number; net_result: number; pending_spend: number;
+    refunded_spend: number; win_rate_percent: number | null; roi_percent: number | null;
+  };
 };
 
 export type HyperNetMeta = {
