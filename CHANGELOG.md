@@ -4,7 +4,17 @@ All notable changes to EVE Quartermaster are tracked here.
 
 Version sections are written as user-facing release notes first, with implementation detail included where it helps operators understand deployment or testing impact.
 
-## [1.0.5] - Unreleased
+## [1.0.6] - Unreleased
+
+### Changed
+
+- Prepared application/API, frontend package and lockfile, Android wrapper, export metadata, README badge, and service user agents for the `1.0.6` development cycle. Android versionCode is now 24.
+
+### Fixed
+
+- HyperNet offer cards, offer details, and purchased-node cards now use a bundled EVE SKIN icon for item names ending in SKIN, avoiding missing thumbnails. Rebuild the frontend; no migration required.
+
+## [1.0.5] - 2026-10-03
 
 Release title: **EQM - v1.0.5 - "Moar HyperNets and PLEX Galore!" Update**
 

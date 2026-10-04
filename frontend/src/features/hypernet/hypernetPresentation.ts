@@ -1,5 +1,11 @@
 export const isk = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 });
 
+export function hypernetItemIcon(item: { type_id: number; name: string }): string {
+  return item.name.trimEnd().toUpperCase().endsWith("SKIN")
+    ? "/icons/skin.png"
+    : `https://images.evetech.net/types/${item.type_id}/icon?size=64`;
+}
+
 export function formatIsk(value?: number | null, compact = false): string {
   if (value == null || !Number.isFinite(value)) return "—";
   if (compact) return `${new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 2 }).format(value)} ISK`;
