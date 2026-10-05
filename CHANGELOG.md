@@ -4,7 +4,13 @@ All notable changes to EVE Quartermaster are tracked here.
 
 Version sections are written as user-facing release notes first, with implementation detail included where it helps operators understand deployment or testing impact.
 
-## [1.0.6] - Unreleased
+## [1.0.7] - Unreleased
+
+### Changed
+
+- Bumped application/API, frontend package and lockfile, Android wrapper, export metadata, README badge, and service user agents to `1.0.7`. Android versionCode is now 25.
+
+## [1.0.6] - 2026-10-05
 
 ### Added
 
