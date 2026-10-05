@@ -9,7 +9,7 @@ const numberFormatter = new Intl.NumberFormat();
 export function ManufacturingAnalyticsWidgets({ summary, days }: { summary: ManufacturingAnalytics; days: number }) {
   return <>
     <article id="analytics-manufacturing" className="analytics-widget manufacturing-analytics-widget analytics-category-anchor">
-      <header><Factory size={18} /><div><h4>Manufacturing Output</h4><small>{days}-day ledger | {numberFormatter.format(summary.job_count)} realized jobs</small></div></header>
+      <header><Factory size={18} /><div><h4>Manufacturing Output</h4><small>{days === 0 ? "All-Time" : `${days}-day`} ledger | {numberFormatter.format(summary.job_count)} realized jobs</small></div></header>
       <div className="manufacturing-kpi-grid">
         <ManufacturingKpi icon={<PackageCheck size={17} />} label="Items built" value={numberFormatter.format(summary.items_built)} />
         <ManufacturingKpi label="Actual cost" value={iskFormatter.format(summary.actual_cost) + " ISK"} />

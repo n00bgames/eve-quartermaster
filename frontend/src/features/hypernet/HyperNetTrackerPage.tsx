@@ -5,6 +5,7 @@ import { ModuleFinder } from "../../components/ModuleFinder";
 import { matchesSearchTerms } from "../../lib/search";
 import type { ApiClient, HyperNetMeta, HyperNetOffer, HyperNetParticipation, HyperNetSummary } from "../../types/hypernet";
 import { HyperNetItemBidHistory } from "./HyperNetItemBidHistory";
+import { HyperNetAnalytics } from "./HyperNetAnalytics";
 import { HyperNetOfferDetail } from "./HyperNetOfferDetail";
 import { HyperNetNodeResearch } from "./HyperNetNodeResearch";
 import { HyperNetOfferForm } from "./HyperNetOfferForm";
@@ -164,6 +165,7 @@ export function HyperNetTrackerPage({ api }: { api: ApiClient }) {
       setSummary(null); setOffers([]); setParticipations([]); setBusy(true);
       setCharacterId(event.target.value);
     }}><option value="">All My Characters</option>{(meta?.filter_characters ?? meta?.seller_characters ?? []).map((character) => <option key={character.id} value={character.id}>{character.name}</option>)}</select></label><span className="muted">Applies to all views. Summary totals cover the selected character’s full history; search and status filters apply to the records below.</span></div>
+    <HyperNetAnalytics api={api} characterId={characterId} refreshToken={summary} />
     {error && <div className="mini-alert">{error}</div>}
     {summary && <>
       <section className="panel hypernet-outcome-tallies" aria-label="Running outcome tallies">

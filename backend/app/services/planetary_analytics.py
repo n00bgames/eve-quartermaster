@@ -240,7 +240,8 @@ def planetary_analytics_summary(
     character_ids: set[int],
     anonymous_character_ids: set[int] | None = None,
 ) -> dict[str, Any]:
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    from app.services.analytics_period import reporting_cutoff
+    cutoff = reporting_cutoff(days)
     history = []
     all_rows = []
     if character_ids:

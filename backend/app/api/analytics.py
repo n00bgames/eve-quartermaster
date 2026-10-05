@@ -30,6 +30,7 @@ from app.services.audit import record_audit_event
 from app.services.metric_registry import METRIC_CATALOG
 from app.services.permissions import ROLE_RANK, can_view_section, role_rank
 from app.services.research_projects import RESEARCH_ACTIVITY_NAMES
+from app.services.analytics_period import reporting_cutoff
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
@@ -74,7 +75,7 @@ def aware_utc(value: datetime | None) -> datetime | None:
 
 
 def start_cutoff(days: int) -> datetime:
-    return datetime.now(timezone.utc) - timedelta(days=max(1, min(days, 3660)))
+    return reporting_cutoff(days)
 
 
 def manufacturing_analytics(db: Session, days: int) -> dict[str, Any]:
@@ -911,7 +912,7 @@ def analytics_summary_payload(
 
 @router.get("/summary")
 def analytics_summary(
-    days: int = Query(30, ge=1, le=3660),
+    days: int = Query(30, ge=0, le=3660),
     scope: str = Query("all"),
     corporation_id: int | None = Query(None),
     alliance_id: int | None = Query(None),
@@ -1057,7 +1058,7 @@ def analytics_metric_rows(db: Session, days: int) -> list[SnapshotMetric]:
     return list(db.scalars(query.order_by(SnapshotMetric.recorded_at)).all())
 
 @router.get("/exports/metrics.csv")
-def export_metrics_csv(days: int = Query(365, ge=1, le=3660), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> StreamingResponse:
+def export_metrics_csv(days: int = Query(365, ge=0, le=3660), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> StreamingResponse:
     require_analytics(current_user, db)
     rows = analytics_metric_rows(db, days)
     buffer = io.StringIO()
@@ -1070,7 +1071,7 @@ def export_metrics_csv(days: int = Query(365, ge=1, le=3660), current_user: User
 
 
 @router.get("/exports/metrics.json")
-def export_metrics_json(days: int = Query(365, ge=1, le=3660), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[dict[str, Any]]:
+def export_metrics_json(days: int = Query(365, ge=0, le=3660), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[dict[str, Any]]:
     require_analytics(current_user, db)
     rows = analytics_metric_rows(db, days)
     return [

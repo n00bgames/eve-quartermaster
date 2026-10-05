@@ -16,7 +16,7 @@ router = APIRouter(prefix="/analytics", tags=["analytics"])
 
 @router.get("/planetary-industry")
 def planetary_industry_analytics(
-    days: int = Query(30, ge=1, le=3660),
+    days: int = Query(30, ge=0, le=3660),
     scope: str = Query("all"),
     corporation_id: int | None = Query(None),
     alliance_id: int | None = Query(None),

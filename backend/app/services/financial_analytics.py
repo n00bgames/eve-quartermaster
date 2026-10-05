@@ -115,6 +115,8 @@ def account_wallet_summary(personal: list[dict[str, Any]], *, days: int) -> dict
     stats = wallet_statistics(points, current_balance=sum(balances) if balances else None)
     income = sum(row["stats"].get("income", 0) for row in personal)
     spending = sum(row["stats"].get("spending", 0) for row in personal)
+    if days == 0:
+        days = max((row.get("history_days", 1) for row in personal), default=1)
     # A global top 30 can be selected from each character's existing top 30.
     events = [
         {**event, "character_id": row["character_id"], "character_name": row["character_name"]}

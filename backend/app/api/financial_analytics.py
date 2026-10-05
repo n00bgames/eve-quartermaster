@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.api.auth import get_current_user
 from app.db.session import get_db
+from app.services.analytics_period import reporting_cutoff
 from app.models import CharacterWalletJournalEntry, CharacterWalletSnapshot, CorporationWalletDivision, CorporationWalletSnapshot, EveCharacter, EveCorporation, User
 from app.services.analytics import analytics_corporation_ids
 from app.services.financial_analytics import account_wallet_summary, combine_daily_series, corporation_daily_points, corporation_division_daily_points, daily_closing_points, distribution, wallet_statistics
@@ -183,6 +184,9 @@ def personal_wallet_payload(db: Session, character: EveCharacter, cutoff: dateti
         ).all()
     )
     now = datetime.now(timezone.utc)
+    if cutoff.year == 1:
+        observations = [row.recorded_at for row in history] + [row.occurred_at for row in journal]
+        cutoff = min((value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value for value in observations), default=now)
     current_balance = float(character.current_wallet_balance) if character.current_wallet_balance is not None else None
     calculation = evaluate_financial_analytics_with_engine(
         payload={
@@ -215,6 +219,7 @@ def personal_wallet_payload(db: Session, character: EveCharacter, cutoff: dateti
         "corporation_name": character.corporation.name if character.corporation else None,
         "wallet_synced_at": iso(character.wallet_synced_at),
         "history_opt_out": character.wallet_history_opt_out,
+        "history_days": max(1, (now - cutoff).days),
         **calculation,
     }
 
@@ -317,12 +322,12 @@ def corporation_wallet_payload(db: Session, corporation: EveCorporation, cutoff:
 
 @router.get("")
 def financial_analytics(
-    days: int = Query(30, ge=1, le=3660),
+    days: int = Query(30, ge=0, le=3660),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     require_financial_analytics(current_user, db)
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    cutoff = reporting_cutoff(days)
     personal_characters = list(
         db.scalars(
             select(EveCharacter)

@@ -61,7 +61,7 @@ function dateLabel(time: number, cadence: "day" | "week" | "month" | "quarter"):
 export function adaptiveDateTicks(minTime: number, maxTime: number, selectedDays?: number): ChartDateTick[] {
   if (minTime === maxTime) return [{ time: minTime, label: dateLabel(minTime, "day") }];
   const actualDays = Math.max(1, Math.ceil((maxTime - minTime) / 86_400_000));
-  const spanDays = selectedDays ?? actualDays;
+  const spanDays = selectedDays && selectedDays > 0 ? selectedDays : actualDays;
   const cadence: "day" | "week" | "month" | "quarter" = spanDays <= 10 ? "day" : spanDays <= 45 ? "week" : spanDays <= 120 ? "month" : "quarter";
   const ticks = [minTime];
   let cursor = utcDate(minTime);

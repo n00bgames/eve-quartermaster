@@ -65,7 +65,7 @@ export function PlanetaryAnalyticsWidget({
   return <article id="analytics-planetary" className="analytics-widget planetary-analytics-widget analytics-category-anchor">
     <header>
       <div><Factory size={18} /><div><h4>Planetary Production</h4><small>Projected extractor and routed factory output</small></div></div>
-      <span>{summary.days}-day history</span>
+      <span>{summary.days === 0 ? "All-Time" : `${summary.days}-day`} history</span>
     </header>
     <div className="planetary-analytics-kpis">
       <span><Gauge size={17} /><small>Current throughput</small><b>{compact.format(summary.cards.current_volume_per_day)} m3/day</b></span>
@@ -81,7 +81,7 @@ export function PlanetaryAnalyticsWidget({
     <div className="planetary-analytics-columns">
       <section>
         <div className="subsection-heading"><h5>Products</h5><small>Each commodity's leading producer</small></div>
-        <div className="table-wrap planetary-product-table"><table><thead><tr><th>Commodity</th><th>Tier</th><th>Current / day</th><th>{summary.days}d estimated</th><th>Top producer</th></tr></thead><tbody>
+        <div className="table-wrap planetary-product-table"><table><thead><tr><th>Commodity</th><th>Tier</th><th>Current / day</th><th>{summary.days === 0 ? "All-Time" : `${summary.days}d`} estimated</th><th>Top producer</th></tr></thead><tbody>
           {products.map((row) => <tr key={row.product_type_id} className={productId === String(row.product_type_id) ? "selected" : ""} onClick={() => setProductId(String(row.product_type_id))}><td>{row.product_name}</td><td>{row.tier}</td><td>{number.format(row.current_units_per_day)}</td><td>{number.format(row.estimated_units)}</td><td>{row.top_character ?? "Baseline pending"}</td></tr>)}
           {products.length === 0 && <tr><td colSpan={5}>No PI products have been observed for this tier.</td></tr>}
         </tbody></table></div>

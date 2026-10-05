@@ -148,6 +148,14 @@ class HyperNetParticipation(Base):
     location = relationship("Location")
 
 
+class HyperNetAnalyticsPreference(Base):
+    __tablename__ = "hypernet_analytics_preferences"
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    character_id: Mapped[int] = mapped_column(ForeignKey("eve_characters.id", ondelete="CASCADE"), primary_key=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+
 class HyperNetSetting(Base):
     __tablename__ = "hypernet_settings"
 

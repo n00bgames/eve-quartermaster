@@ -10,7 +10,7 @@ from app.models.base import Base
 from app.models.mission_atlas import EveAgent
 from app.models.esi import EsiApplication, EsiSyncJob, EsiToken
 from app.models.events import Doctrine, DoctrineFitting, DoctrineSkillPlan, Event, EventAttendanceEntry, EventCharacterRegistration, EventDoctrineRequirement, EventDoctrineRequirementOption, EventLocation, EventRoleRequirement, EventUserResponse
-from app.models.hypernet import HyperNetOffer, HyperNetOfferSnapshot, HyperNetParticipant, HyperNetParticipation, HyperNetSetting
+from app.models.hypernet import HyperNetAnalyticsPreference, HyperNetOffer, HyperNetOfferSnapshot, HyperNetParticipant, HyperNetParticipation, HyperNetSetting
 from app.models.plex import PlexMarketCache, PlexTransaction
 from app.models.eve_static import EveCategory, EveConstellation, EveDogmaAttribute, EveDogmaEffect, EveGroup, EveRegion, EveStargate, EveStation, EveSystem, EveType, EveTypeDogmaAttribute, EveTypeDogmaEffect
 from app.models.fittings import CharacterFitting, CharacterFittingItem
@@ -82,6 +82,7 @@ __all__ = [
     "EventLocation",
     "EventRoleRequirement",
     "EventUserResponse",
+    "HyperNetAnalyticsPreference",
     "HyperNetOffer",
     "HyperNetOfferSnapshot",
     "HyperNetParticipant",

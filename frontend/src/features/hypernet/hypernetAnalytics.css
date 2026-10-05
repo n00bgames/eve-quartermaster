@@ -1,0 +1,22 @@
+.hypernet-analytics-controls { display: flex; justify-content: flex-end; margin: .6rem 0; }
+.hypernet-consent-characters { display: flex; flex-wrap: wrap; gap: .8rem 1.5rem; }
+.hypernet-consent-characters label { display: flex; align-items: center; gap: .5rem; }
+.hypernet-private-analytics h4, .hypernet-private-analytics h5 { margin: 0 0 .6rem; }
+.hypernet-private-analytics h5 { font-size: .9rem; }
+.hypernet-analytics-outcomes { display: grid; gap: 1rem; }
+.hypernet-analytics-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: .6rem; }
+.hypernet-analytics-kpis article { padding: .85rem; background: var(--bg-deep, #0d151e); border-radius: .65rem; display: grid; gap: .3rem; }
+.hypernet-analytics-kpis span { font-size: .75rem; }
+.hypernet-analytics-kpis small, .hypernet-private-analytics td small { color: var(--muted, #91a7bd); font-size: .7rem; }
+.hypernet-private-analytics td small { display: block; margin-top: .3rem; }
+.hypernet-character-analytics { margin: 1rem 0; }
+.hypernet-private-analytics summary { cursor: pointer; }
+.hypernet-private-analytics table { width: 100%; }
+.hypernet-private-analytics, .hypernet-consent { min-width: 0; }
+.hypernet-private-analytics > *, .hypernet-private-analytics .section-heading > div { min-width: 0; }
+.hypernet-private-analytics .table-wrap { max-width: 100%; overflow-x: auto; }
+@media (max-width: 600px) {
+  .hypernet-private-analytics .section-heading { flex-wrap: wrap; }
+  .hypernet-analytics-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .hypernet-analytics-kpis article { padding: .6rem; overflow-wrap: anywhere; }
+}

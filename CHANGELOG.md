@@ -8,6 +8,10 @@ Version sections are written as user-facing release notes first, with implementa
 
 ### Added
 
+- Private HyperNet analytics are disabled by default, with independent character switches and account controls for enabling/disabling all current characters. Only the signed-in user can see their enabled characters' buying wins/losses, selling items retained/lost, ISK amounts, recorded returns, monthly trends, and ship/item breakdowns. Analytics are absent when disabled or when the selection has no records. Available in HyperNet Tracker and Analytics Platform; corporation/admin scopes never broaden access. Requires migration `0086_hypernet_private_analytics` and backend/frontend rebuilds. See [private HyperNet analytics](docs/hypernet-private-analytics.md).
+
+- Analytics Platform and private HyperNet analytics now offer **All-Time**, reading all retained database history without the rolling-window limit. Platform summaries, financial and planetary widgets, and metric exports support the same range; existing privacy scopes remain enforced.
+
 - HyperNet running tallies separately show buying wins/losses and selling items retained/lost, for each selected character or All My Characters. Combined view shows both. Seller counts use completed draws and item quantities, with unknown winners excluded; pending and refunded bids do not count as buying losses. Totals follow full history regardless of board filters and update after recording or correcting outcomes. Rebuild backend and frontend together; no migration required.
 
 - HyperNet **Item bid history** shows every recorded bid for an exact item across one character or all your characters, with wins/losses, settled spending, losing stakes, winning results, total prize value, net result, pending exposure, refunds, win rate, and ROI. Open it from bid cards/tables or an offer's detail view. Totals cover the full history while records are paginated; board search/outcome filters do not restrict it. Rebuild backend and frontend together; no migration required.

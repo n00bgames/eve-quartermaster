@@ -8,7 +8,7 @@ export function MiningAnalyticsWidget({ summary, days }: { summary: MiningAnalyt
   const maxVolume = Math.max(1, ...summary.top_by_volume.map((row) => row.volume));
   return <>
     <article id="analytics-mining" className="analytics-widget mining-analytics-widget analytics-category-anchor">
-      <header><Pickaxe size={18} /><div><h4>Mining Output</h4><small>{days}-day persistent ledger</small></div></header>
+      <header><Pickaxe size={18} /><div><h4>Mining Output</h4><small>{days === 0 ? "All-Time" : `${days}-day`} persistent ledger</small></div></header>
       <div className="manufacturing-kpi-grid">
         <div><span>Recovered</span><strong>{number.format(summary.recovered_volume)} m3</strong></div>
         <div><span>Gross extraction</span><strong>{number.format(summary.gross_volume)} m3</strong></div>
