@@ -165,7 +165,6 @@ export function HyperNetTrackerPage({ api }: { api: ApiClient }) {
       setSummary(null); setOffers([]); setParticipations([]); setBusy(true);
       setCharacterId(event.target.value);
     }}><option value="">All My Characters</option>{(meta?.filter_characters ?? meta?.seller_characters ?? []).map((character) => <option key={character.id} value={character.id}>{character.name}</option>)}</select></label><span className="muted">Applies to all views. Summary totals cover the selected character’s full history; search and status filters apply to the records below.</span></div>
-    <HyperNetAnalytics api={api} characterId={characterId} refreshToken={summary} />
     {error && <div className="mini-alert">{error}</div>}
     {summary && <>
       <section className="panel hypernet-outcome-tallies" aria-label="Running outcome tallies">
@@ -225,5 +224,6 @@ export function HyperNetTrackerPage({ api }: { api: ApiClient }) {
     </section>
     {showSelling && summary?.node_positions && <HyperNetNodeResearch summary={summary.node_positions} />}
     {showSelling && summary && <section className="panel hypernet-history-strip"><div><BarChart3 size={19} /><span><strong>Average completed profit</strong><small>{formatIsk(summary.average_profit_per_completed_offer)}</small></span></div><div><History size={19} /><span><strong>Average first organic node</strong><small>{summary.average_hours_to_first_node == null ? "Insufficient sample" : `${summary.average_hours_to_first_node.toFixed(1)} hours`}</small></span></div><div><Coins size={19} /><span><strong>Active HyperCore expense</strong><small>{formatIsk(summary.hypercore_cost)}</small></span></div></section>}
+    <HyperNetAnalytics api={api} characterId={characterId} refreshToken={summary} />
   </div>;
 }

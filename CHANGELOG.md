@@ -8,6 +8,7 @@ Version sections are written as user-facing release notes first, with implementa
 
 ### Changed
 
+- Moved private HyperNet analytics and its privacy controls to the bottom of HyperNet Tracker, keeping offer and bid management above them.
 - Bumped application/API, frontend package and lockfile, Android wrapper, export metadata, README badge, and service user agents to `1.0.7`. Android versionCode is now 25.
 
 ## [1.0.6] - 2026-10-05
