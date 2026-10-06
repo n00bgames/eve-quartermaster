@@ -6,7 +6,7 @@ from fastapi import HTTPException
 from PIL import Image, UnidentifiedImageError
 
 MAX_BYTES = 10 * 1024 * 1024
-MAX_PIXELS = 16_000_000
+MAX_PIXELS = 64_000_000
 
 
 def normalize_grid_reference(data: bytes) -> tuple[bytes, dict]:
@@ -15,7 +15,7 @@ def normalize_grid_reference(data: bytes) -> tuple[bytes, dict]:
     try:
         with Image.open(BytesIO(data)) as source:
             if source.format != "PNG" or source.width * source.height > MAX_PIXELS or getattr(source, "n_frames", 1) != 1:
-                raise HTTPException(400, "Upload a single PNG crop of at most 16 megapixels.")
+                raise HTTPException(400, "Upload a single PNG grid of at most 64 megapixels.")
             source.load()
             # Re-encode pixels without metadata or rescaling. Never use lossy compression.
             pixels = source.convert("RGBA" if "A" in source.getbands() or "transparency" in source.info else "RGB")

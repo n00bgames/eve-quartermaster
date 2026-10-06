@@ -127,6 +127,17 @@ def test_dimension_limit(monkeypatch):
     assert exc.value.status_code == 400
 
 
+def test_tall_stitched_grid_above_old_pixel_limit_is_lossless():
+    # A 512-node grid can exceed 16 MP without exceeding the compressed upload limit.
+    source = Image.new("RGB", (1000, 17000), (15, 37, 59))
+    out = BytesIO(); source.save(out, "PNG")
+    data, metadata = normalize_grid_reference(out.getvalue())
+    assert (metadata["width"], metadata["height"]) == source.size
+    with Image.open(BytesIO(data)) as restored:
+        assert restored.getpixel((999, 16999)) == (15, 37, 59)
+        assert restored.size == source.size
+
+
 def test_metadata_removed_without_changing_pixels():
     source = Image.new("RGBA", (5, 7), (20, 40, 60, 80))
     info = PngImagePlugin.PngInfo(); info.add_text("private", "Do not retain full screenshot metadata")

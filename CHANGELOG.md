@@ -6,6 +6,10 @@ Version sections are written as user-facing release notes first, with implementa
 
 ## [1.0.7] - Unreleased
 
+### Added
+
+- HyperNet grid references can now combine multiple screenshots uploaded together or pasted consecutively. Crop and reorder captures, detect overlapping rows, adjust uncertain joins manually, and review a combined preview with seam guides before saving a lossless PNG. Original code pixels stay at their native resolution; source captures remain in the browser. Saved grids support up to 64 megapixels for tall 512-node layouts while retaining the 10 MB upload limit and existing private access and cleanup. Rebuild backend and frontend together; no new migration. See [grid screenshot instructions](docs/hypernet-node-positions.md#temporary-grid-screenshot).
+
 ### Changed
 
 - Moved private HyperNet analytics and its privacy controls to the bottom of HyperNet Tracker, keeping offer and bid management above them.
