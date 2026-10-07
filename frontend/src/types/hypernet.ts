@@ -209,12 +209,18 @@ export type HyperNetItemBidHistory = {
 };
 
 export type HyperNetMeta = {
+  pause?: HyperNetPause;
   filter_characters?: Array<{ id: number; name: string }>;
   statuses: HyperNetStatus[];
   data_sources: Array<{ key: string; label: string; available: boolean }>;
   seller_characters: Array<{ id: number; character_id: number; name: string; portrait_url?: string | null }>;
   fee_rate: number;
   manual_only: boolean;
+};
+
+export type HyperNetPause = {
+  account_paused: boolean;
+  characters: Array<{ id: number; name: string; paused: boolean; effective_paused: boolean }>;
 };
 
 export type HyperNetTypeCandidate = { type_id: number; name: string; group?: string | null; category?: string | null };

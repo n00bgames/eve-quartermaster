@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import type { ApiClient, HyperNetLocationCandidate, HyperNetMeta, HyperNetOffer, HyperNetTypeCandidate } from "../../types/hypernet";
 import { calculateHyperNet } from "./hypernetMath";
 import { formatIsk, localInputValue, profitClass } from "./hypernetPresentation";
+import { hypernetPaused, recordingCharacters } from "./hypernetPause";
 
 
 type Draft = {
@@ -43,7 +44,8 @@ function Result({ label, value, formula, tone }: { label: string; value: string;
 }
 
 export function HyperNetOfferForm({ api, meta, onSaved, onCancel }: { api: ApiClient; meta: HyperNetMeta; onSaved: (offer: HyperNetOffer) => void; onCancel: () => void }) {
-  const [draft, setDraft] = useState<Draft>({ ...initialDraft, sellerCharacterId: meta.seller_characters[0]?.id ?? 0 });
+  const [draft, setDraft] = useState<Draft>({ ...initialDraft, sellerCharacterId: recordingCharacters(meta)[0]?.id ?? 0 });
+  const paused = hypernetPaused(meta.pause, draft.sellerCharacterId);
   const [types, setTypes] = useState<HyperNetTypeCandidate[]>([]);
   const [locations, setLocations] = useState<HyperNetLocationCandidate[]>([]);
   const [busy, setBusy] = useState(false);
@@ -69,6 +71,7 @@ export function HyperNetOfferForm({ api, meta, onSaved, onCancel }: { api: ApiCl
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError(null);
+    if (paused) { setError("HyperNet is temporarily paused for this character in EQM."); return; }
     if (!draft.typeId) { setError("Choose an item from the imported EVE type results."); return; }
     if (!draft.sellerCharacterId) { setError("Link an EVE character before recording a HyperNet offer."); return; }
     setBusy(true);
@@ -94,7 +97,7 @@ export function HyperNetOfferForm({ api, meta, onSaved, onCancel }: { api: ApiCl
       <div className="hypernet-form-layout">
         <div className="hypernet-form-fields">
           <div className="form-grid two">
-            <label>Seller character<select value={draft.sellerCharacterId} onChange={(event) => update("sellerCharacterId", Number(event.target.value))} required><option value={0}>Choose character</option>{meta.seller_characters.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
+            <label>Seller character<select value={draft.sellerCharacterId} onChange={(event) => update("sellerCharacterId", Number(event.target.value))} required><option value={0}>Choose character</option>{meta.seller_characters.map((row) => <option key={row.id} value={row.id} disabled={hypernetPaused(meta.pause, row.id)}>{row.name}{hypernetPaused(meta.pause, row.id) ? " · paused" : ""}</option>)}</select></label>
             <label className="hypernet-search-field">Item<input value={draft.itemName} onChange={(event) => setDraft((current) => ({ ...current, itemName: event.target.value, typeId: 0 }))} placeholder="Marshal" required />{types.length > 0 && <div className="hypernet-search-menu">{types.map((row) => <button type="button" key={row.type_id} onClick={() => setDraft((current) => ({ ...current, typeId: row.type_id, itemName: row.name }))}><Search size={14} /><span><strong>{row.name}</strong><small>{row.group ?? row.category ?? `Type ${row.type_id}`}</small></span></button>)}</div>}</label>
             <label>Quantity<input type="number" min="1" value={draft.quantity} onChange={(event) => update("quantity", Number(event.target.value))} required /></label>
             <label className="hypernet-search-field">Offer location<input value={draft.locationName} onChange={(event) => setDraft((current) => ({ ...current, locationName: event.target.value, locationId: null }))} placeholder="Jita IV - Moon 4" />{locations.length > 0 && <div className="hypernet-search-menu">{locations.map((row) => <button type="button" key={`${row.source}-${row.id ?? row.eve_location_id}`} onClick={() => setDraft((current) => ({ ...current, locationId: row.id ?? null, locationName: row.name }))}><span><strong>{row.name}</strong><small>{row.source === "eqm" ? "Known EQM location" : "SDE station"}</small></span></button>)}</div>}</label>
@@ -144,7 +147,8 @@ export function HyperNetOfferForm({ api, meta, onSaved, onCancel }: { api: ApiCl
         </aside>
       </div>
       {error && <div className="mini-alert">{error}</div>}
-      <div className="button-row"><button type="button" onClick={onCancel}>Cancel</button><button type="submit" disabled={busy || !draft.typeId || !draft.sellerCharacterId}><Plus size={17} /> {busy ? "Saving" : draft.status === "active" ? "Save active offer" : "Save draft"}</button></div>
+      {paused && <div role="status" className="mini-alert">New offers are paused for this character in EQM. Resume from HyperNet pause controls.</div>}
+      <div className="button-row"><button type="button" onClick={onCancel}>Cancel</button><button type="submit" disabled={busy || paused || !draft.typeId || !draft.sellerCharacterId}><Plus size={17} /> {busy ? "Saving" : draft.status === "active" ? "Save active offer" : "Save draft"}</button></div>
     </form>
   </section>;
 }

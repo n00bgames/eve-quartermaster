@@ -4,6 +4,8 @@ Open **HyperNet analytics privacy** in the HyperNet Tracker or Analytics Platfor
 
 Analytics appear only when the selected range contains non-draft offers or bids for an enabled character. Characters with no records, empty buying/selling datasets, and trends without valued results are omitted. Existing operational tracker summaries and item bid history remain available independently of these switches.
 
+[HyperNet pause controls](hypernet-pause.md) separately block new EQM bid and offer records for a character or account. Pausing keeps existing opted-in analytics available and does not change analytics consent.
+
 ## Access
 
 The server keys preferences by both authenticated user and character and restricts every query to the user's own offers and bids. There is no request parameter for another user, corporation rollup, admin override, shared snapshot, or public leaderboard. Changing the Analytics Platform's pilot/corporation/alliance selector does not change private HyperNet scope. Both preferences and analytics use `Cache-Control: private, no-store`.

@@ -8,7 +8,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from app.api import hypernet
-from app.models import Base, EsiToken, EveCharacter, HyperNetOffer, HyperNetParticipation
+from app.models import Base, EsiToken, EveCharacter, HyperNetOffer, HyperNetParticipation, HyperNetSetting, HyperNetCharacterPause
 from app.services.hypernet import offer_financials, seeded_node_scenario
 
 
@@ -18,6 +18,7 @@ class HyperNetCharacterFilterTests(unittest.TestCase):
         Base.metadata.create_all(self.engine, tables=[
             EveCharacter.__table__, EsiToken.__table__,
             HyperNetOffer.__table__, HyperNetParticipation.__table__,
+            HyperNetSetting.__table__, HyperNetCharacterPause.__table__,
         ])
         self.db = Session(self.engine, expire_on_commit=False)
         self.addCleanup(self.engine.dispose)

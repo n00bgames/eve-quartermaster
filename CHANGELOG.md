@@ -8,6 +8,8 @@ Version sections are written as user-facing release notes first, with implementa
 
 ### Added
 
+- HyperNet Tracker now has reversible account and character pause switches. Pausing blocks new bids and offers, including drafts, while keeping history, corrections, outcome updates, and opted-in analytics available. An account pause covers newly linked characters and preserves individual switches when resumed. Preferences are private to the signed-in user and enforced by the server. Apply migration `0087_hypernet_pause` and rebuild backend/frontend together. See [HyperNet pause controls](docs/hypernet-pause.md).
+
 - HyperNet grid references can now combine multiple screenshots uploaded together or pasted consecutively. Crop and reorder captures, detect overlapping rows, adjust uncertain joins manually, and review a combined preview with seam guides before saving a lossless PNG. Original code pixels stay at their native resolution; source captures remain in the browser. Saved grids support up to 64 megapixels for tall 512-node layouts while retaining the 10 MB upload limit and existing private access and cleanup. Rebuild backend and frontend together; no new migration. See [grid screenshot instructions](docs/hypernet-node-positions.md#temporary-grid-screenshot).
 
 ### Changed

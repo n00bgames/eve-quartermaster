@@ -4,7 +4,13 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator, model_validator
+
+
+class HyperNetPauseUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    paused: StrictBool
+    character_id: int | None = Field(default=None, gt=0)
 
 
 HyperNetStatus = Literal[

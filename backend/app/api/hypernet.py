@@ -6,7 +6,7 @@ from decimal import Decimal
 from statistics import mean
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
 from sqlalchemy import case, delete, func, or_, select
@@ -25,6 +25,8 @@ from app.models import (
     HyperNetOfferSnapshot,
     HyperNetParticipant,
     HyperNetParticipation,
+    HyperNetCharacterPause,
+    HyperNetSetting,
     Location,
     User,
 )
@@ -39,6 +41,7 @@ from app.schemas.hypernet import (
     HyperNetParticipationCreate,
     HyperNetParticipationPatch,
     HyperNetParticipationResolve,
+    HyperNetPauseUpdate,
 )
 from app.services.audit import record_audit_event
 from app.services.hypernet import data_source, money, offer_financials, progress_metrics, seeded_node_scenario
@@ -51,6 +54,7 @@ from app.services.permissions import can_view_section
 from app.services.hypernet_nodes import node_position_summary
 from app.services.hypernet_disposition import realized_item_result, serialize_market_sale, utc
 from app.services.hypernet_grid_reference import MAX_BYTES, normalize_grid_reference, clear_finished_grid_reference
+from app.services.hypernet_pause import lock_pause_preferences, pause_payload, require_new_hypernet_record
 
 
 router = APIRouter(prefix="/hypernet", tags=["hypernet"])
@@ -428,7 +432,39 @@ def hypernet_meta(user: User = Depends(require_hypernet), db: Session = Depends(
         "filter_characters": [{"id": row.id, "name": row.name} for row in filter_characters],
         "manual_only": True,
         "economics_engine": get_settings().eqm_hypernet_engine,
+        "pause": pause_payload(db, user),
     }
+
+
+@router.get("/pause")
+def hypernet_pause_preferences(response: Response, user: User = Depends(require_hypernet), db: Session = Depends(get_db)):
+    response.headers["Cache-Control"] = "private, no-store"
+    return pause_payload(db, user)
+
+
+@router.patch("/pause")
+def update_hypernet_pause(payload: HyperNetPauseUpdate, response: Response,
+                          user: User = Depends(require_hypernet), db: Session = Depends(get_db)):
+    if payload.character_id is not None:
+        character = db.get(EveCharacter, payload.character_id)
+        if character is None or character.owner_user_id != user.id:
+            raise HTTPException(404, "Character not found")
+    lock_pause_preferences(db, user)
+    if payload.character_id is None:
+        setting = db.get(HyperNetSetting, user.id, populate_existing=True)
+        if setting is None:
+            setting = HyperNetSetting(user_id=user.id)
+            db.add(setting)
+        setting.paused = payload.paused
+    else:
+        setting = db.get(HyperNetCharacterPause, (user.id, payload.character_id), populate_existing=True)
+        if setting is None:
+            setting = HyperNetCharacterPause(user_id=user.id, character_id=payload.character_id)
+            db.add(setting)
+        setting.paused = payload.paused
+    db.commit()
+    response.headers["Cache-Control"] = "private, no-store"
+    return pause_payload(db, user)
 
 
 @router.get("/search/types")
@@ -742,6 +778,7 @@ def create_hypernet_participation(
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     character = validate_character(db, payload.character_id, user)
+    require_new_hypernet_record(db, user, character.id)
     item_type = db.get(EveType, payload.item_type_id)
     if item_type is None:
         raise HTTPException(status_code=400, detail="Item type was not found in the imported SDE")
@@ -896,6 +933,7 @@ def create_hypernet_offer(
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     character = validate_character(db, payload.seller_character_id, user)
+    require_new_hypernet_record(db, user, character.id)
     item_type = db.get(EveType, payload.type_id)
     if item_type is None:
         raise HTTPException(status_code=400, detail="Item type was not found in the imported SDE")

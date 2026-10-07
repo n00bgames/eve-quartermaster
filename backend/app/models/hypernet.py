@@ -160,6 +160,7 @@ class HyperNetSetting(Base):
     __tablename__ = "hypernet_settings"
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    paused: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
     monthly_node_limit: Mapped[int | None] = mapped_column(Integer)
     monthly_spend_limit: Mapped[Decimal | None] = mapped_column(Numeric(24, 2))
     warning_threshold_percent: Mapped[int] = mapped_column(Integer, default=80, nullable=False)
@@ -168,3 +169,11 @@ class HyperNetSetting(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     user = relationship("User")
+
+
+class HyperNetCharacterPause(Base):
+    __tablename__ = "hypernet_character_pauses"
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    character_id: Mapped[int] = mapped_column(ForeignKey("eve_characters.id", ondelete="CASCADE"), primary_key=True)
+    paused: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)

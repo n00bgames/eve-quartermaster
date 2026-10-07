@@ -3,11 +3,12 @@ import { FormEvent, useEffect, useState } from "react";
 
 import type { ApiClient, HyperNetLocationCandidate, HyperNetMeta, HyperNetParticipation, HyperNetTypeCandidate } from "../../types/hypernet";
 import { localInputValue } from "./hypernetPresentation";
+import { hypernetPaused, recordingCharacters } from "./hypernetPause";
 
 
 export function HyperNetParticipationForm({ api, meta, bid, onSaved, onCancel }: { api: ApiClient; meta: HyperNetMeta; bid?: HyperNetParticipation; onSaved: (bid: HyperNetParticipation) => void; onCancel: () => void }) {
   const [draft, setDraft] = useState({
-    characterId: bid?.character.id ?? meta.seller_characters[0]?.id ?? 0, typeId: bid?.item.type_id ?? 0, itemName: bid?.item.name ?? "", sellerName: bid?.seller_name ?? "",
+    characterId: bid?.character.id ?? recordingCharacters(meta)[0]?.id ?? 0, typeId: bid?.item.type_id ?? 0, itemName: bid?.item.name ?? "", sellerName: bid?.seller_name ?? "",
     locationId: bid?.location.id ?? null as number | null, locationName: bid?.location.name === "Unspecified" ? "" : bid?.location.name ?? "", reference: bid?.external_offer_reference ?? "", totalNodes: bid?.total_nodes ?? 8, nodesPurchased: bid?.nodes_purchased ?? 1,
     nodePrice: bid?.node_price ?? 0, createdAt: localInputValue(bid ? new Date(bid.created_at) : new Date()), outcome: bid?.outcome ?? "pending", completedAt: bid?.completed_at ? localInputValue(new Date(bid.completed_at)) : localInputValue(new Date()), itemValue: bid?.item_value_at_completion ?? 0, notes: bid?.notes ?? "",
   });
@@ -15,6 +16,7 @@ export function HyperNetParticipationForm({ api, meta, bid, onSaved, onCancel }:
   const [locations, setLocations] = useState<HyperNetLocationCandidate[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const paused = !bid && hypernetPaused(meta.pause, draft.characterId);
   const update = <K extends keyof typeof draft>(key: K, value: (typeof draft)[K]) => setDraft((current) => ({ ...current, [key]: value }));
 
   useEffect(() => {
@@ -31,6 +33,7 @@ export function HyperNetParticipationForm({ api, meta, bid, onSaved, onCancel }:
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError(null);
+    if (paused) { setError("HyperNet is temporarily paused for this character in EQM."); return; }
     if (!draft.typeId) { setError("Choose an item from the imported EVE type results."); return; }
     if (draft.nodesPurchased > draft.totalNodes) { setError("Nodes purchased cannot exceed total nodes."); return; }
     setBusy(true);
@@ -56,7 +59,7 @@ export function HyperNetParticipationForm({ api, meta, bid, onSaved, onCancel }:
     <form onSubmit={submit}>
       <div className="hypernet-form-fields">
         <div className="form-grid three">
-          <label>Buyer character<select value={draft.characterId} onChange={(event) => update("characterId", Number(event.target.value))} required><option value={0}>Choose character</option>{meta.seller_characters.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
+          <label>Buyer character<select value={draft.characterId} onChange={(event) => update("characterId", Number(event.target.value))} required><option value={0}>Choose character</option>{meta.seller_characters.map((row) => <option key={row.id} value={row.id} disabled={!bid && hypernetPaused(meta.pause, row.id)}>{row.name}{!bid && hypernetPaused(meta.pause, row.id) ? " · paused" : ""}</option>)}</select></label>
           <label className="hypernet-search-field">Item<input value={draft.itemName} onChange={(event) => setDraft((current) => ({ ...current, itemName: event.target.value, typeId: 0 }))} placeholder="Nyx" required />{types.length > 0 && <div className="hypernet-search-menu">{types.map((row) => <button type="button" key={row.type_id} onClick={() => setDraft((current) => ({ ...current, typeId: row.type_id, itemName: row.name }))}><Search size={14} /><span><strong>{row.name}</strong><small>{row.group ?? row.category}</small></span></button>)}</div>}</label>
           <label>Offer seller<input value={draft.sellerName} onChange={(event) => update("sellerName", event.target.value)} required /></label>
           <label className="hypernet-search-field">Location<input value={draft.locationName} onChange={(event) => setDraft((current) => ({ ...current, locationName: event.target.value, locationId: null }))} />{locations.length > 0 && <div className="hypernet-search-menu">{locations.map((row) => <button type="button" key={`${row.source}-${row.id ?? row.eve_location_id}`} onClick={() => setDraft((current) => ({ ...current, locationId: row.id ?? null, locationName: row.name }))}><span><strong>{row.name}</strong><small>{row.source}</small></span></button>)}</div>}</label>
@@ -74,7 +77,8 @@ export function HyperNetParticipationForm({ api, meta, bid, onSaved, onCancel }:
         <label>Notes<textarea rows={4} value={draft.notes} onChange={(event) => update("notes", event.target.value)} /></label>
       </div>
       {error && <div className="mini-alert">{error}</div>}
-      <div className="button-row"><button type="button" onClick={onCancel}>Cancel</button><button type="submit" disabled={busy || !draft.typeId || !draft.characterId}><Plus size={17} /> {busy ? "Saving" : bid ? "Save corrections" : "Record bid"}</button></div>
+      {paused && <div role="status" className="mini-alert">New bids are paused for this character in EQM. Resume from HyperNet pause controls.</div>}
+      <div className="button-row"><button type="button" onClick={onCancel}>Cancel</button><button type="submit" disabled={busy || paused || !draft.typeId || !draft.characterId}><Plus size={17} /> {busy ? "Saving" : bid ? "Save corrections" : "Record bid"}</button></div>
     </form>
   </section>;
 }
