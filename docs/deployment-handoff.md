@@ -78,3 +78,18 @@ After deployment, open an offer, mark seeded positions and a winner, save, and r
 ## HyperNet temporary grid references (October 3, 2026)
 
 Rebuild backend and frontend together. Migration `0085_hypernet_grid_reference` follows `0084_hypernet_market_sale` and adds nullable metadata and PNG byte columns to offers. Backend requirements add Pillow 12.3.0. Existing offers need no image or backfill. The frontend Nginx API location now allows 10 MB request bodies; any outer reverse proxy must also allow 10 MB image uploads. Images are privately stored in the database, fetched on demand, and deleted transactionally once the offer is completed and its winning position is saved. No external OCR, image service, or upload directory is required. See [node tracking](hypernet-node-positions.md).
+
+## Fleet Assignments (1.0.7 development)
+
+Apply **0088_fleet_assignments** after 0087 and rebuild backend/frontend together.
+No additional runtime dependencies or ESI scopes. The new **Fleet Assignments**
+section defaults to ordinary member/view-only access; only Officer-and-above
+roles can plan. Test create → add fitting → paste roster → multi-select/drag →
+publish, then open the personal URL as two different member accounts. Each must
+receive only assignments for its own currently linked characters. Confirm drafts,
+archives, unresolved names, revoked links, and unrelated operation IDs do not
+expose a roster. Save/load a preset and verify the new fleet has no pilots.
+See [Fleet Assignments](fleet-assignments.md) for the access contract and future
+Alliance Auth adapter boundary. Engagement outcomes/analytics are not part of
+this first increment. This change has been implemented and tested locally;
+remote installation and FRONT's AA integration remain separate steps.

@@ -1,3 +1,4 @@
+from app.api.fleet_assignments import router as fleet_assignments_router
 from fastapi import APIRouter
 from app.api.mission_atlas import router as mission_atlas_router
 from app.api.pi_planner import router as pi_planner_router
@@ -86,3 +87,5 @@ api_router.include_router(character_standings_router)
 api_router.include_router(doctrines_router)
 api_router.include_router(skill_plans_router)
 api_router.include_router(srp_router)
+
+api_router.include_router(fleet_assignments_router)

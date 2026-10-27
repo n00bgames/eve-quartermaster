@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.api import hypernet
 from app.models import Base, EsiToken, EveCharacter, EveType, HyperNetOffer, HyperNetOfferSnapshot, HyperNetParticipant, Location
-from app.schemas.hypernet import HyperNetOfferPatch
+from app.schemas.hypernet import HyperNetOfferPatch, HyperNetSnapshotCreate
 
 
 class HyperNetOfferEditTests(unittest.TestCase):
@@ -69,6 +69,53 @@ class HyperNetOfferEditTests(unittest.TestCase):
         self.offer.status = "awaiting_reconciliation"
         self.edit(total_nodes=16)
         self.assertEqual(self.offer.status, "active")
+
+    def progress(self, nodes, minutes=1):
+        return hypernet.add_hypernet_snapshot(self.offer.id, HyperNetSnapshotCreate(
+            captured_at=self.now + timedelta(minutes=minutes), nodes_sold=nodes,
+            seller_owned_nodes=nodes, unique_participants=1,
+            participants=[{"participant_name": "Seller", "nodes_owned": nodes, "is_seller": True}],
+        ), self.user, self.db)
+
+    def test_correcting_eight_seeded_to_four_restores_active(self):
+        self.offer.status = "awaiting_reconciliation"
+        self.progress(4)
+        self.assertEqual(self.offer.status, "active")
+        self.assertEqual(self.offer.total_nodes, 8)
+        self.assertEqual(self.offer.nodes_sold, 4)
+        self.assertEqual(self.offer.seller_owned_nodes, 4)
+        self.assertEqual(self.offer.participants[0].nodes_owned, 4)
+        self.assertIsNone(self.offer.reconciled_at)
+        self.assertIsNone(self.offer.final_profit)
+        self.assertEqual(self.offer.snapshots[0].nodes_sold, 8)  # preserve the original observation
+        self.assertEqual(self.audit.call_args.kwargs["event_kind"], "hypernet_offer_snapshot")
+        self.progress(8, minutes=2)
+        self.assertEqual(self.offer.status, "awaiting_reconciliation")
+
+    def test_partial_progress_preserves_draft_and_active_statuses(self):
+        for status in ["draft", "active"]:
+            with self.subTest(status=status):
+                self.offer.status = status
+                self.progress(4)
+                self.assertEqual(self.offer.status, status)
+
+    def test_ended_offers_cannot_be_reopened_by_progress_corrections(self):
+        for status in ["completed", "expired", "cancelled", "invalid"]:
+            with self.subTest(status=status):
+                self.offer.status = status
+                with self.assertRaises(HTTPException) as caught:
+                    self.progress(4)
+                self.assertEqual(caught.exception.status_code, 409)
+                self.assertEqual(self.offer.status, status)
+                self.assertEqual(self.offer.nodes_sold, 8)
+
+    def test_invalid_progress_does_not_clear_awaiting_reconciliation(self):
+        self.offer.status = "awaiting_reconciliation"
+        with self.assertRaises(HTTPException) as caught:
+            self.progress(9)
+        self.assertEqual(caught.exception.status_code, 400)
+        self.assertEqual(self.offer.status, "awaiting_reconciliation")
+        self.assertEqual(self.offer.nodes_sold, 8)
 
     def test_reducing_capacity_to_sold_count_requires_reconciliation(self):
         self.offer.total_nodes = 16

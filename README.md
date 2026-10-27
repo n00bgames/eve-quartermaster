@@ -60,6 +60,7 @@ See [CHANGELOG.md](CHANGELOG.md) for version-by-version release notes.
 - Character Skills CSV/JSON exports include visible profiles and queues; EVE UTC and local clocks appear in the top bar.
 - Configurable Recruiting workspace with a public corporation page, applicant accounts, limited-scope EVE verification, recruiter review queues, interviews, audited decisions, and capability-based staff access.
 - Calendar and Events workspace with month and upcoming views, local/EVE time presentation, RSVPs, multi-character fleet registration, doctrine and role planning, manager-only composition, post-event attendance, walk-in recording, and participation analytics.
+- [Fleet Assignments](docs/fleet-assignments.md) with composition presets, pasted rosters, fitting snapshots, multi-select drag-and-drop planning, and authenticated personal assignment links.
 - Doctrine Management with operator-configurable priority fields, canonical fittings, optional readiness plans, historical fit snapshots, and safe archival.
 - Skill Plans integrated into Character Skills, including editable SDE-dogma-derived minimum requirements, recursive prerequisites, per-item provenance, deduplication, ordering, and character progress.
 - Ship Replacement Program instances with generated intake links, EQM character ownership checks, doctrine or general fittings, exact timezone-aware loss recording, immutable historical snapshots, append-only review history, precise valuation/reimbursement fields, and permission-filtered analytics and CSV exports.

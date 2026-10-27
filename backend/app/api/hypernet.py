@@ -611,7 +611,7 @@ def hypernet_summary(
         if calculations[row.id]["progress"]["hours_to_first_organic_node"] is not None
     ]
     lifetime_profit = sum((realized_item_result(row) for row in resolved), Decimal("0"))
-    completed_profit = sum((row.final_profit or Decimal("0")) for row in completed)
+    completed_profit = sum((realized_item_result(row) for row in completed), Decimal("0"))
     next_expiring = min(active, key=lambda row: row.expires_at, default=None)
     pending_bids = [row for row in participations if row.outcome == "pending"]
     # Refunded expired/cancelled bids stay in history, outside exposure and performance metrics.
@@ -644,7 +644,7 @@ def hypernet_summary(
         },
         "expired_offers": len(expired),
         "lifetime_profit": as_number(lifetime_profit),
-        "market_sold_items": sum(bool(row.market_sale) for row in expired),
+        "market_sold_items": sum(bool(row.market_sale) for row in resolved),
         "average_profit_per_completed_offer": as_number(completed_profit / len(completed)) if completed else None,
         "completion_rate_percent": round(len(completed) / len(resolved) * 100, 2) if resolved else None,
         "average_hours_to_first_node": mean(first_sale_hours) if first_sale_hours else None,
@@ -1183,6 +1183,8 @@ def add_hypernet_snapshot(
     offer.unique_participants = payload.unique_participants
     if offer.nodes_sold == offer.total_nodes:
         offer.status = "awaiting_reconciliation"
+    elif offer.status == "awaiting_reconciliation":
+        offer.status = "active"
     if payload.participants:
         submitted_names = {entry.participant_name.strip().casefold() for entry in payload.participants}
         db.execute(
@@ -1221,11 +1223,11 @@ def record_hypernet_market_sale(
     offer_id: int, payload: HyperNetMarketSaleInput,
     user: User = Depends(require_hypernet), db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    offer = owned_offer(db, offer_id, user)
-    if offer.status != "expired":
-        raise HTTPException(409, "Record expiration before adding a market sale")
+    offer = owned_offer(db, offer_id, user, lock=True)
+    if offer.status != "expired" and not (offer.status == "completed" and offer.winner == "seller"):
+        raise HTTPException(409, "Record expiration or completion with the seller winning the item back before adding a market sale")
     if utc(payload.sold_at) < utc(offer.reconciled_at or offer.created_offer_at):
-        raise HTTPException(400, "Market sale time cannot precede the recorded expiration")
+        raise HTTPException(400, "Market sale time cannot precede the recorded offer outcome")
     if utc(payload.sold_at) > datetime.now(timezone.utc):
         raise HTTPException(400, "Record a completed sale, not a future market order")
     before = offer.market_sale
@@ -1241,9 +1243,9 @@ def record_hypernet_market_sale(
 def remove_hypernet_market_sale(
     offer_id: int, user: User = Depends(require_hypernet), db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    offer = owned_offer(db, offer_id, user)
-    if offer.status != "expired":
-        raise HTTPException(409, "Only expired offers can have a market sale removed")
+    offer = owned_offer(db, offer_id, user, lock=True)
+    if offer.status != "expired" and not (offer.status == "completed" and offer.winner == "seller"):
+        raise HTTPException(409, "Only expired or seller-won offers can have a market sale removed")
     before = offer.market_sale
     offer.market_sale = None
     offer.item_outcome = "retained"
@@ -1293,7 +1295,9 @@ def apply_hypernet_reconciliation(
     if utc(payload.reconciled_at) < utc(offer.created_offer_at):
         raise HTTPException(status_code=400, detail="Reconciliation time cannot precede offer creation")
     if offer.market_sale and utc(payload.reconciled_at) > utc(datetime.fromisoformat(offer.market_sale["sold_at"])):
-        raise HTTPException(400, "Recorded expiration cannot follow the market sale; correct the sale time first")
+        raise HTTPException(400, "Recorded offer outcome cannot follow the market sale; correct the sale time first")
+    if offer.market_sale and payload.status == "completed" and payload.winner != "seller":
+        raise HTTPException(400, "Remove the recorded market sale before changing the winner to an external participant")
     before = {field: str(getattr(offer, field)) for field in (
         "acquisition_cost", "payout", "actual_hypercore_cost", "final_market_value",
         "final_profit", "winner", "seller_owned_nodes", "unique_participants", "reconciled_at",

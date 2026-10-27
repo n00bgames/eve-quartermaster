@@ -18,6 +18,7 @@ ROLE_LABELS: dict[str, str] = {
 }
 
 SECTION_DEFINITIONS: dict[str, dict[str, object]] = {
+    "fleet_assignments": {"label": "Fleet Assignments", "default_roles": ["admin", "director", "officer", "member", "view_only"]},
     "overview": {"label": "Overview", "default_roles": ["admin", "director", "officer", "member", "view_only"]},
     "ownership": {"label": "Ownership", "default_roles": ["admin", "director", "officer"]},
     "characters": {"label": "Characters", "default_roles": ["admin", "director", "officer", "member", "view_only"]},

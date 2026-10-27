@@ -8,9 +8,17 @@ Version sections are written as user-facing release notes first, with implementa
 
 ### Added
 
+- **Fleet Assignments** adds composition presets, character/doctrine fitting snapshots, pasted fleet roster resolution, multi-select mouse/touch drag-and-drop, keyboard/button assignment controls, and authenticated personal assignment links. Published member views are filtered by current verified character ownership, with no staff override. Revision checks protect concurrent edits and audit history retains assignment changes. Apply migration `0088_fleet_assignments` and rebuild backend/frontend together. Includes a framework-independent boundary for a future Alliance Auth adapter; engagement outcomes and analytics follow in a later increment. See [Fleet Assignments](docs/fleet-assignments.md).
+
+- Completed HyperNet offers where the seller won the item back now provide **Mark won-back item as sold**. Enter the actual sale and fees to calculate one combined lifecycle result from HyperNet payout and sale proceeds, deducting seeded nodes, acquisition, and HyperCores once. Cards, summaries, completed-offer averages, and private analytics use the result in place of the old retained valuation or manual result. Sales can be corrected or removed; externally won items cannot be sold through this action. Existing expired-offer sales remain supported. Rebuild backend/frontend together; no new migration. See [market dispositions](docs/hypernet-market-disposition.md).
+
 - HyperNet Tracker now has reversible account and character pause switches. Pausing blocks new bids and offers, including drafts, while keeping history, corrections, outcome updates, and opted-in analytics available. An account pause covers newly linked characters and preserves individual switches when resumed. Preferences are private to the signed-in user and enforced by the server. Apply migration `0087_hypernet_pause` and rebuild backend/frontend together. See [HyperNet pause controls](docs/hypernet-pause.md).
 
 - HyperNet grid references can now combine multiple screenshots uploaded together or pasted consecutively. Crop and reorder captures, detect overlapping rows, adjust uncertain joins manually, and review a combined preview with seam guides before saving a lossless PNG. Original code pixels stay at their native resolution; source captures remain in the browser. Saved grids support up to 64 megapixels for tall 512-node layouts while retaining the 10 MB upload limit and existing private access and cleanup. Rebuild backend and frontend together; no new migration. See [grid screenshot instructions](docs/hypernet-node-positions.md#temporary-grid-screenshot).
+
+### Fixed
+
+- Correcting HyperNet progress below the total node count now returns an unresolved **Awaiting reconciliation** offer to **Active**. This fixes mistaken full-grid entries such as 8/8 seeded nodes corrected to 4/8. Historical observations remain recorded; reconciled offers cannot be reopened by progress updates. No migration or frontend change required; rebuild the backend.
 
 ### Changed
 

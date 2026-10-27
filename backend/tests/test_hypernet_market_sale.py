@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.api import hypernet
 from app.models import Base, EveType, EveCharacter, Location, HyperNetOffer, HyperNetParticipant, HyperNetOfferSnapshot, HyperNetParticipation
 from app.schemas.hypernet import HyperNetMarketSaleInput, HyperNetReconcileRequest
+from app.services.hypernet_disposition import utc
 
 
 @pytest.fixture
@@ -77,7 +78,7 @@ def test_edit_replaces_sale_and_remove_restores_expired_result(fixture):
 def test_cost_corrections_recalculate_lifecycle_and_keep_sale(fixture):
     f = fixture
     save(f)
-    payload = HyperNetReconcileRequest(status="expired", reconciled_at=f.offer.reconciled_at,
+    payload = HyperNetReconcileRequest(status="expired", reconciled_at=utc(f.offer.reconciled_at),
         acquisition_cost=750000000, actual_hypercore_cost=40000000, final_profit=0)
     result = hypernet.edit_hypernet_reconciliation(f.offer.id, payload, f.user, f.db)
     assert result["final_profit"] == 0
@@ -90,7 +91,7 @@ def test_dates_validate_before_mutation_and_preserve_existing_sale(fixture):
     f = fixture
     save(f)
     original = f.offer.market_sale.copy()
-    for date in [f.now + timedelta(days=1), f.offer.reconciled_at - timedelta(seconds=1)]:
+    for date in [f.now + timedelta(days=1), utc(f.offer.reconciled_at) - timedelta(seconds=1)]:
         with pytest.raises(HTTPException) as exc:
             save(f, sold_at=date, gross_proceeds=1)
         assert exc.value.status_code == 400
@@ -103,7 +104,7 @@ def test_dates_validate_before_mutation_and_preserve_existing_sale(fixture):
 
 
 @pytest.mark.parametrize("status", ["active", "draft", "completed", "cancelled", "invalid", "awaiting_reconciliation"])
-def test_only_expired_items_can_be_disposed(fixture, status):
+def test_unresolved_or_non_seller_won_items_cannot_be_disposed(fixture, status):
     f = fixture; f.offer.status = status
     with pytest.raises(HTTPException) as exc:
         save(f)
@@ -112,6 +113,88 @@ def test_only_expired_items_can_be_disposed(fixture, status):
         hypernet.remove_hypernet_market_sale(f.offer.id, f.user, f.db)
     assert f.offer.market_sale is None
     f.audit.assert_not_called()
+
+
+def seller_won(f):
+    f.offer.status = "completed"
+    f.offer.winner = "seller"
+    f.offer.nodes_sold = f.offer.total_nodes = 16
+    f.offer.seller_owned_nodes = 4
+    f.offer.total_offer_price = Decimal("1000")
+    f.offer.payout = Decimal("900")  # use the actual payout, not the estimate
+    f.offer.acquisition_cost = Decimal("200")
+    f.offer.actual_hypercore_cost = Decimal("43")
+    f.offer.final_market_value = Decimal("10000")
+    f.offer.final_profit = Decimal("99999")  # manual override may already include a sale
+    f.db.commit()
+
+
+@pytest.mark.parametrize("payout,expected", [(Decimal("900"), 1257), (None, 1307)])
+def test_won_back_sale_counts_cash_costs_once_and_replaces_valuation(fixture, payout, expected):
+    f = fixture
+    seller_won(f)
+    f.offer.payout = payout
+    result = save(f, gross_proceeds=1000, sales_tax=100, broker_fee=30, other_fees=20)
+    disposition = result["market_sale"]
+    assert disposition["net_proceeds"] == 850
+    assert disposition["hypernet_payout"] == (900 if payout is not None else 950)
+    assert disposition["seeded_node_spend"] == 250
+    assert disposition["lifecycle_profit"] == expected
+    assert result["status"] == "completed" and result["winner"] == "seller"
+    assert result["item_outcome"] == "market_sold" and result["final_profit"] == 99999
+    stats = summary(f)
+    assert stats["lifetime_profit"] == stats["combined_lifetime_result"] == expected
+    assert stats["average_profit_per_completed_offer"] == expected
+    assert stats["completed_offers"] == stats["market_sold_items"] == 1
+    assert stats["seller_outcomes"]["retained_offers"] == 1  # original draw outcome remains
+
+
+def test_won_back_sale_edit_correction_and_removal(fixture):
+    f = fixture
+    seller_won(f)
+    save(f, gross_proceeds=1000, sales_tax=100, broker_fee=30, other_fees=20)
+    edited = save(f, gross_proceeds=1000, sales_tax=150, broker_fee=30, other_fees=20)
+    assert edited["market_sale"]["lifecycle_profit"] == 1207
+    payload = HyperNetReconcileRequest(status="completed", winner="seller", reconciled_at=utc(f.offer.reconciled_at),
+        acquisition_cost=150, actual_hypercore_cost=40, final_payout=800, seller_owned_nodes=8, final_profit=123)
+    updated = hypernet.edit_hypernet_reconciliation(f.offer.id, payload, f.user, f.db)
+    assert updated["market_sale"]["lifecycle_profit"] == 910
+    assert updated["item_outcome"] == "market_sold"
+    f.db.expire_all()  # SQLite strips timezone offsets; reload both timestamps consistently.
+    assert summary(f)["lifetime_profit"] == 910
+    removed = hypernet.remove_hypernet_market_sale(f.offer.id, f.user, f.db)
+    assert removed["market_sale"] is None and removed["item_outcome"] == "retained"
+    assert summary(f)["lifetime_profit"] == 123
+    assert summary(f)["market_sold_items"] == 0
+
+
+def test_won_back_sale_blocks_incompatible_corrections_and_bad_dates(fixture):
+    f = fixture
+    seller_won(f)
+    save(f)
+    for payload in [
+        HyperNetReconcileRequest(status="completed", winner="external", reconciled_at=utc(f.offer.reconciled_at), acquisition_cost=1),
+        HyperNetReconcileRequest(status="completed", winner="seller", reconciled_at=f.now, acquisition_cost=1),
+    ]:
+        with pytest.raises(HTTPException) as exc:
+            hypernet.edit_hypernet_reconciliation(f.offer.id, payload, f.user, f.db)
+        assert exc.value.status_code == 400
+        assert f.offer.winner == "seller" and f.offer.acquisition_cost == 200
+    for sold_at in [f.now + timedelta(days=1), utc(f.offer.reconciled_at) - timedelta(seconds=1)]:
+        with pytest.raises(HTTPException) as exc:
+            save(f, sold_at=sold_at)
+        assert exc.value.status_code == 400
+
+
+@pytest.mark.parametrize("winner", ["external", "unknown"])
+def test_completed_winner_must_be_seller(fixture, winner):
+    f = fixture
+    seller_won(f)
+    f.offer.winner = winner
+    with pytest.raises(HTTPException) as exc:
+        save(f)
+    assert exc.value.status_code == 409
+    assert f.offer.market_sale is None
 
 
 def test_owner_and_character_isolation(fixture):

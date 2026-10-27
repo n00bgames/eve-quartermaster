@@ -1,3 +1,4 @@
+from app.models.fleet_assignments import FleetAssignmentOperation, FleetAssignmentPilot, FleetAssignmentPreset
 from app.models.analytics import BlueprintSnapshot, CharacterSkillSnapshot, CorporationSnapshot, CorporationWalletSnapshot, SnapshotMetric, SnapshotRun
 from app.models.wallet import CharacterWalletJournalEntry, CharacterWalletSnapshot
 from app.models.system_objects import EveSystemObject, NavigationStructure, SystemObjectSync
@@ -34,6 +35,7 @@ from app.models.skills import CharacterSkill, CharacterSkillQueueEntry
 from app.models.standings import CharacterStanding
 
 __all__ = [
+    "FleetAssignmentOperation", "FleetAssignmentPilot", "FleetAssignmentPreset",
     "PlexMarketCache",
     "PlexTransaction",
     "PiPlanningJob",

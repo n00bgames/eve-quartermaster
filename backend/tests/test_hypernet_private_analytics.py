@@ -169,6 +169,29 @@ def test_reconciliation_changes_and_market_dispositions_are_not_double_counted(d
     assert result["selling"]["recorded_result"] == 25.25 + 86  # sale replaces the old result
 
 
+def test_seller_won_market_sale_replaces_valuation_in_private_totals_and_trend(data):
+    client, db, user = data
+    enable(client, 1)
+    offer = db.query(HyperNetOffer).filter_by(owner_user_id=1, seller_character_id=1, type_id=10, status="completed").one()
+    offer.acquisition_cost = Decimal("20")
+    offer.actual_hypercore_cost = Decimal("5")
+    offer.payout = Decimal("180")
+    offer.final_market_value = Decimal("9999")
+    offer.final_profit = Decimal("99999")
+    offer.market_sale = {"gross_proceeds": "100", "sales_tax": "5", "broker_fee": "2", "other_fees": "0",
+                         "sold_at": datetime.now(timezone.utc).isoformat()}
+    offer.item_outcome = "market_sold"
+    db.commit()
+    # 180 payout + 93 net sale - 50 seeded - 20 acquisition - 5 cores = 198.
+    result = client.get("/hypernet/analytics?days=0").json()
+    assert result["selling"]["recorded_result"] == 198 - 10
+    assert result["selling"]["completed"] == 2
+    assert result["selling"]["retained"] == 3
+    assert result["characters"][0]["selling"]["recorded_result"] == 188
+    assert sum(row["selling"] for row in result["monthly_results"]) == 188
+    assert next(row for row in result["items"] if row["type_id"] == 10)["selling"]["recorded_result"] == 198
+
+
 def test_migration_preserves_history_and_defaults_disabled():
     path = Path(__file__).parents[1] / "alembic/versions/0086_hypernet_private_analytics.py"
     spec = importlib.util.spec_from_file_location("migration86", path)

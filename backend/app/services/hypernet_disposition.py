@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from app.services.hypernet import money
+from app.services.hypernet import FEE_RATE, money
 
 
 def utc(value: datetime) -> datetime:
@@ -9,7 +9,7 @@ def utc(value: datetime) -> datetime:
 
 
 def market_sale_values(offer):
-    """An expired listing and its eventual sale form one realized item result."""
+    """An ended listing and its retained item's sale form one cash result."""
     sale = offer.market_sale
     if not sale:
         return None
@@ -19,9 +19,13 @@ def market_sale_values(offer):
     other = Decimal(sale["other_fees"])
     cores = offer.actual_hypercore_cost if offer.actual_hypercore_cost is not None else offer.hypercores_required * offer.hypercore_unit_cost
     net = money(gross - tax - broker - other)
+    completed = offer.status == "completed"
+    payout = money(offer.payout if offer.payout is not None else offer.total_offer_price * (Decimal("1") - FEE_RATE)) if completed else Decimal("0")
+    seeded = money(offer.seller_owned_nodes * (offer.total_offer_price / offer.total_nodes)) if completed else Decimal("0")
     return {"gross_proceeds": gross, "sales_tax": tax, "broker_fee": broker, "other_fees": other,
             "net_proceeds": net, "acquisition_cost": money(offer.acquisition_cost), "hypercore_cost": money(cores),
-            "lifecycle_profit": money(net - offer.acquisition_cost - cores)}
+            "hypernet_payout": payout, "seeded_node_spend": seeded,
+            "lifecycle_profit": money(payout + net - offer.acquisition_cost - cores - seeded)}
 
 
 def serialize_market_sale(offer):

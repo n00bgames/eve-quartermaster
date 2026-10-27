@@ -153,6 +153,7 @@ export type HyperNetSummary = {
 export type HyperNetMarketSale = {
   sold_at: string; gross_proceeds: number; sales_tax: number; broker_fee: number; other_fees: number;
   note?: string | null; net_proceeds: number; acquisition_cost: number; hypercore_cost: number; lifecycle_profit: number;
+  hypernet_payout: number; seeded_node_spend: number;
 };
 
 export type HyperNetParticipationOutcome = "pending" | "won" | "lost" | "expired" | "cancelled";
