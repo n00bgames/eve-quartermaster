@@ -301,7 +301,9 @@ def test_migration_round_trip_and_single_head():
             module.upgrade()
     config = Config()
     config.set_main_option("script_location", str(path.parents[1]))
-    assert ScriptDirectory.from_config(config).get_heads() == ["0088_fleet_assignments"]
+    script = ScriptDirectory.from_config(config)
+    assert len(script.get_heads()) == 1
+    assert script.get_revision("0088_fleet_assignments") is not None
 
 
 def test_real_authentication_and_elevated_claim_cannot_bypass_isolation(fleet):

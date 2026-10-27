@@ -93,3 +93,7 @@ See [Fleet Assignments](fleet-assignments.md) for the access contract and future
 Alliance Auth adapter boundary. Engagement outcomes/analytics are not part of
 this first increment. This change has been implemented and tested locally;
 remote installation and FRONT's AA integration remain separate steps.
+
+## Intel Reports (1.0.7 development)
+
+Apply migration `0089_intel_reports` after `0088_fleet_assignments` and rebuild backend/frontend together. The backend lifespan starts a database-leased public collector with resumable cursors and bounded retries. No new required secrets/scopes. Open Fleet & Community → Intel Reports as an authorized officer/director/admin/host; member recruiters also need section permission. Check an outsider character/corp/alliance without enrolling it, a page-limited collection, date-filtered systems/associates/evidence, profile history, and authorized versus denied private ESI. Private enrichment must not appear in the shared report response. Public ESI/zKill outages and partial coverage must stay visible. See [usage, retention, limits, and Alliance Auth boundary](intel-reports.md). This change has not been deployed.

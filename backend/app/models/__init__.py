@@ -1,3 +1,4 @@
+from app.models.intel import IntelSubject, IntelCollection, IntelObservation, IntelSourceCache, IntelNote
 from app.models.fleet_assignments import FleetAssignmentOperation, FleetAssignmentPilot, FleetAssignmentPreset
 from app.models.analytics import BlueprintSnapshot, CharacterSkillSnapshot, CorporationSnapshot, CorporationWalletSnapshot, SnapshotMetric, SnapshotRun
 from app.models.wallet import CharacterWalletJournalEntry, CharacterWalletSnapshot
@@ -35,6 +36,7 @@ from app.models.skills import CharacterSkill, CharacterSkillQueueEntry
 from app.models.standings import CharacterStanding
 
 __all__ = [
+    "IntelSubject", "IntelCollection", "IntelObservation", "IntelSourceCache", "IntelNote",
     "FleetAssignmentOperation", "FleetAssignmentPilot", "FleetAssignmentPreset",
     "PlexMarketCache",
     "PlexTransaction",

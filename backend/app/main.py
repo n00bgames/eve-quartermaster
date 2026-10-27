@@ -13,10 +13,14 @@ settings = get_settings()
 async def lifespan(_: FastAPI):
     from app.api.esi import resume_pending_contact_sync_jobs
 
+    from app.services.intel_collection import start_worker, stop_worker
+
     resume_pending_contact_sync_jobs()
+    start_worker()
     try:
         yield
     finally:
+        await stop_worker()
         from app.services.esi_transport import close_esi_transport
         await close_esi_transport()
 

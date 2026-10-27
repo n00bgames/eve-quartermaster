@@ -1,3 +1,4 @@
+import { IntelReportsPage } from "./features/intel/IntelReportsPage";
 import { FleetAssignmentsPage } from "./features/fleetAssignments/FleetAssignmentsPage";
 import { Activity, Boxes, Building2, CalendarDays, ClipboardList, Coins, Database, Factory, FlaskConical, GraduationCap, Globe2, KeyRound, MapIcon, MessageCircle, NotebookTabs, PackagePlus, Pickaxe, Plus, RefreshCw, ScrollText, Settings, ShieldCheck, ShoppingCart, Siren, Skull, Sparkles, Store, Swords, TrendingUp, UserRoundCheck } from "lucide-react";
 
@@ -487,7 +488,8 @@ function App() {
 
     const esiError = params.get("esi_error");
 
-    if (window.location.hash.startsWith("#fleet-assignments")) setActiveTab("fleet_assignments");
+    if (window.location.hash.startsWith("#intel")) setActiveTab("intel_reports");
+    else if (window.location.hash.startsWith("#fleet-assignments")) setActiveTab("fleet_assignments");
     else if (window.location.hash.startsWith("#events")) setActiveTab("calendar_events");
     else if (window.location.hash.startsWith("#doctrines")) setActiveTab("doctrines");
     else if (window.location.hash.startsWith("#skills")) setActiveTab("skills");
@@ -548,6 +550,7 @@ function App() {
     else if (locationHash.startsWith("#killboard")) setActiveTab("killboard");
     else if (locationHash.startsWith("#battle-reports")) setActiveTab("battle_reports");
     else if (locationHash.startsWith("#bounties")) setActiveTab("bounty_analytics");
+    else if (locationHash.startsWith("#intel")) setActiveTab("intel_reports");
     else if (locationHash.startsWith("#fleet-assignments")) setActiveTab("fleet_assignments");
     else if (locationHash.startsWith("#skills")) setActiveTab("skills");
   }, [locationHash]);
@@ -707,7 +710,9 @@ function App() {
 
           {canView("analytics") && <button className={activeTab === "analytics" ? "active" : ""} onClick={() => setActiveTab("analytics")}><Activity size={18} /> Analytics</button>}
 
-          {["fleet_assignments", "doctrines", "srp", "killboard", "battle_reports", "calendar_events", "recruiting"].some(canView) && <span className="nav-section-label">Fleet & Community</span>}
+          {["intel_reports", "fleet_assignments", "doctrines", "srp", "killboard", "battle_reports", "calendar_events", "recruiting"].some(canView) && <span className="nav-section-label">Fleet & Community</span>}
+
+          {canView("intel_reports") && <button className={activeTab === "intel_reports" ? "active" : ""} onClick={() => { window.location.hash="intel"; setActiveTab("intel_reports"); }}><Siren size={18} /> Intel Reports</button>}
 
           {canView("fleet_assignments") && <button className={activeTab === "fleet_assignments" ? "active" : ""} onClick={() => { window.location.hash = "fleet-assignments"; setActiveTab("fleet_assignments"); }}><ClipboardList size={18} /> Fleet Assignments</button>}
 
@@ -804,6 +809,8 @@ function App() {
         {activeTab === "plex" && canView("plex") && <PlexTrackerPage api={api} />}
 
         {activeTab === "calendar_events" && canView("calendar_events") && <EventsPage api={api} currentUser={user} />}
+
+        {activeTab === "intel_reports" && canView("intel_reports") && <IntelReportsPage key={locationHash} api={api} />}
 
         {activeTab === "fleet_assignments" && canView("fleet_assignments") && <FleetAssignmentsPage key={locationHash} api={api} />}
 
@@ -2272,6 +2279,7 @@ function ManagedForm({ children, onSubmit, submitLabel = "Save" }: { children: R
 
 
 function titleFor(tab: string) {
+  if (tab === "intel_reports") return "Intel Reports";
   if (tab === "fleet_assignments") return "Fleet Assignments";
   if (tab === "plex") return "PLEX Tracker";
 
@@ -2282,6 +2290,7 @@ function titleFor(tab: string) {
 
 
 function subtitleFor(tab: string) {
+  if (tab === "intel_reports") return "Investigate public combat evidence and permission-scoped ESI enrichment.";
   if (tab === "fleet_assignments") return "Plan fleet compositions, assign fittings, and view your own ship assignments.";
   if (tab === "plex") return "Track private PLEX holdings, global market prices, and fee-adjusted trade scenarios.";
 
