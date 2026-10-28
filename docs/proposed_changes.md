@@ -41,4 +41,5 @@ Add Settings-page maintenance buttons for safe backend-worker tasks such as fetc
 ## Inventory Report
 
 - [ ] Add an **Inventory Report** with inventory totals grouped by item type and category, including all ship types, module types, and other inventory categories.
+- [ ] Use the same itemization order as the Industry Report: overall totals first, followed below by itemized assets grouped by character and corporation.
 - [ ] Export the Inventory Report to **CSV** or **PDF**.
