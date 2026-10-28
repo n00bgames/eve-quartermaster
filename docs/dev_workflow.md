@@ -34,6 +34,8 @@ npm --prefix frontend run build
 
 ## Git Push Chain
 
+When the user says **`cpp`**, execute the reviewed EQM **commit and push** workflow, then verify `origin/main` matches the committed revision. This does not request deployment or a version bump. The `pc` command below remains a request to provide the command chain.
+
 When the user says `pc`, provide the push chain with the `cd` command:
 
 ```powershell

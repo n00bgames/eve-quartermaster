@@ -220,11 +220,13 @@ class ResearchProjectScopeTests(unittest.TestCase):
         )
 
         project = self.db.scalar(select(ResearchProject).where(ResearchProject.job_id == 9001))
-        self.assertEqual((synced, active), (1, 1))
+        self.assertEqual((synced, active), (2, 2))
         self.assertIsNotNone(project)
         self.assertEqual(project.activity_id, 1)
         self.assertEqual(project.runs, 12)
-        self.assertIsNone(self.db.scalar(select(ResearchProject).where(ResearchProject.job_id == 9002)))
+        reaction = self.db.scalar(select(ResearchProject).where(ResearchProject.job_id == 9002))
+        self.assertIsNotNone(reaction)
+        self.assertEqual(reaction.activity_id, 9)
 
 
 if __name__ == "__main__":

@@ -45,7 +45,10 @@ from app.api.doctrines import router as doctrines_router
 from app.api.skill_plans import router as skill_plans_router
 from app.api.srp import router as srp_router
 
+from app.api.quartermaster_oversight import router as quartermaster_oversight_router
+
 api_router = APIRouter()
+api_router.include_router(quartermaster_oversight_router)
 api_router.include_router(mission_atlas_router)
 api_router.include_router(pi_planner_router)
 api_router.include_router(analytics_router)

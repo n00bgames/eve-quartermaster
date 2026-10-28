@@ -16,7 +16,9 @@ RESEARCH_ACTIVITY_NAMES = {
     3: "Time Efficiency",
     4: "Material Efficiency",
     5: "Copying",
+    7: "Reverse Engineering",
     8: "Invention",
+    9: "Reactions",
 }
 ACTIVE_RESEARCH_STATUSES = {"active", "paused", "ready"}
 MAX_POSTGRES_INTEGER = 2_147_483_647

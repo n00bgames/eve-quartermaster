@@ -13,6 +13,7 @@ function formatApiError(detail: unknown): string {
 }
 
 function requestTimeoutMs(path: string): number {
+  if (path.startsWith("/quartermaster-oversight")) return 180000;
   if (path.startsWith("/esi/sync/")) return 1800000;
   if (path.startsWith("/jump-clones/sync/")) return 300000;
   if (path.startsWith("/sde/import-status")) return 20000;

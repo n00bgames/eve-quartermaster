@@ -554,9 +554,14 @@ async def sync_planetary_industry_for_token(
     db: Session,
     *,
     allow_opt_out_override: bool = True,
+    quartermaster_sync: bool = False,
 ) -> dict[str, Any]:
     token, character = get_linked_token(db, token_id)
-    if not can_sync_character_data(current_user, character, token, db):
+    if quartermaster_sync:
+        from app.services.quartermaster_sync import eligible
+        if not eligible(db, current_user, token, character, "planets"):
+            raise HTTPException(status_code=403, detail="Quartermaster cannot refresh this planetary authorization")
+    elif not can_sync_character_data(current_user, character, token, db):
         raise HTTPException(status_code=403, detail="You cannot sync PI for this character")
     if character.sync_opt_out and not allow_opt_out_override:
         return {"status": "skipped", "character_name": character.name, "reason": "Character opted out"}

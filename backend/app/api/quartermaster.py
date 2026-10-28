@@ -7,7 +7,7 @@ import io
 import json
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Any
+from typing import Any, Callable
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
@@ -654,7 +654,8 @@ def research_project_owner(project: ResearchProject, owners: list[OwnershipEntit
         return next((owner for owner in owners if owner.owner_kind == OwnerKind.CORPORATION and owner.corporation_id == project.corporation_id), None)
     return next((owner for owner in owners if owner.owner_kind == OwnerKind.CHARACTER and owner.character_id == project.character_id), None)
 
-def blueprint_rows(current_user: User, db: Session) -> list[dict[str, Any]]:
+def blueprint_rows(current_user: User, db: Session, *, owner_filter: Callable[[OwnershipEntity | None], bool] | None = None) -> list[dict[str, Any]]:
+    owner_visible = owner_filter or (lambda owner: can_view_owner_records(owner, current_user, db))
     capital_blueprint_type_ids = blueprint_type_ids_for_capital_construction(db)
     blueprints = db.scalars(
         select(Blueprint)
@@ -692,12 +693,12 @@ def blueprint_rows(current_user: User, db: Session) -> list[dict[str, Any]]:
         for blueprint in blueprints
         if blueprint.asset is not None
         and blueprint.asset.eve_item_id is not None
-        and can_view_owner_records(blueprint.ownership_entity, current_user, db)
+        and owner_visible(blueprint.ownership_entity)
     }
     project_metadata = project_blueprint_metadata(db, research_projects)
     results = []
     for blueprint in blueprints:
-        if not can_view_owner_records(blueprint.ownership_entity, current_user, db):
+        if not owner_visible(blueprint.ownership_entity):
             continue
         product_type = blueprint.product_type or product_fallbacks.get(blueprint.blueprint_type_id)
         family = item_family(product_type, blueprint.blueprint_type.name if blueprint.blueprint_type else None)
@@ -709,6 +710,7 @@ def blueprint_rows(current_user: User, db: Session) -> list[dict[str, Any]]:
             current_user=current_user,
             db=db,
             hangar_names=hangar_names,
+            owner_filter=owner_filter,
         )
         results.append(
             row_dict(
@@ -741,7 +743,7 @@ def blueprint_rows(current_user: User, db: Session) -> list[dict[str, Any]]:
         if item_id in visible_inventory_item_ids or item_id in seen_shadow_item_ids:
             continue
         owner = research_project_owner(project, owners)
-        if owner is None or not can_view_owner_records(owner, current_user, db):
+        if owner is None or not owner_visible(owner):
             continue
         seen_shadow_item_ids.add(item_id)
         metadata = project_metadata.get(project.id, {})

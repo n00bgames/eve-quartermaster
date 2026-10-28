@@ -5,19 +5,21 @@ from sqlalchemy.orm import Session
 
 from app.models import AppSetting, RecruitmentUserCapability, RoleDefinition, RoleSectionPermission, User, UserSectionPermission
 
-BUILT_IN_ROLES: list[str] = ["host", "admin", "director", "officer", "member", "view_only", "applicant"]
-ROLE_RANK: dict[str, int] = {"applicant": -1, "view_only": 0, "rookie": 0, "member": 1, "officer": 2, "director": 3, "admin": 4, "host": 5}
+BUILT_IN_ROLES: list[str] = ["host", "admin", "director", "officer", "member", "quartermaster", "view_only", "applicant"]
+ROLE_RANK: dict[str, int] = {"applicant": -1, "quartermaster": 0, "view_only": 0, "rookie": 0, "member": 1, "officer": 2, "director": 3, "admin": 4, "host": 5}
 ROLE_LABELS: dict[str, str] = {
     "host": "Host",
     "admin": "Admin",
     "director": "Director",
     "officer": "Officer",
     "member": "Member",
+    "quartermaster": "Quartermaster",
     "view_only": "View Only",
     "applicant": "Applicant",
 }
 
 SECTION_DEFINITIONS: dict[str, dict[str, object]] = {
+    "quartermaster": {"label": "Quartermaster", "default_roles": ["quartermaster"]},
     "intel_reports": {"label": "Intel Reports", "default_roles": ["admin", "director", "officer"]},
     "fleet_assignments": {"label": "Fleet Assignments", "default_roles": ["admin", "director", "officer", "member", "view_only"]},
     "overview": {"label": "Overview", "default_roles": ["admin", "director", "officer", "member", "view_only"]},

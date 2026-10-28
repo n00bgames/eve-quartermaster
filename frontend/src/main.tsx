@@ -1,3 +1,4 @@
+import { QuartermasterPage } from "./features/quartermaster/QuartermasterPage";
 import { IntelReportsPage } from "./features/intel/IntelReportsPage";
 import { FleetAssignmentsPage } from "./features/fleetAssignments/FleetAssignmentsPage";
 import { Activity, Boxes, Building2, CalendarDays, ClipboardList, Coins, Database, Factory, FlaskConical, GraduationCap, Globe2, KeyRound, MapIcon, MessageCircle, NotebookTabs, PackagePlus, Pickaxe, Plus, RefreshCw, ScrollText, Settings, ShieldCheck, ShoppingCart, Siren, Skull, Sparkles, Store, Swords, TrendingUp, UserRoundCheck } from "lucide-react";
@@ -73,7 +74,7 @@ type Health = { status: string; app: string };
 
 type UserAccount = { id: number; email: string; display_name: string; role: string; timezone?: string; created_at?: string };
 
-type EffectivePermissions = { sections: SectionPermission[]; permissions: Record<string, boolean> };
+type EffectivePermissions = { sections: SectionPermission[]; permissions: Record<string, boolean>; read_only_quartermaster?: boolean };
 
 type AuthResponse = { access_token?: string | null; remembered?: boolean; user: UserAccount };
 
@@ -276,6 +277,7 @@ function App() {
   const [locationHash, setLocationHash] = useState(window.location.hash);
 
   const [permissions, setPermissions] = useState<Record<string, boolean>>({ overview: true, profile: true });
+  const quartermasterOnly = useRef(false);
 
 
 
@@ -302,6 +304,7 @@ function App() {
           const permissionPayload = await api<EffectivePermissions>("/auth/permissions/effective");
 
           setPermissions(permissionPayload.permissions);
+          quartermasterOnly.current = permissionPayload.read_only_quartermaster === true;
 
         } catch {
 
@@ -340,6 +343,7 @@ function App() {
     const permissionPayload = await api<EffectivePermissions>("/auth/permissions/effective");
 
     setPermissions(permissionPayload.permissions);
+    quartermasterOnly.current = permissionPayload.read_only_quartermaster === true;
 
     setNotice(`Signed in as ${result.user.display_name}.`);
 
@@ -374,6 +378,7 @@ function App() {
       localStorage.removeItem("eq_access_token");
 
       setUser(null);
+      quartermasterOnly.current = false;
 
       setData(emptyData);
 
@@ -387,6 +392,12 @@ function App() {
 
 
   async function load(role = user?.role) {
+
+    if (role === "quartermaster" || quartermasterOnly.current) {
+      setData(emptyData);
+      setActiveTab("quartermaster");
+      return;
+    }
 
     if (role === "applicant") {
       setData(emptyData);
@@ -488,7 +499,8 @@ function App() {
 
     const esiError = params.get("esi_error");
 
-    if (window.location.hash.startsWith("#intel")) setActiveTab("intel_reports");
+    if (window.location.hash.startsWith("#quartermaster")) setActiveTab("quartermaster");
+    else if (window.location.hash.startsWith("#intel")) setActiveTab("intel_reports");
     else if (window.location.hash.startsWith("#fleet-assignments")) setActiveTab("fleet_assignments");
     else if (window.location.hash.startsWith("#events")) setActiveTab("calendar_events");
     else if (window.location.hash.startsWith("#doctrines")) setActiveTab("doctrines");
@@ -550,6 +562,7 @@ function App() {
     else if (locationHash.startsWith("#killboard")) setActiveTab("killboard");
     else if (locationHash.startsWith("#battle-reports")) setActiveTab("battle_reports");
     else if (locationHash.startsWith("#bounties")) setActiveTab("bounty_analytics");
+    else if (locationHash.startsWith("#quartermaster")) setActiveTab("quartermaster");
     else if (locationHash.startsWith("#intel")) setActiveTab("intel_reports");
     else if (locationHash.startsWith("#fleet-assignments")) setActiveTab("fleet_assignments");
     else if (locationHash.startsWith("#skills")) setActiveTab("skills");
@@ -597,7 +610,7 @@ function App() {
 
 
 
-  function canView(section: string) { return permissions[section] !== false || ["overview", "settings", "profile"].includes(section); }
+  function canView(section: string) { if (quartermasterOnly.current && section === "settings") return false; return permissions[section] !== false || ["overview", "settings", "profile"].includes(section); }
 
   function openThreatAnalyzer() {
     setActiveTab("navigation");
@@ -686,9 +699,11 @@ function App() {
 
           {canView("bounty_analytics") && <button className={activeTab === "bounty_analytics" ? "active" : ""} onClick={() => { window.location.hash = "bounties"; setActiveTab("bounty_analytics"); }}><TrendingUp size={18} /> Bounty Analytics</button>}
 
-          {["notes", "manufacturing", "mining", "planetary_industry", "corporations", "ownership", "assets", "industry", "contracts", "analytics"].some(canView) && <span className="nav-section-label">Inventory & Industry</span>}
+          {["quartermaster", "notes", "manufacturing", "mining", "planetary_industry", "corporations", "ownership", "assets", "industry", "contracts", "analytics"].some(canView) && <span className="nav-section-label">Inventory & Industry</span>}
 
           {canView("notes") && <button className={activeTab === "notes" ? "active" : ""} onClick={() => setActiveTab("notes")}><NotebookTabs size={18} /> Notes & Lists</button>}
+
+          {canView("quartermaster") && <button className={activeTab === "quartermaster" ? "active" : ""} onClick={() => { window.location.hash = "quartermaster"; setActiveTab("quartermaster"); }}><Boxes size={18} /> Quartermaster</button>}
 
           {canView("manufacturing") && <button className={activeTab === "manufacturing" ? "active" : ""} onClick={() => setActiveTab("manufacturing")}><Factory size={18} /> Manufacturing</button>}
 
@@ -809,6 +824,8 @@ function App() {
         {activeTab === "plex" && canView("plex") && <PlexTrackerPage api={api} />}
 
         {activeTab === "calendar_events" && canView("calendar_events") && <EventsPage api={api} currentUser={user} />}
+
+        {activeTab === "quartermaster" && canView("quartermaster") && <QuartermasterPage api={api} formatDateTime={(value) => formatDateTime(value, preferredTimeZone(user))} />}
 
         {activeTab === "intel_reports" && canView("intel_reports") && <IntelReportsPage key={locationHash} api={api} />}
 
@@ -2279,6 +2296,7 @@ function ManagedForm({ children, onSubmit, submitLabel = "Save" }: { children: R
 
 
 function titleFor(tab: string) {
+  if (tab === "quartermaster") return "Quartermaster";
   if (tab === "intel_reports") return "Intel Reports";
   if (tab === "fleet_assignments") return "Fleet Assignments";
   if (tab === "plex") return "PLEX Tracker";
@@ -2290,6 +2308,7 @@ function titleFor(tab: string) {
 
 
 function subtitleFor(tab: string) {
+  if (tab === "quartermaster") return "View blueprint holdings, running industry jobs, and planetary infrastructure across linked owners.";
   if (tab === "intel_reports") return "Investigate public combat evidence and permission-scoped ESI enrichment.";
   if (tab === "fleet_assignments") return "Plan fleet compositions, assign fittings, and view your own ship assignments.";
   if (tab === "plex") return "Track private PLEX holdings, global market prices, and fee-adjusted trade scenarios.";

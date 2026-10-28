@@ -17,3 +17,16 @@ Add full filtered CSV and Janice-list exports from the backend for the Assets le
 ## Settings Maintenance Actions
 
 Add Settings-page maintenance buttons for safe backend-worker tasks such as fetching the latest SDE into `/sde` and optionally queueing SDE import. For host-level update/rebuild controls, prefer a small explicit host helper service over mounting the Docker socket into the app container.
+
+## Local Scan Analysis
+
+- [ ] Add a local-chat pilot-list scan and analysis tool, similar to [who.ltns.space](https://who.ltns.space/).
+
+## Directional Scan Parser
+
+- [ ] Add a paste-in directional scan (d-scan) parser, similar to [dscan.info](https://dscan.info/), with readable ship/object summaries.
+
+## Personal Section Layouts
+
+- [ ] Let each user rearrange section panels/widgets with drag and drop.
+- [ ] Save layouts per EQM user and section, and restore them across sessions without changing other users' layouts.

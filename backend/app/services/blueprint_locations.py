@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
@@ -81,8 +81,10 @@ def resolve_blueprint_location(
     current_user: User,
     db: Session,
     hangar_names: dict[tuple[int, str], str],
+    owner_filter: Callable[[OwnershipEntity | None], bool] | None = None,
 ) -> dict[str, Any]:
     """Resolve immediate inventory placement and the canonical station/structure."""
+    owner_visible = owner_filter or (lambda owner: can_view_owner_records(owner, current_user, db))
     active = active_use or {}
     if active.get("active") and active.get("facility") and active.get("facility_id"):
         return {
@@ -135,7 +137,7 @@ def resolve_blueprint_location(
     immediate_parent = asset_hierarchy.get(asset.parent_asset_id)
     if immediate_parent is None:
         return _unresolved_location("unresolved", asset.location_flag, flag_name)
-    if not can_view_owner_records(immediate_parent.ownership_entity, current_user, db):
+    if not owner_visible(immediate_parent.ownership_entity):
         return _unresolved_location("inaccessible", asset.location_flag, flag_name)
 
     immediate_name = immediate_parent.item_type.name if immediate_parent.item_type else "Container"
@@ -144,7 +146,7 @@ def resolve_blueprint_location(
     visited: set[int] = set()
     while current is not None and current.id not in visited:
         visited.add(current.id)
-        if not can_view_owner_records(current.ownership_entity, current_user, db):
+        if not owner_visible(current.ownership_entity):
             return _unresolved_location("inaccessible", asset.location_flag, flag_name)
         root, _ = _resolved_location(current.location)
         if _usable_location(root):

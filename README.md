@@ -64,6 +64,7 @@ See [CHANGELOG.md](CHANGELOG.md) for version-by-version release notes.
 - Doctrine Management with operator-configurable priority fields, canonical fittings, optional readiness plans, historical fit snapshots, and safe archival.
 - Skill Plans integrated into Character Skills, including editable SDE-dogma-derived minimum requirements, recursive prerequisites, per-item provenance, deduplication, ordering, and character progress.
 - Ship Replacement Program instances with generated intake links, EQM character ownership checks, doctrine or general fittings, exact timezone-aware loss recording, immutable historical snapshots, append-only review history, precise valuation/reimbursement fields, and permission-filtered analytics and CSV exports.
+- [Quartermaster role](docs/quartermaster-role.md) with view-only blueprint holdings, running industry jobs, and planetary infrastructure across authenticated characters and authorized linked corporations.
 - [Intel Reports](docs/intel-reports.md) for external characters, corporations, and alliances: zKill combat evidence, recurring co-attackers, ships, geography, badges, smartbomb patterns, change history, and viewer-authorized ESI enrichment.
 - Killboard discovery through zKillboard with canonical ESI killmail storage, resumable incremental sync, direct source links, and historical kill/loss, ISK, hull, geography, participation, opponent, streak, and wingmate analytics.
 - Dynamic Battle Reports for a selected tracked pilot, with browsable retained engagement history, deterministic grouping, illustrated pilot/corporation/alliance/ship identity, team summaries, timeline, damage, SDE-resolved hull classes, clickable pilot zKill links, and revocable public snapshot links.
@@ -777,6 +778,8 @@ After `docker compose up --build`, confirm:
 14. Notifications, private messages, audit log, and permissions behave according to the signed-in role.
 
 ## Roadmap
+
+See [Proposed Changes](docs/proposed_changes.md) for the to-do list, including local scan analysis, a d-scan parser, and persistent per-user drag-and-drop section layouts.
 
 - Hardening pass for public testers, including clearer empty states and friendlier setup diagnostics.
 - More complete industry planning: owned vs missing materials, procurement options, build readiness, and market pricing.

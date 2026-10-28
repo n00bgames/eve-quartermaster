@@ -382,7 +382,7 @@ function PlanetaryShortageReportPanel({
   </section>;
 }
 
-function ColonyRow({
+export function ColonyRow({
   colony,
   expanded,
   onToggle,

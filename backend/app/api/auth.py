@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.security import create_access_token, decode_token, hash_password, verify_password
 from app.db.session import get_db
-from app.services.permissions import BUILT_IN_ROLES, ROLE_RANK, SECTION_DEFINITIONS, disabled_sections, effective_permissions, role_exists, role_payload, role_rank, role_names, section_payload, set_disabled_sections
+from app.services.permissions import BUILT_IN_ROLES, ROLE_RANK, SECTION_DEFINITIONS, disabled_sections, effective_permissions, role_exists, role_payload, role_rank, role_names, section_payload, set_disabled_sections, base_role_for
 from app.services.user_accounts import retire_user_account
 from app.models import EsiSyncJob, EsiToken, EveCharacter, RecruitmentUserCapability, RoleDefinition, RoleSectionPermission, User, UserInvite, UserSectionPermission
 
@@ -132,6 +132,9 @@ def get_current_user(
     user = db.get(User, user_id)
     if user is None or user.deleted_at is not None:
         raise HTTPException(status_code=401, detail="User no longer exists")
+    quartermaster_refresh = request.method == "POST" and request.url.path.rstrip("/") == f"{get_settings().api_prefix}/quartermaster-oversight/sync"
+    if base_role_for(db, user.role) == "quartermaster" and request.method not in {"GET", "HEAD", "OPTIONS"} and not quartermaster_refresh:
+        raise HTTPException(status_code=403, detail="Quartermaster is a view-only role")
     return user
 
 
@@ -210,7 +213,7 @@ def update_section_enabled_settings(payload: dict[str, Any], current_user: User 
 
 @router.get("/permissions/effective")
 def my_effective_permissions(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
-    return {"sections": section_payload(), "permissions": effective_permissions(current_user, db)}
+    return {"sections": section_payload(), "permissions": effective_permissions(current_user, db), "read_only_quartermaster": base_role_for(db, current_user.role) == "quartermaster"}
 
 
 @router.get("/permissions")

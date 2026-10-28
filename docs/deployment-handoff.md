@@ -97,3 +97,7 @@ remote installation and FRONT's AA integration remain separate steps.
 ## Intel Reports (1.0.7 development)
 
 Apply migration `0089_intel_reports` after `0088_fleet_assignments` and rebuild backend/frontend together. The backend lifespan starts a database-leased public collector with resumable cursors and bounded retries. No new required secrets/scopes. Open Fleet & Community → Intel Reports as an authorized officer/director/admin/host; member recruiters also need section permission. Check an outsider character/corp/alliance without enrolling it, a page-limited collection, date-filtered systems/associates/evidence, profile history, and authorized versus denied private ESI. Private enrichment must not appear in the shared report response. Public ESI/zKill outages and partial coverage must stay visible. See [usage, retention, limits, and Alliance Auth boundary](intel-reports.md). This change has not been deployed.
+
+## Quartermaster role
+
+Rebuild backend and frontend together; no migration or new ESI scopes. Assign Quartermaster in User Administration and open Inventory & Industry → Quartermaster. Verify blueprint counts and nested locations, personal/corporate active jobs, and PI details across linked owners. Verify scoped Sync All progress and denied edit/general-sync requests and revoked/opted-out/unauthorized record exclusion. Corporate access probes use existing tokens and fail closed per feed. See [role access and validation](quartermaster-role.md). This change has not been deployed.
