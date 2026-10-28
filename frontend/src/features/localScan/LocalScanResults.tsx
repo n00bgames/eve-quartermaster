@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import type { ApiClient, Condition, Pilot, ScanReport } from "./types";
+import type { ApiClient, Condition, Highlight, Pilot, ScanReport } from "./types";
+import { markPilots } from "./highlights";
 import { ScanDestination } from "./ScanDestination";
 import "./localScan.css";
 
@@ -15,19 +16,22 @@ export function OrgLogo({ kind, id }: {kind: "alliances" | "corporations"; id: n
   return id && !failed ? <img className="scan-org-logo" src={`https://images.evetech.net/${kind}/${id}/logo?size=32`} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setFailed(true)} /> : <span className="scan-org-placeholder" aria-hidden="true">◇</span>;
 }
 
-export function LocalScanResults({ report, api, allowCopy = true, embedded = false }: {report: ScanReport; api: ApiClient; allowCopy?: boolean; embedded?: boolean}) {
+export function LocalScanResults({ report, api, allowCopy = true, embedded = false, highlights }: {report: ScanReport; api: ApiClient; allowCopy?: boolean; embedded?: boolean; highlights?: Highlight[]}) {
   const [mode, setMode] = useState("simple");
   const [query, setQuery] = useState("");
   const [conditions, setConditions] = useState<Condition[]>([{field: "name", operator: "contains", value: ""}]);
   const [notice, setNotice] = useState("");
   const [, tick] = useState(0);
   useEffect(() => { const timer = window.setInterval(() => tick(n => n + 1), 60000); return () => window.clearInterval(timer); }, []);
-  const pilots = useMemo(() => report.pilots.filter(p => mode === "simple"
+  const markedPilots = useMemo(() => markPilots(report.pilots, highlights), [report.pilots, highlights]);
+  const highlightedCount = markedPilots.filter(p => p.highlighted).length;
+  const markingsChanged = markedPilots.some((p, i) => p.highlighted !== report.pilots[i].highlighted || p.alliance_highlighted !== report.pilots[i].alliance_highlighted);
+  const pilots = useMemo(() => markedPilots.filter(p => mode === "simple"
     ? [p.name, p.corporation_name, p.alliance_name ?? "No alliance"].some(s => s.toLocaleLowerCase().includes(query.toLocaleLowerCase()))
     : conditions.every(c => {
       const value = (p[c.field] ?? "No alliance").toLocaleLowerCase(), needle = c.value.toLocaleLowerCase();
       return c.operator === "equals" ? value === needle || !needle : c.operator === "starts" ? value.startsWith(needle) : c.operator === "ends" ? value.endsWith(needle) : value.includes(needle);
-    })), [report, mode, query, conditions]);
+    })), [markedPilots, mode, query, conditions]);
   const groups = useMemo(() => {
     const map = new Map<string, {name: string; id: number | null; pilots: Pilot[]}>();
     for (const p of pilots) {
@@ -47,10 +51,11 @@ export function LocalScanResults({ report, api, allowCopy = true, embedded = fal
     {!embedded && <div className="scan-report-actions">{allowCopy && <button type="button" onClick={() => void copy()}>Copy public link</button>}<a className="scan-button" href={`${API_BASE}/local-scans/public/${encodeURIComponent(report.token)}/pdf`} target="_blank" rel="noopener noreferrer">Export PDF</a><span className="muted">{report.expires_at ? `Expires ${stamp(report.expires_at)}` : "Permanent until deleted"}</span></div>}
     {!embedded && <div className="scan-system"><strong>System: {report.system?.name ?? "Not specified"}</strong>{report.system && <ScanDestination api={api} system={report.system}/>}</div>}
     {notice && <p role="status" className="notice">{notice}</p>}
+    {markingsChanged && <p className="mini-alert scan-highlight-notice" role="status">Your current highlights are shown in this view. Generate a new report to include these markings in its public link and PDF.</p>}
     <div className="scan-filter-modes"><button type="button" aria-pressed={mode === "simple"} onClick={() => setMode("simple")}>Simple</button><button type="button" aria-pressed={mode === "advanced"} onClick={() => setMode("advanced")}>Advanced</button></div>
     {mode === "simple" ? <label className="scan-filter">Filter results<input aria-label="Filter scan results" value={query} onChange={e => setQuery(e.target.value)} placeholder="Character, corporation, or alliance name" /></label> : <div className="scan-conditions"><p className="muted">Show pilots matching all conditions.</p>{conditions.map((c, i) => <div className="scan-condition" key={i}><select aria-label={`Condition ${i+1} field`} value={c.field} onChange={e => change(i, {field:e.target.value as Condition["field"]})}><option value="name">Character name</option><option value="corporation_name">Corporation name</option><option value="alliance_name">Alliance name</option></select><select aria-label={`Condition ${i+1} operator`} value={c.operator} onChange={e => change(i,{operator:e.target.value as Condition["operator"]})}><option value="contains">contains</option><option value="starts">starts with</option><option value="ends">ends with</option><option value="equals">equals</option></select><input aria-label={`Condition ${i+1} value`} value={c.value} onChange={e => change(i,{value:e.target.value})} /><button type="button" aria-label={`Remove condition ${i+1}`} onClick={() => setConditions(rows => rows.filter((_,index) => index !== i))}>×</button></div>)}<button type="button" disabled={conditions.length >= 20} onClick={() => setConditions(rows => [...rows,{field:"name",operator:"contains",value:""}])}>Add Condition</button></div>}
     {report.warnings.map(w => <p key={w} className="mini-alert">{w}</p>)}
-    <p className="scan-count-note muted">Showing {pilots.length.toLocaleString()} of {report.character_count.toLocaleString()} resolved characters. {report.highlighted_count > 0 && <span className="scan-marked">● {report.highlighted_count} highlighted in this snapshot.</span>} Expand a corporation to see its pilots.</p>
+    <p className="scan-count-note muted">Showing {pilots.length.toLocaleString()} of {report.character_count.toLocaleString()} resolved characters. {highlightedCount > 0 && <span className="scan-marked">● {highlightedCount} highlighted {highlights === undefined ? "in this snapshot" : "with your current preferences"}.</span>} Expand a corporation to see its pilots.</p>
     <div className="scan-groups">{groups.map(([key, group]) => {
       const corps = new Map<string, Pilot[]>();
       for (const p of group.pilots) {const cid = String(p.corporation_id ?? "unknown"); if (!corps.has(cid)) corps.set(cid, []); corps.get(cid)!.push(p);}

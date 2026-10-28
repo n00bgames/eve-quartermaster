@@ -35,3 +35,5 @@ PDFs use small EQM/type/organization logos, complete type/class totals, observed
 ## Rollout
 
 Deploy backend/frontend together and apply **0092_dscan_reports** after 0091. It adds a `report_kind` discriminator to the existing public-snapshot table, marking every existing row as Local Scan. Upgrade preserves local reports. Downgrade removes d-scan snapshots before removing the discriminator, preserving local records. No version bump, release publication or production deployment is implied by implementation.
+
+Signed-in linked local lists immediately apply the viewer’s current organization highlights. Existing public links and PDFs retain their generation-time markings; regenerate to share preference changes.

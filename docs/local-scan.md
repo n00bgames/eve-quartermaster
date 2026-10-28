@@ -24,7 +24,7 @@ Delete individual reports, selected reports, a generation-date range, or all rep
 
 ## Saved organization highlights
 
-Each user can save up to 200 exact corporation/alliance names, resolved to stable EVE IDs. Add/remove controls update only that user's saved list, which persists between sessions. Alliance matches mark its corporations/pilots and counts red; a corporation match marks that corporation's pilots/count only. Reports retain the markings present at generation, so later preference edits do not rewrite shared history. [D-Scan](dscan.md) reuses these preferences for linked local lists; ordinary directional-scan ship names do not establish ownership.
+Each user can save up to 200 exact corporation/alliance names, resolved to stable EVE IDs. Add/remove controls update only that user's saved list, which persists between sessions. Signed-in Local Scan results and D-Scan linked local lists immediately reapply the current preferences, including when opening an older report. Adding or removing a match updates organization names, pilot names and counts without another ESI lookup. Alliance matches mark its corporations/pilots and counts red; a corporation match marks that corporation's pilots/count only. Public links and PDFs retain the markings present at generation, so later preference edits do not rewrite shared history. If the private view differs, a visible notice explains that generating a new report saves the current markings for sharing/export. [D-Scan](dscan.md) reuses these preferences for linked local lists; ordinary directional-scan ship names do not establish ownership.
 
 ## Roles and ESI privacy
 

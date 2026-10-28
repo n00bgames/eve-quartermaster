@@ -28,6 +28,12 @@ Full public report with actual ship/deployable icons, frequency-ranked types/cla
 
 ![Manual recon and linked-local editor](../static/ss/v2.0/dscan-editor.png)
 
+### Live organization highlights
+
+Account highlight changes immediately recolor the signed-in Local Scan and linked D-Scan pilot lists, including names and totals. This synthetic scan was generated before the preferences were added. The notice explains how to publish the new markings in a fresh public/PDF snapshot.
+
+![Live red organization and pilot highlights](../static/ss/v2.0/local-scan-live-highlights.jpg)
+
 ### Local Scan
 
 Public report with alliance/corporation groups, logos, counts, red organization highlights, creator/date, optional system, destination controls, public-link copy and PDF export.

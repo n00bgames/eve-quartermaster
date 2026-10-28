@@ -24,6 +24,9 @@ Version sections are written as user-facing release notes first, with implementa
 - Prepared the user-designated **EQM 2.0** release with application/API, frontend package and lockfile, Android wrapper, export metadata, README badge, and outbound service user agents set to `2.0.0`. Android versionCode is now 27.
 - Added user-selectable color palettes and per-user custom logos to the planned themes and personal branding work.
 
+### Fixed
+- Fixed saved organization highlights updating only the preference chips: signed-in Local Scan and linked D-Scan pilot lists now recolor names and totals immediately. A notice distinguishes current markings from an older public/PDF snapshot.
+
 ## [1.0.8] - Unreleased development snapshot
 
 Release preparation includes the unreleased 1.0.7 development work listed below.

@@ -66,8 +66,8 @@
       "provenance": "Actual built frontend, disposable SQLite/type/membership fixtures, mocked public affiliation and game waypoint calls. Real EVE Image Server icons/logos; counts,types selected,memberships and masses are demo inputs.",
       "sha256": "865e1e34a5baf0ba10df3d6075b79c1ce73e7bb2f199a62ad7dac79add77fe51",
       "bytes": 148975,
-      "width": 65536,
-      "height": 4292542531
+      "width": 1264,
+      "height": 1710
     },
     {
       "file": "dscan-editor.png",
@@ -78,8 +78,8 @@
       "provenance": "Actual built frontend, disposable SQLite/type/membership fixtures, mocked public affiliation and game waypoint calls. Real EVE Image Server icons/logos; counts,types selected,memberships and masses are demo inputs.",
       "sha256": "201226785cc6e477232356bdd0b652a3d66cccad2f5c5404f9f886c837677c44",
       "bytes": 31880,
-      "width": 65536,
-      "height": 4292542531
+      "width": 320,
+      "height": 610
     },
     {
       "file": "dscan-expanded.png",
@@ -90,8 +90,20 @@
       "provenance": "Actual frontend build with disposable SQLite,SDE demo types and mocked public affiliation lookup. Real type/organization icons. Full-page screenshot without repainting.",
       "sha256": "46d83f4fa091194b62ac9fdb95d0057a7298fd6cf37903c9d69a86bb30ace2cb",
       "bytes": 155784,
-      "width": 65536,
-      "height": 4292542531
+      "width": 1264,
+      "height": 1825
+    },
+    {
+      "file": "local-scan-live-highlights.jpg",
+      "caption": "Current account highlights immediately recolor an already generated local scan, with red organization/pilot names and count badges. A notice distinguishes the private view from its saved public/PDF snapshot.",
+      "captured_at_utc": "2026-10-28T21:55:21.330977+00:00",
+      "source_base_commit": "d6112c12d3557b748a0d6018410d4dcfd04b4246",
+      "source_state": "Uncommitted live scan highlight fix on the pushed page-scrolling implementation.",
+      "provenance": "Actual production frontend build, disposable SQLite and mocked ESI. Nine synthetic pilots, six matched by account preferences added after generation. Real logos are visual references only. Cropped to complete highlight editor and result panel; no repainting.",
+      "sha256": "ddf24c1808e34e439fb47afae0d6b26f64e5a75ca32f0079dae5877698473343",
+      "bytes": 95232,
+      "width": 937,
+      "height": 1025
     }
   ]
 }

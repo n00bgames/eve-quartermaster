@@ -105,7 +105,7 @@ New images show current components with synthetic demo data. Older screenshots a
 
 | Local Scan | Combined account roles |
 | --- | --- |
-| [![Local Scan preview with synthetic pilots and red organization highlights](static/ss/v2.0/local-scan.png)](static/ss/v2.0/local-scan.png) | [![Role editor with Intel Analyst and Quartermaster selected](static/ss/v2.0/multiple-roles.png)](static/ss/v2.0/multiple-roles.png) |
+| [![Local Scan preview with synthetic pilots and red organization highlights](static/ss/v2.0/local-scan-live-highlights.jpg)](static/ss/v2.0/local-scan-live-highlights.jpg) | [![Role editor with Intel Analyst and Quartermaster selected](static/ss/v2.0/multiple-roles.png)](static/ss/v2.0/multiple-roles.png) |
 
 | Full inventory totals | Complete SDE counters |
 | --- | --- |
