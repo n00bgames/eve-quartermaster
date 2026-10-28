@@ -105,3 +105,7 @@ Rebuild backend and frontend together; no migration or new ESI scopes. Assign Qu
 ## Asset query and database connection recovery (2.0 development)
 
 Prepared only; live deployment unchanged. See [pool settings, housekeeping scope, full-inventory snapshots and verification](database-connections.md). Backend/frontend/Compose must deploy together to enable the new response totals and Load all records UI. API pool defaults to 10 retained +20 overflow; worker 3+7; calculate combined process capacity before increasing replicas. Watchdog starts with API lifespan, scans tagged API connections every 60 seconds, and has a dry-run CLI. No database migration is introduced by this fix. The accumulated 2.0 migrations still apply when deploying that working tree.
+
+## D-Scan (2.0 development)
+
+Prepared in the working tree; not deployed by implementation. Rebuild backend/frontend together and apply **0092_dscan_reports** after 0091. Existing Local Scan rows default to report_kind=local; new d-scans use the same lifecycle table with kind=dscan. Lists, public reads and deletion are kind constrained. Verify SDE ship/group/category/mass coverage, the D-Scan Intel link for Intel Analyst, an anonymous public report/PDF, Local Scan isolation, scoped bulk deletion and selected-character destinations. D-scan analysis adds no private ESI scope. [Formats, limits and rollout](dscan.md).

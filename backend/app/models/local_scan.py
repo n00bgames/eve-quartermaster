@@ -9,6 +9,7 @@ class LocalScanReport(Base):
     __tablename__ = "local_scan_reports"
     __table_args__ = (Index("ix_local_scan_owner_created", "created_by_user_id", "created_at"),)
 
+    report_kind: Mapped[str] = mapped_column(String(16), nullable=False, default="local", server_default="local", index=True)
     token: Mapped[str] = mapped_column(String(48), primary_key=True)
     created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
     # Public EVE corporation ID, explicitly selected from the creator's linked corporations.

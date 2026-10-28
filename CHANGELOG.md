@@ -7,6 +7,7 @@ Version sections are written as user-facing release notes first, with implementa
 ## [2.0.0] - Unreleased
 
 ### Added
+- D-Scan in Intel: SDE-resolved ship/class/deployable summaries and icons, observed/manual recon totals, base hull mass, linked local pilots and saved organization highlights, optional system/destinations, public retention, scoped deletion and branded PDFs. Updates save new immutable public snapshots.
 - Asset Ledger **Load all records** offers a full accessible snapshot with row, unit and item-type totals, local filtering and paged rendering.
 - Configurable growing/shrinking database pools and scoped periodic recovery for stale API queries/abandoned transactions. See [configuration and rollout](docs/database-connections.md).
 - Local Scan in Intel: public ESI alliance/corporation breakdowns with logos, pilot drilldowns, filters, persistent red-highlight lists, optional solar system and selected-character destinations, public links, configurable retention, scoped bulk deletion, and branded PDF export.
@@ -16,7 +17,7 @@ Version sections are written as user-facing release notes first, with implementa
 - Asset search filters/pages in SQL with permission-scoped totals before loading record details.
 - ESI consent, refresh scope, and collection follow the token owner's combined permissions. Utility-only accounts are excluded from private collection and Quartermaster oversight despite legacy broad tokens.
 - SDE Settings shows every stored/import counter and nested celestial, Dogma, blueprint, and PI totals; disabled section settings serialize correctly in their existing text column.
-- Apply database migrations 0090_local_scan_reports and 0091_multiple_account_roles with the backend/frontend update. D-scan and battle-report enhancements remain planned.
+- Apply database migrations 0090_local_scan_reports and 0091_multiple_account_roles with the backend/frontend update. Apply 0092_dscan_reports for D-Scan; existing local reports are preserved. Battle-report enhancements remain planned.
 
 - Major release preparation includes the unreleased development work listed below. Proposed features remain in the [to-do list](docs/proposed_changes.md) until implemented.
 - Prepared the user-designated **EQM 2.0** release with application/API, frontend package and lockfile, Android wrapper, export metadata, README badge, and outbound service user agents set to `2.0.0`. Android versionCode is now 27.

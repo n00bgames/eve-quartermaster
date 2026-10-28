@@ -24,25 +24,29 @@ Add Settings-page maintenance buttons for safe backend-worker tasks such as fetc
 - [ ] Treat the user-supplied WHO local-scan screenshot and [who.ltns.space](https://who.ltns.space/) as the formatting and local-scan information/feature-parity reference, rather than providing only a flat pilot list. Preserve EQM branding and user-selected themes.
 - [x] Use a compact, centered report with a two-column group layout on wide screens and a readable stacked layout on narrow screens. Show a **Local scan** heading, total character count, and generation timestamp/relative scan age above the results.
 - [x] Group characters by alliance, with bold alliance headings, small alliance logos, and right-aligned total-count badges. Nest corporation rows below each alliance with corporation logos, names, and their character counts. Include an explicit **No alliance** group for unaffiliated corporations; rank groups by their scan counts and retain access to full long names.
-- [ ] Provide a **Simple** search/paste entry accepting character names, local scans, d-scans, or fleet compositions, routing each supported input to the appropriate analysis while keeping the dedicated d-scan module available.
+- [x] Provide a **Simple** search/paste entry accepting character names, local scans, d-scans, or fleet compositions, routing each supported input to the appropriate analysis while keeping the dedicated d-scan module available.
 - [x] Provide an **Advanced** mode with addable/removable conditions on **Character name**, **Corporation name**, or **Alliance name**, using **contains**, **starts with**, **ends with**, or **equals** matching. These field/operator choices and Add Condition were verified on the reference site on October 28, 2026.
 - [ ] Match the reference's local-scan information and useful result interactions, including access to the characters underlying the corporation/alliance summaries. Verify remaining result/detail interactions against the reference during implementation; do not treat this screenshot's visible subset as the entire parity checklist.
 - [x] Display clear notices when affiliation enrichment is unavailable or limited for large scans, as shown in the reference, and keep available counts/results readable. Determine supported limits during implementation rather than inferring an exact threshold from the screenshot.
 - [x] Apply the shared **Public Scan and Battle Reports** requirements to local-scan results, including public URLs, selectable retention, scoped report deletion, and PDF export. Preserve alliance/corporation hierarchy, logos, counts, and scan metadata in the public report and PDF.
 
-Implementation: [Local Scan, roles, ESI privacy, and SDE totals](local-scan.md). Simple input currently supports pilot names/fleet rows; a d-scan receives a clear not-yet-supported notice. Simple and Advanced result filtering are implemented. Full third-party feature parity beyond the supplied reference remains a validation item.
+Implementation: [Local Scan, roles, ESI privacy, and SDE totals](local-scan.md). Simple input supports pilot names/fleet rows and hands recognizable d-scans to the dedicated D-Scan module as an unpublished draft. Simple and Advanced result filtering are implemented. Full third-party feature parity beyond the supplied reference remains a validation item.
 
 ## Directional Scan Parser
 
-- [ ] Add a paste-in directional scan (d-scan) parser, similar to [dscan.info](https://dscan.info/), with readable ship/object summaries. Place its navigation link in the **Intel** group alongside the local parser, Intel Reports, and Local Threat Analyzer.
+- [x] Add a paste-in directional scan (d-scan) parser, similar to [dscan.info](https://dscan.info/), with readable ship/object summaries. Place its navigation link in the **Intel** group alongside the local parser, Intel Reports, and Local Threat Analyzer.
 
-- [ ] Use the supplied dscan.info screenshots as the d-scan layout/feature reference: input textarea and report columns for ships by exact type, ship classes, deployables, and overall counts, sorted by frequency.
-- [ ] Show item icons beside actual ship-type and deployable rows in results/reports.
-- [ ] Provide manual combat-recon additions for Huginn, Lachesis, Rook, and Curse, clearly distinguished from ships observed on d-scan; support adding/updating a linked local scan and show total ship mass.
-- [ ] Let users select an optional solar system through a search bar. Show the selected system, generating EQM account, exact generation date and relative age, with Copy Link and PDF controls.
-- [ ] Reuse Local Scan's saved per-user corporation/alliance highlight list, with quick add/remove and red matching organization-owned assets/totals. Attribute objects only when supported by supplied/verified ownership data; ship names alone cannot identify an owner.
+- [x] Use the supplied dscan.info screenshots as the d-scan layout/feature reference: input textarea and report columns for ships by exact type, ship classes, deployables, and overall counts, sorted by frequency.
+- [x] Show item icons beside actual ship-type and deployable rows in results/reports.
+- [x] Provide manual combat-recon additions for Huginn, Lachesis, Rook, and Curse, clearly distinguished from ships observed on d-scan; support adding/updating a linked local scan and show total ship mass.
+- [x] Let users select an optional solar system through a search bar. Show the selected system, generating EQM account, exact generation date and relative age, with Copy Link and PDF controls.
+- [x] Reuse Local Scan's saved per-user corporation/alliance highlight list, with quick add/remove and red matching organization-owned assets/totals. Attribute objects only when supported by supplied/verified ownership data; ship names alone cannot identify an owner.
+
+Implementation: [D-Scan formats, counts, public reports and rollout](dscan.md). Red markings apply to linked-local organization/pilot counts; ordinary d-scan rows do not establish ownership. Updates save new immutable snapshots.
 
 ## Public Scan and Battle Reports
+
+Local Scan and D-Scan implement the lifecycle below. Battle-report enhancements remain pending, so the shared all-three checklist stays open.
 
 - [ ] Generate public-facing share links for **local scan reports**, **d-scan reports**, and **battle reports**, viewable without signing in.
 - [ ] When generating any of these reports, provide a retention dropdown with these choices, in this order: **30m, 1h, 2h, 12h, 24h, 3days, 7days, 30days, permanent**. Apply the chosen lifetime from report generation; permanent reports remain until explicitly deleted.

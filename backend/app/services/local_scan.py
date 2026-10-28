@@ -4,7 +4,7 @@ from __future__ import annotations
 import asyncio
 import re
 from datetime import datetime, timedelta, timezone
-from sqlalchemy import delete, or_, select, true
+from sqlalchemy import delete, and_, or_, select, true
 from app.models import EveCharacter, EveCorporation
 from app.models.local_scan import LocalScanReport
 from app.services.esi_client import EsiClient
@@ -34,7 +34,7 @@ def parse_local(text: str) -> list[str]:
             continue
         cells = line.split("\t")
         if len(cells) >= 3 and (re.search(r"\b(?:km|AU|m)\s*$", cells[-1], re.I) or cells[0].isdigit()):
-            raise ValueError("This looks like a d-scan. Local Scan needs pilot names; the d-scan parser is still planned.")
+            raise ValueError("This looks like a d-scan. Local Scan needs pilot names; use D-Scan in the Intel menu.")
         name = cells[0].strip()
         if name.casefold() in {"character", "character name", "pilot", "pilot name", "name"} and len(cells) > 1:
             continue
@@ -138,8 +138,8 @@ def management_scope(db, user):
     return own
 
 
-def active_reports(at=None):
-    return or_(LocalScanReport.expires_at.is_(None), LocalScanReport.expires_at > (at or now()))
+def active_reports(at=None, kind="local"):
+    return and_(LocalScanReport.report_kind == kind, or_(LocalScanReport.expires_at.is_(None), LocalScanReport.expires_at > (at or now())))
 
 
 def purge_expired(db):

@@ -1,3 +1,5 @@
+import { DScanPage } from "./features/dscan/DScanPage";
+import { PublicDScanPage } from "./features/dscan/PublicDScanPage";
 import { QuartermasterPage } from "./features/quartermaster/QuartermasterPage";
 import { LocalScanPage } from "./features/localScan/LocalScanPage";
 import { PublicLocalScanPage } from "./features/localScan/PublicLocalScanPage";
@@ -510,9 +512,10 @@ function App() {
         : ["waypoint", "destination", "structures", "navigation"].includes(esiMode ?? "") ? "navigation" : "esi";
 
     const esiError = params.get("esi_error");
-    if (window.location.hash.startsWith("#local-scan/")) { setAuthReady(true); return; }
+    if (window.location.hash.startsWith("#local-scan/") || window.location.hash.startsWith("#d-scan/")) { setAuthReady(true); return; }
 
     if (window.location.hash === "#navigation") setActiveTab("navigation");
+    else if (window.location.hash === "#d-scan") setActiveTab("dscan");
     else if (window.location.hash === "#local-scan") setActiveTab("local_scan");
     else if (window.location.hash === "#local-threat") openThreatAnalyzer();
     else if (window.location.hash.startsWith("#quartermaster")) setActiveTab("quartermaster");
@@ -579,6 +582,7 @@ function App() {
     else if (locationHash.startsWith("#battle-reports")) setActiveTab("battle_reports");
     else if (locationHash.startsWith("#bounties")) setActiveTab("bounty_analytics");
     else if (locationHash === "#navigation") setActiveTab("navigation");
+    else if (locationHash === "#d-scan") setActiveTab("dscan");
     else if (locationHash === "#local-scan") setActiveTab("local_scan");
     else if (locationHash === "#local-threat") openThreatAnalyzer();
     else if (locationHash.startsWith("#quartermaster")) setActiveTab("quartermaster");
@@ -645,10 +649,13 @@ function App() {
 
   const publicRecruiting = locationHash === "#recruiting" || locationHash === "#apply";
   const publicExchangeId = locationHash.startsWith("#exchange/") ? locationHash.slice("#exchange/".length) : null;
+  const publicDScanToken = locationHash.startsWith("#d-scan/") ? locationHash.slice("#d-scan/".length) : null;
   const publicLocalScanToken = locationHash.startsWith("#local-scan/") ? locationHash.slice("#local-scan/".length) : null;
   const publicBattleReportToken = locationHash.startsWith("#battle-report/") ? locationHash.slice("#battle-report/".length) : null;
 
   if (!authReady) return <main className="auth-shell"><section className="panel"><img className="auth-logo" src="/eqm-logo.webp" alt="EVE Quartermaster" /><p className="muted">Checking account session...</p></section></main>;
+
+  if (publicDScanToken) return <PublicDScanPage api={api} token={publicDScanToken} onBack={() => { window.location.hash = ""; window.location.reload(); }} />;
 
   if (publicLocalScanToken) return <PublicLocalScanPage api={api} token={publicLocalScanToken} onBack={() => { window.location.hash = ""; window.location.reload(); }} />;
 
@@ -711,9 +718,10 @@ function App() {
 
           {canView("esi") && <button className={activeTab === "esi" ? "active" : ""} onClick={() => setActiveTab("esi")}><KeyRound size={18} /> ESI Sync</button>}
 
-          {["local_scan", "intel_reports", "navigation"].some(canView) && <span className="nav-section-label">Intel</span>}
+          {["dscan", "local_scan", "intel_reports", "navigation"].some(canView) && <span className="nav-section-label">Intel</span>}
 
           {canView("local_scan") && <button className={activeTab === "local_scan" ? "active" : ""} onClick={() => { window.location.hash="local-scan"; setActiveTab("local_scan"); }}><UserRoundCheck size={18} /> Local Scan</button>}
+          {canView("dscan") && <button className={activeTab === "dscan" ? "active" : ""} onClick={() => { window.location.hash="d-scan"; setActiveTab("dscan"); }}><Siren size={18} /> D-Scan</button>}
           {canView("intel_reports") && <button className={activeTab === "intel_reports" ? "active" : ""} onClick={() => { window.location.hash="intel"; setActiveTab("intel_reports"); }}><Siren size={18} /> Intel Reports</button>}
 
           {canView("navigation") && <button type="button" className={activeTab === "navigation" && locationHash === "#local-threat" ? "active" : ""} onClick={openThreatAnalyzer}><Siren size={18} /> Local Threat Analyzer</button>}
@@ -853,7 +861,8 @@ function App() {
 
         {activeTab === "quartermaster" && canView("quartermaster") && <QuartermasterPage api={api} formatDateTime={(value) => formatDateTime(value, preferredTimeZone(user))} />}
 
-        {activeTab === "local_scan" && canView("local_scan") && <LocalScanPage api={api} />}
+        {activeTab === "local_scan" && canView("local_scan") && <LocalScanPage api={api} allowDscan={canView("dscan")} />}
+        {activeTab === "dscan" && canView("dscan") && <DScanPage api={api} />}
         {activeTab === "intel_reports" && canView("intel_reports") && <IntelReportsPage key={locationHash} api={api} />}
 
         {activeTab === "fleet_assignments" && canView("fleet_assignments") && <FleetAssignmentsPage key={locationHash} api={api} />}
@@ -2354,6 +2363,7 @@ function ManagedForm({ children, onSubmit, submitLabel = "Save" }: { children: R
 
 function titleFor(tab: string) {
   if (tab === "quartermaster") return "Quartermaster";
+  if (tab === "dscan") return "D-Scan";
   if (tab === "local_scan") return "Local Scan";
   if (tab === "intel_reports") return "Intel Reports";
   if (tab === "fleet_assignments") return "Fleet Assignments";
@@ -2367,6 +2377,7 @@ function titleFor(tab: string) {
 
 function subtitleFor(tab: string) {
   if (tab === "quartermaster") return "View blueprint holdings, running industry jobs, and planetary infrastructure across linked owners.";
+  if (tab === "dscan") return "Analyze directional scans, ship classes and deployables, and share timed intel reports.";
   if (tab === "local_scan") return "Turn local pilot lists into public alliance and corporation reports.";
   if (tab === "intel_reports") return "Investigate public combat evidence and permission-scoped ESI enrichment.";
   if (tab === "fleet_assignments") return "Plan fleet compositions, assign fittings, and view your own ship assignments.";

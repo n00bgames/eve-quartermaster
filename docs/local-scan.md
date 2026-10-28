@@ -24,7 +24,7 @@ Delete individual reports, selected reports, a generation-date range, or all rep
 
 ## Saved organization highlights
 
-Each user can save up to 200 exact corporation/alliance names, resolved to stable EVE IDs. Add/remove controls update only that user's saved list, which persists between sessions. Alliance matches mark its corporations/pilots and counts red; a corporation match marks that corporation's pilots/count only. Reports retain the markings present at generation, so later preference edits do not rewrite shared history. D-scan will reuse these preferences when implemented; ordinary directional-scan ship names do not establish ownership.
+Each user can save up to 200 exact corporation/alliance names, resolved to stable EVE IDs. Add/remove controls update only that user's saved list, which persists between sessions. Alliance matches mark its corporations/pilots and counts red; a corporation match marks that corporation's pilots/count only. Reports retain the markings present at generation, so later preference edits do not rewrite shared history. [D-Scan](dscan.md) reuses these preferences for linked local lists; ordinary directional-scan ship names do not establish ownership.
 
 ## Roles and ESI privacy
 
@@ -38,4 +38,4 @@ ESI consent requests and collection use the combined permissions of the **token 
 
 Settings now lists stored totals and current/last-import counters for all import-stat fields, grouped into Inventory, Universe, Dogma, Blueprints, and PI. Detail counters cover celestial kinds, effect modifiers, default effects, recipe products/materials, and schematic inputs/outputs. These are processed-row counts, not guessed completion percentages. Unsupported activities are reported as skipped; missing last-run values display a dash.
 
-Deploy backend/frontend together with `alembic upgrade head`: **0090_local_scan_reports** adds report/highlight tables and **0091_multiple_account_roles** adds role assignments/invitation role lists. The backend adds pinned ReportLab 5.1.0 and a small bundled EQM logo. No production data, live game waypoints, or live roles were modified during development. D-scan parsing and battle-report retention/PDF enhancements remain planned.
+Deploy backend/frontend together with `alembic upgrade head`: **0090_local_scan_reports** adds report/highlight tables and **0091_multiple_account_roles** adds role assignments/invitation role lists. The backend adds pinned ReportLab 5.1.0 and a small bundled EQM logo. No production data, live game waypoints, or live roles were modified during development. D-scan is implemented separately and requires migration 0092_dscan_reports. Battle-report retention/PDF enhancements remain planned.

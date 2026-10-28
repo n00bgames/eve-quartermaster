@@ -99,6 +99,10 @@ New images show current components with synthetic demo data. Older screenshots a
 
 **2.0 development preview — synthetic demo data, not a published release.**
 
+| D-Scan report | Manual recons and linked local |
+| --- | --- |
+| [![D-scan with ship icons,classes,deployables and linked local](static/ss/v2.0/dscan-public.png)](static/ss/v2.0/dscan-public.png) | [![Manual combat recon and linked-local controls](static/ss/v2.0/dscan-editor.png)](static/ss/v2.0/dscan-editor.png) |
+
 | Local Scan | Combined account roles |
 | --- | --- |
 | [![Local Scan preview with synthetic pilots and red organization highlights](static/ss/v2.0/local-scan.png)](static/ss/v2.0/local-scan.png) | [![Role editor with Intel Analyst and Quartermaster selected](static/ss/v2.0/multiple-roles.png)](static/ss/v2.0/multiple-roles.png) |
@@ -791,7 +795,7 @@ After `docker compose up --build`, confirm:
 
 ## Roadmap
 
-See [Proposed Changes](docs/proposed_changes.md) for the to-do list, including the planned d-scan parser and persistent per-user drag-and-drop section layouts. Local Scan is implemented in the 2.0 development build.
+See [Proposed Changes](docs/proposed_changes.md) for the to-do list, including persistent per-user drag-and-drop section layouts. Local Scan and [D-Scan](docs/dscan.md) are implemented in the 2.0 development build.
 
 - Hardening pass for public testers, including clearer empty states and friendlier setup diagnostics.
 - More complete industry planning: owned vs missing materials, procurement options, build readiness, and market pricing.
@@ -821,3 +825,5 @@ This project is not affiliated with or endorsed by CCP Games. EVE Online and rel
 This project is collaboratively created with generative AI. Human project direction, review, testing, deployment choices, EVE domain decisions, and final stewardship remain with the project maintainers.
 
 See [Local Scan, multiple roles, ESI privacy, and SDE totals](docs/local-scan.md) for the 2.0 development features and rollout requirements.
+
+See [D-Scan formats, public reports, base mass and rollout](docs/dscan.md) for the directional scan module.

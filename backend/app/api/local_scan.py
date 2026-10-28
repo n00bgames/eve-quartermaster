@@ -62,12 +62,13 @@ def require_scan(response: Response, user: User = Depends(get_current_user), db:
 
 
 def metadata(row):
-    return {"token": row.token, "share_url": f"{get_settings().frontend_url.rstrip('/')}/#local-scan/{row.token}",
+    return {"token": row.token, "report_kind": row.report_kind, "share_url": f"{get_settings().frontend_url.rstrip('/')}/#{'d-scan' if row.report_kind == 'dscan' else 'local-scan'}/{row.token}",
             "created_at": service.utc(row.created_at).isoformat(),
             "expires_at": service.utc(row.expires_at).isoformat() if row.expires_at else None,
             "retention": row.retention, "account_name": row.account_name,
             "corporation_id": row.corporation_id, "application_version": row.application_version,
-            "character_count": row.payload.get("character_count", 0), "input_count": row.payload.get("input_count", 0)}
+            "character_count": row.payload.get("character_count", 0), "input_count": row.payload.get("input_count", 0),
+            "object_count": row.payload.get("object_count", 0), "ship_count": row.payload.get("ship_count", 0)}
 
 
 @router.get("/context")
@@ -208,7 +209,11 @@ async def generate(payload: ScanInput, request: Request, user: User = Depends(re
 def reports(from_at: datetime | None = None, to_at: datetime | None = None,
             offset: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=100),
             user: User = Depends(require_scan), db: Session = Depends(get_db)):
-    filters = [service.management_scope(db, user), service.active_reports()]
+    return report_listing(user, db, from_at, to_at, offset, limit, "local")
+
+
+def report_listing(user, db, from_at=None, to_at=None, offset=0, limit=50, kind="local"):
+    filters = [service.management_scope(db, user), service.active_reports(kind=kind)]
     if from_at:
         filters.append(LocalScanReport.created_at >= service.utc(from_at))
     if to_at:
@@ -223,22 +228,26 @@ def reports(from_at: datetime | None = None, to_at: datetime | None = None,
 
 @router.post("/reports/delete")
 def delete_reports(payload: DeleteInput, user: User = Depends(require_scan), db: Session = Depends(get_db)):
-    filters = [service.management_scope(db, user)]
+    return delete_scoped_reports(payload, user, db, "local")
+
+
+def delete_scoped_reports(payload, user, db, kind):
+    filters = [service.management_scope(db, user), LocalScanReport.report_kind == kind]
     if payload.tokens:
         filters.append(LocalScanReport.token.in_(payload.tokens))
     elif payload.from_at is not None:
         filters.extend([LocalScanReport.created_at >= service.utc(payload.from_at), LocalScanReport.created_at < service.utc(payload.to_at)])
     count = db.execute(delete(LocalScanReport).where(*filters)).rowcount
-    record_audit_event(db, event_kind="intel", title="Local scan reports deleted", actor_user=user,
+    record_audit_event(db, event_kind="intel", title=f"{'D-scan' if kind == 'dscan' else 'Local scan'} reports deleted", actor_user=user,
         body=f"count={count}; mode={'individual' if payload.tokens else 'date_range' if payload.from_at else 'all_in_scope'}")
     db.commit()
     return {"deleted": count}
 
 
-def public_row(db, token):
+def public_row(db, token, kind="local"):
     if not re.fullmatch(r"[A-Za-z0-9_-]{43}", token):
         raise HTTPException(404, "Report not found or expired", headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow, noarchive"})
-    row = db.scalar(select(LocalScanReport).where(LocalScanReport.token == token, service.active_reports()))
+    row = db.scalar(select(LocalScanReport).where(LocalScanReport.token == token, service.active_reports(kind=kind)))
     if row is None:
         raise HTTPException(404, "Report not found or expired", headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow, noarchive"})
     return row

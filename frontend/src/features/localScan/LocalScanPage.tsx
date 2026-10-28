@@ -9,7 +9,7 @@ type System = {system_id: number; name: string};
 const errorText = (e: unknown) => e instanceof Error ? e.message : "Request failed.";
 const retentionLabel: Record<string,string> = {"30m":"30 minutes","1h":"1 hour","2h":"2 hours","12h":"12 hours","24h":"24 hours","3days":"3 days","7days":"7 days","30days":"30 days","permanent":"Permanent"};
 
-export function LocalScanPage({api}: {api: ApiClient}) {
+export function LocalScanPage({api,allowDscan=false}: {api: ApiClient;allowDscan?:boolean}) {
   const [context,setContext] = useState<ScanContext | null>(null);
   const [text,setText] = useState("");
   const [retention,setRetention] = useState("24h");
@@ -53,7 +53,11 @@ export function LocalScanPage({api}: {api: ApiClient}) {
     return () => {window.clearTimeout(timer);controller.abort();};
   },[api,systemText,system]);
   async function generate(e: FormEvent) {
-    e.preventDefault();setBusy(true);setError("");setMessage("");
+    e.preventDefault();
+    const directional=text.split(/\r?\n/).some(line=>/^\d+\t[^\t]*\t[^\t]+\t/.test(line) || (line.split("\t").length===3 && /[\d.,]+\s*(?:km|AU|m)\s*$/i.test(line)));
+    if(directional && !allowDscan){setError("This input is a directional scan. Your account needs D-Scan permission to analyze it.");return;}
+    if(directional){sessionStorage.setItem("eqm-dscan-draft",text);window.location.hash="d-scan";return;}
+    setBusy(true);setError("");setMessage("");
     try {
       const result = await api<ScanReport>("/local-scans",{method:"POST",body:JSON.stringify({text,retention,corporation_id:corp ? Number(corp) : null,system_id:system?.system_id ?? null})});
       setReport(result);setOffset(0);await loadHistory();

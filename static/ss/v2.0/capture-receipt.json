@@ -56,6 +56,30 @@
       "bytes": 44544,
       "width": 586,
       "height": 675
+    },
+    {
+      "file": "dscan-public.png",
+      "caption": "Full public d-scan report: 32 synthetic observed objects,30 observed ships,3 manual recons,ship/deployable icons,classes,base mass and18 linked pilots with red organization highlights.",
+      "captured_at_utc": "2026-10-28T20:06:38.447401+00:00",
+      "source_base_commit": "0f21303a06668a0dcf89cfe6b0bc7e0e1cf35ef9",
+      "source_state": "Uncommitted D-Scan implementation on the pushed 2.0.0 preparation commit.",
+      "provenance": "Actual built frontend, disposable SQLite/type/membership fixtures, mocked public affiliation and game waypoint calls. Real EVE Image Server icons/logos; counts,types selected,memberships and masses are demo inputs.",
+      "sha256": "865e1e34a5baf0ba10df3d6075b79c1ce73e7bb2f199a62ad7dac79add77fe51",
+      "bytes": 148975,
+      "width": 65536,
+      "height": 4292542531
+    },
+    {
+      "file": "dscan-editor.png",
+      "caption": "Cropped actual controls for manual recon counts and linked local updates; saving creates a new immutable public snapshot.",
+      "captured_at_utc": "2026-10-28T20:06:38.448404+00:00",
+      "source_base_commit": "0f21303a06668a0dcf89cfe6b0bc7e0e1cf35ef9",
+      "source_state": "Uncommitted D-Scan implementation on the pushed 2.0.0 preparation commit.",
+      "provenance": "Actual built frontend, disposable SQLite/type/membership fixtures, mocked public affiliation and game waypoint calls. Real EVE Image Server icons/logos; counts,types selected,memberships and masses are demo inputs.",
+      "sha256": "201226785cc6e477232356bdd0b652a3d66cccad2f5c5404f9f886c837677c44",
+      "bytes": 31880,
+      "width": 65536,
+      "height": 4292542531
     }
   ]
 }
