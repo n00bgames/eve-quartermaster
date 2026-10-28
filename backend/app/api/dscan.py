@@ -15,6 +15,7 @@ from app.db.session import get_db
 from app.models import EveSystem, User
 from app.models.local_scan import LocalScanReport, ScanHighlight
 from app.services import dscan, local_scan as lifecycle
+from app.services.scan_threat import order_snapshot
 from app.services.audit import record_audit_event
 from app.services.permissions import can_view_section, quartermaster_read_only
 
@@ -110,15 +111,17 @@ async def generate(payload: DScanInput, request: Request, user: User = Depends(r
             snapshot["warnings"].append(f"{len(ignored)} input rows could not be parsed; line numbers and reasons are listed separately.")
         at = lifecycle.now()
         lifetime = lifecycle.RETENTIONS[payload.retention]
-        row = LocalScanReport(report_kind="dscan", token=secrets.token_urlsafe(32), created_by_user_id=user.id,
-            corporation_id=payload.corporation_id, account_name=user.display_name, application_version=request.app.version,
+        from app.services.report_identity import report_identity
+        creator, anonymous = report_identity(db, user, payload.anonymous)
+        row = LocalScanReport(is_private=payload.is_private, anonymous=payload.anonymous, report_kind="dscan", token=secrets.token_urlsafe(32), created_by_user_id=user.id,
+            corporation_id=payload.corporation_id, account_name=creator, application_version=request.app.version,
             created_at=at, expires_at=at + timedelta(seconds=lifetime) if lifetime is not None else None,
             retention=payload.retention, payload=snapshot)
         db.add(row)
-        record_audit_event(db, event_kind="intel", title="Public directional scan generated", actor_user=user,
+        record_audit_event(db, event_kind="intel", title="Directional scan generated", actor_user=user,
                            body=f"objects={snapshot['object_count']}; ships={snapshot['ship_count']}; retention={payload.retention}")
         db.commit()
-        return {**shared.metadata(row), **snapshot}
+        return {**shared.metadata(row), **order_snapshot(snapshot)}
     finally:
         shared._generating.discard(user.id)
         if source:
@@ -141,14 +144,14 @@ def delete_reports(payload: shared.DeleteInput, user: User = Depends(require_dsc
 def public_report(token: str, response: Response, db: Session = Depends(get_db)):
     shared.public_headers(response)
     row = shared.public_row(db, token, "dscan")
-    return {**shared.metadata(row), **row.payload}
+    return {**shared.metadata(row), **order_snapshot(row.payload)}
 
 
 @router.get("/public/{token}/pdf")
 async def export_pdf(token: str, db: Session = Depends(get_db)):
     from app.services.dscan_pdf import report_images, render_pdf
     row = shared.public_row(db, token, "dscan")
-    snapshot = {**shared.metadata(row), **row.payload}
+    snapshot = {**shared.metadata(row), **order_snapshot(row.payload)}
     images = await report_images(snapshot)
     content = await run_in_threadpool(render_pdf, snapshot, images)
     db.expire_all()
@@ -157,3 +160,14 @@ async def export_pdf(token: str, db: Session = Depends(get_db)):
         "Content-Disposition": f'attachment; filename="eqm-dscan-{token[:10]}.pdf"'})
     shared.public_headers(response)
     return response
+
+
+@router.get("/reports/{token}")
+def saved_report(token: str, response: Response, user: User = Depends(require_dscan), db: Session = Depends(get_db)):
+    shared.public_headers(response)
+    row = shared.authenticated_row(db, token, user, "dscan")
+    return {**shared.metadata(row), **order_snapshot(row.payload)}
+
+@router.get("/reports/{token}/pdf")
+async def saved_pdf(token: str, user: User = Depends(require_dscan), db: Session = Depends(get_db)):
+    return await shared.authenticated_pdf(db, token, user, "dscan")

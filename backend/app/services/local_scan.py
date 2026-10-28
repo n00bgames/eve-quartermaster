@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import delete, and_, or_, select, true
 from app.models import EveCharacter, EveCorporation
 from app.models.local_scan import LocalScanReport
+from app.models import BattleReportShare
 from app.services.esi_client import EsiClient
 from app.services.permissions import ROLE_RANK, role_rank
 
@@ -130,11 +131,12 @@ def corporations(db, user):
 
 
 def management_scope(db, user):
-    if role_rank(user, db) >= ROLE_RANK["admin"]:
-        return true()
     own = LocalScanReport.created_by_user_id == user.id
+    public = LocalScanReport.is_private.is_(False)
+    if role_rank(user, db) >= ROLE_RANK["admin"]:
+        return or_(own, public)
     if role_rank(user, db) >= ROLE_RANK["director"]:
-        return or_(own, LocalScanReport.corporation_id.in_([row[0] for row in corporations(db, user)]))
+        return or_(own, and_(public, LocalScanReport.corporation_id.in_([row[0] for row in corporations(db, user)])))
     return own
 
 
@@ -143,7 +145,8 @@ def active_reports(at=None, kind="local"):
 
 
 def purge_expired(db):
-    return db.execute(delete(LocalScanReport).where(LocalScanReport.expires_at <= now())).rowcount
+    count = db.execute(delete(LocalScanReport).where(LocalScanReport.expires_at <= now())).rowcount
+    return count + db.execute(delete(BattleReportShare).where(BattleReportShare.expires_at <= now())).rowcount
 
 
 _cleanup_task = None

@@ -39,3 +39,5 @@ Deploy backend/frontend together and apply **0092_dscan_reports** after 0091. It
 Signed-in linked local lists immediately apply the viewer’s current organization highlights. Existing public links and PDFs retain their generation-time markings; regenerate to share preference changes.
 
 The report header leads with the saved system (or Not specified), **Total ships**, and the observed/manual split. The count is the whole report's observed ships plus manual additions; it excludes known deployables and other non-ship objects and is unaffected by list filters. Linked local headers also show the system and total pasted pilots, with compact portrait links in expanded corporation lists. The PDF repeats the system and total ship count on every page; observed/manual details remain directly below the first-page banner.
+
+Report identity/privacy now follows [main-character attribution, anonymous/private options and migration 0093](report-privacy.md). These rules supersede older references above to immutable creator account labels: existing named reports use the creator’s current main, never their account name.

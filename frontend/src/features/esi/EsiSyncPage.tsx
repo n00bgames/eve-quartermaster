@@ -5,7 +5,7 @@ import { isCharacterSyncPollingAborted, resumeCharacterSyncJob, trackCharacterSy
 import type { ContactSyncJob, ContactSyncPreview, EsiAuthInfo, LinkedCharacter, SyncDatasetFreshness, SyncFreshnessPayload } from "../../types/esi";
 
 type ApiClient = <T>(path: string, options?: RequestInit) => Promise<T>;
-type UserAccount = { id: number; email: string; display_name: string; role: string; timezone?: string; created_at?: string };
+type UserAccount = { id: number; email: string; display_name: string; role: string; main_character_id?: number|null; timezone?: string; created_at?: string };
 type ManagedFormComponent = (props: { children: ReactNode; onSubmit: (form: FormData) => Promise<void>; submitLabel?: string }) => ReactElement;
 type MetricComponent = (props: { icon: ReactNode; label: string; value: number | string; delta?: string }) => ReactElement;
 type CharacterHoverNameComponent = (props: { characterId?: number | null; name: string; className?: string; href?: string }) => ReactElement;
@@ -23,6 +23,11 @@ export function EsiSyncPage({ currentUser, load, api, ManagedForm, Metric, Chara
   const [status, setStatus] = useState<string>("Not checked");
   const [authInfo, setAuthInfo] = useState<EsiAuthInfo | null>(null);
   const [standingAuthInfo, setStandingAuthInfo] = useState<EsiAuthInfo | null>(null);
+  const [mainId,setMainId]=useState(currentUser.main_character_id??null);
+  useEffect(()=>{void api<{main_character_id:number|null}>("/auth/me/characters").then(d=>setMainId(d.main_character_id)).catch(()=>undefined);},[api]);
+  useEffect(()=>{const sync=(e:Event)=>setMainId((e as CustomEvent<number|null>).detail);window.addEventListener("eqm-main-character",sync);return()=>window.removeEventListener("eqm-main-character",sync);},[]);
+  const [mainBusy,setMainBusy]=useState(false);
+  async function selectMain(id:number|null){setMainBusy(true);try{await api("/auth/me/main-character",{method:"PUT",body:JSON.stringify({main_character_id:id})});setMainId(id);window.dispatchEvent(new CustomEvent("eqm-main-character",{detail:id}));setMessage("Main character updated for report attribution.");}catch(e){setMessage(e instanceof Error?e.message:"Unable to set main.");}finally{setMainBusy(false);}}
   const [linked, setLinked] = useState<LinkedCharacter[]>([]);
   const [resolveResult, setResolveResult] = useState<string>("");
   const [message, setMessage] = useState<string | null>(null);
@@ -255,6 +260,7 @@ export function EsiSyncPage({ currentUser, load, api, ManagedForm, Metric, Chara
                 <span>Character ID {character.character_id}</span>
                 {["host", "admin"].includes(currentUser.role) && <span>SSO linked by {character.linked_user_display_name}</span>}
                 <span>Last sync {character.last_sync_at ? `${new Date(character.last_sync_at).toLocaleString()} (${character.last_sync_type ?? "sync"})` : "never"}</span>
+                {character.linked_user_id===currentUser.id && <label className="check"><input type="checkbox" checked={mainId===character.character_id} disabled={mainBusy} onChange={e=>void selectMain(e.target.checked?character.character_id:null)}/>Set as my main character</label>}
                 <span>Linked {character.linked_at ? new Date(character.linked_at).toLocaleString() : "recently"}</span>
                 {scopeStatus(character, "public")}
                 {scopeStatus(character, "standing")}

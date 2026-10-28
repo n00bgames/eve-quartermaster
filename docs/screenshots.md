@@ -14,6 +14,46 @@ All **63 existing images** remain linked below. They are historical: some are de
 
 Captured **October 28, 2026** from the current **unreleased 2.0.0 working tree**. These are actual browser captures with synthetic accounts/pilots, not production EVE state. The Local Scan image includes real organization logos as visual references; its memberships are fictional. Crops retain the rendered UI without repainting.
 
+### Report privacy, main characters and Industry Reports
+
+Current unreleased captures from the privacy/Industry Report implementation. All data and SSO completion are synthetic; report account identity is never used for attribution.
+
+Profile main-character selection; only currently owned, actively linked characters are offered.
+
+![Profile main-character selection; only currently owned, actively linked characters are offered.](../static/ss/v2.0/profile-main-character.jpg)
+
+Post-link main-character checkbox on a simulated SSO return for an owned synthetic character.
+
+![Post-link main-character checkbox on a simulated SSO return for an owned synthetic character.](../static/ss/v2.0/linked-character-main-checkbox.jpg)
+
+Anonymous private Local Scan generation: signed-in export, no public-copy button, no account attribution.
+
+![Anonymous private Local Scan generation: signed-in export, no public-copy button, no account attribution.](../static/ss/v2.0/scan-private-anonymous.jpg)
+
+Existing D-Scan report now attributed to the selected main and ordered from Titan down through capital and subcapital threat classes.
+
+![Existing D-Scan report now attributed to the selected main and ordered from Titan down through capital and subcapital threat classes.](../static/ss/v2.0/dscan-threat-order.jpg)
+
+Industry Report private default, opt-in public link, dynamic database mode, anonymous attribution and retention controls.
+
+![Industry Report private default, opt-in public link, dynamic database mode, anonymous attribution and retention controls.](../static/ss/v2.0/industry-report-options.jpg)
+
+Actual public Industry Report with overall mineral/PI totals, owner stock detail, blueprints, jobs and PI infrastructure.
+
+![Actual public Industry Report with overall mineral/PI totals, owner stock detail, blueprints, jobs and PI infrastructure.](../static/ss/v2.0/industry-report-dynamic.jpg)
+
+Battle Report anonymous/private generation and expiration controls.
+
+![Battle Report anonymous/private generation and expiration controls.](../static/ss/v2.0/battle-report-privacy.jpg)
+
+Rendered Industry PDF: current main-character attribution, overall totals first, then itemized stock, blueprints, industry jobs and PI.
+
+![Rendered Industry PDF: current main-character attribution, overall totals first, then itemized stock, blueprints, industry jobs and PI.](../static/ss/v2.0/industry-report-pdf.png)
+
+Rendered anonymous private Battle PDF: small EQM logo, safe attribution, pilot totals, participants and timeline.
+
+![Rendered anonymous private Battle PDF: small EQM logo, safe attribution, pilot totals, participants and timeline.](../static/ss/v2.0/battle-report-private-pdf.png)
+
 ### System totals, pilot portraits and PDF summaries
 
 The selected system and whole-snapshot pilot/ship total lead both report pages. Local Scan includes unresolved pasted names in its total and labels the resolved/unresolved split. D-Scan totals include clearly identified manual additions. Filtering leaves these header totals unchanged.

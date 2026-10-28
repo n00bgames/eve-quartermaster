@@ -1,3 +1,5 @@
+import {APP_VERSION} from "../../version";
+import {ReportDownload} from "../localScan/ReportDownload";
 import { AlertTriangle, ChevronLeft, ChevronRight, Clipboard, ExternalLink, Pencil, RefreshCw, RotateCcw, Share2, Swords, Trash2, UsersRound } from "lucide-react";
 import { useEffect, useMemo, useState, type DragEvent } from "react";
 
@@ -173,6 +175,9 @@ export function BattleReportsPage({ api }: { api: ApiClient }) {
   const [sourceSync, setSourceSync] = useState<BattleSourceSync | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [anonymous,setAnonymous]=useState(false);
+  const [privateReport,setPrivateReport]=useState(false);
+  const [reportRetention,setReportRetention]=useState("24h");
   const [shares, setShares] = useState<BattleReportShare[]>([]);
   const [shareBusy, setShareBusy] = useState(false);
   const [shareNotice, setShareNotice] = useState<string | null>(null);
@@ -192,6 +197,8 @@ export function BattleReportsPage({ api }: { api: ApiClient }) {
     }).catch((reason) => setError(reason instanceof Error ? reason.message : "Battle Reports context failed"))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(()=>{let active=true;const sync=()=>{void api<typeof context>("/battle-reports/context").then(c=>{if(active)setContext(c);}).catch(()=>undefined);};window.addEventListener("eqm-main-character",sync);return()=>{active=false;window.removeEventListener("eqm-main-character",sync);};},[api]);
 
   async function loadReport(selectedPilot = pilotId, selectedGap = gapMinutes, seedId = selectedSeedId, overrides: SideOverrides = sideOverrides, orgOverrides: OrganizationOverrides = organizationOverrides) {
     if (!selectedPilot) return;
@@ -257,17 +264,17 @@ export function BattleReportsPage({ api }: { api: ApiClient }) {
     if (!pilotId || !report) return;
     setShareBusy(true); setError(null); setShareNotice(null);
     try {
-      const created = await api<BattleReportShare>("/battle-reports/shares", { method: "POST", body: JSON.stringify({ character_id: pilotId, gap_minutes: gapMinutes, seed_killmail_id: selectedSeedId, side_overrides: Object.entries(sideOverrides).map(([characterId, side]) => ({ character_id: Number(characterId), side })), organization_overrides: Object.values(organizationOverrides) }) });
+      const created = await api<BattleReportShare>("/battle-reports/shares", { method: "POST", body: JSON.stringify({ anonymous, is_private:privateReport, retention:reportRetention, character_id: pilotId, gap_minutes: gapMinutes, seed_killmail_id: selectedSeedId, side_overrides: Object.entries(sideOverrides).map(([characterId, side]) => ({ character_id: Number(characterId), side })), organization_overrides: Object.values(organizationOverrides) }) });
       setShares((current) => [created, ...current]);
-      await navigator.clipboard.writeText(created.share_url);
-      setShareNotice("Public snapshot link created and copied. Anyone with the link can view it until you revoke it.");
+      if(created.share_url)await navigator.clipboard.writeText(created.share_url);
+      setShareNotice(created.is_private?"Private snapshot saved. No public link was created.":"Public snapshot created and copied; it remains accessible until expiry or revocation.");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not create a public battle report link");
     } finally { setShareBusy(false); }
   }
 
   async function copyShare(share: BattleReportShare) {
-    await navigator.clipboard.writeText(share.share_url);
+    await navigator.clipboard.writeText(share.share_url??"");
     setShareNotice("Public battle report link copied.");
   }
 
@@ -334,13 +341,14 @@ export function BattleReportsPage({ api }: { api: ApiClient }) {
         <button type="button" onClick={() => newerBattle && selectBattle(newerBattle.seed_killmail_id)} disabled={!newerBattle || loading}>Newer battle <ChevronRight size={17} /></button>
         <button type="button" onClick={() => void loadHistory()} disabled={!pilotId || loading}><RefreshCw size={17} className={loading ? "spin" : ""} /> Rebuild history</button>
         <button type="button" onClick={() => { setEditingTeams((current) => !current); setTab("involved"); }} disabled={!report}><Pencil size={17} /> {editingTeams ? "Done editing" : "Edit teams"}</button>
-        <button type="button" onClick={() => void createShare()} disabled={!report || shareBusy}><Share2 size={17} /> Share report</button>
+        <button type="button" onClick={() => void createShare()} disabled={!report || shareBusy}><Share2 size={17} /> {privateReport?"Save private report":"Share report"}</button>
         {context.can_sync && <button type="button" className="secondary-action" onClick={() => void syncSource()} disabled={Boolean(sourceSync && activeSyncStatuses.has(sourceSync.status))}><RefreshCw size={17} className={sourceSync && activeSyncStatuses.has(sourceSync.status) ? "spin" : ""} /> Sync source</button>}
       </div>
     </section>
 
     <div className="battle-placard"><AlertTriangle size={18} /><span>{context.coverage_notice} The grouping gap is the maximum quiet period between the selected pilot’s consecutive killmails.</span></div>
     {error && <div className="alert">{error}</div>}
+    <section className="panel"><h3>Report privacy</h3><p>Generated by EVE Quartermaster v{APP_VERSION} by {anonymous?"Anonymous":context.creator_name??"Anonymous"}</p><label className="check"><input type="checkbox" checked={anonymous} onChange={e=>setAnonymous(e.target.checked)}/>Anonymous report (hide creator attribution)</label><label className="check"><input type="checkbox" checked={privateReport} onChange={e=>setPrivateReport(e.target.checked)}/>Private report (only you; no public link)</label><label>Keep saved report<select value={reportRetention} onChange={e=>setReportRetention(e.target.value)}>{["30m","1h","2h","12h","24h","3days","7days","30days","permanent"].map(x=><option key={x}>{x}</option>)}</select></label><p className="muted">Named reports use your main character. Without one, attribution is Anonymous. Battle participants are still shown.</p></section>
     {shareNotice && <div className="battle-share-notice">{shareNotice}</div>}
     {editingTeams && report && <section className="panel battle-team-editor"><div className="battle-team-editor-heading"><div><strong>Manual team classification</strong><span>Drag alliances or corporations between teams, or use their selectors. Individual pilot choices below take precedence. Every dependent total rebuilds from the underlying killmails, and shared snapshots preserve these choices.</span></div><button type="button" className="secondary-action" onClick={resetClassifications} disabled={(!Object.keys(sideOverrides).length && !Object.keys(organizationOverrides).length) || loading}><RotateCcw size={16} /> Reset classifications</button></div><TeamOrganizationEditor report={report} overrides={organizationOverrides} onSideChange={classifyOrganization} /></section>}
     {sourceSync && activeSyncStatuses.has(sourceSync.status) && <section className="panel battle-source-sync"><strong>Refreshing zKill discovery and canonical ESI records in the background</strong><span>{sourceSync.message ?? "The report will rebuild when synchronization finishes."}</span><progress value={sourceSync.target_index} max={Math.max(1, sourceSync.target_count)} /></section>}
@@ -357,7 +365,7 @@ export function BattleReportsPage({ api }: { api: ApiClient }) {
 
       <nav className="battle-tabs" aria-label="Battle report views">{tabs.map((item) => <button key={item.id} type="button" className={tab === item.id ? "active" : ""} onClick={() => setTab(item.id)}>{item.label}</button>)}</nav>
 
-      {shares.length > 0 && <section className="panel battle-share-panel"><div><strong>Active public snapshots</strong><small>These unguessable links preserve the report as it appeared when shared.</small></div>{shares.map((share) => <div className="battle-share-row" key={share.id}><a href={share.share_url} target="_blank" rel="noreferrer">{share.share_url}</a><span>{share.view_count} view{share.view_count === 1 ? "" : "s"}</span><button type="button" className="secondary-action" onClick={() => void copyShare(share)} aria-label="Copy public report link"><Clipboard size={16} /> Copy</button><button type="button" className="danger-action" onClick={() => void revokeShare(share.id)} disabled={shareBusy} aria-label="Revoke public report link"><Trash2 size={16} /> Revoke</button></div>)}</section>}
+      {shares.length > 0 && <section className="panel battle-share-panel"><div><strong>Saved report snapshots</strong><small>Saved snapshots preserve the battle data. Private reports are available only to you; public links expire or can be revoked.</small></div>{shares.map((share) => <div className="battle-share-row" key={share.id}>{share.share_url?<a href={share.share_url} target="_blank" rel="noreferrer">{share.share_url}</a>:<button type="button" onClick={()=>{setAnonymous(share.anonymous);setPrivateReport(share.is_private);void api<BattleReportPayload>(`/battle-reports/shares/${share.id}`).then(saved=>{setPayload(saved);setPilotId(saved.pilot.character_id);}).catch(e=>setError(e.message));}}>Open private report</button>}<ReportDownload path={`/battle-reports/shares/${share.id}/pdf`} filename="eqm-battle-report.pdf"/><span>{share.view_count} view{share.view_count === 1 ? "" : "s"}</span>{share.share_url&&<button type="button" className="secondary-action" onClick={() => void copyShare(share)} aria-label="Copy public report link"><Clipboard size={16} /> Copy</button>}<button type="button" className="danger-action" onClick={() => void revokeShare(share.id)} disabled={shareBusy} aria-label="Revoke saved report"><Trash2 size={16} /> Revoke</button></div>)}</section>}
 
       {tab === "involved" && <section className="panel battle-view"><div className="battle-team-grid">{report.teams.map((team) => <TeamCard key={team.side} team={team} />)}</div><PilotTable report={report} rows={report.participants} editable={editingTeams} selectedPilotId={pilotId} onSideChange={classifyPilot} /></section>}
 

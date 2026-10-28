@@ -1,3 +1,4 @@
+from app.api.industry_reports import router as industry_reports_router
 from app.api.dscan import router as dscan_router
 from app.api.local_scan import router as local_scan_router
 from app.api.intel import router as intel_router
@@ -50,6 +51,7 @@ from app.api.srp import router as srp_router
 from app.api.quartermaster_oversight import router as quartermaster_oversight_router
 
 api_router = APIRouter()
+api_router.include_router(industry_reports_router)
 api_router.include_router(local_scan_router)
 api_router.include_router(dscan_router)
 api_router.include_router(quartermaster_oversight_router)

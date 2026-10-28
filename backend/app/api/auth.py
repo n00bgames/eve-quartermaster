@@ -56,6 +56,7 @@ def serialize_user(user: User) -> dict[str, Any]:
         "display_name": user.display_name,
         "role": user.role,
         "roles": assigned_roles(user),
+        "main_character_id": getattr(user, "main_character_id", None),
         "timezone": getattr(user, "timezone", None) or "UTC",
         "created_at": user.created_at.isoformat() if user.created_at else None,
     }
@@ -154,6 +155,8 @@ def get_current_user(
         or re.fullmatch(r"/navigation/local-threat/jobs/[A-Za-z0-9_-]+/cancel", utility_path) is not None
         or re.fullmatch(r"/navigation/systems/\d+/objects/(?:sync|structures/\d+)", utility_path) is not None
     )
+    quartermaster_utility = quartermaster_utility or (request.method == "PUT" and utility_path == "/auth/me/main-character")
+    quartermaster_utility = quartermaster_utility or (request.method == "POST" and utility_path in {"/industry-reports", "/industry-reports/reports/delete"})
     quartermaster_refresh = request.method == "POST" and request.url.path.rstrip("/") == f"{get_settings().api_prefix}/quartermaster-oversight/sync"
     if quartermaster_read_only(user, db) and request.method not in {"GET", "HEAD", "OPTIONS"} and not quartermaster_refresh and not quartermaster_utility:
         raise HTTPException(status_code=403, detail="Quartermaster is a view-only role")
@@ -369,6 +372,12 @@ def me(current_user: User = Depends(get_current_user)) -> dict[str, Any]:
 
 @router.patch("/me")
 def update_me(payload: dict[str, Any], current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+    if "main_character_id" in payload:
+        from app.services.report_identity import owned_characters
+        selected = payload["main_character_id"]
+        if selected is not None and (type(selected) is not int or selected not in {c.character_id for c in owned_characters(db, current_user)}):
+            raise HTTPException(422, "Choose one of your currently linked characters")
+        current_user.main_character_id = selected
     if payload.get("display_name"):
         display_name = str(payload["display_name"]).strip()
         if not display_name:
@@ -581,3 +590,17 @@ def accept_invite(token: str, payload: dict[str, Any], db: Session = Depends(get
 
 
 
+
+
+@router.get("/me/characters")
+def own_profile_characters(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    from app.services.report_identity import owned_characters
+    return {"main_character_id": current_user.main_character_id,
+            "characters": [{"character_id": c.character_id, "name": c.name} for c in owned_characters(db, current_user)]}
+
+
+@router.put("/me/main-character")
+def set_profile_main(payload: dict[str, Any], current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if set(payload) != {"main_character_id"}:
+        raise HTTPException(422, "Provide main_character_id only")
+    return update_me(payload, current_user, db)

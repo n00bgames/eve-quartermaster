@@ -4,6 +4,7 @@ export type ProfileUserAccount = {
   display_name: string;
   role: string;
   roles?: string[];
+  main_character_id?: number | null;
   timezone?: string;
   created_at?: string;
 };

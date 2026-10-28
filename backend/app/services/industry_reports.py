@@ -1,0 +1,155 @@
+"""Stock/industry reports from synchronized data, with bounded sharing scopes."""
+from collections import defaultdict
+from datetime import datetime, timezone
+from sqlalchemy import select, func, or_, and_
+from sqlalchemy.orm import selectinload
+from fastapi import HTTPException
+from app.models import (Asset, Blueprint, EveCharacter, OwnershipEntity, EveType, EveGroup,
+                        PlanetaryColony, PlanetaryPin, ResearchProject)
+from app.services.asset_visibility import visible_owner_clause
+from app.services.permissions import can_view_section
+from app.services.quartermaster_access import oversight_scope
+from app.services.research_projects import ACTIVE_RESEARCH_STATUSES, RESEARCH_ACTIVITY_NAMES
+
+def iso(value):
+    return value.replace(tzinfo=value.tzinfo or timezone.utc).isoformat() if value else None
+
+def can_report(db, user):
+    return can_view_section(user, "industry_reports", db) and any(can_view_section(user, k, db) for k in ("assets","industry","planetary_industry","quartermaster"))
+
+async def permitted_scope(db, user):
+    if not can_report(db, user): raise HTTPException(403, "Industry Report access is required")
+    scope={"stock":[],"blueprint_characters":[],"blueprint_corporations":[],"job_characters":[],"job_corporations":[],"pi":[]}
+    if can_view_section(user,"assets",db):
+        scope["stock"]=list(db.scalars(select(OwnershipEntity.id).where(visible_owner_clause(user,db))))
+    oversight=can_view_section(user,"quartermaster",db)
+    if oversight or can_view_section(user,"industry",db) or can_view_section(user,"planetary_industry",db):
+        granted=await oversight_scope(db)
+        if oversight or can_view_section(user,"industry",db):
+            for prefix,key in (("blueprint","blueprints"),("job","jobs")):
+                scope[prefix+"_characters"]=sorted(granted.characters[key])
+                scope[prefix+"_corporations"]=sorted(granted.corporations[key])
+        if oversight or can_view_section(user,"planetary_industry",db):scope["pi"]=sorted(granted.characters["planets"])
+    return scope
+
+def validate_scope(saved, current):
+    # A shared link never gains future characters/owners. Any revoked grant disables it.
+    if any(not set(ids).issubset(current.get(k,[])) for k,ids in saved.items()):
+        raise HTTPException(404,"Report access changed; generate a new report")
+    return saved
+
+def category(item):
+    group=item.group if item else None
+    if group and (group.group_id==18 or group.name.casefold()=="mineral"):return "Minerals"
+    if group and ((group.category and group.category.category_id==43) or "planetary" in group.name.casefold()):return "PI"
+    return "Other assets"
+
+def build(db, scope):
+    stocks=[]
+    items={}
+    def get_type(tid):
+        if tid not in items:items[tid]=db.scalar(select(EveType).where(EveType.type_id==tid).options(selectinload(EveType.group).selectinload(EveGroup.category)))
+        return items[tid]
+    owners={o.id:o for o in db.scalars(select(OwnershipEntity).where(OwnershipEntity.id.in_(scope["stock"])).options(selectinload(OwnershipEntity.character),selectinload(OwnershipEntity.corporation)))}
+    from app.models import Location
+    stock_rows=db.execute(select(Asset.ownership_entity_id,Asset.type_id,Asset.location_id,func.sum(Asset.quantity),func.max(Asset.last_synced_at))
+        .where(Asset.ownership_entity_id.in_(scope["stock"]))
+        .group_by(Asset.ownership_entity_id,Asset.type_id,Asset.location_id)).all()
+    tids={row[1] for row in stock_rows}
+    items.update({t.type_id:t for t in db.scalars(select(EveType).where(EveType.type_id.in_(tids)).options(selectinload(EveType.group).selectinload(EveGroup.category)))})
+    locations={l.id:l.name for l in db.scalars(select(Location).where(Location.id.in_({row[2] for row in stock_rows if row[2]})))}
+    for oid,tid,lid,qty,synced in stock_rows:
+        owner=owners[oid];item=get_type(tid)
+        owner_name=owner.character.name if owner.character else owner.corporation.name if owner.corporation else owner.display_name
+        stocks.append({"owner":owner_name,"owner_kind":str(owner.owner_kind.value),"type_id":tid,"item":item.name if item else f"Type {tid}",
+            "category":category(item),"quantity":int(qty),"location":locations.get(lid,"Unknown location"),"source":"Assets","last_synced_at":iso(synced)})
+    colonies=list(db.scalars(select(PlanetaryColony).where(PlanetaryColony.character_id.in_(scope["pi"]))
+        .options(selectinload(PlanetaryColony.character),selectinload(PlanetaryColony.pins).selectinload(PlanetaryPin.pin_type),selectinload(PlanetaryColony.links),selectinload(PlanetaryColony.routes))))
+    pi=[]
+    for colony in colonies:
+        for pin in colony.pins:
+            for content in pin.contents_json or []:
+                tid=content.get("type_id");qty=content.get("amount",0)
+                if not isinstance(tid,int) or not isinstance(qty,(int,float)) or qty<=0:continue
+                item=get_type(tid)
+                stocks.append({"owner":colony.character.name,"owner_kind":"character","type_id":tid,"item":item.name if item else f"Type {tid}",
+                    "category":"PI","quantity":int(qty),"location":colony.planet_name,"source":"PI pin contents","last_synced_at":iso(colony.last_synced_at)})
+        pi.append({"owner":colony.character.name,"planet":colony.planet_name,"upgrade_level":colony.upgrade_level,
+            "pins":len(colony.pins),"links":len(colony.links),"routes":len(colony.routes),"last_synced_at":iso(colony.last_synced_at),
+            "infrastructure":[{"pin_id":str(pin.pin_id),"type":pin.pin_type.name if pin.pin_type else f"Type {pin.type_id}","expiry":iso(pin.expiry_time)} for pin in colony.pins]})
+    pi_types={row["type_id"] for row in stocks if row["source"]=="PI pin contents"}
+    for row in stocks:
+        if row["type_id"] in pi_types and row["category"]=="Other assets":row["category"]="PI"
+    projects=list(db.scalars(select(ResearchProject).where(ResearchProject.status.in_(ACTIVE_RESEARCH_STATUSES),or_(
+        ResearchProject.character_id.in_(scope["job_characters"]),
+        ResearchProject.installer_character_id.in_(select(EveCharacter.character_id).where(EveCharacter.id.in_(scope["job_characters"]))),
+        and_(ResearchProject.source_type=="corporation",ResearchProject.corporation_id.in_(scope["job_corporations"]))))
+        .options(selectinload(ResearchProject.character),selectinload(ResearchProject.corporation),selectinload(ResearchProject.blueprint_type),selectinload(ResearchProject.product_type))))
+    jobs=[{"job_id":str(j.job_id),"owner":j.corporation.name if j.source_type=="corporation" and j.corporation else j.character.name if j.character else j.installer_name or "Unknown",
+        "activity":RESEARCH_ACTIVITY_NAMES.get(j.activity_id,str(j.activity_id)),"blueprint":j.blueprint_type.name if j.blueprint_type else str(j.blueprint_type_id),
+        "product":j.product_type.name if j.product_type else None,"status":j.status,"runs":j.runs,"facility":j.facility_name,"end_date":iso(j.end_date),"last_synced_at":iso(j.last_synced_at)} for j in projects]
+    bp_owners=list(db.scalars(select(OwnershipEntity).where(or_(OwnershipEntity.character_id.in_(scope["blueprint_characters"]),OwnershipEntity.corporation_id.in_(scope["blueprint_corporations"]))).options(selectinload(OwnershipEntity.character),selectinload(OwnershipEntity.corporation))))
+    bp_owner_names={o.id:o.character.name if o.character else o.corporation.name if o.corporation else o.display_name for o in bp_owners}
+    blueprints=[]
+    for b in db.scalars(select(Blueprint).where(Blueprint.ownership_entity_id.in_(bp_owner_names)).options(selectinload(Blueprint.blueprint_type),selectinload(Blueprint.location),selectinload(Blueprint.asset))):
+        blueprints.append({"owner":bp_owner_names[b.ownership_entity_id],"blueprint":b.blueprint_type.name if b.blueprint_type else str(b.blueprint_type_id),
+            "kind":"BPC" if b.is_copy else "BPO","quantity":1 if b.is_copy else max(1,b.asset.quantity if b.asset else 1),"me":b.material_efficiency,"te":b.time_efficiency,
+            "runs":b.runs_remaining,"location":b.location.name if b.location else "Unknown location","last_synced_at":iso(b.last_synced_at)})
+    totals=defaultdict(int)
+    for row in stocks:totals[(row["category"],row["type_id"],row["item"])]+=row["quantity"]
+    as_of=datetime.now(timezone.utc).isoformat()
+    syncs=[r.get("last_synced_at") for r in stocks+jobs+pi+blueprints if r.get("last_synced_at")]
+    return {"as_of":as_of,"latest_sync_at":max(syncs) if syncs else None,"oldest_sync_at":min(syncs) if syncs else None,
+        "totals":[{"category":c,"type_id":tid,"item":name,"quantity":q} for (c,tid,name),q in sorted(totals.items(),key=lambda p:(p[0][0],p[0][2].casefold()))],
+        "stock":sorted(stocks,key=lambda r:(r["owner"].casefold(),r["category"],r["item"].casefold(),r["location"])),
+        "jobs":jobs,"blueprints":blueprints,"pi":pi,
+        "summary":{"stock_types":len(totals),"stock_units":sum(totals.values()),"jobs":len(jobs),"colonies":len(pi),"bpos":sum(b["quantity"] for b in blueprints if b["kind"]=="BPO"),"bpcs":sum(b["quantity"] for b in blueprints if b["kind"]=="BPC")},
+        "notice":"Totals reflect synchronized database records, not a live ESI query. Missing permissions/feeds are excluded. Stock includes PI pin contents separately from assets."}
+
+def csv_content(data):
+    import csv,io,json
+    out=io.StringIO();writer=csv.writer(out)
+    def cell(v):
+        text=str(v) if v is not None else ""
+        return "'"+text if text.startswith(("=","+","-","@","\t","\r")) else text
+    writer.writerow(["Generated by EVE Quartermaster v"+data["application_version"]+" by "+data["account_name"]])
+    writer.writerow(["Generated",data["created_at"],"Data as of",data["as_of"]])
+    for section in ("totals","stock","blueprints","jobs","pi"):
+        rows=data[section];writer.writerow([]);writer.writerow([section.upper()])
+        if rows:
+            fields=list(rows[0]);writer.writerow(fields)
+            for row in rows:writer.writerow([cell(json.dumps(row.get(k)) if isinstance(row.get(k),(list,dict)) else row.get(k)) for k in fields])
+    return out.getvalue()
+
+def pdf_content(data):
+    from reportlab.platypus import SimpleDocTemplate,Paragraph,Table,TableStyle,Spacer
+    from reportlab.lib.styles import getSampleStyleSheet,ParagraphStyle
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.utils import ImageReader
+    from xml.sax.saxutils import escape
+    from io import BytesIO
+    from pathlib import Path
+    stream=BytesIO();styles=getSampleStyleSheet();normal=ParagraphStyle("small",parent=styles['Normal'],fontSize=7,leading=10)
+    def p(v):return Paragraph(escape(str(v if v is not None else "")),normal)
+    def header(canvas,doc):
+        canvas.setFillColor(colors.HexColor('#172336'));canvas.rect(0,A4[1]-90,A4[0],90,fill=1,stroke=0)
+        logo=Path(__file__).resolve().parents[1]/'assets'/'eqm-logo.png'
+        if logo.exists():canvas.drawImage(ImageReader(str(logo)),32,A4[1]-35,width=24,height=24,mask='auto')
+        canvas.setFillColor(colors.white);canvas.setFont('Helvetica-Bold',14);canvas.drawString(66,A4[1]-28,'Industry Report')
+        identity=Paragraph(escape(f"Generated by EVE Quartermaster v{data['application_version']} by {data['account_name']}"),ParagraphStyle('identity',parent=normal,textColor=colors.white))
+        _,height=identity.wrap(A4[0]-64,35);identity.drawOn(canvas,32,A4[1]-40-height)
+        canvas.setFont('Helvetica',7);canvas.drawString(32,A4[1]-67,'Generated '+data['created_at'][:19].replace('T',' ')+' UTC');canvas.drawString(32,A4[1]-80,'Data as of '+data['as_of'][:19].replace('T',' ')+' UTC');canvas.drawRightString(A4[0]-32,20,str(doc.page))
+    story=[p(data['notice']),Spacer(1,12)]
+    specifications=[('Overall stock totals','totals',['category','item','quantity']),('Stock by character / corporation','stock',['owner','item','quantity','location','source']),
+        ('Blueprints','blueprints',['owner','blueprint','kind','quantity','me','te','runs','location']),('Active industry jobs','jobs',['owner','activity','product','status','runs','facility','end_date']),('Planetary infrastructure','pi',['owner','planet','upgrade_level','pins','links','routes'])]
+    for heading,key,fields in specifications:
+        story.append(Paragraph(heading,styles['Heading2']))
+        rows=data[key]
+        if not rows:story.append(p('No accessible synchronized records.'));continue
+        table=Table([[p(k.replace('_',' ').title()) for k in fields]]+[[p((str(row[k])[:19].replace('T',' ')+' UTC') if row.get(k) and k.endswith(('date','synced_at')) else f'{row[k]:,}' if isinstance(row.get(k),int) else row.get(k)) for k in fields] for row in rows],repeatRows=1,colWidths=[(A4[0]-64)/len(fields)]*len(fields))
+        table.setStyle(TableStyle([('VALIGN',(0,0),(-1,-1),'TOP'),('BACKGROUND',(0,0),(-1,0),colors.HexColor('#e8edf4')),('LINEBELOW',(0,0),(-1,-1),.3,colors.HexColor('#d9dfe8'))]))
+        story.extend([table,Spacer(1,8)])
+    doc=SimpleDocTemplate(stream,pagesize=A4,topMargin=106,leftMargin=32,rightMargin=32,bottomMargin=32)
+    doc.build(story,onFirstPage=header,onLaterPages=header)
+    return stream.getvalue()

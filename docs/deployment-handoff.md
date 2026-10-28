@@ -109,3 +109,7 @@ Prepared only; live deployment unchanged. See [pool settings, housekeeping scope
 ## D-Scan (2.0 development)
 
 Prepared in the working tree; not deployed by implementation. Rebuild backend/frontend together and apply **0092_dscan_reports** after 0091. Existing Local Scan rows default to report_kind=local; new d-scans use the same lifecycle table with kind=dscan. Lists, public reads and deletion are kind constrained. Verify SDE ship/group/category/mass coverage, the D-Scan Intel link for Intel Analyst, an anonymous public report/PDF, Local Scan isolation, scoped bulk deletion and selected-character destinations. D-scan analysis adds no private ESI scope. [Formats, limits and rollout](dscan.md).
+
+## Unreleased report privacy / Industry Report rollout
+
+Apply migration **0093_report_privacy** after 0092 and deploy the matching backend/frontend together. It adds user main identity and report privacy/dynamic/Battle expiry fields, and redacts legacy account labels. Named old reports resolve to current mains (Anonymous until selected); existing public visibility stays unchanged. Downgrade deletes private and Industry records before removing access-control fields, preventing older code from publishing them. See [full behavior and checks](report-privacy.md). No live deployment was performed for this implementation.

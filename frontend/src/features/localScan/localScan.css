@@ -17,3 +17,9 @@
 .scan-pilot-portrait{display:grid;place-items:center;flex:0 0 24px;width:24px;height:24px;border-radius:4px;background:#233449;overflow:hidden}
 .scan-pilot-portrait img{display:block;width:24px;height:24px;object-fit:cover}
 .scan-pilot-portrait:focus-visible{outline:2px solid #8fb6df;outline-offset:3px}
+
+.scan-privacy-options{border:1px solid #43566c;border-radius:8px;padding:14px;display:grid;gap:12px;min-width:0}.scan-privacy-options p{margin:0;font-size:.82rem}.scan-privacy-options input[type=checkbox]{width:16px;min-height:16px}.scan-private-badge{color:#ffe8aa;font-weight:700}
+
+.industry-report{display:grid;gap:22px;min-width:0}.industry-report .table-wrap{max-height:none;overflow-x:auto}.industry-report .status-grid{margin:0}.industry-report .status-grid>div{padding:12px;background:#233449;border-radius:8px}.industry-report .status-grid strong{font-size:1.3rem}
+
+.industry-report>section{min-width:0;max-width:100%}.industry-report .table-wrap{max-width:100%}.industry-report p{overflow-wrap:anywhere}

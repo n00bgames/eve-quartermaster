@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field, model_validator
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, or_
 from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 from app.api.auth import get_current_user
@@ -25,6 +25,8 @@ _generating: set[int] = set()
 
 
 class ScanInput(BaseModel):
+    anonymous: bool = False
+    is_private: bool = False
     text: str = Field(min_length=1, max_length=150000)
     retention: Literal["30m", "1h", "2h", "12h", "24h", "3days", "7days", "30days", "permanent"] = "24h"
     corporation_id: int | None = Field(default=None, gt=0)
@@ -62,19 +64,25 @@ def require_scan(response: Response, user: User = Depends(get_current_user), db:
 
 
 def metadata(row):
-    return {"token": row.token, "report_kind": row.report_kind, "share_url": f"{get_settings().frontend_url.rstrip('/')}/#{'d-scan' if row.report_kind == 'dscan' else 'local-scan'}/{row.token}",
+    from sqlalchemy.orm import object_session
+    from app.services.report_identity import report_identity
+    db = object_session(row)
+    creator = db.get(User, row.created_by_user_id) if db and row.created_by_user_id else None
+    creator_name = report_identity(db, creator, row.anonymous)[0] if creator and creator.deleted_at is None else "Anonymous"
+    return {"token": row.token, "report_kind": row.report_kind, "is_private": row.is_private, "anonymous": row.anonymous, "dynamic": row.dynamic, "share_url": None if row.is_private else f"{get_settings().frontend_url.rstrip('/')}/#{ {'dscan':'d-scan','industry':'industry-report'}.get(row.report_kind,'local-scan') }/{row.token}",
             "created_at": service.utc(row.created_at).isoformat(),
             "expires_at": service.utc(row.expires_at).isoformat() if row.expires_at else None,
-            "retention": row.retention, "account_name": row.account_name,
-            "corporation_id": row.corporation_id, "application_version": row.application_version,
+            "retention": row.retention, "account_name": creator_name, "creator_name": creator_name,
+            "corporation_id": None if row.anonymous else row.corporation_id, "application_version": row.application_version,
             "character_count": row.payload.get("character_count", 0), "input_count": row.payload.get("input_count", 0),
             "object_count": row.payload.get("object_count", 0), "ship_count": row.payload.get("ship_count", 0)}
 
 
 @router.get("/context")
 def context(user: User = Depends(require_scan), db: Session = Depends(get_db)):
+    from app.services.report_identity import report_identity
     rank = role_rank(user, db)
-    return {"retentions": list(service.RETENTIONS), "max_pilots": service.MAX_PILOTS,
+    return {"retentions": list(service.RETENTIONS), "max_pilots": service.MAX_PILOTS, "creator_name": report_identity(db, user)[0],
             "corporations": [{"id": cid, "name": name} for cid, name in service.corporations(db, user)],
             "can_generate": not quartermaster_read_only(user, db),
             "management_scope": "all reports" if rank >= ROLE_RANK["admin"] else
@@ -191,12 +199,14 @@ async def generate(payload: ScanInput, request: Request, user: User = Depends(re
             pilot["highlighted"] = pilot["alliance_highlighted"] or ("corporation", pilot["corporation_id"]) in targets
         snapshot["highlighted_count"] = sum(p["highlighted"] for p in snapshot["pilots"])
         lifetime = service.RETENTIONS[payload.retention]
-        row = LocalScanReport(token=secrets.token_urlsafe(32), created_by_user_id=user.id,
-            corporation_id=payload.corporation_id, account_name=user.display_name, application_version=request.app.version,
+        from app.services.report_identity import report_identity
+        creator, anonymous = report_identity(db, user, payload.anonymous)
+        row = LocalScanReport(is_private=payload.is_private, anonymous=payload.anonymous, token=secrets.token_urlsafe(32), created_by_user_id=user.id,
+            corporation_id=payload.corporation_id, account_name=creator, application_version=request.app.version,
             created_at=at, expires_at=at + timedelta(seconds=lifetime) if lifetime is not None else None,
             retention=payload.retention, payload=snapshot)
         db.add(row)
-        record_audit_event(db, event_kind="intel", title="Public local scan generated", actor_user=user,
+        record_audit_event(db, event_kind="intel", title="Local scan generated", actor_user=user,
                            body=f"characters={snapshot['character_count']}; retention={payload.retention}")
         db.commit()
         return {**metadata(row), **snapshot}
@@ -247,7 +257,7 @@ def delete_scoped_reports(payload, user, db, kind):
 def public_row(db, token, kind="local"):
     if not re.fullmatch(r"[A-Za-z0-9_-]{43}", token):
         raise HTTPException(404, "Report not found or expired", headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow, noarchive"})
-    row = db.scalar(select(LocalScanReport).where(LocalScanReport.token == token, service.active_reports(kind=kind)))
+    row = db.scalar(select(LocalScanReport).where(LocalScanReport.token == token, LocalScanReport.is_private.is_(False), service.active_reports(kind=kind)))
     if row is None:
         raise HTTPException(404, "Report not found or expired", headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow, noarchive"})
     return row
@@ -278,5 +288,41 @@ async def export_pdf(token: str, db: Session = Depends(get_db)):
     public_row(db, token)
     response = Response(content, media_type="application/pdf", headers={
         "Content-Disposition": f'attachment; filename="eqm-local-scan-{token[:10]}.pdf"'})
+    public_headers(response)
+    return response
+
+
+def authenticated_row(db, token, user, kind="local"):
+    row = db.scalar(select(LocalScanReport).where(LocalScanReport.token == token, service.active_reports(kind=kind),
+        or_(LocalScanReport.is_private.is_(False), LocalScanReport.created_by_user_id == user.id)))
+    if row is None:
+        raise HTTPException(404, "Report not found or expired")
+    return row
+
+@router.get("/reports/{token}")
+def saved_report(token: str, response: Response, user: User = Depends(require_scan), db: Session = Depends(get_db)):
+    public_headers(response)
+    row = authenticated_row(db, token, user)
+    return {**metadata(row), **row.payload}
+
+@router.get("/reports/{token}/pdf")
+async def saved_pdf(token: str, user: User = Depends(require_scan), db: Session = Depends(get_db)):
+    return await authenticated_pdf(db, token, user, "local")
+
+async def authenticated_pdf(db, token, user, kind):
+    from app.services.local_scan_pdf import logo_images, render_pdf
+    if kind == "dscan":
+        from app.services.dscan_pdf import report_images as logo_images, render_pdf
+    row = authenticated_row(db, token, user, kind)
+    snapshot = {**metadata(row), **row.payload}
+    images = await logo_images(snapshot)
+    content = await run_in_threadpool(render_pdf, snapshot, images)
+    db.expire_all()
+    # Recheck owner, expiry and section access after potentially slow rendering.
+    db.refresh(user)
+    if user.deleted_at is not None or not can_view_section(user, "dscan" if kind == "dscan" else "local_scan", db):
+        raise HTTPException(403, "Report access is no longer available")
+    authenticated_row(db, token, user, kind)
+    response = Response(content, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="eqm-{kind}-report.pdf"'})
     public_headers(response)
     return response

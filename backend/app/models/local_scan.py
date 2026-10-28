@@ -1,6 +1,6 @@
-"""Immutable public local-scan snapshots; no private ESI data is retained."""
+"""Stored scan and Industry reports with explicit privacy and optional current-data views."""
 from datetime import datetime
-from sqlalchemy import DateTime, ForeignKey, Integer, JSON, String, Index, UniqueConstraint, CheckConstraint
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, Index, UniqueConstraint, CheckConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 from app.models.base import Base
 
@@ -9,6 +9,9 @@ class LocalScanReport(Base):
     __tablename__ = "local_scan_reports"
     __table_args__ = (Index("ix_local_scan_owner_created", "created_by_user_id", "created_at"),)
 
+    is_private: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
+    anonymous: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
+    dynamic: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
     report_kind: Mapped[str] = mapped_column(String(16), nullable=False, default="local", server_default="local", index=True)
     token: Mapped[str] = mapped_column(String(48), primary_key=True)
     created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)

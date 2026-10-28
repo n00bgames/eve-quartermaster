@@ -68,16 +68,17 @@ Local Scan and D-Scan implement the lifecycle below. Battle-report enhancements 
 
 ## Shared Report Header
 
-- [ ] At the top of both the Industry Report and Inventory Report, show the EQM banner and the attribution **Generated with EVE Quartermaster v{version} by {accountname}**.
-- [ ] Resolve `{version}` from the application version at generation time and `{accountname}` from the generating EQM account, rather than a selected character or corporation.
-- [ ] Include the banner and attribution in rendered/PDF reports; preserve the equivalent version/account attribution in the top metadata rows of CSV exports.
+- [x] Industry Report uses the EQM banner, generation-time application version and current main-character attribution (Anonymous fallback); account names are never published.
+- [x] Branded PDF and CSV metadata include attribution and generation/data timestamps. Explicitly anonymous reports remain anonymous.
+- [ ] Apply the same header scheme to Inventory Report when that separate workflow is implemented.
 
 ## Industry Report
 
-- [ ] Add a unified **Industry Report** that brings assets, industry jobs, and planetary industry (PI) information together under one report workflow.
-- [ ] Total all minerals and PI commodities on hand, with quantities by item type.
-- [ ] After the overall totals, itemize the holdings by character and corporation so each owner's contribution is visible.
-- [ ] Export the Industry Report to **CSV** or **PDF**.
+- [x] Unified assets, blueprints, active industry jobs and PI reporting.
+- [x] Overall mineral/PI and stock totals by type, followed by owner/location itemization.
+- [x] CSV and PDF exports.
+- [x] Private by default; opt-in expiring public snapshots or dynamic current-stock links.
+- [x] Dynamic scope/permission revalidation, fixed original scope and scoped individual/date/all deletion.
 
 ## Inventory Report
 

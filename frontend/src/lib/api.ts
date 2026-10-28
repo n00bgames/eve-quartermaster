@@ -14,6 +14,7 @@ function formatApiError(detail: unknown): string {
 
 function requestTimeoutMs(path: string): number {
   if (path.startsWith("/quartermaster/assets-page?") && new URLSearchParams(path.split("?")[1]).get("all_records") === "true") return 120000;
+  if (path.startsWith("/industry-reports")) return 120000;
   if (path === "/local-scans" || path === "/d-scans") return 120000;
   if (path.startsWith("/quartermaster-oversight")) return 180000;
   if (path.startsWith("/esi/sync/")) return 1800000;

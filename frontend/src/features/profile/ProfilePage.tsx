@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
 
+import { MainCharacterSettings } from "./MainCharacterSettings";
 import { UsersAdmin } from "./UsersAdmin";
 
 import { formatDateTime, preferredTimeZone, timezoneChoices } from "../../lib/time";
@@ -238,6 +239,7 @@ export function ProfilePage({ currentUser, onUserUpdated, focus, api, ManagedFor
           <label>New password<input name="password" type="password" minLength={8} placeholder="Leave blank to keep current password" /></label>
         </ManagedForm>
       </section>
+      <MainCharacterSettings api={api}/>
       <section className="panel stacked eve-mail-panel">
         <div className="section-heading">
           <div>

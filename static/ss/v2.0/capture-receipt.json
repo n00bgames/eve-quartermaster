@@ -152,6 +152,114 @@
       "bytes": 15521,
       "width": 849,
       "height": 178
+    },
+    {
+      "file": "profile-main-character.jpg",
+      "caption": "Profile main-character selection; only currently owned, actively linked characters are offered.",
+      "captured_at_utc": "2026-10-28T23:14:14.540212+00:00",
+      "source_base_commit": "ff726c0876bb70eb9d8eb47c283b9e591902d667",
+      "source_state": "Uncommitted main-character attribution, private reports, Industry Report and threat-order implementation.",
+      "provenance": "Actual production frontend build or Poppler-rendered current-source PDF. Isolated SQLite, mocked public ESI and canonical battle fixtures; synthetic accounts, memberships, stock, jobs, PI and class metadata. Some demo hull names/metadata are fictional. Real EVE images are visual references. Post-link prompt uses a simulated return URL, not real CCP SSO. No live stock, accounts, game actions or credentials.",
+      "sha256": "b84ef8a40f484695901b9b92e268acb0fd4cfd8a785f6c769886a920f593c3d6",
+      "bytes": 28358,
+      "width": 937,
+      "height": 333
+    },
+    {
+      "file": "linked-character-main-checkbox.jpg",
+      "caption": "Post-link main-character checkbox on a simulated SSO return for an owned synthetic character.",
+      "captured_at_utc": "2026-10-28T23:14:14.541217+00:00",
+      "source_base_commit": "ff726c0876bb70eb9d8eb47c283b9e591902d667",
+      "source_state": "Uncommitted main-character attribution, private reports, Industry Report and threat-order implementation.",
+      "provenance": "Actual production frontend build or Poppler-rendered current-source PDF. Isolated SQLite, mocked public ESI and canonical battle fixtures; synthetic accounts, memberships, stock, jobs, PI and class metadata. Some demo hull names/metadata are fictional. Real EVE images are visual references. Post-link prompt uses a simulated return URL, not real CCP SSO. No live stock, accounts, game actions or credentials.",
+      "sha256": "d14fef3584f153e36ec637b15c4e5c8daab589209d58b4ce047e5462cd5c0905",
+      "bytes": 24842,
+      "width": 937,
+      "height": 247
+    },
+    {
+      "file": "scan-private-anonymous.jpg",
+      "caption": "Anonymous private Local Scan generation: signed-in export, no public-copy button, no account attribution.",
+      "captured_at_utc": "2026-10-28T23:14:14.541721+00:00",
+      "source_base_commit": "ff726c0876bb70eb9d8eb47c283b9e591902d667",
+      "source_state": "Uncommitted main-character attribution, private reports, Industry Report and threat-order implementation.",
+      "provenance": "Actual production frontend build or Poppler-rendered current-source PDF. Isolated SQLite, mocked public ESI and canonical battle fixtures; synthetic accounts, memberships, stock, jobs, PI and class metadata. Some demo hull names/metadata are fictional. Real EVE images are visual references. Post-link prompt uses a simulated return URL, not real CCP SSO. No live stock, accounts, game actions or credentials.",
+      "sha256": "629a8c46c139243df031914024d1ae8569f344fb9f3d2c563c40ff0131b209bb",
+      "bytes": 70756,
+      "width": 937,
+      "height": 871
+    },
+    {
+      "file": "dscan-threat-order.jpg",
+      "caption": "Existing D-Scan report now attributed to the selected main and ordered from Titan down through capital and subcapital threat classes.",
+      "captured_at_utc": "2026-10-28T23:14:14.542226+00:00",
+      "source_base_commit": "ff726c0876bb70eb9d8eb47c283b9e591902d667",
+      "source_state": "Uncommitted main-character attribution, private reports, Industry Report and threat-order implementation.",
+      "provenance": "Actual production frontend build or Poppler-rendered current-source PDF. Isolated SQLite, mocked public ESI and canonical battle fixtures; synthetic accounts, memberships, stock, jobs, PI and class metadata. Some demo hull names/metadata are fictional. Real EVE images are visual references. Post-link prompt uses a simulated return URL, not real CCP SSO. No live stock, accounts, game actions or credentials.",
+      "sha256": "6bcf0204e0c9dd8d05020f9ea2b5be55b2427dc82dda862ed805c2ce42ab665c",
+      "bytes": 140061,
+      "width": 937,
+      "height": 1200
+    },
+    {
+      "file": "industry-report-options.jpg",
+      "caption": "Industry Report private default, opt-in public link, dynamic database mode, anonymous attribution and retention controls.",
+      "captured_at_utc": "2026-10-28T23:14:14.543223+00:00",
+      "source_base_commit": "ff726c0876bb70eb9d8eb47c283b9e591902d667",
+      "source_state": "Uncommitted main-character attribution, private reports, Industry Report and threat-order implementation.",
+      "provenance": "Actual production frontend build or Poppler-rendered current-source PDF. Isolated SQLite, mocked public ESI and canonical battle fixtures; synthetic accounts, memberships, stock, jobs, PI and class metadata. Some demo hull names/metadata are fictional. Real EVE images are visual references. Post-link prompt uses a simulated return URL, not real CCP SSO. No live stock, accounts, game actions or credentials.",
+      "sha256": "5a4e5bf53cf1808458356f20d072ab047b86a98ae90df5e28514fe2ceff897cb",
+      "bytes": 50426,
+      "width": 937,
+      "height": 507
+    },
+    {
+      "file": "industry-report-dynamic.jpg",
+      "caption": "Actual public Industry Report with overall mineral/PI totals, owner stock detail, blueprints, jobs and PI infrastructure.",
+      "captured_at_utc": "2026-10-28T23:14:14.543223+00:00",
+      "source_base_commit": "ff726c0876bb70eb9d8eb47c283b9e591902d667",
+      "source_state": "Uncommitted main-character attribution, private reports, Industry Report and threat-order implementation.",
+      "provenance": "Actual production frontend build or Poppler-rendered current-source PDF. Isolated SQLite, mocked public ESI and canonical battle fixtures; synthetic accounts, memberships, stock, jobs, PI and class metadata. Some demo hull names/metadata are fictional. Real EVE images are visual references. Post-link prompt uses a simulated return URL, not real CCP SSO. No live stock, accounts, game actions or credentials.",
+      "sha256": "619b8e417b9dded5ac7d8589f216e269a60fbd14429dc3a7e20b94cd0abf9237",
+      "bytes": 191367,
+      "width": 1264,
+      "height": 1832
+    },
+    {
+      "file": "battle-report-privacy.jpg",
+      "caption": "Battle Report anonymous/private generation and expiration controls.",
+      "captured_at_utc": "2026-10-28T23:14:14.544228+00:00",
+      "source_base_commit": "ff726c0876bb70eb9d8eb47c283b9e591902d667",
+      "source_state": "Uncommitted main-character attribution, private reports, Industry Report and threat-order implementation.",
+      "provenance": "Actual production frontend build or Poppler-rendered current-source PDF. Isolated SQLite, mocked public ESI and canonical battle fixtures; synthetic accounts, memberships, stock, jobs, PI and class metadata. Some demo hull names/metadata are fictional. Real EVE images are visual references. Post-link prompt uses a simulated return URL, not real CCP SSO. No live stock, accounts, game actions or credentials.",
+      "sha256": "d115a7d744531b59ad73981cd327f996bd1efcbf10f88aead063b1330cf3810e",
+      "bytes": 24862,
+      "width": 937,
+      "height": 251
+    },
+    {
+      "file": "industry-report-pdf.png",
+      "caption": "Rendered Industry PDF: current main-character attribution, overall totals first, then itemized stock, blueprints, industry jobs and PI.",
+      "captured_at_utc": "2026-10-28T23:14:14.554565+00:00",
+      "source_base_commit": "ff726c0876bb70eb9d8eb47c283b9e591902d667",
+      "source_state": "Uncommitted main-character attribution, private reports, Industry Report and threat-order implementation.",
+      "provenance": "Actual production frontend build or Poppler-rendered current-source PDF. Isolated SQLite, mocked public ESI and canonical battle fixtures; synthetic accounts, memberships, stock, jobs, PI and class metadata. Some demo hull names/metadata are fictional. Real EVE images are visual references. Post-link prompt uses a simulated return URL, not real CCP SSO. No live stock, accounts, game actions or credentials.",
+      "sha256": "be8b255aa23f3488b1291b866f98902e9f3c69e3c55a53382526c50c2fc8d57d",
+      "bytes": 94599,
+      "width": 849,
+      "height": 1200
+    },
+    {
+      "file": "battle-report-private-pdf.png",
+      "caption": "Rendered anonymous private Battle PDF: small EQM logo, safe attribution, pilot totals, participants and timeline.",
+      "captured_at_utc": "2026-10-28T23:14:14.555070+00:00",
+      "source_base_commit": "ff726c0876bb70eb9d8eb47c283b9e591902d667",
+      "source_state": "Uncommitted main-character attribution, private reports, Industry Report and threat-order implementation.",
+      "provenance": "Actual production frontend build or Poppler-rendered current-source PDF. Isolated SQLite, mocked public ESI and canonical battle fixtures; synthetic accounts, memberships, stock, jobs, PI and class metadata. Some demo hull names/metadata are fictional. Real EVE images are visual references. Post-link prompt uses a simulated return URL, not real CCP SSO. No live stock, accounts, game actions or credentials.",
+      "sha256": "0fde24606981aa75a2c5af7ea3c57ec5a7488be0a3cc7dcb65070ac96a6048a2",
+      "bytes": 54968,
+      "width": 849,
+      "height": 1200
     }
   ]
 }

@@ -103,6 +103,12 @@ New images show current components with synthetic demo data. Older screenshots a
 | --- | --- |
 | [![D-Scan with system and ship total at the top](static/ss/v2.0/dscan-system-total.jpg)](static/ss/v2.0/dscan-system-total.jpg) | [![Manual combat recon and linked-local controls](static/ss/v2.0/dscan-editor.png)](static/ss/v2.0/dscan-editor.png) |
 
+| Report privacy and identity | Dynamic Industry Report |
+| --- | --- |
+| [![Anonymous private scan with no public link](static/ss/v2.0/scan-private-anonymous.jpg)](static/ss/v2.0/scan-private-anonymous.jpg) | [![Industry stock totals, jobs and PI](static/ss/v2.0/industry-report-dynamic.jpg)](static/ss/v2.0/industry-report-dynamic.jpg) |
+
+[Main characters, retroactive names, private reports and dynamic sharing](docs/report-privacy.md) · [Threat-order D-Scan](static/ss/v2.0/dscan-threat-order.jpg)
+
 | Local Scan | Combined account roles |
 | --- | --- |
 | [![Local Scan system/pilot total, linked portraits and red organization highlights](static/ss/v2.0/local-scan-summary-portraits.jpg)](static/ss/v2.0/local-scan-summary-portraits.jpg) | [![Role editor with Intel Analyst and Quartermaster selected](static/ss/v2.0/multiple-roles.png)](static/ss/v2.0/multiple-roles.png) |

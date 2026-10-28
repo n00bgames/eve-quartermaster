@@ -37,6 +37,8 @@ async def report_images(snapshot):
 
 
 def render_pdf(snapshot, images):
+    from app.services.scan_threat import order_snapshot
+    snapshot = order_snapshot(snapshot)
     from reportlab import rl_config
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4
@@ -89,9 +91,15 @@ def render_pdf(snapshot, images):
     for warning in snapshot["warnings"]:
         story.append(p(warning, note))
 
-    def table(headers, rows, widths):
-        t = Table([[p(h) for h in headers], *rows], colWidths=widths, repeatRows=1, hAlign="LEFT")
-        t.setStyle(TableStyle([("BACKGROUND", (0,0), (-1,0), colors.HexColor("#e8edf4")),
+    def table(headers, rows, widths, section_title=None):
+        table_rows = [[p(h) for h in headers], *rows]
+        if section_title:
+            section_style = ParagraphStyle("table-section", parent=title, keepWithNext=False)
+            table_rows.insert(0, [p(section_title, section_style), *["" for _ in headers[1:]]])
+        t = Table(table_rows, colWidths=widths, repeatRows=2 if section_title else 1, hAlign="LEFT")
+        if section_title:
+            t.setStyle(TableStyle([("SPAN", (0,0), (-1,0))]))
+        t.setStyle(TableStyle([("BACKGROUND", (0,1 if section_title else 0), (-1,1 if section_title else 0), colors.HexColor("#e8edf4")),
                                ("VALIGN", (0,0), (-1,-1), "TOP"), ("BOTTOMPADDING", (0,0), (-1,-1), 5),
                                ("LINEBELOW", (0,0), (-1,-1), .3, colors.HexColor("#d9dfe8"))]))
         story.append(t)
@@ -101,13 +109,12 @@ def render_pdf(snapshot, images):
         selected = [r for r in snapshot["rows"] if r["category"] == category]
         if not selected:
             continue
-        story.append(p(heading, title))
         rows = []
         for row in selected:
             key = ("types", row["type_id"])
             icon = Image(BytesIO(images[key]), width=18, height=18) if key in images else ""
             rows.append([icon, p(row["type_name"]), p(row["group_name"]), p(row["observed"]), p(row["manual"]), p(row["count"])])
-        table(["", "Type", "Class", "Seen", "Manual", "Total"], rows, [24, content_width-231, 92, 37, 42, 36])
+        table(["", "Type", "Class", "Seen", "Manual", "Total"], rows, [24, content_width-231, 92, 37, 42, 36], section_title=heading)
     story.append(p("Ship classes", title))
     table(["Class", "Total"], [[p(r["name"]), p(r["count"])] for r in snapshot["classes"]], [content_width-65, 65])
     local = snapshot.get("local_scan")

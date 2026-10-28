@@ -1,3 +1,4 @@
+import { ReportPrivacyOptions } from "../localScan/ReportPrivacyOptions";
 import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import type { ApiClient, Highlight, ReportMeta, ScanContext, ScanReport } from "./types";
@@ -12,6 +13,8 @@ const retentionLabel: Record<string,string> = {"30m":"30 minutes","1h":"1 hour",
 export function LocalScanPage({api,allowDscan=false}: {api: ApiClient;allowDscan?:boolean}) {
   const [context,setContext] = useState<ScanContext | null>(null);
   const [text,setText] = useState("");
+  const [anonymous,setAnonymous]=useState(false);
+  const [isPrivate,setIsPrivate]=useState(false);
   const [retention,setRetention] = useState("24h");
   const [corp,setCorp] = useState("");
   const [systemText,setSystemText] = useState("");
@@ -21,6 +24,7 @@ export function LocalScanPage({api,allowDscan=false}: {api: ApiClient;allowDscan
   const [busy,setBusy] = useState(false);
   const [error,setError] = useState("");
   const [message,setMessage] = useState("");
+  useEffect(()=>{let active=true;const sync=()=>{void api<ScanContext>("/local-scans/context").then(c=>{if(active)setContext(c);}).catch(()=>undefined);if(report)void api<typeof report>(`/local-scans/reports/${encodeURIComponent(report.token)}`).then(next=>{if(active)setReport(next);}).catch(()=>undefined);};window.addEventListener("eqm-main-character",sync);return()=>{active=false;window.removeEventListener("eqm-main-character",sync);};},[api,report?.token]);
   const [highlights,setHighlights] = useState<Highlight[]>([]);
   const [targetName,setTargetName] = useState("");
   const [targetKind,setTargetKind] = useState("corporation");
@@ -59,7 +63,7 @@ export function LocalScanPage({api,allowDscan=false}: {api: ApiClient;allowDscan
     if(directional){sessionStorage.setItem("eqm-dscan-draft",text);window.location.hash="d-scan";return;}
     setBusy(true);setError("");setMessage("");
     try {
-      const result = await api<ScanReport>("/local-scans",{method:"POST",body:JSON.stringify({text,retention,corporation_id:corp ? Number(corp) : null,system_id:system?.system_id ?? null})});
+      const result = await api<ScanReport>("/local-scans",{method:"POST",body:JSON.stringify({anonymous,is_private:isPrivate,text,retention,corporation_id:corp ? Number(corp) : null,system_id:system?.system_id ?? null})});
       setReport(result);setOffset(0);await loadHistory();
     } catch(e) {setError(errorText(e));} finally {setBusy(false);}
   }
@@ -77,7 +81,7 @@ export function LocalScanPage({api,allowDscan=false}: {api: ApiClient;allowDscan
   }
   async function openReport(token:string) {
     setError("");
-    try {setReport(await api<ScanReport>(`/local-scans/public/${encodeURIComponent(token)}`));}
+    try {setReport(await api<ScanReport>(`/local-scans/reports/${encodeURIComponent(token)}`));}
     catch(e) {setError(errorText(e));}
   }
   async function dateDeletion() {
@@ -97,12 +101,12 @@ export function LocalScanPage({api,allowDscan=false}: {api: ApiClient;allowDscan
     {error && <div className="alert" role="alert">{error}</div>}{message && <div className="notice" role="status">{message}</div>}
     <section className="panel scan-compose"><h3>New local scan</h3><p className="muted">Paste pilot names from local chat, one per line, or fleet clipboard rows with the pilot name first. Up to {context?.max_pilots.toLocaleString() ?? "2,000"} unique names.</p><form onSubmit={e=>void generate(e)}>
       <label>Pilot names<textarea aria-label="Pilot names" value={text} onChange={e=>setText(e.target.value)} rows={7} maxLength={150000} required placeholder="Paste local here, or enter a character name" /></label>
-      <div className="scan-compose-options"><label>Keep public report<select aria-label="Report retention" value={retention} onChange={e=>setRetention(e.target.value)}>{(context?.retentions ?? Object.keys(retentionLabel)).map(r=><option key={r} value={r}>{retentionLabel[r]}</option>)}</select></label>
+      <div className="scan-compose-options"><label>Keep report<select aria-label="Report retention" value={retention} onChange={e=>setRetention(e.target.value)}>{(context?.retentions ?? Object.keys(retentionLabel)).map(r=><option key={r} value={r}>{retentionLabel[r]}</option>)}</select></label>
         <label>Report corporation<select value={corp} onChange={e=>setCorp(e.target.value)}><option value="">Personal report</option>{context?.corporations.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
         <div className="scan-system-search"><label>System (optional)<input aria-label="Scan system search" value={systemText} onChange={e=>{setSystemText(e.target.value);setSystem(null);}} placeholder="Search solar systems" autoComplete="off"/></label>{systems.length>0 && <ul className="scan-system-options">{systems.map(s=><li key={s.system_id}><button type="button" onClick={()=>{setSystem(s);setSystemText(s.name);setSystems([]);}}>{s.name}</button></li>)}</ul>}</div></div>
       {systemText && !system && <p className="muted">Choose a search result to link this report to a system.</p>}
-      <p className="muted">Generating creates a public link containing pilot names, affiliations, your EQM account name, date, selected system, and marked organizations. Your corporation's directors can manage corporation-attributed reports.</p>
-      <button type="submit" disabled={busy || !context?.can_generate || Boolean(systemText && !system)}>{busy ? "Resolving pilots and affiliations…" : "Generate public local scan"}</button>
+      <ReportPrivacyOptions anonymous={anonymous} isPrivate={isPrivate} onAnonymous={setAnonymous} onPrivate={setIsPrivate} creatorName={context?.creator_name}/>
+      <button type="submit" disabled={busy || !context?.can_generate || Boolean(systemText && !system)}>{busy ? "Resolving pilots and affiliations…" : isPrivate ? "Generate private local scan" : "Generate public local scan"}</button>
       {context && !context.can_generate && <p className="muted">Your role can view saved reports but cannot generate them.</p>}
     </form></section>
     <details className="panel scan-highlight-editor"><summary>Highlighted organizations <span className="scan-count">{highlights.length}</span></summary><p className="muted">Saved to your account across sessions. Matches update immediately in your current scan view. New reports and PDFs save these markings; existing public links and PDFs keep their original snapshot.</p>

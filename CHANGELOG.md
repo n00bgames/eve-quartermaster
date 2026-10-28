@@ -7,6 +7,9 @@ Version sections are written as user-facing release notes first, with implementa
 ## [2.0.0] - Unreleased
 
 ### Added
+- Main-character identity in Profile, post-SSO and ESI character checkboxes; named report attribution follows the current linked main, including existing reports, with Anonymous as the safe fallback.
+- Anonymous/private Local Scan, D-Scan and Battle reports with authenticated-only private reads/exports, expiry and Battle PDF exports.
+- Industry Report with mineral/PI and overall stock totals, owner/location detail, blueprints, active industry jobs and PI; CSV/PDF, private default, optional expiring public snapshots or permission-rechecked dynamic links, and scoped deletion.
 - Expanded Local Scan corporation rows show small pilot portraits linking to their zKillboard pages in a new tab, including linked local lists in D-Scan.
 - D-Scan in Intel: SDE-resolved ship/class/deployable summaries and icons, observed/manual recon totals, base hull mass, linked local pilots and saved organization highlights, optional system/destinations, public retention, scoped deletion and branded PDFs. Updates save new immutable public snapshots.
 - Asset Ledger **Load all records** offers a full accessible snapshot with row, unit and item-type totals, local filtering and paged rendering.
@@ -15,6 +18,8 @@ Version sections are written as user-facing release notes first, with implementa
 - Intel Analyst and multiple roles per account, including role-union permissions and multi-role account creation/invitations. Navigation and Market are available by default to all roles.
 
 ### Changed
+- D-Scan ship/type classes sort by hull threat priority, including existing reports/PDFs. Large ship tables begin on page one and repeat their headings when split.
+- Migration 0093_report_privacy redacts legacy account attribution, stores main/privacy/expiry settings, and preserves existing public visibility. Apply with the matching backend/frontend update; see [report privacy and rollout](docs/report-privacy.md).
 - Local Scan and D-Scan lead with the selected system and total pilots/ships; PDF exports repeat the same summary on every page. Pilot totals include unresolved pasted names, and ship totals distinguish observed/manual counts.
 - Scan reports expand with their content and use page scrolling, including D-Scan type lists and opened object tables, on desktop and mobile.
 - Asset search filters/pages in SQL with permission-scoped totals before loading record details.

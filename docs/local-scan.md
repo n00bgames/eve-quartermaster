@@ -43,3 +43,5 @@ Deploy backend/frontend together with `alembic upgrade head`: **0090_local_scan_
 ## System summary and pilot portraits
 
 The result header shows the saved system (or Not specified) and **Total pilots** from unique pasted names, including unresolved names. A resolved/unresolved split appears when necessary; this is a pasted snapshot, not a live system population query. Filtering the organization list does not alter that total. Expanded corporation lists show 24px EVE portraits beside pilot names. Both portrait and name links open the pilot's zKillboard character page in a new tab; unavailable portraits use a small placeholder. Public reports and D-Scan's linked local list use the same component. PDF exports repeat the system and total in the branded header on every page, with resolved/unresolved counts and generation metadata.
+
+Report identity/privacy now follows [main-character attribution, anonymous/private options and migration 0093](report-privacy.md). These rules supersede older references above to immutable creator account labels: existing named reports use the creator’s current main, never their account name.

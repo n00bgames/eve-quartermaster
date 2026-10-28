@@ -22,6 +22,7 @@ ROLE_LABELS: dict[str, str] = {
 }
 
 SECTION_DEFINITIONS: dict[str, dict[str, object]] = {
+    "industry_reports": {"label": "Industry Reports", "default_roles": ["admin","director","officer","member","quartermaster","view_only"]},
     "quartermaster": {"label": "Quartermaster", "default_roles": ["quartermaster"]},
     "intel_reports": {"label": "Intel Reports", "default_roles": ["admin", "director", "officer", "intel_analyst"]},
     "local_scan": {"label": "Local Scan", "default_roles": ["admin", "director", "officer", "member", "intel_analyst", "view_only"]},

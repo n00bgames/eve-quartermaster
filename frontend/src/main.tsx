@@ -1,3 +1,4 @@
+import {IndustryReportPage,PublicIndustryReportPage} from "./features/industryReports/IndustryReportPage";
 import { DScanPage } from "./features/dscan/DScanPage";
 import { PublicDScanPage } from "./features/dscan/PublicDScanPage";
 import { QuartermasterPage } from "./features/quartermaster/QuartermasterPage";
@@ -36,6 +37,7 @@ import { CharacterSkills } from "./features/characters/CharacterSkills";
 import { CharacterHoverName as CharacterHoverNameBase, type CharacterHoverNameProps } from "./features/characters/CharacterHoverName";
 import { CharactersPage } from "./features/characters/CharactersPage";
 import { JumpClonesPage } from "./features/characters/JumpClonesPage";
+import { MainCharacterSettings } from "./features/profile/MainCharacterSettings";
 import { ProfilePage } from "./features/profile/ProfilePage";
 import { SettingsPage } from "./features/settings/SettingsPage";
 import { EsiSyncPage } from "./features/esi/EsiSyncPage";
@@ -76,7 +78,7 @@ type InventoryExportResponse = { filename: string; mime_type: string; content: s
 
 type Health = { status: string; app: string };
 
-type UserAccount = { id: number; email: string; display_name: string; role: string; roles?: string[]; timezone?: string; created_at?: string };
+type UserAccount = { id: number; email: string; display_name: string; role: string; roles?: string[]; main_character_id?: number|null; timezone?: string; created_at?: string };
 
 type EffectivePermissions = { sections: SectionPermission[]; permissions: Record<string, boolean>; read_only_quartermaster?: boolean; utility_only?: boolean };
 
@@ -273,6 +275,7 @@ function App() {
   const [loading, setLoading] = useState(false);
 
   const [user, setUser] = useState<UserAccount | null>(null);
+  const [justLinkedCharacter] = useState(() => {const p=new URLSearchParams(window.location.search);return p.get("esi_status") ? Number(p.get("character_id"))||undefined : undefined;});
 
   const [bootstrap, setBootstrap] = useState<BootstrapStatus | null>(null);
 
@@ -403,7 +406,7 @@ function App() {
 
     if (role === "quartermaster" || quartermasterOnly.current) {
       setData(emptyData);
-      if (!["#navigation", "#local-threat"].includes(window.location.hash)) setActiveTab("quartermaster");
+      if (!["#navigation", "#local-threat", "#industry-reports"].includes(window.location.hash)) setActiveTab("quartermaster");
       return;
     }
 
@@ -512,9 +515,10 @@ function App() {
         : ["waypoint", "destination", "structures", "navigation"].includes(esiMode ?? "") ? "navigation" : "esi";
 
     const esiError = params.get("esi_error");
-    if (window.location.hash.startsWith("#local-scan/") || window.location.hash.startsWith("#d-scan/")) { setAuthReady(true); return; }
+    if (window.location.hash.startsWith("#local-scan/") || window.location.hash.startsWith("#d-scan/") || window.location.hash.startsWith("#industry-report/")) { setAuthReady(true); return; }
 
     if (window.location.hash === "#navigation") setActiveTab("navigation");
+    else if (window.location.hash === "#industry-reports") setActiveTab("industry_reports");
     else if (window.location.hash === "#d-scan") setActiveTab("dscan");
     else if (window.location.hash === "#local-scan") setActiveTab("local_scan");
     else if (window.location.hash === "#local-threat") openThreatAnalyzer();
@@ -649,11 +653,14 @@ function App() {
 
   const publicRecruiting = locationHash === "#recruiting" || locationHash === "#apply";
   const publicExchangeId = locationHash.startsWith("#exchange/") ? locationHash.slice("#exchange/".length) : null;
+  const publicIndustryReportToken = locationHash.startsWith("#industry-report/") ? locationHash.slice("#industry-report/".length) : null;
   const publicDScanToken = locationHash.startsWith("#d-scan/") ? locationHash.slice("#d-scan/".length) : null;
   const publicLocalScanToken = locationHash.startsWith("#local-scan/") ? locationHash.slice("#local-scan/".length) : null;
   const publicBattleReportToken = locationHash.startsWith("#battle-report/") ? locationHash.slice("#battle-report/".length) : null;
 
   if (!authReady) return <main className="auth-shell"><section className="panel"><img className="auth-logo" src="/eqm-logo.webp" alt="EVE Quartermaster" /><p className="muted">Checking account session...</p></section></main>;
+
+  if (publicIndustryReportToken) return <PublicIndustryReportPage api={api} token={publicIndustryReportToken} onBack={()=>{window.location.hash="";window.location.reload();}}/>;
 
   if (publicDScanToken) return <PublicDScanPage api={api} token={publicDScanToken} onBack={() => { window.location.hash = ""; window.location.reload(); }} />;
 
@@ -741,6 +748,7 @@ function App() {
 
           {canView("notes") && <button className={activeTab === "notes" ? "active" : ""} onClick={() => setActiveTab("notes")}><NotebookTabs size={18} /> Notes & Lists</button>}
 
+          {canView("industry_reports") && <button className={activeTab === "industry_reports" ? "active" : ""} onClick={()=>{window.location.hash="industry-reports";setActiveTab("industry_reports");}}><ClipboardList size={18}/> Industry Report</button>}
           {canView("quartermaster") && <button className={activeTab === "quartermaster" ? "active" : ""} onClick={() => { window.location.hash = "quartermaster"; setActiveTab("quartermaster"); }}><Boxes size={18} /> Quartermaster</button>}
 
           {canView("manufacturing") && <button className={activeTab === "manufacturing" ? "active" : ""} onClick={() => setActiveTab("manufacturing")}><Factory size={18} /> Manufacturing</button>}
@@ -835,6 +843,7 @@ function App() {
         {error && <div className="alert">{error}</div>}
 
         {notice && <div className="notice">{notice}</div>}
+        {justLinkedCharacter && <MainCharacterSettings api={api} linkedCharacterId={justLinkedCharacter}/>}
 
 
 
@@ -909,6 +918,7 @@ function App() {
 
         {activeTab === "esi" && canView("esi") && <EsiSyncPage load={load} currentUser={user} api={api} ManagedForm={ManagedForm} Metric={Metric} CharacterHoverName={CharacterHoverName} />}
 
+        {activeTab === "industry_reports" && canView("industry_reports") && <IndustryReportPage api={api}/>}
         {activeTab === "profile" && canView("profile") && <ProfilePage currentUser={user} onUserUpdated={setUser} focus={profileFocus} api={api} ManagedForm={ManagedForm} accountLabel={accountLabel} />}
 
         {activeTab === "audit" && canView("audit") && <AuditLog currentUser={user} />}
@@ -2362,6 +2372,7 @@ function ManagedForm({ children, onSubmit, submitLabel = "Save" }: { children: R
 
 
 function titleFor(tab: string) {
+  if(tab==="industry_reports") return "Industry Report";
   if (tab === "quartermaster") return "Quartermaster";
   if (tab === "dscan") return "D-Scan";
   if (tab === "local_scan") return "Local Scan";
@@ -2376,6 +2387,7 @@ function titleFor(tab: string) {
 
 
 function subtitleFor(tab: string) {
+  if(tab==="industry_reports") return "Stock, blueprints, industry jobs and PI with private or expiring public reports.";
   if (tab === "quartermaster") return "View blueprint holdings, running industry jobs, and planetary infrastructure across linked owners.";
   if (tab === "dscan") return "Analyze directional scans, ship classes and deployables, and share timed intel reports.";
   if (tab === "local_scan") return "Turn local pilot lists into public alliance and corporation reports.";

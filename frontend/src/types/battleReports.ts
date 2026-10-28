@@ -5,6 +5,7 @@ export type BattleReportPilot = {
 };
 
 export type BattleReportContext = {
+  creator_name?: string;
   enabled: boolean;
   pilots: BattleReportPilot[];
   can_sync: boolean;
@@ -130,7 +131,10 @@ export type BattleReportPayload = {
 export type BattleReportShare = {
   id: number;
   share_token: string;
-  share_url: string;
+  share_url: string|null;
+  is_private: boolean;
+  anonymous: boolean;
+  creator_name: string;
   selected_character_id: number;
   selected_character_name: string;
   view_count: number;
@@ -141,6 +145,9 @@ export type BattleReportShare = {
 
 export type PublicBattleReportPayload = BattleReportPayload & {
   share: {
+    creator_name: string;
+    application_version: string;
+    expires_at?: string|null;
     selected_character_name: string;
     created_at?: string | null;
     view_count: number;

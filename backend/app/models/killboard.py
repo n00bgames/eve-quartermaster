@@ -148,11 +148,16 @@ class KillboardEntityName(Base):
 
 
 class BattleReportShare(Base):
-    """Immutable public snapshot of a generated battle report."""
+    """Saved battle snapshot with explicit public/private access and safe attribution."""
 
     __tablename__ = "battle_report_shares"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    is_private: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
+    anonymous: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
+    creator_name: Mapped[str] = mapped_column(String(120), default="Anonymous", server_default="Anonymous", nullable=False)
+    application_version: Mapped[str] = mapped_column(String(32), default="2.0.0", server_default="2.0.0", nullable=False)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
     share_token: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
     created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
     selected_character_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)

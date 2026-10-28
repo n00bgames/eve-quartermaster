@@ -1,3 +1,4 @@
+import { ReportPrivacyOptions } from "../localScan/ReportPrivacyOptions";
 import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import type { ApiClient, Highlight } from "../localScan/types";
@@ -16,6 +17,8 @@ export function DScanPage({api}: {api: ApiClient}) {
   const [localText,setLocalText] = useState("");
   const [recons,setRecons] = useState<Record<string,number>>({Huginn:0,Lachesis:0,Rook:0,Curse:0});
   useEffect(()=>{sessionStorage.removeItem("eqm-dscan-draft");},[]);
+  const [anonymous,setAnonymous]=useState(false);
+  const [isPrivate,setIsPrivate]=useState(false);
   const [retention,setRetention] = useState("24h");
   const [corp,setCorp] = useState("");
   const [systemText,setSystemText] = useState("");
@@ -25,6 +28,7 @@ export function DScanPage({api}: {api: ApiClient}) {
   const [busy,setBusy] = useState(false);
   const [error,setError] = useState("");
   const [message,setMessage] = useState("");
+  useEffect(()=>{let active=true;const sync=()=>{void api<DScanContext>("/d-scans/context").then(c=>{if(active)setContext(c);}).catch(()=>undefined);if(report)void api<typeof report>(`/d-scans/reports/${encodeURIComponent(report.token)}`).then(next=>{if(active)setReport(next);}).catch(()=>undefined);};window.addEventListener("eqm-main-character",sync);return()=>{active=false;window.removeEventListener("eqm-main-character",sync);};},[api,report?.token]);
   const [highlights,setHighlights] = useState<Highlight[]>([]);
   const [targetName,setTargetName] = useState("");
   const [targetKind,setTargetKind] = useState("corporation");
@@ -59,7 +63,7 @@ export function DScanPage({api}: {api: ApiClient}) {
   async function generate(e: FormEvent) {
     e.preventDefault();setBusy(true);setError("");setMessage("");
     try {
-      const result = await api<DScanReport>("/d-scans",{method:"POST",body:JSON.stringify({text,local_text:localText,manual_recons:recons,retention,corporation_id:corp ? Number(corp) : null,system_id:system?.system_id ?? null})});
+      const result = await api<DScanReport>("/d-scans",{method:"POST",body:JSON.stringify({anonymous,is_private:isPrivate,text,local_text:localText,manual_recons:recons,retention,corporation_id:corp ? Number(corp) : null,system_id:system?.system_id ?? null})});
       setReport(result);setOffset(0);await loadHistory();
     } catch(e) {setError(errorText(e));} finally {setBusy(false);}
   }
@@ -78,12 +82,12 @@ export function DScanPage({api}: {api: ApiClient}) {
   async function openReport(token:string) {
     setError("");
     try {
-      const saved=await api<DScanReport>(`/d-scans/public/${encodeURIComponent(token)}`); setReport(saved);
+      const saved=await api<DScanReport>(`/d-scans/reports/${encodeURIComponent(token)}`); setReport(saved);
       setText(saved.objects.map(o=>`${o.type_id ? `${o.type_id}\t` : ""}${o.name}\t${o.type_name}\t${o.distance}`).join("\n"));
       setLocalText(saved.local_scan ? [...saved.local_scan.pilots.map(p=>p.name),...saved.local_scan.unresolved].join("\n") : "");
       setRecons({Huginn:0,Lachesis:0,Rook:0,Curse:0,...saved.manual_recons});
       setSystem(saved.system ? {system_id:saved.system.id,name:saved.system.name} : null);setSystemText(saved.system?.name ?? "");
-      setCorp(context?.corporations.some(c=>c.id===saved.corporation_id)?String(saved.corporation_id):"");setRetention(saved.retention);
+      setCorp(context?.corporations.some(c=>c.id===saved.corporation_id)?String(saved.corporation_id):"");setRetention(saved.retention);setAnonymous(saved.anonymous);setIsPrivate(saved.is_private);
     }
     catch(e) {setError(errorText(e));}
   }
@@ -105,12 +109,12 @@ export function DScanPage({api}: {api: ApiClient}) {
     <section className="panel scan-compose"><h3>New directional scan</h3><p className="muted">Copy d-scan results with Ctrl+A, Ctrl+C and paste them below. Accepts Name / Type / Distance, with an optional leading type ID. Up to {context?.max_objects.toLocaleString() ?? "5,000"} objects.</p><form onSubmit={e=>void generate(e)}>
       <label>Directional scan<textarea aria-label="Directional scan" value={text} onChange={e=>setText(e.target.value)} rows={7} maxLength={500000} required placeholder="17715&#9;Ship name&#9;Gila&#9;28 km" /></label>
       <details><summary>Link a local pilot list (optional)</summary><label>Local pilot names<textarea aria-label="Linked local pilot names" rows={4} maxLength={150000} value={localText} onChange={e=>setLocalText(e.target.value)} placeholder="One pilot name per line"/></label><p className="muted">Public affiliations and saved red organization highlights are shown below the ship summary. No ship ownership is inferred.</p></details>
-      <div className="scan-compose-options"><label>Keep public report<select aria-label="Report retention" value={retention} onChange={e=>setRetention(e.target.value)}>{(context?.retentions ?? Object.keys(retentionLabel)).map(r=><option key={r} value={r}>{retentionLabel[r]}</option>)}</select></label>
+      <div className="scan-compose-options"><label>Keep report<select aria-label="Report retention" value={retention} onChange={e=>setRetention(e.target.value)}>{(context?.retentions ?? Object.keys(retentionLabel)).map(r=><option key={r} value={r}>{retentionLabel[r]}</option>)}</select></label>
         <label>Report corporation<select value={corp} onChange={e=>setCorp(e.target.value)}><option value="">Personal report</option>{context?.corporations.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
         <div className="scan-system-search"><label>System (optional)<input aria-label="Scan system search" value={systemText} onChange={e=>{setSystemText(e.target.value);setSystem(null);}} placeholder="Search solar systems" autoComplete="off"/></label>{systems.length>0 && <ul className="scan-system-options">{systems.map(s=><li key={s.system_id}><button type="button" onClick={()=>{setSystem(s);setSystemText(s.name);setSystems([]);}}>{s.name}</button></li>)}</ul>}</div></div>
       {systemText && !system && <p className="muted">Choose a search result to link this report to a system.</p>}
-      <p className="muted">Generating creates a public link containing scanned object names/types, manual counts, linked local pilots/affiliations, your EQM account name, date and selected system. Your corporation's directors can manage corporation-attributed reports.</p>
-      <button type="submit" disabled={busy || !context?.can_generate || Boolean(systemText && !system)}>{busy ? "Analyzing scan…" : "Generate public d-scan"}</button>
+      <ReportPrivacyOptions anonymous={anonymous} isPrivate={isPrivate} onAnonymous={setAnonymous} onPrivate={setIsPrivate} creatorName={context?.creator_name}/>
+      <button type="submit" disabled={busy || !context?.can_generate || Boolean(systemText && !system)}>{busy ? "Analyzing scan…" : isPrivate ? "Generate private d-scan" : "Generate public d-scan"}</button>
       {context && !context.can_generate && <p className="muted">Your role can view saved reports but cannot generate them.</p>}
     </form></section>
     <details className="panel scan-highlight-editor"><summary>Highlighted organizations <span className="scan-count">{highlights.length}</span></summary><p className="muted">Saved to your account across sessions. Matches update immediately in your current scan view. New reports and PDFs save these markings; existing public links and PDFs keep their original snapshot. D-scan ship names cannot establish ownership; markings apply to linked local pilots.</p>
