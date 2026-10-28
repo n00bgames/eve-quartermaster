@@ -4,3 +4,16 @@
 /* Scan workspaces use the document scrollbar instead of a fixed-height content pane. */
 .app-shell.scan-report-shell{height:auto;overflow:visible}
 .app-shell.scan-report-shell>.content{overflow:visible}
+
+/* Put system and whole-snapshot totals before report actions and filtered lists. */
+.scan-report-header>div{min-width:0}
+.scan-header-system{display:block;margin-top:6px;font-size:1rem;overflow-wrap:anywhere}
+.scan-total{display:grid;gap:4px;min-width:0}
+.scan-total strong{font-size:1.2rem;color:#edf2f7;overflow-wrap:anywhere}
+.scan-total small{font-size:.75rem;color:#aab4c2}
+
+.scan-pilots li{display:flex;align-items:center;gap:8px}
+.scan-pilots li>span{min-width:0;overflow-wrap:anywhere}
+.scan-pilot-portrait{display:grid;place-items:center;flex:0 0 24px;width:24px;height:24px;border-radius:4px;background:#233449;overflow:hidden}
+.scan-pilot-portrait img{display:block;width:24px;height:24px;object-fit:cover}
+.scan-pilot-portrait:focus-visible{outline:2px solid #8fb6df;outline-offset:3px}

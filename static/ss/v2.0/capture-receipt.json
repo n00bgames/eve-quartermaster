@@ -104,6 +104,54 @@
       "bytes": 95232,
       "width": 937,
       "height": 1025
+    },
+    {
+      "file": "local-scan-summary-portraits.jpg",
+      "caption": "Local Scan header shows System: Jita and Total pilots: 10 (nine resolved, one unresolved), with expanded corporation portraits opening zKillboard in a new tab.",
+      "captured_at_utc": "2026-10-28T22:11:28.055352+00:00",
+      "source_base_commit": "b9d5b193b33e6ce4bf68e5058e991f5e0f5edbcc",
+      "source_state": "Uncommitted scan summary, PDF banner and pilot portrait change.",
+      "provenance": "Actual built frontend or Poppler-rendered real export, using isolated SQLite with mocked public ESI. Synthetic account/pilot/membership data; real EVE Image Server portraits/icons/logos are visual references only. Cropped without repainting.",
+      "sha256": "f1054eb47f047f63b8e57d2afd40da5426490a4ab741652be81c77c3caae71e8",
+      "bytes": 61273,
+      "width": 937,
+      "height": 763
+    },
+    {
+      "file": "dscan-system-total.jpg",
+      "caption": "Cropped D-Scan summary shows System: Jita and Total ships: 35, with 30 observed plus five manual ships.",
+      "captured_at_utc": "2026-10-28T22:11:28.056355+00:00",
+      "source_base_commit": "b9d5b193b33e6ce4bf68e5058e991f5e0f5edbcc",
+      "source_state": "Uncommitted scan summary, PDF banner and pilot portrait change.",
+      "provenance": "Actual built frontend or Poppler-rendered real export, using isolated SQLite with mocked public ESI. Synthetic account/pilot/membership data; real EVE Image Server portraits/icons/logos are visual references only. Cropped without repainting.",
+      "sha256": "16c293a3c096bc3ce65a2c1b2f56dbe89209c1c2c9976743d8ad39e23627b3b2",
+      "bytes": 82102,
+      "width": 937,
+      "height": 768
+    },
+    {
+      "file": "local-scan-pdf-header.png",
+      "caption": "Actual Local Scan PDF banner: selected system, total pasted pilots, resolved/unresolved detail and existing version/account attribution.",
+      "captured_at_utc": "2026-10-28T22:11:28.069902+00:00",
+      "source_base_commit": "b9d5b193b33e6ce4bf68e5058e991f5e0f5edbcc",
+      "source_state": "Uncommitted scan summary, PDF banner and pilot portrait change.",
+      "provenance": "Actual built frontend or Poppler-rendered real export, using isolated SQLite with mocked public ESI. Synthetic account/pilot/membership data; real EVE Image Server portraits/icons/logos are visual references only. Cropped without repainting.",
+      "sha256": "7a48b567afcc0f7cd2f734a658818eb3cffcfc80f5e33b9a1160bfa9a76c42a5",
+      "bytes": 15784,
+      "width": 849,
+      "height": 178
+    },
+    {
+      "file": "dscan-pdf-header.png",
+      "caption": "Actual D-Scan PDF banner: selected system, total ships and existing version/account attribution. The banner repeats on every page.",
+      "captured_at_utc": "2026-10-28T22:11:28.075992+00:00",
+      "source_base_commit": "b9d5b193b33e6ce4bf68e5058e991f5e0f5edbcc",
+      "source_state": "Uncommitted scan summary, PDF banner and pilot portrait change.",
+      "provenance": "Actual built frontend or Poppler-rendered real export, using isolated SQLite with mocked public ESI. Synthetic account/pilot/membership data; real EVE Image Server portraits/icons/logos are visual references only. Cropped without repainting.",
+      "sha256": "a1b9d43597d8dedfa296fb24fcf19907a7cea100013c894abb2cedcb16be6f0f",
+      "bytes": 15521,
+      "width": 849,
+      "height": 178
     }
   ]
 }

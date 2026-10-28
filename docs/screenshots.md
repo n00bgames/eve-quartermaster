@@ -14,6 +14,22 @@ All **63 existing images** remain linked below. They are historical: some are de
 
 Captured **October 28, 2026** from the current **unreleased 2.0.0 working tree**. These are actual browser captures with synthetic accounts/pilots, not production EVE state. The Local Scan image includes real organization logos as visual references; its memberships are fictional. Crops retain the rendered UI without repainting.
 
+### System totals, pilot portraits and PDF summaries
+
+The selected system and whole-snapshot pilot/ship total lead both report pages. Local Scan includes unresolved pasted names in its total and labels the resolved/unresolved split. D-Scan totals include clearly identified manual additions. Filtering leaves these header totals unchanged.
+
+Expanded corporation lists show small linked portraits; each opens that pilot's zKillboard in a new tab. The same drilldown appears in D-Scan's linked local list. Portraits come from EVE Image Server; memberships/names below are synthetic.
+
+![Local Scan summary and linked portraits](../static/ss/v2.0/local-scan-summary-portraits.jpg)
+
+![D-Scan system and total ship count](../static/ss/v2.0/dscan-system-total.jpg)
+
+Both PDF exports repeat the system and total in the EQM banner on every page; generation attribution and timestamps remain visible. These are cropped banners from actual rendered exports.
+
+![Local Scan PDF summary banner](../static/ss/v2.0/local-scan-pdf-header.png)
+
+![D-Scan PDF summary banner](../static/ss/v2.0/dscan-pdf-header.png)
+
 ### Expanded scan reports
 
 Scan workspaces and public report lists now expand vertically with their content, using the page scrollbar. The full-page demo below contains13 ship types,30 observed ships plus5 manual recons,and18 linked pilots. Opened object tables also expand; wide tables retain horizontal scrolling. Earlier D-Scan captures remain below as historical development states.

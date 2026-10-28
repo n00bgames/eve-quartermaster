@@ -101,11 +101,11 @@ New images show current components with synthetic demo data. Older screenshots a
 
 | D-Scan report | Manual recons and linked local |
 | --- | --- |
-| [![Full-height D-scan with ship icons,classes,deployables and linked local](static/ss/v2.0/dscan-expanded.png)](static/ss/v2.0/dscan-expanded.png) | [![Manual combat recon and linked-local controls](static/ss/v2.0/dscan-editor.png)](static/ss/v2.0/dscan-editor.png) |
+| [![D-Scan with system and ship total at the top](static/ss/v2.0/dscan-system-total.jpg)](static/ss/v2.0/dscan-system-total.jpg) | [![Manual combat recon and linked-local controls](static/ss/v2.0/dscan-editor.png)](static/ss/v2.0/dscan-editor.png) |
 
 | Local Scan | Combined account roles |
 | --- | --- |
-| [![Local Scan preview with synthetic pilots and red organization highlights](static/ss/v2.0/local-scan-live-highlights.jpg)](static/ss/v2.0/local-scan-live-highlights.jpg) | [![Role editor with Intel Analyst and Quartermaster selected](static/ss/v2.0/multiple-roles.png)](static/ss/v2.0/multiple-roles.png) |
+| [![Local Scan system/pilot total, linked portraits and red organization highlights](static/ss/v2.0/local-scan-summary-portraits.jpg)](static/ss/v2.0/local-scan-summary-portraits.jpg) | [![Role editor with Intel Analyst and Quartermaster selected](static/ss/v2.0/multiple-roles.png)](static/ss/v2.0/multiple-roles.png) |
 
 | Full inventory totals | Complete SDE counters |
 | --- | --- |

@@ -7,6 +7,7 @@ Version sections are written as user-facing release notes first, with implementa
 ## [2.0.0] - Unreleased
 
 ### Added
+- Expanded Local Scan corporation rows show small pilot portraits linking to their zKillboard pages in a new tab, including linked local lists in D-Scan.
 - D-Scan in Intel: SDE-resolved ship/class/deployable summaries and icons, observed/manual recon totals, base hull mass, linked local pilots and saved organization highlights, optional system/destinations, public retention, scoped deletion and branded PDFs. Updates save new immutable public snapshots.
 - Asset Ledger **Load all records** offers a full accessible snapshot with row, unit and item-type totals, local filtering and paged rendering.
 - Configurable growing/shrinking database pools and scoped periodic recovery for stale API queries/abandoned transactions. See [configuration and rollout](docs/database-connections.md).
@@ -14,6 +15,7 @@ Version sections are written as user-facing release notes first, with implementa
 - Intel Analyst and multiple roles per account, including role-union permissions and multi-role account creation/invitations. Navigation and Market are available by default to all roles.
 
 ### Changed
+- Local Scan and D-Scan lead with the selected system and total pilots/ships; PDF exports repeat the same summary on every page. Pilot totals include unresolved pasted names, and ship totals distinguish observed/manual counts.
 - Scan reports expand with their content and use page scrolling, including D-Scan type lists and opened object tables, on desktop and mobile.
 - Asset search filters/pages in SQL with permission-scoped totals before loading record details.
 - ESI consent, refresh scope, and collection follow the token owner's combined permissions. Utility-only accounts are excluded from private collection and Quartermaster oversight despite legacy broad tokens.
