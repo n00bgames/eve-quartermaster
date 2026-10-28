@@ -80,6 +80,18 @@
       "bytes": 31880,
       "width": 65536,
       "height": 4292542531
+    },
+    {
+      "file": "dscan-expanded.png",
+      "caption": "Full-height public d-scan: 32 observed objects,30 observed ships plus5 manual recons,13 ship types and18 linked pilots. Lists expand with the page instead of using capped vertical scroll areas.",
+      "captured_at_utc": "2026-10-28T21:37:39.985906+00:00",
+      "source_base_commit": "bf0f182b134668142251f085f426f4eb18f55eb9",
+      "source_state": "Uncommitted scan page-scrolling layout change on the pushed D-Scan implementation.",
+      "provenance": "Actual frontend build with disposable SQLite,SDE demo types and mocked public affiliation lookup. Real type/organization icons. Full-page screenshot without repainting.",
+      "sha256": "46d83f4fa091194b62ac9fdb95d0057a7298fd6cf37903c9d69a86bb30ace2cb",
+      "bytes": 155784,
+      "width": 65536,
+      "height": 4292542531
     }
   ]
 }

@@ -14,6 +14,12 @@ All **63 existing images** remain linked below. They are historical: some are de
 
 Captured **October 28, 2026** from the current **unreleased 2.0.0 working tree**. These are actual browser captures with synthetic accounts/pilots, not production EVE state. The Local Scan image includes real organization logos as visual references; its memberships are fictional. Crops retain the rendered UI without repainting.
 
+### Expanded scan reports
+
+Scan workspaces and public report lists now expand vertically with their content, using the page scrollbar. The full-page demo below contains13 ship types,30 observed ships plus5 manual recons,and18 linked pilots. Opened object tables also expand; wide tables retain horizontal scrolling. Earlier D-Scan captures remain below as historical development states.
+
+![Expanded D-Scan report using page scrolling](../static/ss/v2.0/dscan-expanded.png)
+
 ### D-Scan
 
 Full public report with actual ship/deployable icons, frequency-ranked types/classes, separate observed/manual totals, base hull mass and linked-local organization highlights. Synthetic fixture:32 observed objects,30 observed ships,3 manual recons and18 linked pilots. The full-page image preserves the actual scrollable report; only11 ship types are present. The detail capture shows manual recon and linked-local controls. Both are unreleased development captures.

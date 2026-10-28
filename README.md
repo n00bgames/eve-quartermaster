@@ -101,7 +101,7 @@ New images show current components with synthetic demo data. Older screenshots a
 
 | D-Scan report | Manual recons and linked local |
 | --- | --- |
-| [![D-scan with ship icons,classes,deployables and linked local](static/ss/v2.0/dscan-public.png)](static/ss/v2.0/dscan-public.png) | [![Manual combat recon and linked-local controls](static/ss/v2.0/dscan-editor.png)](static/ss/v2.0/dscan-editor.png) |
+| [![Full-height D-scan with ship icons,classes,deployables and linked local](static/ss/v2.0/dscan-expanded.png)](static/ss/v2.0/dscan-expanded.png) | [![Manual combat recon and linked-local controls](static/ss/v2.0/dscan-editor.png)](static/ss/v2.0/dscan-editor.png) |
 
 | Local Scan | Combined account roles |
 | --- | --- |

@@ -673,7 +673,7 @@ function App() {
 
   return (
 
-    <main className="app-shell">
+    <main className={`app-shell${["local_scan", "dscan"].includes(activeTab) ? " scan-report-shell" : ""}`}>
 
       <aside className="sidebar">
 

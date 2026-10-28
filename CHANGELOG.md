@@ -14,6 +14,7 @@ Version sections are written as user-facing release notes first, with implementa
 - Intel Analyst and multiple roles per account, including role-union permissions and multi-role account creation/invitations. Navigation and Market are available by default to all roles.
 
 ### Changed
+- Scan reports expand with their content and use page scrolling, including D-Scan type lists and opened object tables, on desktop and mobile.
 - Asset search filters/pages in SQL with permission-scoped totals before loading record details.
 - ESI consent, refresh scope, and collection follow the token owner's combined permissions. Utility-only accounts are excluded from private collection and Quartermaster oversight despite legacy broad tokens.
 - SDE Settings shows every stored/import counter and nested celestial, Dogma, blueprint, and PI totals; disabled section settings serialize correctly in their existing text column.
