@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/n00bgames/eve-quartermaster"><img alt="Project" src="https://img.shields.io/badge/project-eve--quartermaster-e8b84d?style=for-the-badge"></a>
-  <img alt="Version" src="https://img.shields.io/badge/version-1.0.8-4fb3c7?style=for-the-badge">
+  <img alt="Version" src="https://img.shields.io/badge/version-2.0.0-4fb3c7?style=for-the-badge">
   <img alt="License" src="https://img.shields.io/badge/license-AGPL--3.0--or--later-70c894?style=for-the-badge">
 </p>
 
@@ -23,7 +23,7 @@
 
 EVE Quartermaster is a containerized, database-first EVE Online quartermaster and alliance operations tool. It tracks characters, corporations, assets, blueprints, recipes, skills, standings/contact sync, wallet snapshots, permissions, audit events, and long-term analytics from EVE ESI plus imported SDE data.
 
-The 1.0 source build brings the PI Operation Planner, corporate supply monitoring, and production-chain calculations into the wider operations suite. See the [v1.0 release notes](docs/releases/v1.0.md) for **The Bigger Slice of PI Release!** The current development application/package version is `1.0.8`. Version `1.0.3` adds the New Eden Atlas and Missions & LP. See the [v1.0.3 release blurb and SDE setup](docs/releases/v1.0.3.md) and [changelog](CHANGELOG.md) for details.
+The 1.0 source build brings the PI Operation Planner, corporate supply monitoring, and production-chain calculations into the wider operations suite. See the [v1.0 release notes](docs/releases/v1.0.md) for **The Bigger Slice of PI Release!** The current development application/package version is `2.0.0`. Version `1.0.3` adds the New Eden Atlas and Missions & LP. See the [v1.0.3 release blurb and SDE setup](docs/releases/v1.0.3.md) and [changelog](CHANGELOG.md) for details.
 
 > **Fitting Manager / Simulator: Non-Authoritative. For Informational Use Only.** Still in development and not PYFA-complete. Full feature and calculation parity with PYFA is not claimed; verify consequential fitting decisions against PYFA and the EVE client.
 
@@ -93,9 +93,21 @@ See [CHANGELOG.md](CHANGELOG.md) for version-by-version release notes.
 
 ## Screenshots
 
-**[Open the complete gallery](docs/screenshots.md)** · [v1.0.3 Atlas previews](docs/screenshots.md#v103-navigation-atlas) · [v1.0 highlights](docs/screenshots.md#v10-highlights) · [Suite/module coverage](docs/screenshots.md#suite-gallery) · [All 63 historical images](docs/screenshots.md#historical-image-index)
+**[Open the complete gallery](docs/screenshots.md)** · [v2.0 development previews](docs/screenshots.md#v20-development-previews) · [v1.0.3 Atlas previews](docs/screenshots.md#v103-navigation-atlas) · [v1.0 highlights](docs/screenshots.md#v10-highlights) · [Suite/module coverage](docs/screenshots.md#suite-gallery) · [All 63 historical images](docs/screenshots.md#historical-image-index)
 
 New images show current components with synthetic demo data. Older screenshots and reconstructed examples are preserved in the gallery with explicit status and replacement notes; they are not represented as current UX.
+
+**2.0 development preview — synthetic demo data, not a published release.**
+
+| Local Scan | Combined account roles |
+| --- | --- |
+| [![Local Scan preview with synthetic pilots and red organization highlights](static/ss/v2.0/local-scan.png)](static/ss/v2.0/local-scan.png) | [![Role editor with Intel Analyst and Quartermaster selected](static/ss/v2.0/multiple-roles.png)](static/ss/v2.0/multiple-roles.png) |
+
+| Full inventory totals | Complete SDE counters |
+| --- | --- |
+| [![Accessible inventory snapshot with totals and paged browsing](static/ss/v2.0/assets-all-records.png)](static/ss/v2.0/assets-all-records.png) | [![SDE stored totals and import counters](static/ss/v2.0/sde-totals-overview.png)](static/ss/v2.0/sde-totals-overview.png) |
+
+[Load all records and inventory totals](static/ss/v2.0/assets-all-records.png) · [Database pool configuration](docs/database-connections.md) · [Complete SDE totals](static/ss/v2.0/sde-totals-overview.png) · [Nested import counters](static/ss/v2.0/sde-totals-details.png) · [Capture provenance](static/ss/v2.0/capture-receipt.json) · [Release draft](docs/releases/v2.0.md)
 
 | New Eden Star Map | Missions & LP |
 | --- | --- |
@@ -779,7 +791,7 @@ After `docker compose up --build`, confirm:
 
 ## Roadmap
 
-See [Proposed Changes](docs/proposed_changes.md) for the to-do list, including local scan analysis, a d-scan parser, and persistent per-user drag-and-drop section layouts.
+See [Proposed Changes](docs/proposed_changes.md) for the to-do list, including the planned d-scan parser and persistent per-user drag-and-drop section layouts. Local Scan is implemented in the 2.0 development build.
 
 - Hardening pass for public testers, including clearer empty states and friendlier setup diagnostics.
 - More complete industry planning: owned vs missing materials, procurement options, build readiness, and market pricing.
@@ -807,3 +819,5 @@ This project is not affiliated with or endorsed by CCP Games. EVE Online and rel
 ## AI Collaboration Notice
 
 This project is collaboratively created with generative AI. Human project direction, review, testing, deployment choices, EVE domain decisions, and final stewardship remain with the project maintainers.
+
+See [Local Scan, multiple roles, ESI privacy, and SDE totals](docs/local-scan.md) for the 2.0 development features and rollout requirements.

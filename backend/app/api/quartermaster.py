@@ -34,7 +34,7 @@ from app.models import (
     User,
 )
 from app.models.enums import ActivityKind, AssetSource, LocationKind, OwnerKind, ProcurementKind
-from app.services.asset_visibility import can_view_owner_records, visible_asset_rows
+from app.services.asset_visibility import can_view_owner_records, visible_asset_rows, visible_asset_query, visible_owner_clause
 from app.services.blueprint_hover import active_blueprint_uses, blueprint_active_use, project_blueprint_metadata, research_use_payload
 from app.services.blueprint_locations import load_blueprint_asset_hierarchy, resolve_blueprint_location
 from app.services.research_projects import ACTIVE_RESEARCH_STATUSES
@@ -48,7 +48,7 @@ router = APIRouter(prefix="/quartermaster", tags=["quartermaster"], dependencies
 
 RESEARCH_BLUEPRINT_ACTIVITY_IDS = frozenset({3, 4, 5})
 EXPORT_SCHEMA_VERSION = "eqm.inventory.v2"
-EXPORT_APP_VERSION = "1.0.8"
+EXPORT_APP_VERSION = "2.0.0"
 
 
 def iso_utc(value: Any) -> str | None:
@@ -258,16 +258,15 @@ def blueprint_type_ids_for_capital_construction(db: Session) -> set[int]:
 @router.get("/summary")
 def summary(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
     assets = db.scalars(
-        select(Asset)
+        select(Asset).where(Asset.ownership_entity.has(visible_owner_clause(current_user, db)))
         .options(selectinload(Asset.ownership_entity).selectinload(OwnershipEntity.character))
     ).all()
     blueprints = db.scalars(
-        select(Blueprint)
+        select(Blueprint).where(Blueprint.ownership_entity.has(visible_owner_clause(current_user, db)))
         .options(selectinload(Blueprint.ownership_entity).selectinload(OwnershipEntity.character))
     ).all()
-    visible_assets = [asset for asset in assets if can_view_owner_records(asset.ownership_entity, current_user, db)]
-    visible_blueprints = [blueprint for blueprint in blueprints
-        if can_view_owner_records(blueprint.ownership_entity, current_user, db)]
+    visible_assets = assets
+    visible_blueprints = blueprints
     asset_units = sum(asset.quantity for asset in visible_assets)
     return {
         "owners": db.scalar(select(func.count()).select_from(OwnershipEntity)) or 0,
@@ -501,13 +500,14 @@ def asset_export_row(asset: Asset, options: dict[str, Any], aliases: dict[str, A
 
 @router.get("/assets")
 def list_assets(limit: int = Query(250, ge=1, le=1000), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[dict[str, Any]]:
-    rows = visible_asset_rows(current_user, db)[:limit]
+    rows = visible_asset_rows(current_user, db, limit=limit)
     hangar_names = corporation_hangar_names(db, rows)
     return [serialize_asset(asset, hangar_names) for asset in rows]
 
 
 @router.get("/assets-page")
 def list_assets_page(
+    all_records: bool = Query(False),
     page: int = Query(1, ge=1),
     page_size: int = Query(100, ge=25, le=500),
     sort_key: str = Query("item", pattern="^(item|owner|quantity|location|flag)$"),
@@ -521,25 +521,55 @@ def list_assets_page(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    visible_rows = visible_asset_rows(current_user, db)
-    hangar_names = corporation_hangar_names(db, visible_rows)
-    rows = [
-        asset
-        for asset in visible_rows
-        if asset_matches_query(asset, owner_kind, category, subtype, filter_key, filter_value, filter_mode, hangar_names)
-    ]
-    rows.sort(
-        key=lambda asset: asset_sort_value(asset, sort_key, hangar_names),
-        reverse=sort_direction == "desc",
-    )
-    total = len(rows)
-    start = (page - 1) * page_size
-    return {
-        "items": [serialize_asset(asset, hangar_names) for asset in rows[start:start + page_size]],
-        "total": total,
-        "page": page,
-        "page_size": page_size,
-    }
+    query = visible_asset_query(current_user, db).order_by(None)
+    if owner_kind:
+        query = query.where(Asset.ownership_entity.has(OwnershipEntity.owner_kind == owner_kind))
+    if category != "all" or subtype:
+        # Classify the compact SDE type catalog using the same rules as exports.
+        types = db.scalars(select(EveType).options(selectinload(EveType.group).selectinload(EveGroup.category))).all()
+        ids = [t.type_id for t in types
+               if (category == "all" or (is_capital_construction_type(t) if category == "capital-construction" else item_family(t, t.name) == category))
+               and (not subtype or inventory_subtype(t, t.name) == subtype)]
+        query = query.where(Asset.type_id.in_(ids))
+    if filter_key in {"item", "owner"} and filter_value:
+        column = EveType.name if filter_key == "item" else OwnershipEntity.display_name
+        predicate = column.contains(filter_value, autoescape=True) if filter_mode == "contains" else column == filter_value
+        if filter_mode == "contains":
+            predicate = func.lower(column).contains(filter_value.lower(), autoescape=True)
+        query = query.where(Asset.item_type.has(predicate) if filter_key == "item" else Asset.ownership_entity.has(predicate))
+    # Container paths and named corporation hangars are computed values; retain
+    # their exact existing filter/sort semantics after narrowing candidates in SQL.
+    computed = sort_key in {"location", "flag"} or (filter_key in {"location", "flag"} and filter_value)
+    if computed:
+        rows = list(db.scalars(query).all())
+        hangar_names = corporation_hangar_names(db, rows)
+        rows = [a for a in rows if asset_matches_query(a, owner_kind, category, subtype, filter_key, filter_value, filter_mode, hangar_names)]
+        rows.sort(key=lambda a: asset_sort_value(a, sort_key, hangar_names), reverse=sort_direction == "desc")
+        total = len(rows)
+        units = sum(a.quantity for a in rows)
+        type_count = len({a.type_id for a in rows})
+        page_rows = rows if all_records else rows[(page - 1) * page_size:page * page_size]
+    else:
+        candidates = query.with_only_columns(Asset.id, Asset.quantity, Asset.type_id).subquery()
+        total, units, type_count = db.execute(select(func.count(), func.coalesce(func.sum(candidates.c.quantity), 0), func.count(func.distinct(candidates.c.type_id)))).one()
+        if sort_key == "quantity":
+            column = Asset.quantity
+        elif sort_key == "owner":
+            column = select(OwnershipEntity.display_name).where(OwnershipEntity.id == Asset.ownership_entity_id).scalar_subquery()
+        else:
+            column = select(EveType.name).where(EveType.type_id == Asset.type_id).scalar_subquery()
+        query = query.order_by(column.desc() if sort_direction == "desc" else column.asc(), Asset.id.asc())
+        if not all_records:
+            query = query.offset((page - 1) * page_size).limit(page_size)
+        page_rows = list(db.scalars(query).all())
+        hangar_names = corporation_hangar_names(db, page_rows)
+    # Release the transaction before FastAPI encodes a potentially large snapshot.
+    items = [serialize_asset(asset, hangar_names) for asset in page_rows]
+    db.rollback()
+    return {"items": items, "total": total, "total_quantity": int(units), "type_count": type_count,
+            "page": 1 if all_records else page, "page_size": total if all_records else page_size,
+            "all_records": all_records}
+
 
 
 @router.post("/assets-export")

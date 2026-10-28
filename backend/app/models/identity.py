@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, Numeric, String, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, Numeric, String, UniqueConstraint, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -54,12 +54,21 @@ class UserSectionPermission(Base):
 
     user: Mapped[User] = relationship()
 
+class UserRoleAssignment(Base):
+    __tablename__ = "user_role_assignments"
+    __table_args__ = (UniqueConstraint("user_id", "role", name="uq_user_role_assignment"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    role: Mapped[str] = mapped_column(String(40), nullable=False)
+
+
 class UserInvite(Base):
     __tablename__ = "user_invites"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(String(320), nullable=False, index=True)
     role: Mapped[str] = mapped_column(String(40), nullable=False)
+    roles_json: Mapped[list[str] | None] = mapped_column(JSON)
     token_hash: Mapped[str] = mapped_column(String(128), unique=True, nullable=False, index=True)
     created_by_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     accepted_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))

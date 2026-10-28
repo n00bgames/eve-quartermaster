@@ -14,9 +14,10 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.security import create_access_token, decode_token, hash_password, verify_password
 from app.db.session import get_db
-from app.services.permissions import BUILT_IN_ROLES, ROLE_RANK, SECTION_DEFINITIONS, disabled_sections, effective_permissions, role_exists, role_payload, role_rank, role_names, section_payload, set_disabled_sections, base_role_for
+from app.services.permissions import BUILT_IN_ROLES, ROLE_RANK, SECTION_DEFINITIONS, disabled_sections, effective_permissions, role_exists, role_payload, role_rank, role_names, section_payload, set_disabled_sections, base_role_for, assigned_roles, assign_roles, assigned_base_roles, quartermaster_read_only
 from app.services.user_accounts import retire_user_account
-from app.models import EsiSyncJob, EsiToken, EveCharacter, RecruitmentUserCapability, RoleDefinition, RoleSectionPermission, User, UserInvite, UserSectionPermission
+from app.services.esi_scope_policy import is_utility_user
+from app.models import EsiSyncJob, EsiToken, EveCharacter, RecruitmentUserCapability, RoleDefinition, RoleSectionPermission, User, UserInvite, UserSectionPermission, UserRoleAssignment
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 ROLES = BUILT_IN_ROLES
@@ -54,6 +55,7 @@ def serialize_user(user: User) -> dict[str, Any]:
         "email": user.email,
         "display_name": user.display_name,
         "role": user.role,
+        "roles": assigned_roles(user),
         "timezone": getattr(user, "timezone", None) or "UTC",
         "created_at": user.created_at.isoformat() if user.created_at else None,
     }
@@ -74,6 +76,7 @@ def serialize_invite(invite: UserInvite, include_status: bool = True) -> dict[st
         "id": invite.id,
         "email": invite.email,
         "role": invite.role,
+        "roles": invite.roles_json or [invite.role],
         "created_by_display_name": invite.created_by_user.display_name if invite.created_by_user else None,
         "created_at": invite.created_at.isoformat() if invite.created_at else None,
         "expires_at": invite.expires_at.isoformat() if invite.expires_at else None,
@@ -115,6 +118,19 @@ def protect_host_assignment(current_user: User, requested_role: str) -> None:
         raise HTTPException(status_code=403, detail="Only a host can assign the host role")
 
 
+def requested_account_roles(payload, current_user, db):
+    roles = payload.get("roles", [payload.get("role") or "member"])
+    if not isinstance(roles, list) or not roles or len(roles) > 32 or any(not isinstance(r, str) for r in roles):
+        raise HTTPException(400, "Select one or more valid roles (at most 32)")
+    roles = sorted(set(roles))
+    for role in roles:
+        if not role_exists(db, role):
+            raise HTTPException(400, f"Unknown role: {role}")
+        if base_role_for(db, role) == "host" and role_rank(current_user, db) < ROLE_RANK["host"]:
+            raise HTTPException(403, "Only a host can assign the host role")
+    return roles
+
+
 def get_current_user(
     request: Request,
     authorization: str | None = Header(default=None),
@@ -132,8 +148,14 @@ def get_current_user(
     user = db.get(User, user_id)
     if user is None or user.deleted_at is not None:
         raise HTTPException(status_code=401, detail="User no longer exists")
+    utility_path = request.url.path.rstrip("/").removeprefix(get_settings().api_prefix)
+    quartermaster_utility = request.method == "POST" and (
+        utility_path in {"/market/appraise", "/navigation/local-threat", "/navigation/local-threat/jobs", "/esi/ui/waypoint"}
+        or re.fullmatch(r"/navigation/local-threat/jobs/[A-Za-z0-9_-]+/cancel", utility_path) is not None
+        or re.fullmatch(r"/navigation/systems/\d+/objects/(?:sync|structures/\d+)", utility_path) is not None
+    )
     quartermaster_refresh = request.method == "POST" and request.url.path.rstrip("/") == f"{get_settings().api_prefix}/quartermaster-oversight/sync"
-    if base_role_for(db, user.role) == "quartermaster" and request.method not in {"GET", "HEAD", "OPTIONS"} and not quartermaster_refresh:
+    if quartermaster_read_only(user, db) and request.method not in {"GET", "HEAD", "OPTIONS"} and not quartermaster_refresh and not quartermaster_utility:
         raise HTTPException(status_code=403, detail="Quartermaster is a view-only role")
     return user
 
@@ -213,7 +235,7 @@ def update_section_enabled_settings(payload: dict[str, Any], current_user: User 
 
 @router.get("/permissions/effective")
 def my_effective_permissions(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
-    return {"sections": section_payload(), "permissions": effective_permissions(current_user, db), "read_only_quartermaster": base_role_for(db, current_user.role) == "quartermaster"}
+    return {"sections": section_payload(), "permissions": effective_permissions(current_user, db), "read_only_quartermaster": quartermaster_read_only(current_user, db), "utility_only": is_utility_user(db, current_user)}
 
 
 @router.get("/permissions")
@@ -394,15 +416,15 @@ def create_user(payload: dict[str, Any], current_user: User = Depends(get_curren
     email = str(payload.get("email", "")).strip().lower()
     password = str(payload.get("password", ""))
     display_name = str(payload.get("display_name") or email).strip()
-    role = str(payload.get("role") or "member")
-    if not role_exists(db, role):
-        raise HTTPException(status_code=400, detail="Unknown role")
+    roles = requested_account_roles(payload, current_user, db)
+    role = roles[0]
     if not email or not password or len(password) < 8:
         raise HTTPException(status_code=400, detail="Email and an 8+ character password are required")
     if db.scalar(select(User).where(User.email == email, User.deleted_at.is_(None))):
         raise HTTPException(status_code=400, detail="Email is already in use")
     user = User(email=email, display_name=display_name, role=role, password_hash=hash_password(password))
     db.add(user)
+    assign_roles(db, user, roles)
     db.commit()
     db.refresh(user)
     return serialize_user(user)
@@ -414,20 +436,21 @@ def update_user(user_id: int, payload: dict[str, Any], current_user: User = Depe
     user = db.get(User, user_id)
     if user is None or user.deleted_at is not None:
         raise HTTPException(status_code=404, detail="User was not found")
+    if "host" in assigned_base_roles(user, db) and role_rank(current_user, db) < ROLE_RANK["host"]:
+        raise HTTPException(403, "Only a host can manage another host account")
     if payload.get("display_name"):
         user.display_name = str(payload["display_name"]).strip()
-    if payload.get("role"):
-        role = str(payload["role"])
-        protect_host_assignment(current_user, role)
-        if not role_exists(db, role):
-            raise HTTPException(status_code=400, detail="Unknown role")
-        if user.role == "host" and current_user.role != "host":
-            raise HTTPException(status_code=403, detail="Only a host can manage another host account")
-        if user.role == "host" and role != "host" and host_count(db) <= 1:
-            raise HTTPException(status_code=400, detail="At least one host account is required")
-        if user.role in {"host", "admin"} and role not in {"host", "admin"} and admin_count(db) <= 1:
-            raise HTTPException(status_code=400, detail="At least one host or admin account is required")
-        user.role = role
+    if "role" in payload or "roles" in payload:
+        roles = requested_account_roles(payload, current_user, db)
+        old_bases = assigned_base_roles(user, db)
+        new_bases = {base_role_for(db, role) for role in roles}
+        if "host" in old_bases and role_rank(current_user, db) < ROLE_RANK["host"]:
+            raise HTTPException(403, "Only a host can manage another host account")
+        if "host" in old_bases and "host" not in new_bases and host_count(db) <= 1:
+            raise HTTPException(400, "At least one host account is required")
+        if old_bases & {"host", "admin"} and not new_bases & {"host", "admin"} and admin_count(db) <= 1:
+            raise HTTPException(400, "At least one host or admin account is required")
+        assign_roles(db, user, roles)
     if payload.get("password"):
         password = str(payload["password"])
         if len(password) < 8:
@@ -457,6 +480,7 @@ def delete_user(user_id: int, current_user: User = Depends(get_current_user), db
     if token_ids:
         db.execute(update(EsiSyncJob).where(EsiSyncJob.token_id.in_(token_ids)).values(token_id=None))
     db.execute(sa_delete(EsiToken).where(EsiToken.user_id == user_id))
+    db.execute(sa_delete(UserRoleAssignment).where(UserRoleAssignment.user_id == user_id))
     db.execute(sa_delete(UserSectionPermission).where(UserSectionPermission.user_id == user_id))
     db.execute(sa_delete(RecruitmentUserCapability).where(RecruitmentUserCapability.user_id == user_id))
     db.execute(update(EveCharacter).where(EveCharacter.owner_user_id == user_id).values(owner_user_id=None))
@@ -476,16 +500,15 @@ def list_invites(current_user: User = Depends(get_current_user), db: Session = D
 def create_invite(payload: dict[str, Any], current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
     require_role(current_user, "admin")
     email = str(payload.get("email", "")).strip().lower()
-    role = str(payload.get("role") or "member")
-    if not role_exists(db, role):
-        raise HTTPException(status_code=400, detail="Unknown role")
+    roles = requested_account_roles(payload, current_user, db)
+    role = min(roles, key=lambda r: (-role_rank(r, db), r))
     if not email or "@" not in email:
         raise HTTPException(status_code=400, detail="A valid email is required")
     if db.scalar(select(User).where(User.email == email, User.password_hash.is_not(None))):
         raise HTTPException(status_code=400, detail="A user already exists for that email")
 
     token = secrets.token_urlsafe(32)
-    invite = UserInvite(email=email, role=role, token_hash=hash_invite_token(token), created_by_user_id=current_user.id)
+    invite = UserInvite(email=email, role=role, roles_json=roles, token_hash=hash_invite_token(token), created_by_user_id=current_user.id)
     db.add(invite)
     db.commit()
     db.refresh(invite)
@@ -539,7 +562,10 @@ def accept_invite(token: str, payload: dict[str, Any], db: Session = Depends(get
         db.add(user)
         db.flush()
     user.display_name = display_name
-    user.role = invite.role
+    invite_roles = invite.roles_json or [invite.role]
+    if any(not role_exists(db, r) for r in invite_roles):
+        raise HTTPException(400, "An invited role no longer exists; request a new invite")
+    assign_roles(db, user, invite_roles)
     user.password_hash = hash_password(password)
     invite.accepted_at = datetime.now(timezone.utc)
     invite.accepted_by_user_id = user.id

@@ -1,3 +1,4 @@
+from app.models.local_scan import LocalScanReport, ScanHighlight
 from app.models.intel import IntelSubject, IntelCollection, IntelObservation, IntelSourceCache, IntelNote
 from app.models.fleet_assignments import FleetAssignmentOperation, FleetAssignmentPilot, FleetAssignmentPreset
 from app.models.analytics import BlueprintSnapshot, CharacterSkillSnapshot, CorporationSnapshot, CorporationWalletSnapshot, SnapshotMetric, SnapshotRun
@@ -17,7 +18,7 @@ from app.models.plex import PlexMarketCache, PlexTransaction
 from app.models.eve_static import EveCategory, EveConstellation, EveDogmaAttribute, EveDogmaEffect, EveGroup, EveRegion, EveStargate, EveStation, EveSystem, EveType, EveTypeDogmaAttribute, EveTypeDogmaEffect
 from app.models.fittings import CharacterFitting, CharacterFittingItem
 from app.models.fleet_operations import DoctrinePriorityField, DoctrinePriorityOption, SkillPlan, SkillPlanEntry, SrpLossReason, SrpOperation, SrpRequest, SrpRequestEvent
-from app.models.identity import CorporationWalletDivision, EveAlliance, EveCharacter, EveCorporation, OwnershipEntity, RoleDefinition, RoleSectionPermission, User, UserInvite, UserSectionPermission
+from app.models.identity import CorporationWalletDivision, EveAlliance, EveCharacter, EveCorporation, OwnershipEntity, RoleDefinition, RoleSectionPermission, User, UserInvite, UserSectionPermission, UserRoleAssignment
 from app.models.market import CustomMarketHub
 from app.models.manufacturing import ManufacturingJob, ManufacturingJobItem
 from app.models.mining import MiningLedgerEntry, MiningOperation, MiningOperationParticipant, MiningSettlement, MiningSettlementDeduction, MiningSettlementLedgerEntry, MiningSettlementOutput, MiningSettlementParticipant

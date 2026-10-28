@@ -13,6 +13,8 @@ function formatApiError(detail: unknown): string {
 }
 
 function requestTimeoutMs(path: string): number {
+  if (path.startsWith("/quartermaster/assets-page?") && new URLSearchParams(path.split("?")[1]).get("all_records") === "true") return 120000;
+  if (path === "/local-scans") return 120000;
   if (path.startsWith("/quartermaster-oversight")) return 180000;
   if (path.startsWith("/esi/sync/")) return 1800000;
   if (path.startsWith("/jump-clones/sync/")) return 300000;
@@ -34,12 +36,15 @@ function requestTimeoutMs(path: string): number {
 export async function api<T>(path: string, options?: RequestInit): Promise<T> {
   const token = localStorage.getItem("eq_access_token");
   const controller = new AbortController();
+  const abortFromCaller = () => controller.abort();
+  options?.signal?.addEventListener("abort", abortFromCaller, { once: true });
+  if (options?.signal?.aborted) controller.abort();
   const timer = window.setTimeout(() => controller.abort(), requestTimeoutMs(path));
   try {
     const response = await fetch(`${API_BASE}${path}`, {
       ...options,
       credentials: "include",
-      signal: options?.signal ?? controller.signal,
+      signal: controller.signal,
       headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}), ...options?.headers },
     });
     const contentType = response.headers.get("content-type") ?? "";
@@ -58,5 +63,6 @@ export async function api<T>(path: string, options?: RequestInit): Promise<T> {
     throw err;
   } finally {
     window.clearTimeout(timer);
+    options?.signal?.removeEventListener("abort", abortFromCaller);
   }
 }

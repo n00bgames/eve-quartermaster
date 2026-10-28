@@ -1,0 +1,61 @@
+{
+  "captured_on": "2026-10-28",
+  "application_version": "2.0.0",
+  "source_base_commit": "b12af86080f5968e83a2c57568ca3a069769e799",
+  "source_state": "Uncommitted 2.0.0 development working tree; these captures do not claim a published release or deployed production build.",
+  "method": "Codex in-app browser screenshots of the actual production frontend build, backed by isolated SQLite fixtures and mocked public ESI lookup/waypoint actions.",
+  "data": "Synthetic pilots/accounts/memberships. Real EVE Image Server logos are visual references only. No production accounts, credentials, private records or live game actions.",
+  "cropping": "Local Scan is a full viewport capture. Roles and SDE captures are rectangular excerpts of the actual UI; no pixels were repainted or generated.",
+  "limitations": "Component demonstrations. The SDE fixture has two systems and no completed import, so empty totals and last-run dashes are intentional. Unrelated admin preview services were not all stubbed and are outside the cropped components.",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "files": [
+    {
+      "file": "local-scan.png",
+      "caption": "Public local-scan report with synthetic pilots, organization logos, red markings, creator/date and system.",
+      "captured_at_utc": "2026-10-28T15:18:23.900557+00:00",
+      "sha256": "d556f4ff9a4cf10e62a305bd39969e0e3bdf5c6784ee4bc0d560ef6d59436bd0",
+      "bytes": 51867,
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "file": "multiple-roles.png",
+      "caption": "Cropped role choices for a synthetic account with Intel Analyst and Quartermaster selected.",
+      "captured_at_utc": "2026-10-28T15:41:33.491848+00:00",
+      "sha256": "9cc71f793a8ace41ccc55ce7344c0e1a13f7664c3b41a91039f15574be586243",
+      "bytes": 8292,
+      "width": 374,
+      "height": 310
+    },
+    {
+      "file": "sde-totals-overview.png",
+      "caption": "Cropped SDE heading and Inventory/Universe totals in an isolated fixture containing two systems.",
+      "captured_at_utc": "2026-10-28T15:39:33.202982+00:00",
+      "sha256": "171a3b7a48e9be34d716f10e83dd6eb87d5bcc87c28f12ffbfd9baccdd78d237",
+      "bytes": 42989,
+      "width": 937,
+      "height": 626
+    },
+    {
+      "file": "sde-totals-details.png",
+      "caption": "Cropped Dogma/Blueprint/PI detail counters in the same fixture; no SDE import was run.",
+      "captured_at_utc": "2026-10-28T15:40:31.243447+00:00",
+      "sha256": "6360367aaebb42ef9b20b96128d9da8d2381e819477fe5ed4b4584dd37b625ec",
+      "bytes": 36847,
+      "width": 901,
+      "height": 663
+    },
+    {
+      "file": "assets-all-records.png",
+      "caption": "Full accessible inventory snapshot totals, refresh/server-paging controls, exports and bounded table rendering; 270 synthetic stacks, 1074 units and three ship types.",
+      "captured_at_utc": "2026-10-28T16:33:29.973464+00:00",
+      "sha256": "a12159bf2c0347d9a6c1903b0a517c7c85e7dc7f99e7d1ae05021ae9b6a95b88",
+      "bytes": 44544,
+      "width": 586,
+      "height": 675
+    }
+  ]
+}

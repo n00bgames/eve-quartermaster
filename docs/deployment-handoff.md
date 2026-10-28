@@ -101,3 +101,7 @@ Apply migration `0089_intel_reports` after `0088_fleet_assignments` and rebuild 
 ## Quartermaster role
 
 Rebuild backend and frontend together; no migration or new ESI scopes. Assign Quartermaster in User Administration and open Inventory & Industry → Quartermaster. Verify blueprint counts and nested locations, personal/corporate active jobs, and PI details across linked owners. Verify scoped Sync All progress and denied edit/general-sync requests and revoked/opted-out/unauthorized record exclusion. Corporate access probes use existing tokens and fail closed per feed. See [role access and validation](quartermaster-role.md). This change has not been deployed.
+
+## Asset query and database connection recovery (2.0 development)
+
+Prepared only; live deployment unchanged. See [pool settings, housekeeping scope, full-inventory snapshots and verification](database-connections.md). Backend/frontend/Compose must deploy together to enable the new response totals and Load all records UI. API pool defaults to 10 retained +20 overflow; worker 3+7; calculate combined process capacity before increasing replicas. Watchdog starts with API lifespan, scans tagged API connections every 60 seconds, and has a dry-run CLI. No database migration is introduced by this fix. The accumulated 2.0 migrations still apply when deploying that working tree.

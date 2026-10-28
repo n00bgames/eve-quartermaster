@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 from app.models import EsiToken, EveCharacter, User
+from app.services.esi_scope_policy import private_collection_enabled, effective_token_scopes
 
 CHARACTER_SCOPES = {
     "blueprints": "esi-characters.read_blueprints.v1",
@@ -22,12 +23,13 @@ _GRANTS: dict[tuple, tuple[float, frozenset[str]]] = {}
 def authenticated_rows(db: Session):
     # Current owner and live token must agree; historical tokens do not enroll
     # a transferred/deleted/opted-out character in organization-wide oversight.
-    return db.execute(select(EsiToken, EveCharacter).join(
+    rows = db.execute(select(EsiToken, EveCharacter).join(
         EveCharacter, EveCharacter.id == EsiToken.character_id
     ).join(User, User.id == EveCharacter.owner_user_id).where(
         EsiToken.revoked_at.is_(None), EsiToken.user_id == EveCharacter.owner_user_id,
         User.deleted_at.is_(None), EveCharacter.sync_opt_out.is_(False),
     ).options(selectinload(EveCharacter.corporation)).order_by(EsiToken.id.desc())).all()
+    return [(token, character) for token, character in rows if private_collection_enabled(db, db.get(User, token.user_id))]
 
 
 async def verify_corporation_access(token: EsiToken, character: EveCharacter) -> set[str]:
@@ -49,7 +51,7 @@ async def verify_corporation_access(token: EsiToken, character: EveCharacter) ->
         if profile.get("corporation_id") != corporation.corporation_id:
             return set()
         grants = set()
-        scopes = set(token.scopes.split())
+        scopes = effective_token_scopes(token)
         for dataset, scope in CORPORATION_SCOPES.items():
             if scope not in scopes:
                 continue
@@ -79,7 +81,7 @@ async def oversight_scope(db: Session) -> OversightScope:
         if until <= now:
             _GRANTS.pop(key, None)
     for token, character in authenticated_rows(db):
-        scopes = set(token.scopes.split())
+        scopes = effective_token_scopes(token)
         for dataset, scope in CHARACTER_SCOPES.items():
             if scope in scopes:
                 result.characters[dataset].add(character.id)
@@ -88,7 +90,7 @@ async def oversight_scope(db: Session) -> OversightScope:
         requested = [dataset for dataset, scope in CORPORATION_SCOPES.items() if scope in scopes]
         if all(character.corporation_id in result.corporations[key] for key in requested):
             continue
-        key = (token.id, token.user_id, character.id, character.corporation_id, token.scopes)
+        key = (token.id, token.user_id, character.id, character.corporation_id, tuple(sorted(scopes)))
         cached = _GRANTS.get(key)
         try:
             if cached and cached[0] > now:
@@ -100,7 +102,8 @@ async def oversight_scope(db: Session) -> OversightScope:
                 if grants:
                     _GRANTS[key] = (time.monotonic() + 60, grants)
             for dataset in grants:
-                result.corporations[dataset].add(character.corporation_id)
+                if dataset in requested:
+                    result.corporations[dataset].add(character.corporation_id)
             if any(scope in scopes and dataset not in grants for dataset, scope in CORPORATION_SCOPES.items()):
                 result.warnings.append(f"Some corporate access could not be verified for {character.name}; unavailable feeds are excluded.")
         except Exception:

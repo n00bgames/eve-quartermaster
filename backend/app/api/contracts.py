@@ -37,7 +37,8 @@ def can_sync_character_contract_token(token: EsiToken, character: EveCharacter, 
     owner = db.get(User, character.owner_user_id)
     return owner is not None and role_rank(owner, db) < ROLE_RANK["officer"]
 def contract_token_payload(token: EsiToken, character: EveCharacter, owner: User, db: Session) -> dict[str, Any]:
-    scopes = {scope.strip() for scope in (token.scopes or "").split() if scope.strip()}
+    from app.services.esi_scope_policy import effective_token_scopes
+    scopes = effective_token_scopes(token, db)
     corporation = db.get(EveCorporation, character.corporation_id) if character.corporation_id else None
     return {
         "token_id": token.id,

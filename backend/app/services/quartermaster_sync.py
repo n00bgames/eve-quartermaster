@@ -10,6 +10,7 @@ from app.db.session import SessionLocal
 from app.models import Asset, Blueprint, EsiSyncJob, EsiToken, EveCharacter, User
 from app.models.enums import AssetSource, OwnerKind, SyncStatus
 from app.services.permissions import can_view_section
+from app.services.esi_scope_policy import effective_token_scopes, private_collection_enabled
 from app.services.quartermaster_access import authenticated_rows, CHARACTER_SCOPES, CORPORATION_SCOPES
 
 JOBS: dict[str, dict] = {}
@@ -23,20 +24,20 @@ def eligible(db, actor, token, character, dataset):
         return False
     owner = db.get(User, character.owner_user_id)
     scope = (CORPORATION_SCOPES if dataset.startswith('corporation_') else CHARACTER_SCOPES).get(dataset.removeprefix('corporation_'))
-    return bool(owner and owner.deleted_at is None and scope and scope in token.scopes.split())
+    return bool(owner and owner.deleted_at is None and private_collection_enabled(db, owner) and scope and scope in effective_token_scopes(token, db))
 
 
 def work_items(db):
     grouped = {}
     for token, character in authenticated_rows(db):
         for dataset, scope in CHARACTER_SCOPES.items():
-            if scope in token.scopes.split():
+            if scope in effective_token_scopes(token, db):
                 key = (dataset, character.id)
                 item = grouped.setdefault(key, {'dataset': dataset, 'owner_id': character.id, 'label': character.name, 'token_ids': []})
                 item['token_ids'].append(token.id)
         if character.corporation_id is not None:
             for dataset, scope in CORPORATION_SCOPES.items():
-                if scope in token.scopes.split():
+                if scope in effective_token_scopes(token, db):
                     key = ('corporation_' + dataset, character.corporation_id)
                     item = grouped.setdefault(key, {'dataset': key[0], 'owner_id': character.corporation_id,
                                                    'label': character.corporation.name, 'token_ids': []})
@@ -114,7 +115,7 @@ async def sync_dataset(db, actor, token, character, item):
             rows = await esi.fetch_all_blueprint_pages(client, base + '/blueprints/')
             assets_scope = 'esi-assets.read_corporation_assets.v1' if corporation else 'esi-assets.read_assets.v1'
             asset_tokens = [(candidate, pilot) for candidate, pilot in authenticated_rows(db)
-                            if assets_scope in candidate.scopes.split()
+                            if assets_scope in effective_token_scopes(candidate, db)
                             and (pilot.corporation_id == item['owner_id'] if corporation else pilot.id == item['owner_id'])]
             locations_refreshed = False
             for asset_token, pilot in asset_tokens:

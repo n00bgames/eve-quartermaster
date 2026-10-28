@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.models import CharacterFitting, CharacterSkill, CharacterSkillQueueEntry, EsiSyncJob, EsiToken, EveCharacter, EveType, RecruitmentApplication, RecruitmentLinkedCharacter, User
 from app.models.enums import SyncStatus
 from app.services.permissions import can_view_section
+from app.services.esi_scope_policy import effective_token_scopes, private_collection_enabled
 from app.services.recruiting import is_recruiter
 
 
@@ -13,7 +14,7 @@ def authorized_context(db: Session, user: User, subject):
     character = db.scalar(select(EveCharacter).where(EveCharacter.character_id == subject.eve_id))
     if character is None or character.owner_user_id is None or character.sync_opt_out: return None
     token = db.scalar(select(EsiToken).where(EsiToken.character_id == character.id, EsiToken.user_id == character.owner_user_id, EsiToken.revoked_at.is_(None)).order_by(EsiToken.id.desc()))
-    if token is None: return None
+    if token is None or not private_collection_enabled(db, db.get(User, token.user_id)): return None
     link = db.scalar(select(RecruitmentLinkedCharacter).join(RecruitmentApplication, RecruitmentApplication.id == RecruitmentLinkedCharacter.application_id).where(
         RecruitmentLinkedCharacter.character_id == character.id, RecruitmentApplication.applicant_user_id == token.user_id,
         RecruitmentLinkedCharacter.verification_status.in_(["verified","stale"]), RecruitmentApplication.status.not_in(["Withdrawn","Declined"])))
@@ -28,7 +29,7 @@ def private_enrichment(db: Session, user: User, subject) -> dict:
     context = authorized_context(db,user,subject)
     if context is None: return {"state":"not_authorized", "notice":"Private ESI data is unavailable to this viewer. This is not a risk signal."}
     character, token, link, regular = context
-    scopes = set(token.scopes.split())
+    scopes = effective_token_scopes(token, db)
     if link and not regular: scopes &= set(link.granted_scopes_json or [])
     result = {"state":"authorized", "scopes":sorted(scopes), "source":"Authorized EQM cache", "datasets":{}}
     if "esi-skills.read_skills.v1" in scopes and (link or (regular and can_view_section(user,"skills",db))):

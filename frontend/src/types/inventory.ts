@@ -6,7 +6,7 @@ export type EveType = { type_id: number; name: string; group_id?: number; group_
 
 export type Location = { id: number; location_kind: string; name: string; notes?: string };
 
-export type AssetPagePayload = { items: Asset[]; total: number; page: number; page_size: number };
+export type AssetPagePayload = { items: Asset[]; total: number; total_quantity: number; type_count: number; all_records: boolean; page: number; page_size: number };
 
 export type Asset = { id: number; ownership_entity_id: number; owner_name: string; owner_kind?: string; type_id: number; type_name: string; quantity: number; location_name?: string; location_id?: number | null; location_flag?: string; location_flag_name?: string | null; source: string; last_synced_at?: string | null; parent_asset_item_id?: number; parent_asset_type_name?: string; is_blueprint_copy?: boolean | null; inventory_family?: string | null; inventory_subtype?: string | null; type_group_id?: number | null; type_group_name?: string | null; type_category_id?: number | null; type_category_name?: string | null; type_market_group_id?: number | null };
 

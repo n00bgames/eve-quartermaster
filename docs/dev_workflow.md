@@ -62,6 +62,17 @@ When the user says **`vb`**, it means **version bump**. Bump the project version
 
 Keep `CHANGELOG.md` current with user-facing release notes. Create a fresh top section for each new version, and do not let older version bullets drift into the new release section.
 
+## Feature screenshots and release media
+
+Capture screenshots as each user-visible feature is implemented or materially changed. Finish the feature's normal verification, then save the actual rendered UI while the demonstrated state is available.
+
+- Save descriptive image files under `static/ss/v<release>/`, preserving historical captures. Use synthetic fixtures for accounts, pilots and private operational data.
+- Capture the principal desktop state and relevant mobile, detail or result states. Crops must retain complete labels and meaningful context. Do not repaint or generate screenshots to imply a working feature.
+- Add representative previews to `README.md`, and add the complete set with captions to `docs/screenshots.md`.
+- Maintain `docs/releases/v<release>.md` as the screenshot-backed release-blurb draft. Mark unreleased development captures explicitly; only include implemented features as available. Use the existing absolute GitHub raw-image URL convention for copyable release blurbs.
+- Save `capture-receipt.json` beside the images with capture date, application version, source commit or working-tree status, method, data provenance, limitations, filenames, sizes and SHA-256 checksums.
+- Include authorized public feature images and documentation in the next requested commit/push. Private gameplay screenshots, credentials and handoff notes remain outside Git. Capturing images does not authorize deployment or publishing a release.
+
 ## Frontend Segmentation
 
 Keep reducing `frontend/src/main.tsx` into purpose-built modules.

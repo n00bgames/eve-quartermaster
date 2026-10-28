@@ -4,7 +4,25 @@ All notable changes to EVE Quartermaster are tracked here.
 
 Version sections are written as user-facing release notes first, with implementation detail included where it helps operators understand deployment or testing impact.
 
-## [1.0.8] - Unreleased
+## [2.0.0] - Unreleased
+
+### Added
+- Asset Ledger **Load all records** offers a full accessible snapshot with row, unit and item-type totals, local filtering and paged rendering.
+- Configurable growing/shrinking database pools and scoped periodic recovery for stale API queries/abandoned transactions. See [configuration and rollout](docs/database-connections.md).
+- Local Scan in Intel: public ESI alliance/corporation breakdowns with logos, pilot drilldowns, filters, persistent red-highlight lists, optional solar system and selected-character destinations, public links, configurable retention, scoped bulk deletion, and branded PDF export.
+- Intel Analyst and multiple roles per account, including role-union permissions and multi-role account creation/invitations. Navigation and Market are available by default to all roles.
+
+### Changed
+- Asset search filters/pages in SQL with permission-scoped totals before loading record details.
+- ESI consent, refresh scope, and collection follow the token owner's combined permissions. Utility-only accounts are excluded from private collection and Quartermaster oversight despite legacy broad tokens.
+- SDE Settings shows every stored/import counter and nested celestial, Dogma, blueprint, and PI totals; disabled section settings serialize correctly in their existing text column.
+- Apply database migrations 0090_local_scan_reports and 0091_multiple_account_roles with the backend/frontend update. D-scan and battle-report enhancements remain planned.
+
+- Major release preparation includes the unreleased development work listed below. Proposed features remain in the [to-do list](docs/proposed_changes.md) until implemented.
+- Prepared the user-designated **EQM 2.0** release with application/API, frontend package and lockfile, Android wrapper, export metadata, README badge, and outbound service user agents set to `2.0.0`. Android versionCode is now 27.
+- Added user-selectable color palettes and per-user custom logos to the planned themes and personal branding work.
+
+## [1.0.8] - Unreleased development snapshot
 
 Release preparation includes the unreleased 1.0.7 development work listed below.
 

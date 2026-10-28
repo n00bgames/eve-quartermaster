@@ -10,6 +10,18 @@ class Settings(BaseSettings):
     app_name: str = "eve-quartermaster"
     api_prefix: str = "/api"
     database_url: str = "postgresql+psycopg://eve:eve@postgres:5432/eve_quartermaster"
+    db_application_name: str = "eqm-api"
+    db_pool_size: int = Field(default=10, ge=1)
+    db_max_overflow: int = Field(default=20, ge=0)
+    db_pool_timeout_seconds: int = Field(default=10, ge=1)
+    db_pool_recycle_seconds: int = Field(default=900, ge=1)
+    db_idle_transaction_timeout_seconds: int = Field(default=300, ge=1)
+    db_watchdog_enabled: bool = True
+    db_watchdog_interval_seconds: int = Field(default=60, ge=1)
+    db_watchdog_idle_seconds: int = Field(default=300, ge=1)
+    db_watchdog_query_seconds: int = Field(default=180, ge=1)
+    db_worker_pool_size: int = Field(default=3, ge=1)
+    db_worker_max_overflow: int = Field(default=7, ge=0)
     redis_url: str = "redis://redis:6379/0"
     eve_sso_client_id: str = ""
     eve_sso_client_secret: str = ""

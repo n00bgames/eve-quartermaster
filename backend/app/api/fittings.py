@@ -144,7 +144,8 @@ EFT_HEADER_RE = re.compile(r"^\[(?P<ship>[^,\]]+),\s*(?P<name>[^\]]+)\]\s*$")
 
 
 def token_scopes(token: EsiToken) -> set[str]:
-    return {scope.strip() for scope in (token.scopes or "").split() if scope.strip()}
+    from app.services.esi_scope_policy import effective_token_scopes
+    return effective_token_scopes(token)
 
 
 def require_fittings_view(user: User, db: Session) -> None:

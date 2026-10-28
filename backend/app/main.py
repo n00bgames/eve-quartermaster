@@ -15,17 +15,23 @@ async def lifespan(_: FastAPI):
 
     from app.services.intel_collection import start_worker, stop_worker
 
+    from app.db.watchdog import start_watchdog, stop_watchdog
+    start_watchdog()
     resume_pending_contact_sync_jobs()
     start_worker()
+    from app.services.local_scan import start_cleanup, stop_cleanup
+    start_cleanup()
     try:
         yield
     finally:
+        await stop_watchdog()
         await stop_worker()
+        await stop_cleanup()
         from app.services.esi_transport import close_esi_transport
         await close_esi_transport()
 
 
-app = FastAPI(title="eve-quartermaster", version="1.0.8", lifespan=lifespan)
+app = FastAPI(title="eve-quartermaster", version="2.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

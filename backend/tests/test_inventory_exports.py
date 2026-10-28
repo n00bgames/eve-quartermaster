@@ -10,7 +10,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from app.api.quartermaster import export_assets
-from app.models import Asset, Base, EveCategory, EveCharacter, EveGroup, EveType, Location, OwnershipEntity, User
+from app.models import Asset, Base, EveCategory, EveCharacter, EveGroup, EveType, Location, OwnershipEntity, User, UserRoleAssignment
 from app.models.enums import OwnerKind
 
 
@@ -20,7 +20,7 @@ class InventoryExportTests(unittest.TestCase):
         Base.metadata.create_all(
             self.engine,
             tables=[
-                User.__table__, EveCharacter.__table__, OwnershipEntity.__table__, EveCategory.__table__,
+                User.__table__, UserRoleAssignment.__table__, EveCharacter.__table__, OwnershipEntity.__table__, EveCategory.__table__,
                 EveGroup.__table__, EveType.__table__, Location.__table__, Asset.__table__,
             ],
         )

@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.api.auth import get_current_user, require_role
 from app.core.config import get_settings
 from app.db.session import SessionLocal, get_db
-from app.models import EveCategory, EveConstellation, EveDogmaAttribute, EveDogmaEffect, EveGroup, EvePlanetSchematic, EvePlanetSchematicInput, EveRegion, EveStargate, EveStation, EveSystem, EveType, EveTypeDogmaAttribute, EveTypeDogmaEffect, IndustryActivity, IndustryActivityInput, User
+from app.models import EveAgent, EveSystemObject, EveCategory, EveConstellation, EveDogmaAttribute, EveDogmaEffect, EveGroup, EvePlanetSchematic, EvePlanetSchematicInput, EveRegion, EveStargate, EveStation, EveSystem, EveType, EveTypeDogmaAttribute, EveTypeDogmaEffect, IndustryActivity, IndustryActivityInput, User
 from app.services.sde_importer import import_sde
 
 router = APIRouter(prefix="/sde", tags=["sde"])
@@ -60,6 +60,15 @@ def require_admin(current_user: User = Depends(get_current_user)) -> User:
 def sde_status(_: User = Depends(require_admin), db: Session = Depends(get_db)) -> dict[str, Any]:
     return {
         "default_source_path": get_settings().sde_source_path,
+        "agents": db.scalar(select(func.count()).select_from(EveAgent)) or 0,
+        "celestials": db.scalar(select(func.count()).select_from(EveSystemObject).where(EveSystemObject.kind.in_(["planet", "moon", "belt"]))) or 0,
+        "celestial_planets": db.scalar(select(func.count()).select_from(EveSystemObject).where(EveSystemObject.kind == "planet")) or 0,
+        "celestial_moons": db.scalar(select(func.count()).select_from(EveSystemObject).where(EveSystemObject.kind == "moon")) or 0,
+        "celestial_belts": db.scalar(select(func.count()).select_from(EveSystemObject).where(EveSystemObject.kind == "belt")) or 0,
+        "dogma_modifiers": sum(len(value or []) for value in db.scalars(select(EveDogmaEffect.modifier_info))),
+        "type_dogma_default_effects": db.scalar(select(func.count()).select_from(EveTypeDogmaEffect).where(EveTypeDogmaEffect.is_default.is_(True))) or 0,
+        "blueprint_products": db.scalar(select(func.count()).select_from(IndustryActivity).where(IndustryActivity.product_type_id.is_not(None))) or 0,
+        "planet_schematic_outputs": db.scalar(select(func.count()).select_from(EvePlanetSchematic).where(EvePlanetSchematic.output_type_id.is_not(None))) or 0,
         "categories": db.scalar(select(func.count()).select_from(EveCategory)) or 0,
         "groups": db.scalar(select(func.count()).select_from(EveGroup)) or 0,
         "types": db.scalar(select(func.count()).select_from(EveType)) or 0,

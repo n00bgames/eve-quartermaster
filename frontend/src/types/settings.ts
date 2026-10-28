@@ -36,6 +36,7 @@ export type PermissionMatrix = {
 };
 
 export type SdeStatus = {
+  [key: string]: number | string | undefined;
   default_source_path: string;
   categories: number;
   groups: number;

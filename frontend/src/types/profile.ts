@@ -3,6 +3,7 @@ export type ProfileUserAccount = {
   email: string;
   display_name: string;
   role: string;
+  roles?: string[];
   timezone?: string;
   created_at?: string;
 };

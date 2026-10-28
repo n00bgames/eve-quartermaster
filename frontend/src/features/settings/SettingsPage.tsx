@@ -160,19 +160,10 @@ export function SettingsPage({ currentUser, api, Metric, ManagedForm, accountLab
             <div><h3>SDE Import</h3><p>Load EVE static data from a mounted SDE folder or zip inside the backend container.</p></div>
             <button type="button" onClick={() => { void loadSdeStatus(); void loadSdeImportState(); }}>Refresh</button>
           </div>
-          <div className="status-grid compact">
-            <Metric icon={<Database size={18} />} label="Categories" value={sdeStatus?.categories ?? 0} />
-            <Metric icon={<Boxes size={18} />} label="Groups" value={sdeStatus?.groups ?? 0} />
-            <Metric icon={<PackagePlus size={18} />} label="Types" value={sdeStatus?.types ?? 0} />
-            <Metric icon={<MapIcon size={18} />} label="Systems" value={sdeStatus?.systems ?? 0} />
-            <Metric icon={<MapIcon size={18} />} label="Stargates" value={sdeStatus?.stargates ?? 0} />
-            <Metric icon={<Factory size={18} />} label="Recipes" value={sdeStatus?.blueprint_activities ?? 0} />
-            <Metric icon={<ScrollText size={18} />} label="Inputs" value={sdeStatus?.activity_inputs ?? 0} />
-            <Metric icon={<KeyRound size={18} />} label="Dogma attrs" value={sdeStatus?.dogma_attributes ?? sdeProgressStats?.dogma_attributes ?? 0} />
-            <Metric icon={<KeyRound size={18} />} label="Dogma effects" value={sdeStatus?.dogma_effects ?? sdeProgressStats?.dogma_effects ?? 0} />
-            <Metric icon={<KeyRound size={18} />} label="Type dogma" value={sdeStatus?.type_dogma_attributes ?? sdeProgressStats?.type_dogma_attributes ?? 0} />
-            <Metric icon={<KeyRound size={18} />} label="Type effects" value={sdeStatus?.type_dogma_effects ?? sdeProgressStats?.type_dogma_effects ?? 0} />
-          </div>
+          <p className="muted">Stored totals show all current rows. This import shows rows processed in the current or last run; zero may mean that dataset was not selected. Indented rows show related detail counts.</p>
+          <div className="table-scroll"><table className="sde-counts-table"><thead><tr><th>Imported dataset</th><th>Stored total</th><th>{sdeBusy ? "This import (so far)" : "Last import"}</th></tr></thead><tbody>
+            {SDE_COUNT_GROUPS.map(group => <Fragment key={group.label}><tr><th colSpan={3}>{group.label}</th></tr>{group.rows.map(([key,label,nested]) => <tr key={key}><td>{nested ? "↳ " : ""}{label}</td><td>{typeof sdeStatus?.[key] === "number" ? Number(sdeStatus[key]).toLocaleString() : "—"}</td><td>{typeof sdeProgressStats?.[key] === "number" ? Number(sdeProgressStats[key]).toLocaleString() : "—"}</td></tr>)}</Fragment>)}
+          </tbody></table></div>
           {sdeImportState && <div className={sdeImportState.status === "failed" ? "mini-alert" : "notice inline"}>{sdeProgressLabel}</div>}
           <label>SDE path<input value={sdePath} onChange={(event) => setSdePath(event.target.value)} placeholder="/sde or /sde/sde.zip" /></label>
           <button type="button" disabled={sdeBusy} onClick={() => void importSde()}><RefreshCw size={18} /> {sdeBusy ? "Importing" : "Import SDE"}</button>
@@ -304,7 +295,7 @@ function PermissionsAdmin({ api, ManagedForm, accountLabel }: { api: ApiClient; 
       <ManagedForm submitLabel="Create role" onSubmit={createRole}>
         <label>Display name<input name="display_name" placeholder="Logistics" required /></label>
         <label>Machine name<input name="name" placeholder="logistics" /></label>
-        <label>Base role<select name="base_role" defaultValue="member"><option value="view_only">View Only</option><option value="member">Member</option><option value="officer">Officer</option><option value="director">Director</option></select></label>
+        <label>Base role<select name="base_role" defaultValue="member"><option value="view_only">View Only</option><option value="member">Member</option><option value="officer">Officer</option><option value="intel_analyst">Intel Analyst</option><option value="quartermaster">Quartermaster</option><option value="director">Director</option></select></label>
       </ManagedForm>
       <h4>Role defaults</h4>
       <div className="permission-grid">
@@ -337,3 +328,11 @@ function PermissionsAdmin({ api, ManagedForm, accountLabel }: { api: ApiClient; 
     </section>
   );
 }
+
+const SDE_COUNT_GROUPS: {label:string;rows:[string,string,boolean?][]}[] = [
+  {label:"Inventory",rows:[["categories","Categories"],["groups","Groups",true],["types","Types",true]]},
+  {label:"Universe",rows:[["regions","Regions"],["constellations","Constellations",true],["systems","Solar systems",true],["stargates","Stargates",true],["stations","Stations",true],["celestials","Celestials"],["celestial_planets","Planets",true],["celestial_moons","Moons",true],["celestial_belts","Asteroid belts",true],["agents","NPC agents"]]},
+  {label:"Dogma",rows:[["dogma_attributes","Attribute definitions"],["dogma_effects","Effect definitions"],["dogma_modifiers","Effect modifiers",true],["type_dogma_attributes","Type attribute values"],["type_dogma_effects","Type effect mappings"],["type_dogma_default_effects","Default effect mappings",true]]},
+  {label:"Blueprints",rows:[["blueprint_activities","Activities / recipes"],["blueprint_products","Product rows",true],["activity_inputs","Material input rows",true],["skipped_activities","Unsupported activities skipped"]]},
+  {label:"Planetary industry",rows:[["planet_schematics","Schematics"],["planet_schematic_inputs","Input rows",true],["planet_schematic_outputs","Output rows",true]]},
+];

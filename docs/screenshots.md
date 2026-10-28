@@ -1,5 +1,7 @@
 # EQM screenshot gallery
 
+**Latest:** [v2.0 development previews](#v20-development-previews), captured October 28, 2026.
+
 HyperNet and PLEX previews added **October 3, 2026**, from source commit `4ec0931cda1f800afb1d83560e19862809148ccd`. Atlas previews were added September 19 from `f6131a1be18e808c886f75c380c6ebf646323bfb`; the earlier gallery reconciliation was September 11 against the v1.0 candidate `f894f27ad7fb2ef4956e5bef2e97d3865fe8cfd2`. [README](../README.md) · [v1.0.5 release notes](releases/v1.0.5.md) · [Install](../README.md#install)
 
 ## How to read this gallery
@@ -7,6 +9,38 @@ HyperNet and PLEX previews added **October 3, 2026**, from source commit `4ec093
 The v1.0 images are fresh browser captures of the actual current React components in a local preview, using synthetic pilots, stock and market data. They are component demonstrations, not authenticated production-server screenshots or live EVE state. The preview header is labeled; the clocks are the actual header-clock component. The calculator images are cropped to that component. Native Rust executed the supply/chain calculations; the planner used the disposable API preview and native allocation worker.
 
 All **63 existing images** remain linked below. They are historical: some are demo illustrations or reconstructed/sanitized panels, and none is certified as an exact v1.0 screenshot. This audit reconciles module names and visible UX coverage; it does not certify runtime or PYFA parity. No old pixels were repainted to suggest a new version.
+
+## v2.0 development previews
+
+Captured **October 28, 2026** from the current **unreleased 2.0.0 working tree**. These are actual browser captures with synthetic accounts/pilots, not production EVE state. The Local Scan image includes real organization logos as visual references; its memberships are fictional. Crops retain the rendered UI without repainting.
+
+### Local Scan
+
+Public report with alliance/corporation groups, logos, counts, red organization highlights, creator/date, optional system, destination controls, public-link copy and PDF export.
+
+![Local Scan with synthetic pilot memberships](../static/ss/v2.0/local-scan.png)
+
+### Complete inventory snapshot
+
+Load all accessible asset records with overall row/unit/type totals, local filtering and sorting, refresh controls and paged rendering. This cropped component shows 270 synthetic stacks, 1,074 units and three ship types.
+
+![Complete inventory snapshot totals](../static/ss/v2.0/assets-all-records.png)
+
+### Multiple account roles
+
+Role-editor detail with **Intel Analyst** and **Quartermaster** selected for a synthetic account. Permissions are aggregated across assigned roles.
+
+![Multiple role choices with Intel Analyst and Quartermaster selected](../static/ss/v2.0/multiple-roles.png)
+
+### Complete SDE counters
+
+Stored totals and current/last-import counters, including nested Dogma, blueprint and PI counts. The disposable fixture contains two systems and no SDE import; zero totals and last-run dashes are intentional.
+
+![SDE stored and last-import totals overview](../static/ss/v2.0/sde-totals-overview.png)
+
+![SDE Dogma, blueprint and PI detail totals](../static/ss/v2.0/sde-totals-details.png)
+
+[Capture provenance and checksums](../static/ss/v2.0/capture-receipt.json) · [v2.0 release draft](releases/v2.0.md) · [Feature behavior and rollout](local-scan.md)
 
 ## v1.0.5 HyperNet and PLEX
 

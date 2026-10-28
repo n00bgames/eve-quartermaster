@@ -1,4 +1,6 @@
 import { QuartermasterPage } from "./features/quartermaster/QuartermasterPage";
+import { LocalScanPage } from "./features/localScan/LocalScanPage";
+import { PublicLocalScanPage } from "./features/localScan/PublicLocalScanPage";
 import { IntelReportsPage } from "./features/intel/IntelReportsPage";
 import { FleetAssignmentsPage } from "./features/fleetAssignments/FleetAssignmentsPage";
 import { Activity, Boxes, Building2, CalendarDays, ClipboardList, Coins, Database, Factory, FlaskConical, GraduationCap, Globe2, KeyRound, MapIcon, MessageCircle, NotebookTabs, PackagePlus, Pickaxe, Plus, RefreshCw, ScrollText, Settings, ShieldCheck, ShoppingCart, Siren, Skull, Sparkles, Store, Swords, TrendingUp, UserRoundCheck } from "lucide-react";
@@ -72,9 +74,9 @@ type InventoryExportResponse = { filename: string; mime_type: string; content: s
 
 type Health = { status: string; app: string };
 
-type UserAccount = { id: number; email: string; display_name: string; role: string; timezone?: string; created_at?: string };
+type UserAccount = { id: number; email: string; display_name: string; role: string; roles?: string[]; timezone?: string; created_at?: string };
 
-type EffectivePermissions = { sections: SectionPermission[]; permissions: Record<string, boolean>; read_only_quartermaster?: boolean };
+type EffectivePermissions = { sections: SectionPermission[]; permissions: Record<string, boolean>; read_only_quartermaster?: boolean; utility_only?: boolean };
 
 type AuthResponse = { access_token?: string | null; remembered?: boolean; user: UserAccount };
 
@@ -278,6 +280,7 @@ function App() {
 
   const [permissions, setPermissions] = useState<Record<string, boolean>>({ overview: true, profile: true });
   const quartermasterOnly = useRef(false);
+  const utilityOnly = useRef(false);
 
 
 
@@ -305,6 +308,7 @@ function App() {
 
           setPermissions(permissionPayload.permissions);
           quartermasterOnly.current = permissionPayload.read_only_quartermaster === true;
+          utilityOnly.current = permissionPayload.utility_only === true;
 
         } catch {
 
@@ -344,6 +348,7 @@ function App() {
 
     setPermissions(permissionPayload.permissions);
     quartermasterOnly.current = permissionPayload.read_only_quartermaster === true;
+          utilityOnly.current = permissionPayload.utility_only === true;
 
     setNotice(`Signed in as ${result.user.display_name}.`);
 
@@ -379,6 +384,7 @@ function App() {
 
       setUser(null);
       quartermasterOnly.current = false;
+      utilityOnly.current = false;
 
       setData(emptyData);
 
@@ -395,7 +401,13 @@ function App() {
 
     if (role === "quartermaster" || quartermasterOnly.current) {
       setData(emptyData);
-      setActiveTab("quartermaster");
+      if (!["#navigation", "#local-threat"].includes(window.location.hash)) setActiveTab("quartermaster");
+      return;
+    }
+
+    if (utilityOnly.current) {
+      setData(emptyData);
+      if (!window.location.hash) setActiveTab("navigation");
       return;
     }
 
@@ -495,11 +507,14 @@ function App() {
       ? "recruiting"
       : ["planet", "planets", "planetary", "planetary_industry", "pi"].includes(esiMode ?? "") || window.location.hash === "#planetary_industry"
         ? "planetary_industry"
-        : "esi";
+        : ["waypoint", "destination", "structures", "navigation"].includes(esiMode ?? "") ? "navigation" : "esi";
 
     const esiError = params.get("esi_error");
+    if (window.location.hash.startsWith("#local-scan/")) { setAuthReady(true); return; }
 
-    if (window.location.hash === "#local-threat") openThreatAnalyzer();
+    if (window.location.hash === "#navigation") setActiveTab("navigation");
+    else if (window.location.hash === "#local-scan") setActiveTab("local_scan");
+    else if (window.location.hash === "#local-threat") openThreatAnalyzer();
     else if (window.location.hash.startsWith("#quartermaster")) setActiveTab("quartermaster");
     else if (window.location.hash.startsWith("#intel")) setActiveTab("intel_reports");
     else if (window.location.hash.startsWith("#fleet-assignments")) setActiveTab("fleet_assignments");
@@ -563,6 +578,8 @@ function App() {
     else if (locationHash.startsWith("#killboard")) setActiveTab("killboard");
     else if (locationHash.startsWith("#battle-reports")) setActiveTab("battle_reports");
     else if (locationHash.startsWith("#bounties")) setActiveTab("bounty_analytics");
+    else if (locationHash === "#navigation") setActiveTab("navigation");
+    else if (locationHash === "#local-scan") setActiveTab("local_scan");
     else if (locationHash === "#local-threat") openThreatAnalyzer();
     else if (locationHash.startsWith("#quartermaster")) setActiveTab("quartermaster");
     else if (locationHash.startsWith("#intel")) setActiveTab("intel_reports");
@@ -628,9 +645,12 @@ function App() {
 
   const publicRecruiting = locationHash === "#recruiting" || locationHash === "#apply";
   const publicExchangeId = locationHash.startsWith("#exchange/") ? locationHash.slice("#exchange/".length) : null;
+  const publicLocalScanToken = locationHash.startsWith("#local-scan/") ? locationHash.slice("#local-scan/".length) : null;
   const publicBattleReportToken = locationHash.startsWith("#battle-report/") ? locationHash.slice("#battle-report/".length) : null;
 
   if (!authReady) return <main className="auth-shell"><section className="panel"><img className="auth-logo" src="/eqm-logo.webp" alt="EVE Quartermaster" /><p className="muted">Checking account session...</p></section></main>;
+
+  if (publicLocalScanToken) return <PublicLocalScanPage api={api} token={publicLocalScanToken} onBack={() => { window.location.hash = ""; window.location.reload(); }} />;
 
   if (publicBattleReportToken) return <PublicBattleReportPage api={api} shareToken={publicBattleReportToken} onBack={() => { window.location.hash = ""; window.location.reload(); }} />;
 
@@ -691,8 +711,9 @@ function App() {
 
           {canView("esi") && <button className={activeTab === "esi" ? "active" : ""} onClick={() => setActiveTab("esi")}><KeyRound size={18} /> ESI Sync</button>}
 
-          {["intel_reports", "navigation"].some(canView) && <span className="nav-section-label">Intel</span>}
+          {["local_scan", "intel_reports", "navigation"].some(canView) && <span className="nav-section-label">Intel</span>}
 
+          {canView("local_scan") && <button className={activeTab === "local_scan" ? "active" : ""} onClick={() => { window.location.hash="local-scan"; setActiveTab("local_scan"); }}><UserRoundCheck size={18} /> Local Scan</button>}
           {canView("intel_reports") && <button className={activeTab === "intel_reports" ? "active" : ""} onClick={() => { window.location.hash="intel"; setActiveTab("intel_reports"); }}><Siren size={18} /> Intel Reports</button>}
 
           {canView("navigation") && <button type="button" className={activeTab === "navigation" && locationHash === "#local-threat" ? "active" : ""} onClick={openThreatAnalyzer}><Siren size={18} /> Local Threat Analyzer</button>}
@@ -789,7 +810,7 @@ function App() {
 
             <NotificationBubble currentUser={user} onOpenMessages={(message) => { setProfileFocus({ section: "messages", replyTo: message, nonce: Date.now() }); setActiveTab("profile"); }} />
 
-            <span className="status-badge rank-badge">{user.role}</span>
+            <span className="status-badge rank-badge">{(user.roles ?? [user.role]).map(role => role.replace(/_/g, " ")).join(" · ")}</span>
 
             {["host", "admin"].includes(user.role) && <button onClick={() => void seed()}><Sparkles size={18} /> Seed</button>}
 
@@ -832,6 +853,7 @@ function App() {
 
         {activeTab === "quartermaster" && canView("quartermaster") && <QuartermasterPage api={api} formatDateTime={(value) => formatDateTime(value, preferredTimeZone(user))} />}
 
+        {activeTab === "local_scan" && canView("local_scan") && <LocalScanPage api={api} />}
         {activeTab === "intel_reports" && canView("intel_reports") && <IntelReportsPage key={locationHash} api={api} />}
 
         {activeTab === "fleet_assignments" && canView("fleet_assignments") && <FleetAssignmentsPage key={locationHash} api={api} />}
@@ -1315,6 +1337,12 @@ function AssetTable({ assets, blueprints = [], seed, api, serverMode = false, on
 
   const [assetPageSize, setAssetPageSize] = useState(100);
 
+  const [allRecords, setAllRecords] = useState<Asset[] | null>(null);
+  const [loadAllRequested, setLoadAllRequested] = useState(false);
+  const [assetReloadNonce, setAssetReloadNonce] = useState(0);
+  const [serverTotals, setServerTotals] = useState({ quantity: 0, types: 0 });
+  const pagedMode = serverMode && allRecords === null;
+
   const [serverAssets, setServerAssets] = useState<Asset[]>([]);
 
   const [serverTotal, setServerTotal] = useState(0);
@@ -1448,9 +1476,9 @@ function AssetTable({ assets, blueprints = [], seed, api, serverMode = false, on
 
     const keys: AssetFilterKey[] = ["item", "owner", "location", "flag"];
 
-    return Object.fromEntries(keys.map((key) => [key, [...new Set(assets.map((asset) => filterValue(asset, key)).filter((value) => value !== "-"))].sort((left, right) => left.localeCompare(right, undefined, { numeric: true, sensitivity: "base" }))])) as Record<AssetFilterKey, string[]>;
+    return Object.fromEntries(keys.map((key) => [key, [...new Set((allRecords ?? assets).map((asset) => filterValue(asset, key)).filter((value) => value !== "-"))].sort((left, right) => left.localeCompare(right, undefined, { numeric: true, sensitivity: "base" }))])) as Record<AssetFilterKey, string[]>;
 
-  }, [assets]);
+  }, [assets, allRecords]);
 
 
 
@@ -1476,11 +1504,11 @@ function AssetTable({ assets, blueprints = [], seed, api, serverMode = false, on
 
 
 
-  const tableAssets = serverMode ? serverAssets : assets;
+  const tableAssets = allRecords ?? (serverMode ? serverAssets : assets);
 
   const visibleAssets = useMemo(() => {
 
-    if (serverMode) return tableAssets;
+    if (pagedMode) return tableAssets;
 
     const filtered = tableAssets.filter(matchesFilter);
 
@@ -1500,7 +1528,7 @@ function AssetTable({ assets, blueprints = [], seed, api, serverMode = false, on
 
     });
 
-  }, [tableAssets, serverMode, filter, ownerKindFilter, categoryFilter, subtypeFilter, sortKey, sortDirection]);
+  }, [tableAssets, pagedMode, filter, ownerKindFilter, categoryFilter, subtypeFilter, sortKey, sortDirection]);
 
 
 
@@ -1514,7 +1542,7 @@ function AssetTable({ assets, blueprints = [], seed, api, serverMode = false, on
 
 
 
-  const visibleAssetCount = serverMode ? serverTotal : visibleAssets.length;
+  const visibleAssetCount = pagedMode ? serverTotal : visibleAssets.length;
 
   const assetPageCount = Math.max(1, Math.ceil(visibleAssetCount / assetPageSize));
 
@@ -1524,13 +1552,13 @@ function AssetTable({ assets, blueprints = [], seed, api, serverMode = false, on
 
   const assetPageEnd = Math.min(visibleAssetCount, safeAssetPage * assetPageSize);
 
-  const pagedAssets = serverMode ? visibleAssets : visibleAssets.slice((safeAssetPage - 1) * assetPageSize, safeAssetPage * assetPageSize);
+  const pagedAssets = pagedMode ? visibleAssets : visibleAssets.slice((safeAssetPage - 1) * assetPageSize, safeAssetPage * assetPageSize);
 
 
 
   useEffect(() => {
 
-    if (!serverMode || !api) return;
+    if (!pagedMode || !api) return;
 
     const params = new URLSearchParams({ page: String(assetPage), page_size: String(assetPageSize), sort_key: sortKey, sort_direction: sortDirection, category: categoryFilter });
 
@@ -1548,39 +1576,53 @@ function AssetTable({ assets, blueprints = [], seed, api, serverMode = false, on
 
     }
 
+    if (loadAllRequested) {
+      // This explicit snapshot ignores active view filters; subsequent filtering is local.
+      [...params.keys()].forEach((key) => params.delete(key));
+      params.set("all_records", "true");
+    }
+    const controller = new AbortController();
     let cancelled = false;
 
     setServerBusy(true);
 
     setServerError(null);
 
-    void api<AssetPagePayload>(`/quartermaster/assets-page?${params.toString()}`)
+    const debounce = window.setTimeout(() => {
+      void api<AssetPagePayload>(`/quartermaster/assets-page?${params.toString()}`, { signal: controller.signal })
 
-      .then((payload) => {
+        .then((payload) => {
 
-        if (cancelled) return;
+          if (cancelled) return;
 
-        setServerAssets(payload.items);
+          if (loadAllRequested) {
+            setAllRecords(payload.items);
+            setLoadAllRequested(false);
+            setServerBusy(false);
+          }
+          setServerTotals({ quantity: payload.total_quantity, types: payload.type_count });
+          setServerAssets(payload.items);
 
-        setServerTotal(payload.total);
+          setServerTotal(payload.total);
 
-      })
+        })
 
-      .catch((err) => {
+        .catch((err) => {
 
-        if (!cancelled) setServerError(err instanceof Error ? err.message : "Unable to load assets");
+          if (!cancelled) setServerError(err instanceof Error ? err.message : "Unable to load assets");
 
-      })
+        })
 
-      .finally(() => {
+        .finally(() => {
 
-        if (!cancelled) setServerBusy(false);
+          if (!cancelled) setServerBusy(false);
 
-      });
+        });
 
-    return () => { cancelled = true; };
+    }, 250);
+    return () => { cancelled = true; window.clearTimeout(debounce); controller.abort(); };
 
-  }, [api, serverMode, assetPage, assetPageSize, sortKey, sortDirection, ownerKindFilter, categoryFilter, subtypeFilter, filter]);
+  }, [api, pagedMode, loadAllRequested, assetReloadNonce, assetPage, assetPageSize, sortKey, sortDirection, ownerKindFilter, categoryFilter, subtypeFilter, filter]);
 
 
 
@@ -1656,7 +1698,7 @@ function AssetTable({ assets, blueprints = [], seed, api, serverMode = false, on
 
   const assetCategoryOptions: InventoryFamilyFilter[] = ["all", "ships", "ammunition", "drones", "rigs", "reactions", "ram", "blueprints", "capital-construction"];
 
-  const assetSubtypeOptions = useMemo(() => sortedUnique(assets.filter((asset) => matchesInventoryFamily(categoryFilter, assetFamily(asset), looksCapitalRelated(asset.type_group_name, asset.type_category_name, asset.type_name))).map(assetSubtype)), [assets, categoryFilter]);
+  const assetSubtypeOptions = useMemo(() => sortedUnique((allRecords ?? assets).filter((asset) => matchesInventoryFamily(categoryFilter, assetFamily(asset), looksCapitalRelated(asset.type_group_name, asset.type_category_name, asset.type_name))).map(assetSubtype)), [assets, allRecords, categoryFilter]);
 
   const sortMark = (key: AssetSortKey) => sortKey === key ? (sortDirection === "asc" ? "^" : "v") : "";
 
@@ -1712,11 +1754,21 @@ function AssetTable({ assets, blueprints = [], seed, api, serverMode = false, on
 
       <div className="ledger-actions">
 
-        {filter ? <div className="active-filter"><span>{filter.label} {filter.mode === "contains" ? "contains" : "is"}: {filter.value}</span><button type="button" onClick={clearFilter}>Clear filter</button></div> : <span className="muted">{serverMode ? "Showing paged assets" : "Showing all assets"}</span>}
+        {filter ? <div className="active-filter"><span>{filter.label} {filter.mode === "contains" ? "contains" : "is"}: {filter.value}</span><button type="button" onClick={clearFilter}>Clear filter</button></div> : <span className="muted">{pagedMode ? "Showing paged assets" : "All records loaded · display remains paged"}</span>}
 
-        <div className="button-row compact"><button type="button" disabled={visibleAssets.length === 0} onClick={exportCsv}>{serverMode ? "Export This Page CSV" : "Quick CSV"}</button><button type="button" disabled={visibleAssets.length === 0} onClick={() => void copyJaniceList()}>{serverMode ? "Copy page for Janice" : "Copy for Janice"}</button></div>
+        <div className="button-row compact"><button type="button" disabled={visibleAssets.length === 0} onClick={exportCsv}>{pagedMode ? "Export This Page CSV" : "Quick CSV"}</button><button type="button" disabled={visibleAssets.length === 0} onClick={() => void copyJaniceList()}>{pagedMode ? "Copy page for Janice" : "Copy for Janice"}</button></div>
 
       </div>
+
+      {serverMode && api && <div className="ledger-actions">
+        <p className="muted" aria-live="polite">{visibleAssetCount.toLocaleString()} rows · {(pagedMode ? serverTotals.quantity : visibleAssets.reduce((sum, a) => sum + a.quantity, 0)).toLocaleString()} units · {(pagedMode ? serverTotals.types : new Set(visibleAssets.map((a) => a.type_id)).size).toLocaleString()} item types{filter || ownerKindFilter || categoryFilter !== "all" || subtypeFilter ? " matching filters" : " overall"}</p>
+        <div className="button-row compact"><button type="button" disabled={serverBusy} onClick={() => {
+          clearFilter(); setOwnerKindFilter(""); setCategoryFilter("all"); setSubtypeFilter(""); setAssetPage(1);
+          setAllRecords(null); setLoadAllRequested(true); setAssetReloadNonce((n) => n + 1);
+        }}>{loadAllRequested && serverBusy ? "Loading all records…" : allRecords ? "Refresh all records" : "Load all records"}</button>
+        {allRecords && <button type="button" onClick={() => { setAllRecords(null); setLoadAllRequested(false); setAssetPage(1); }}>Use server paging</button>}</div>
+      </div>}
+      {allRecords && <p className="muted">Loaded snapshot: {allRecords.length.toLocaleString()} rows · {allRecords.reduce((sum, a) => sum + a.quantity, 0).toLocaleString()} units · {new Set(allRecords.map((a) => a.type_id)).size.toLocaleString()} item types. Refresh all records for current data.</p>}
 
       {serverMode && api && <InventoryExportControls api={api} endpoint="/quartermaster/assets-export" kind="assets" disabled={serverBusy} filters={{
         owner_kind: ownerKindFilter || null,
@@ -1729,7 +1781,7 @@ function AssetTable({ assets, blueprints = [], seed, api, serverMode = false, on
         sort_direction: sortDirection,
       }} />}
 
-      {serverBusy && <div className="notice inline">Loading asset page...</div>}
+      {serverBusy && <div className="notice inline">{loadAllRequested ? "Loading all accessible records…" : "Loading asset page…"}</div>}
 
       {serverError && <div className="mini-alert">{serverError}</div>}
 
@@ -2302,6 +2354,7 @@ function ManagedForm({ children, onSubmit, submitLabel = "Save" }: { children: R
 
 function titleFor(tab: string) {
   if (tab === "quartermaster") return "Quartermaster";
+  if (tab === "local_scan") return "Local Scan";
   if (tab === "intel_reports") return "Intel Reports";
   if (tab === "fleet_assignments") return "Fleet Assignments";
   if (tab === "plex") return "PLEX Tracker";
@@ -2314,6 +2367,7 @@ function titleFor(tab: string) {
 
 function subtitleFor(tab: string) {
   if (tab === "quartermaster") return "View blueprint holdings, running industry jobs, and planetary infrastructure across linked owners.";
+  if (tab === "local_scan") return "Turn local pilot lists into public alliance and corporation reports.";
   if (tab === "intel_reports") return "Investigate public combat evidence and permission-scoped ESI enrichment.";
   if (tab === "fleet_assignments") return "Plan fleet compositions, assign fittings, and view your own ship assignments.";
   if (tab === "plex") return "Track private PLEX holdings, global market prices, and fee-adjusted trade scenarios.";

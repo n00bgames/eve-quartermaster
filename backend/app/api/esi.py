@@ -17,13 +17,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from fastapi.responses import RedirectResponse
 from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session, selectinload, object_session
 
 from app.core.config import get_settings
 from app.core.security import create_sso_state, decode_sso_state_payload, decrypt_secret, encrypt_secret
 from app.db.session import SessionLocal, get_db
 from app.models import Asset, Blueprint, CharacterFitting, CharacterFittingItem, CharacterSkill, CharacterSkillQueueEntry, CharacterWalletJournalEntry, CorporationWalletDivision, EsiSyncJob, EsiToken, EveAlliance, EveCategory, EveCharacter, EveCorporation, EveGroup, EveSystem, EveType, ExchangeListing, Location, OwnershipEntity, RecruitmentLinkedCharacter, User
 from app.models.enums import AssetSource, LocationKind, OwnerKind, SyncStatus
+from app.services.esi_scope_policy import effective_token_scopes, allowed_scopes, requested_scopes, private_collection_enabled
 from app.services.esi_client import EsiClient, esi_status, resolve_names, gather_esi
 from app.services.exchange_mail import exchange_mail_body, exchange_mail_subject
 from app.services.eve_sso import validate_eve_access_token
@@ -254,11 +255,18 @@ async def refresh_access_token(token: EsiToken) -> str:
                 "code": "esi_token_reauthorization_required",
             },
         ) from exc
+    policy_db = object_session(token)
+    if policy_db is None:
+        raise HTTPException(409, "Load the character authorization before refreshing it")
+    allowed = effective_token_scopes(token, policy_db)
+    if not allowed:
+        raise HTTPException(403, "This account's role does not permit the stored ESI scopes. Re-link with utility scopes.")
+    # CCP supports requesting a subset of the original scopes on token refresh.
     async with httpx.AsyncClient(timeout=30.0, follow_redirects=False) as client:
         response = await client.post(
             "https://login.eveonline.com/v2/oauth/token",
             auth=httpx.BasicAuth(settings.eve_sso_client_id, settings.eve_sso_client_secret),
-            data={"grant_type": "refresh_token", "refresh_token": refresh_token},
+            data={"grant_type": "refresh_token", "refresh_token": refresh_token, "scope": " ".join(sorted(allowed))},
             headers={
                 "Accept": "application/json",
                 "Content-Type": "application/x-www-form-urlencoded",
@@ -905,13 +913,15 @@ def linked_characters(current_user: User = Depends(get_current_user), db: Sessio
                 "linked_user_display_name": linked_user.display_name,
                 "can_sync_assets": can_manage_link,
                 "can_unlink": can_manage_link,
-                "scopes": token.scopes,
+                "scopes": " ".join(sorted(token_scopes(token))),
                 "access_token_expires_at": token.access_token_expires_at.isoformat() if token.access_token_expires_at else None,
                 "linked_at": token.created_at.isoformat() if token.created_at else None,
                 "last_sync_at": last_sync_at.isoformat() if last_sync_at else None,
                 "last_sync_type": latest_job.sync_type if latest_job else None,
                 "last_sync_status": latest_job.status.value if latest_job else None,
-                "missing_public_scopes": missing_scopes(token, CORE_AUTH_SCOPES),
+                "missing_public_scopes": missing_scopes(token, requested_scopes(db, linked_user, CORE_AUTH_SCOPES, "core")),
+                "collection_enabled": private_collection_enabled(db, linked_user),
+                "allowed_scopes": sorted(allowed_scopes(db, linked_user)),
                 "missing_standing_scopes": missing_scopes(token, CONTACT_SYNC_SCOPES),
             }
         )
@@ -2396,7 +2406,7 @@ async def sync_corporation_wallets(token_id: int, current_user: User = Depends(g
         await asyncio.to_thread(db.commit)
         raise
 def token_scopes(token: EsiToken) -> set[str]:
-    return {scope.strip() for scope in (token.scopes or "").split() if scope.strip()}
+    return effective_token_scopes(token)
 
 
 def require_scope(token: EsiToken, scope: str, action: str) -> None:
@@ -2425,6 +2435,9 @@ def require_token_access(token: EsiToken, current_user: User, db: Session) -> No
         raise HTTPException(status_code=403, detail="You can only use your own linked characters")
 
 def can_force_sync_character_token(token: EsiToken, character: EveCharacter, current_user: User, db: Session) -> bool:
+    owner = db.get(User, token.user_id)
+    if not owner or character.owner_user_id != token.user_id or not private_collection_enabled(db, owner):
+        return False
     if token.user_id == current_user.id:
         return True
     if can_view_all_characters(current_user, db):
@@ -2915,15 +2928,15 @@ def get_contact_sync_job(job_id: int, current_user: User = Depends(get_current_u
     require_token_access(source_token, current_user, db)
     return contact_sync_job_payload(job)
 @router.get("/config")
-def esi_config() -> dict[str, Any]:
+def esi_config(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
     settings = get_settings()
     return {
         "client_id_configured": bool(settings.eve_sso_client_id),
         "client_secret_configured": bool(settings.eve_sso_client_secret),
         "token_encryption_key_configured": bool(settings.token_encryption_key),
         "callback_url": settings.eve_sso_callback_url,
-        "required_scopes": CORE_AUTH_SCOPES,
-        "available_scopes": PUBLIC_SCOPES,
+        "required_scopes": requested_scopes(db, current_user, CORE_AUTH_SCOPES, "core"),
+        "available_scopes": sorted(allowed_scopes(db, current_user)),
     }
 
 def build_auth_url(scopes: list[str], current_user: User, mode: str = "core") -> dict[str, Any]:
@@ -2956,15 +2969,15 @@ def build_auth_url(scopes: list[str], current_user: User, mode: str = "core") ->
 
 
 @router.get("/auth-url")
-def auth_url(scope_group: str = Query("core", max_length=32), current_user: User = Depends(get_current_user)) -> dict[str, Any]:
+def auth_url(scope_group: str = Query("core", max_length=32), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
     group = scope_group.strip().lower().replace("-", "_")
-    return build_auth_url(auth_scopes_for_group(group), current_user, group)
+    return build_auth_url(requested_scopes(db, current_user, auth_scopes_for_group(group), group), current_user, group)
 
 
 @router.get("/auth-url/standing-sync")
 @router.get("/auth-url/contact-sync")
-def contact_sync_auth_url(current_user: User = Depends(get_current_user)) -> dict[str, Any]:
-    return build_auth_url(standing_sync_scopes(), current_user, "standing_sync")
+def contact_sync_auth_url(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+    return build_auth_url(requested_scopes(db, current_user, standing_sync_scopes(), "standing_sync"), current_user, "standing_sync")
 
 
 @router.get("/auth/diagnostics")
@@ -3125,7 +3138,7 @@ async def auth_callback(code: str | None = None, state: str | None = None, db: S
     await apply_character_affiliation(EsiClient(access_token=access_token), db, character, character_payload)  # auth_callback_affiliation_marker
 
     user = db.get(User, state_user_id)
-    if user is None:
+    if user is None or user.deleted_at is not None:
         raise HTTPException(status_code=400, detail="The Quartermaster account that started EVE SSO no longer exists")
     character.owner_user_id = user.id
     db.flush()
@@ -3139,6 +3152,8 @@ async def auth_callback(code: str | None = None, state: str | None = None, db: S
         encrypted_refresh = encrypt_secret(refresh_token, settings.token_encryption_key)
         scope_value = token_payload.get("scope") or claims.get("scp", [])
         scopes = " ".join(scope_value) if isinstance(scope_value, list) else str(scope_value)
+        if set(scopes.split()) - allowed_scopes(db, user):
+            raise HTTPException(403, "The requested scopes exceed your current role. Restart EVE SSO to request only the permitted scopes.")
         expires_in = int(token_payload.get("expires_in", 1200))
         token = db.scalar(select(EsiToken).where(EsiToken.character_id == character.id, EsiToken.revoked_at.is_(None)))
         previous_scopes = token_scopes(token) if token else set()
@@ -3206,6 +3221,8 @@ async def auth_callback(code: str | None = None, state: str | None = None, db: S
         destination = "recruiting"
     elif state_mode in {"planet", "planets", "planetary", "planetary_industry", "pi"}:
         destination = "planetary_industry"
+    elif state_mode in {"waypoint", "destination", "structures", "navigation"}:
+        destination = "navigation"
     elif state_mode in {"fitting", "fittings", "send_fitting"}:
         destination = "fittings"
     else:

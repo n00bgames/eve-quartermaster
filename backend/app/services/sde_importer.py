@@ -82,6 +82,13 @@ class SdeImportStats:
     stargates: int = 0
     stations: int = 0
     celestials: int = 0
+    celestial_planets: int = 0
+    celestial_moons: int = 0
+    celestial_belts: int = 0
+    dogma_modifiers: int = 0
+    type_dogma_default_effects: int = 0
+    blueprint_products: int = 0
+    planet_schematic_outputs: int = 0
     blueprint_activities: int = 0
     activity_inputs: int = 0
     skipped_activities: int = 0
@@ -411,6 +418,7 @@ def bulk_import_type_dogma(source: SdeSource, db: Session, stats: SdeImportStats
             effect_rows.append({"type_id": type_id, "effect_id": effect_id, "is_default": bool(row.get("isDefault", False))})
             seen_effect_ids.add(effect_id)
             stats.type_dogma_effects += 1
+            stats.type_dogma_default_effects += int(bool(row.get("isDefault", False)))
 
         if len(attribute_rows) + len(effect_rows) >= 25000:
             flush_rows()
@@ -750,6 +758,7 @@ def import_sde(
                 )
                 stats.planet_schematics += schematic_count
                 stats.planet_schematic_inputs += input_count
+                stats.planet_schematic_outputs += schematic_count
             db.commit()
             mark("planetary schematics complete")
 
@@ -769,6 +778,7 @@ def import_sde(
             dogma_effects = load_optional_yaml(source, "dogma_effects")
             for raw_id, payload in dogma_effects.items():
                 upsert_dogma_effect(db, int(raw_id), payload or {})
+                stats.dogma_modifiers += len(normalize_modifier_info((payload or {}).get("modifierInfo") or (payload or {}).get("modifier_info")) or [])
                 stats.dogma_effects += 1
                 if stats.dogma_effects % 1000 == 0:
                     db.commit()
@@ -838,6 +848,7 @@ def import_sde(
                         fallback += f" - {'Moon' if kind == 'moon' else 'Asteroid Belt'} {payload.get('orbitIndex', raw_id)}"
                     store_public(db, int(raw_id), system_id, kind, localized_text(payload.get("name"), fallback), position(payload), "sde")
                     stats.celestials += 1
+                    setattr(stats, f"celestial_{logical_name}", getattr(stats, f"celestial_{logical_name}") + 1)
                     if stats.celestials % 2500 == 0:
                         db.commit()
                 db.commit()
@@ -915,6 +926,7 @@ def import_sde(
                         )
                         stats.activity_inputs += 1
                     stats.blueprint_activities += 1
+                    stats.blueprint_products += int(product_type_id is not None)
                 if stats.blueprint_activities % 1000 == 0:
                     db.commit()
                     mark(f"blueprint activities imported: {stats.blueprint_activities}")
