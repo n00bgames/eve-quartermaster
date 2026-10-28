@@ -50,7 +50,7 @@ Use a commit message that describes the current work, such as `Segment navigatio
 
 ## Version Bumps
 
-When the user says `vb`, bump the project version. Check the current version surfaces before editing. Known surfaces include:
+When the user says **`vb`**, it means **version bump**. Bump the project version and verify consistency; this alone does not publish a release, tag, APK, or deployment. Check the current version surfaces before editing. Known surfaces include:
 
 - `frontend/package.json`
 - `frontend/src/version.ts`

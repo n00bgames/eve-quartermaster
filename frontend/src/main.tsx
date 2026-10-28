@@ -499,7 +499,8 @@ function App() {
 
     const esiError = params.get("esi_error");
 
-    if (window.location.hash.startsWith("#quartermaster")) setActiveTab("quartermaster");
+    if (window.location.hash === "#local-threat") openThreatAnalyzer();
+    else if (window.location.hash.startsWith("#quartermaster")) setActiveTab("quartermaster");
     else if (window.location.hash.startsWith("#intel")) setActiveTab("intel_reports");
     else if (window.location.hash.startsWith("#fleet-assignments")) setActiveTab("fleet_assignments");
     else if (window.location.hash.startsWith("#events")) setActiveTab("calendar_events");
@@ -562,6 +563,7 @@ function App() {
     else if (locationHash.startsWith("#killboard")) setActiveTab("killboard");
     else if (locationHash.startsWith("#battle-reports")) setActiveTab("battle_reports");
     else if (locationHash.startsWith("#bounties")) setActiveTab("bounty_analytics");
+    else if (locationHash === "#local-threat") openThreatAnalyzer();
     else if (locationHash.startsWith("#quartermaster")) setActiveTab("quartermaster");
     else if (locationHash.startsWith("#intel")) setActiveTab("intel_reports");
     else if (locationHash.startsWith("#fleet-assignments")) setActiveTab("fleet_assignments");
@@ -613,6 +615,7 @@ function App() {
   function canView(section: string) { if (quartermasterOnly.current && section === "settings") return false; return permissions[section] !== false || ["overview", "settings", "profile"].includes(section); }
 
   function openThreatAnalyzer() {
+    window.location.hash = "local-threat";
     setActiveTab("navigation");
     window.setTimeout(() => {
       document.getElementById("local-threat-analyzer")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -688,6 +691,12 @@ function App() {
 
           {canView("esi") && <button className={activeTab === "esi" ? "active" : ""} onClick={() => setActiveTab("esi")}><KeyRound size={18} /> ESI Sync</button>}
 
+          {["intel_reports", "navigation"].some(canView) && <span className="nav-section-label">Intel</span>}
+
+          {canView("intel_reports") && <button className={activeTab === "intel_reports" ? "active" : ""} onClick={() => { window.location.hash="intel"; setActiveTab("intel_reports"); }}><Siren size={18} /> Intel Reports</button>}
+
+          {canView("navigation") && <button type="button" className={activeTab === "navigation" && locationHash === "#local-threat" ? "active" : ""} onClick={openThreatAnalyzer}><Siren size={18} /> Local Threat Analyzer</button>}
+
           {["market", "exchange", "hypernet", "plex", "bounty_analytics"].some(canView) && <span className="nav-section-label">Finance & Trade</span>}
 
           {canView("market") && <button className={activeTab === "market" ? "active" : ""} onClick={() => setActiveTab("market")}><ShoppingCart size={18} /> Market</button>}
@@ -725,9 +734,7 @@ function App() {
 
           {canView("analytics") && <button className={activeTab === "analytics" ? "active" : ""} onClick={() => setActiveTab("analytics")}><Activity size={18} /> Analytics</button>}
 
-          {["intel_reports", "fleet_assignments", "doctrines", "srp", "killboard", "battle_reports", "calendar_events", "recruiting"].some(canView) && <span className="nav-section-label">Fleet & Community</span>}
-
-          {canView("intel_reports") && <button className={activeTab === "intel_reports" ? "active" : ""} onClick={() => { window.location.hash="intel"; setActiveTab("intel_reports"); }}><Siren size={18} /> Intel Reports</button>}
+          {["fleet_assignments", "doctrines", "srp", "killboard", "battle_reports", "calendar_events", "recruiting"].some(canView) && <span className="nav-section-label">Fleet & Community</span>}
 
           {canView("fleet_assignments") && <button className={activeTab === "fleet_assignments" ? "active" : ""} onClick={() => { window.location.hash = "fleet-assignments"; setActiveTab("fleet_assignments"); }}><ClipboardList size={18} /> Fleet Assignments</button>}
 
@@ -777,8 +784,6 @@ function App() {
             <span className="status-badge version-badge">v{APP_VERSION}</span>
 
             {canView("calendar_events") && <NextEventBadge api={api} onOpen={(eventId) => { window.location.hash = `events/${eventId}`; setActiveTab("calendar_events"); }} />}
-
-            {canView("navigation") && <button type="button" className="threat-analyzer-button" onClick={openThreatAnalyzer}><Siren size={18} /> Threat Analyzer</button>}
 
             <span className="status-badge">{user.display_name}</span>
 

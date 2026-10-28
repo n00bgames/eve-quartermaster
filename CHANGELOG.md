@@ -4,7 +4,16 @@ All notable changes to EVE Quartermaster are tracked here.
 
 Version sections are written as user-facing release notes first, with implementation detail included where it helps operators understand deployment or testing impact.
 
-## [1.0.7] - Unreleased
+## [1.0.8] - Unreleased
+
+Release preparation includes the unreleased 1.0.7 development work listed below.
+
+### Changed
+
+- Added **Intel** as the second named sidebar group, after Character Functions and before Finance & Trade. Moved Intel Reports and the Local Threat Analyzer shortcut into it; the analyzer shortcut has a reloadable `#local-threat` link. Planned local and d-scan parsers will join this group when implemented.
+- Bumped application/API, frontend package and lockfile, Android wrapper, export metadata, README badge, and outbound service user agents to `1.0.8`. Android versionCode is now 26. This prepares version metadata without publishing a tag, release, or APK.
+
+## [1.0.7] - Unreleased development snapshot
 
 ### Added
 

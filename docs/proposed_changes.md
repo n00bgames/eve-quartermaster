@@ -20,13 +20,25 @@ Add Settings-page maintenance buttons for safe backend-worker tasks such as fetc
 
 ## Local Scan Analysis
 
-- [ ] Add a local-chat pilot-list scan and analysis tool, similar to [who.ltns.space](https://who.ltns.space/).
+- [ ] Add a local-chat pilot-list scan and analysis tool, similar to [who.ltns.space](https://who.ltns.space/). Place its navigation link in the **Intel** group (the second named sidebar group).
 
 ## Directional Scan Parser
 
-- [ ] Add a paste-in directional scan (d-scan) parser, similar to [dscan.info](https://dscan.info/), with readable ship/object summaries.
+- [ ] Add a paste-in directional scan (d-scan) parser, similar to [dscan.info](https://dscan.info/), with readable ship/object summaries. Place its navigation link in the **Intel** group alongside the local parser, Intel Reports, and Local Threat Analyzer.
 
 ## Personal Section Layouts
 
 - [ ] Let each user rearrange section panels/widgets with drag and drop.
 - [ ] Save layouts per EQM user and section, and restore them across sessions without changing other users' layouts.
+
+## Industry Report
+
+- [ ] Add a unified **Industry Report** that brings assets, industry jobs, and planetary industry (PI) information together under one report workflow.
+- [ ] Total all minerals and PI commodities on hand, with quantities by item type.
+- [ ] After the overall totals, itemize the holdings by character and corporation so each owner's contribution is visible.
+- [ ] Export the Industry Report to **CSV** or **PDF**.
+
+## Inventory Report
+
+- [ ] Add an **Inventory Report** with inventory totals grouped by item type and category, including all ship types, module types, and other inventory categories.
+- [ ] Export the Inventory Report to **CSV** or **PDF**.

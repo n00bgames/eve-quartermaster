@@ -9,7 +9,7 @@ import httpx
 from app.services.esi_client import EsiClient
 from app.domain.intel import zkill_badges
 
-USER_AGENT = "EVE-Quartermaster/1.0.7 Intel (+https://github.com/n00bgames/eve-quartermaster)"
+USER_AGENT = "EVE-Quartermaster/1.0.8 Intel (+https://github.com/n00bgames/eve-quartermaster)"
 _gates = weakref.WeakKeyDictionary()
 ENTITY_MODIFIER = {"character":"characterID", "corporation":"corporationID", "alliance":"allianceID"}
 
