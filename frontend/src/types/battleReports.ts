@@ -5,6 +5,9 @@ export type BattleReportPilot = {
 };
 
 export type BattleReportContext = {
+  corporations?: {id:number;name:string}[];
+  can_manage_others?: boolean;
+  management_scope?: string;
   creator_name?: string;
   enabled: boolean;
   pilots: BattleReportPilot[];
@@ -129,6 +132,10 @@ export type BattleReportPayload = {
 };
 
 export type BattleReportShare = {
+  is_owner?: boolean;
+  corporation_id?: number|null;
+  expires_at?: string|null;
+  application_version?: string;
   id: number;
   share_token: string;
   share_url: string|null;

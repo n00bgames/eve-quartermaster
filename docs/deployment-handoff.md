@@ -117,3 +117,7 @@ Apply migration **0093_report_privacy** after 0092 and deploy the matching backe
 ## Industry / Inventory split (unreleased)
 
 Deploy matching backend/frontend after migration 0093; this split needs no additional migration. New private report kind `inventory` and section permission `inventory_reports` still require Assets access. Public Industry JSON/CSV/PDF always anonymize ownership and exclude unapproved general stock; pre-policy snapshots omit legacy stock and require regeneration. Dynamic selections are fixed owner/station/can or hangar choices and disable when unavailable. No ESI scope/collection changes. No deployment performed.
+
+## Battle Report management (2.0 development)
+
+Apply migration **0094_battle_report_corporation** after 0093 with the matching backend/frontend. Historic snapshots retain null corporation attribution; never infer it from battle participants. Verify own/private isolation, a director's attributed public reports, date-range review and a detailed PDF. [Scope, migration and tests](battle-report-management.md). This source update was prepared locally; it does not indicate a deployment.

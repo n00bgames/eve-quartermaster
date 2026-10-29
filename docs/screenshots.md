@@ -408,3 +408,12 @@ Rendered anonymous Industry PDF with approved stock and industrial activity.
 Rendered private Inventory PDF with named owner/placement detail.
 
 ![Rendered private Inventory PDF with named owner/placement detail.](../static/ss/v2.0/inventory-private-pdf.png)
+
+### Battle management and detailed PDFs — unreleased 2.0
+
+Actual local UI with synthetic accounts and six saved battles. The management capture shows the filters and first rows; remaining rows/actions are reached by normal page scrolling. Date-range review selects three records and was cancelled after capture. No live reports were deleted. Default viewport: 1280×720; no mobile breakpoint validation claimed.
+
+![Battle Report management](../static/ss/v2.0/battle-report-management.jpg)
+![Date-range deletion review](../static/ss/v2.0/battle-report-deletion-review.jpg)
+![PDF team totals and hull composition](../static/ss/v2.0/battle-report-pdf-summary.png)
+![PDF pilots and complete timeline](../static/ss/v2.0/battle-report-pdf-details.png)

@@ -325,6 +325,58 @@
       "source_state": "Uncommitted Industry/Inventory split; not deployed.",
       "data": "Synthetic SQLite fixtures only; real API/production frontend. Fictional private module/reaction types. Actual browser default width615px, report panel crops at document scroll top. Rightmost table columns remain horizontally scrollable. PDFs exported through ASGI routes and rendered with Poppler.",
       "limitations": "Public Industry capture is the authenticated preview of the same anonymous public projection. Browser public-link navigation was blocked as invalid; API public routes independently tested. Viewport overrides were unavailable; no desktop/mobile override claim. Historical pre-split captures are retained as superseded."
+    },
+    {
+      "file": "battle-report-management.jpg",
+      "caption": "Scoped saved-report filters and actions.",
+      "captured_at_utc": "2026-10-29T06:00:50.017490+00:00",
+      "sha256": "d5491cb8fac4731b3cab43c7891945007e9c6d184c375ff2346f6d70ded88611",
+      "bytes": 105264,
+      "width": 1280,
+      "height": 720,
+      "source_base_commit": "a96937d5e293278a60358d1a67c811baeaa08f69",
+      "source_state": "Battle management working tree; unreleased and not deployed.",
+      "data": "Synthetic local SQLite/real API and production frontend. Browser at default1280x720. PDF rendered with Poppler.",
+      "limitations": "Screenshots show scrolled sections, not the entire report. No mobile breakpoint claim. Browser deletion review cancelled; actual deletion covered by ASGI tests."
+    },
+    {
+      "file": "battle-report-deletion-review.jpg",
+      "caption": "Three-record date-range deletion review; cancelled.",
+      "captured_at_utc": "2026-10-29T06:00:50.018999+00:00",
+      "sha256": "66e1c309e7060aab75eb6d52329a7569658ffff9baf3c5875c350e23b23539b5",
+      "bytes": 97014,
+      "width": 1280,
+      "height": 720,
+      "source_base_commit": "a96937d5e293278a60358d1a67c811baeaa08f69",
+      "source_state": "Battle management working tree; unreleased and not deployed.",
+      "data": "Synthetic local SQLite/real API and production frontend. Browser at default1280x720. PDF rendered with Poppler.",
+      "limitations": "Screenshots show scrolled sections, not the entire report. No mobile breakpoint claim. Browser deletion review cancelled; actual deletion covered by ASGI tests."
+    },
+    {
+      "file": "battle-report-pdf-summary.png",
+      "caption": "Rendered PDF page one: teams and hull composition.",
+      "captured_at_utc": "2026-10-29T06:00:50.030081+00:00",
+      "sha256": "ed3aa9be6454edfce1fb01c1f39f654a39b72eb467fdec9419075ea183681312",
+      "bytes": 114623,
+      "width": 990,
+      "height": 1400,
+      "source_base_commit": "a96937d5e293278a60358d1a67c811baeaa08f69",
+      "source_state": "Battle management working tree; unreleased and not deployed.",
+      "data": "Synthetic local SQLite/real API and production frontend. Browser at default1280x720. PDF rendered with Poppler.",
+      "limitations": "Screenshots show scrolled sections, not the entire report. No mobile breakpoint claim. Browser deletion review cancelled; actual deletion covered by ASGI tests."
+    },
+    {
+      "file": "battle-report-pdf-details.png",
+      "caption": "Rendered PDF page two: pilots and timeline.",
+      "captured_at_utc": "2026-10-29T06:00:50.031114+00:00",
+      "sha256": "9f3307b3b459e0a71ded3f15e7f63c8fa47a69dc4859c65e5472e4f51f638f67",
+      "bytes": 91809,
+      "width": 990,
+      "height": 1400,
+      "source_base_commit": "a96937d5e293278a60358d1a67c811baeaa08f69",
+      "source_state": "Battle management working tree; unreleased and not deployed.",
+      "data": "Synthetic local SQLite/real API and production frontend. Browser at default1280x720. PDF rendered with Poppler.",
+      "limitations": "Screenshots show scrolled sections, not the entire report. No mobile breakpoint claim. Browser deletion review cancelled; actual deletion covered by ASGI tests."
     }
   ]
 }

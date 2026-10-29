@@ -9,6 +9,7 @@ Version sections are written as user-facing release notes first, with implementa
 - Separate creator-only Inventory Reports for personal ships, modules, fittings and container stock, with totals/itemization and CSV/PDF. Industry Reports now default to industrial materials plus BPOs/BPCs/reaction formulas, jobs and PI; public identities are always anonymous, and finished goods require explicit NPC-station/Upwell storage selection. Legacy unapproved Industry stock is hidden pending regeneration.
 
 ### Added
+- Battle Report management with corporation attribution, scoped pagination and individual/date/all deletion review; private snapshots remain creator-only. Detailed PDFs add team metrics, ship composition and complete pilot/timeline tables. Apply migration 0094 with the matching backend/frontend.
 - Main-character identity in Profile, post-SSO and ESI character checkboxes; named report attribution follows the current linked main, including existing reports, with Anonymous as the safe fallback.
 - Anonymous/private Local Scan, D-Scan and Battle reports with authenticated-only private reads/exports, expiry and Battle PDF exports.
 - Industry Report with mineral/PI and overall stock totals, owner/location detail, blueprints, active industry jobs and PI; CSV/PDF, private default, optional expiring public snapshots or permission-rechecked dynamic links, and scoped deletion.
@@ -27,7 +28,7 @@ Version sections are written as user-facing release notes first, with implementa
 - Asset search filters/pages in SQL with permission-scoped totals before loading record details.
 - ESI consent, refresh scope, and collection follow the token owner's combined permissions. Utility-only accounts are excluded from private collection and Quartermaster oversight despite legacy broad tokens.
 - SDE Settings shows every stored/import counter and nested celestial, Dogma, blueprint, and PI totals; disabled section settings serialize correctly in their existing text column.
-- Apply database migrations 0090_local_scan_reports and 0091_multiple_account_roles with the backend/frontend update. Apply 0092_dscan_reports for D-Scan; existing local reports are preserved. Battle-report enhancements remain planned.
+- Apply database migrations 0090_local_scan_reports and 0091_multiple_account_roles with the backend/frontend update. Apply 0092_dscan_reports for D-Scan; existing local reports are preserved. Apply 0094_battle_report_corporation for scoped Battle management; historic reports remain unattributed.
 
 - Major release preparation includes the unreleased development work listed below. Proposed features remain in the [to-do list](docs/proposed_changes.md) until implemented.
 - Prepared the user-designated **EQM 2.0** release with application/API, frontend package and lockfile, Android wrapper, export metadata, README badge, and outbound service user agents set to `2.0.0`. Android versionCode is now 27.

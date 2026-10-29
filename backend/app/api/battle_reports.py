@@ -6,7 +6,7 @@ from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, Request
 from pydantic import BaseModel, Field
-from sqlalchemy import select, or_
+from sqlalchemy import select, or_, func, delete
 from sqlalchemy.orm import Session
 
 from app.api.auth import get_current_user
@@ -14,6 +14,7 @@ from app.core.config import get_settings
 from app.db.session import get_db
 from app.models import BattleReportShare, User
 from app.services.battle_reports import available_report_pilots, battle_report_history, build_latest_battle_report
+from app.services import battle_report_management as management
 from app.services.killboard_entities import refresh_killboard_entity_names
 from app.services.killboard_settings import killboard_settings
 from app.services.permissions import ROLE_RANK, can_view_section, role_rank
@@ -45,7 +46,7 @@ class ReportRequest(BaseModel):
 
 
 class ShareRequest(ReportRequest):
-    pass
+    corporation_id: int | None = Field(default=None, gt=0)
 
 
 def side_override_map(payload: ReportRequest) -> dict[int, int]:
@@ -69,14 +70,16 @@ def share_payload(row: BattleReportShare) -> dict[str, Any]:
     from sqlalchemy.orm import object_session
     return {
         "id": row.id,
+        "corporation_id": None if row.anonymous or row.is_private else row.corporation_id,
+        "application_version": row.application_version,
         "share_token": row.share_token,
-        "is_private": row.is_private, "anonymous": row.anonymous, "creator_name": creator_label(object_session(row), row), "expires_at": row.expires_at.isoformat() if row.expires_at else None, "share_url": None if row.is_private else f"{get_settings().frontend_url.rstrip('/')}/#battle-report/{row.share_token}",
+        "is_private": row.is_private, "anonymous": row.anonymous, "creator_name": creator_label(object_session(row), row), "expires_at": management.utc(row.expires_at).isoformat() if row.expires_at else None, "share_url": None if row.is_private else f"{get_settings().frontend_url.rstrip('/')}/#battle-report/{row.share_token}",
         "selected_character_id": row.selected_character_id,
         "selected_character_name": row.selected_character_name,
         "view_count": row.view_count,
-        "created_at": row.created_at.isoformat() if row.created_at else None,
-        "last_viewed_at": row.last_viewed_at.isoformat() if row.last_viewed_at else None,
-        "revoked_at": row.revoked_at.isoformat() if row.revoked_at else None,
+        "created_at": management.utc(row.created_at).isoformat() if row.created_at else None,
+        "last_viewed_at": management.utc(row.last_viewed_at).isoformat() if row.last_viewed_at else None,
+        "revoked_at": management.utc(row.revoked_at).isoformat() if row.revoked_at else None,
     }
 
 
@@ -90,7 +93,7 @@ def require_view(current_user: User = Depends(get_current_user), db: Session = D
 def context(current_user: User = Depends(require_view), db: Session = Depends(get_db)) -> dict[str, Any]:
     from app.services.report_identity import report_identity
     settings = killboard_settings(db)
-    return {"creator_name": report_identity(db,current_user)[0],
+    return {**management.management_context(db, current_user), "creator_name": report_identity(db,current_user)[0],
         "enabled": settings["enabled"],
         "pilots": available_report_pilots(db, current_user),
         "can_sync": can_view_section(current_user, "killboard", db),
@@ -182,6 +185,44 @@ def list_shares(
     return [share_payload(row) for row in rows]
 
 
+
+@router.get("/reports")
+def managed_reports(
+    scope: Literal["own", "managed"] = "own",
+    corporation_id: int | None = Query(default=None, gt=0),
+    from_at: datetime | None = None, to_at: datetime | None = None,
+    offset: int = Query(default=0, ge=0), limit: int = Query(default=25, ge=1, le=100),
+    response: Response = None,
+    current_user: User = Depends(require_view), db: Session = Depends(get_db),
+):
+    from app.api.local_scan import public_headers
+    public_headers(response if response is not None else Response())
+    conditions = management.filters(db, current_user, scope, corporation_id, from_at, to_at)
+    rows = db.scalars(select(BattleReportShare).where(*conditions)
+        .order_by(BattleReportShare.created_at.desc(), BattleReportShare.id.desc()).offset(offset).limit(limit)).all()
+    return {"reports": [{**share_payload(row), "is_owner": row.created_by_user_id == current_user.id} for row in rows],
+        "total": db.scalar(select(func.count()).select_from(BattleReportShare).where(*conditions))}
+
+
+@router.post("/reports/delete-preview")
+def preview_delete_reports(payload: management.DeleteReportsInput, current_user: User = Depends(require_view), db: Session = Depends(get_db)):
+    # Freeze the upper generation boundary so confirmation cannot sweep up newly saved reports.
+    payload = payload.model_copy(update={"created_before": min(management.utc(payload.created_before), management.now()) if payload.created_before else management.now()})
+    count = db.scalar(select(func.count()).select_from(BattleReportShare).where(*management.delete_filters(db, current_user, payload)))
+    return {"count": count, "selection": payload.model_dump(mode="json")}
+
+
+@router.post("/reports/delete")
+def delete_reports(payload: management.DeleteReportsInput, current_user: User = Depends(require_view), db: Session = Depends(get_db)):
+    from app.services.audit import record_audit_event
+    count = db.execute(delete(BattleReportShare).where(*management.delete_filters(db, current_user, payload))
+        .execution_options(synchronize_session="fetch")).rowcount
+    record_audit_event(db, event_kind="intel", title="Battle reports deleted", actor_user=current_user,
+        body=f"count={count}; scope={payload.scope}; mode={'individual' if payload.ids else 'date_range' if payload.from_at else 'all_in_scope'}")
+    db.commit()
+    return {"deleted": count}
+
+
 @router.post("/shares", status_code=201)
 def create_share(
     payload: ShareRequest,
@@ -189,6 +230,8 @@ def create_share(
     current_user: User = Depends(require_view),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
+    if payload.corporation_id is not None and payload.corporation_id not in {cid for cid, _ in management.corporations(db, current_user)}:
+        raise HTTPException(422, "Choose a corporation belonging to one of your linked characters")
     if not killboard_settings(db)["enabled"]:
         raise HTTPException(status_code=409, detail="The Killboard data source is disabled")
     try:
@@ -217,6 +260,7 @@ def create_share(
         expires_at=datetime.now(timezone.utc)+timedelta(seconds=lifetime) if lifetime else None,
         share_token=secrets.token_urlsafe(32),
         created_by_user_id=current_user.id,
+        corporation_id=None if payload.is_private else payload.corporation_id,
         selected_character_id=payload.character_id,
         selected_character_name=str(snapshot["pilot"]["name"]),
         report_payload=snapshot,
@@ -233,13 +277,10 @@ def revoke_share(
     current_user: User = Depends(require_view),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    row = db.get(BattleReportShare, share_id)
-    if row is None or row.revoked_at is not None:
-        raise HTTPException(status_code=404, detail="Shared battle report was not found")
-    if row.is_private and row.created_by_user_id != current_user.id:
+    row = db.scalar(select(BattleReportShare).where(BattleReportShare.id == share_id,
+        BattleReportShare.revoked_at.is_(None), management.management_scope(db, current_user)))
+    if row is None:
         raise HTTPException(404, "Saved report unavailable")
-    if row.created_by_user_id != current_user.id and role_rank(current_user, db) < ROLE_RANK["admin"]:
-        raise HTTPException(status_code=403, detail="Only the link creator or an administrator may revoke this share")
     row.revoked_at = datetime.now(timezone.utc)
     db.commit()
     return {"status": "revoked", "id": row.id}
@@ -266,9 +307,9 @@ def public_share(share_token: str, response: Response = None, db: Session = Depe
         "share": {
             "creator_name": creator_label(db, row), "anonymous": row.anonymous,
             "application_version": row.application_version, "is_private": row.is_private,
-            "expires_at": row.expires_at.isoformat() if row.expires_at else None,
+            "expires_at": management.utc(row.expires_at).isoformat() if row.expires_at else None,
             "selected_character_name": row.selected_character_name,
-            "created_at": row.created_at.isoformat() if row.created_at else None,
+            "created_at": management.utc(row.created_at).isoformat() if row.created_at else None,
             "view_count": row.view_count,
         },
         **row.report_payload,
@@ -280,7 +321,7 @@ def own_saved_share(share_id: int, response: Response, current_user: User = Depe
     from app.api.local_scan import public_headers
     public_headers(response)
     row = db.scalar(select(BattleReportShare).where(BattleReportShare.id == share_id,
-        BattleReportShare.created_by_user_id == current_user.id, BattleReportShare.revoked_at.is_(None),
+        management.management_scope(db, current_user), BattleReportShare.revoked_at.is_(None),
         or_(BattleReportShare.expires_at.is_(None), BattleReportShare.expires_at > datetime.now(timezone.utc))))
     if row is None: raise HTTPException(404, "Saved report unavailable")
     return {"share": share_payload(row), **row.report_payload}
@@ -290,7 +331,7 @@ def export_row(db,token,user=None):
     filters=[BattleReportShare.share_token==token,BattleReportShare.revoked_at.is_(None),
         or_(BattleReportShare.expires_at.is_(None),BattleReportShare.expires_at>datetime.now(timezone.utc))]
     if user is None:filters.append(BattleReportShare.is_private.is_(False))
-    else:filters.append(BattleReportShare.created_by_user_id==user.id)
+    else:filters.append(management.management_scope(db,user))
     row=db.scalar(select(BattleReportShare).where(*filters))
     if row is None:raise HTTPException(404,"Saved report unavailable")
     return row
@@ -300,7 +341,7 @@ async def battle_pdf(db,token,user=None):
     from app.api.local_scan import public_headers
     from starlette.concurrency import run_in_threadpool
     row=export_row(db,token,user)
-    content=await run_in_threadpool(render_pdf,row.report_payload,creator_label(db,row),row.application_version,row.created_at.isoformat())
+    content=await run_in_threadpool(render_pdf,row.report_payload,creator_label(db,row),row.application_version,management.utc(row.created_at).isoformat())
     db.expire_all()
     if user:
         db.refresh(user)

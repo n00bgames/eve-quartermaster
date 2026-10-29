@@ -841,3 +841,9 @@ Industry Reports contain industrial materials, BPOs/BPCs/reaction formulas, jobs
 | Industry stock selection | Private Inventory Report |
 | --- | --- |
 | ![Select station cans/hangars for finished stock](static/ss/v2.0/industry-selected-storage.jpg) | ![Private Inventory with named owners and fitted items](static/ss/v2.0/inventory-private-detail.jpg) |
+
+### Battle Report management (2.0 development)
+
+Manage saved battles by ownership/corporation, generation dates or selection, with deletion review and creator-only private snapshots. PDFs now include team totals, ship composition, pilots and timeline. [Access rules and migration 0094](docs/battle-report-management.md).
+
+![Saved Battle Report management with synthetic data](static/ss/v2.0/battle-report-management.jpg)

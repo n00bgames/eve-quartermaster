@@ -160,6 +160,7 @@ class BattleReportShare(Base):
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
     share_token: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
     created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
+    corporation_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)
     selected_character_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
     selected_character_name: Mapped[str] = mapped_column(String(255), nullable=False)
     report_payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)

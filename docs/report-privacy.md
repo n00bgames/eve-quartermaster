@@ -50,7 +50,7 @@ No additional schema migration is needed for this split; it uses report kinds/JS
 
 ## Battle Reports
 
-Saved battles now support anonymous/private options, retention, revocation and PDF export. Public and creator-only download routes enforce the same access/expiry as their JSON routes. Anonymous creator attribution does not hide the selected subject or participating pilots. Named attribution updates with the creator's main. Existing public shares retain their existing lifetime until revoked; new shares default to 24 hours. Battle PDFs include branding, generation metadata, pilot/killmail totals, participant damage and timeline. Additional team/composition export styling and corporation/date-range Battle management remain separate planned enhancements.
+Saved battles now support anonymous/private options, retention, revocation and PDF export. Public and creator-only download routes enforce the same access/expiry as their JSON routes. Anonymous creator attribution does not hide the selected subject or participating pilots. Named attribution updates with the creator's main. Existing public shares retain their existing lifetime until revoked; new shares default to 24 hours. Battle PDFs include branding, generation metadata, pilot/killmail totals, participant damage and timeline. Team/composition summaries, complete pilot/timeline tables and scoped corporation/date-range/bulk management are now implemented. Other users' private snapshots remain inaccessible to directors/admins. Apply migration 0094; historic shares remain unattributed. See [Battle management, access rules and verification](battle-report-management.md).
 
 ## D-Scan threat presentation
 
