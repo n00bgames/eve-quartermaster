@@ -113,3 +113,7 @@ Prepared in the working tree; not deployed by implementation. Rebuild backend/fr
 ## Unreleased report privacy / Industry Report rollout
 
 Apply migration **0093_report_privacy** after 0092 and deploy the matching backend/frontend together. It adds user main identity and report privacy/dynamic/Battle expiry fields, and redacts legacy account labels. Named old reports resolve to current mains (Anonymous until selected); existing public visibility stays unchanged. Downgrade deletes private and Industry records before removing access-control fields, preventing older code from publishing them. See [full behavior and checks](report-privacy.md). No live deployment was performed for this implementation.
+
+## Industry / Inventory split (unreleased)
+
+Deploy matching backend/frontend after migration 0093; this split needs no additional migration. New private report kind `inventory` and section permission `inventory_reports` still require Assets access. Public Industry JSON/CSV/PDF always anonymize ownership and exclude unapproved general stock; pre-policy snapshots omit legacy stock and require regeneration. Dynamic selections are fixed owner/station/can or hangar choices and disable when unavailable. No ESI scope/collection changes. No deployment performed.

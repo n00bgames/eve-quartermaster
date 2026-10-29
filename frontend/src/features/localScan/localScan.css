@@ -23,3 +23,6 @@
 .industry-report{display:grid;gap:22px;min-width:0}.industry-report .table-wrap{max-height:none;overflow-x:auto}.industry-report .status-grid{margin:0}.industry-report .status-grid>div{padding:12px;background:#233449;border-radius:8px}.industry-report .status-grid strong{font-size:1.3rem}
 
 .industry-report>section{min-width:0;max-width:100%}.industry-report .table-wrap{max-width:100%}.industry-report p{overflow-wrap:anywhere}
+
+.industry-storage-options { display: grid; gap: .6rem; max-height: 24rem; overflow-y: auto; margin-block: 1rem; }
+.industry-storage-options .check { align-items: flex-start; overflow-wrap: anywhere; }

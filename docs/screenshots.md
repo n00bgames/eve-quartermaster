@@ -14,7 +14,7 @@ All **63 existing images** remain linked below. They are historical: some are de
 
 Captured **October 28, 2026** from the current **unreleased 2.0.0 working tree**. These are actual browser captures with synthetic accounts/pilots, not production EVE state. The Local Scan image includes real organization logos as visual references; its memberships are fictional. Crops retain the rendered UI without repainting.
 
-### Report privacy, main characters and Industry Reports
+### Earlier privacy implementation (Industry captures superseded below)
 
 Current unreleased captures from the privacy/Industry Report implementation. All data and SSO completion are synthetic; report account identity is never used for attribution.
 
@@ -384,3 +384,27 @@ Every pre-v1.0 image is listed once here. **Historical reference** means capture
 - Fresh desktop previews use 1560 px width; the mobile calculator uses a 390 px viewport. No horizontal page overflow or uncaught page errors occurred in the capture workflow.
 - The old `eqm-*` demo shell omits current navigation and clocks. Existing reconstructed Doctrine/SRP images are produced by [the tracked sanitizer](../dev/sanitize_release_screenshots.py). Other known reconstructed crops came from the historical README screenshot preparation workflow; they are labeled rather than represented as production captures.
 - Current fitting status is explicitly informational and unfinished. Screenshot coverage is not a claim of simulator accuracy or full feature parity.
+
+### Industry/Inventory separation — current development captures
+
+Actual narrow-window UI and real API PDFs with synthetic data only. Public Industry output replaces owner identities; private Inventory retains owner detail. These supersede the earlier general-stock Industry captures.
+
+Station storage opt-in controls; public anonymity is mandatory.
+
+![Station storage opt-in controls; public anonymity is mandatory.](../static/ss/v2.0/industry-selected-storage.jpg)
+
+Anonymous Industry output preview: materials and approved stock; no character/corporation identities.
+
+![Anonymous Industry output preview: materials and approved stock; no character/corporation identities.](../static/ss/v2.0/industry-anonymous-stock.jpg)
+
+Creator-only Inventory Report including named owners and personal/fitted items.
+
+![Creator-only Inventory Report including named owners and personal/fitted items.](../static/ss/v2.0/inventory-private-detail.jpg)
+
+Rendered anonymous Industry PDF with approved stock and industrial activity.
+
+![Rendered anonymous Industry PDF with approved stock and industrial activity.](../static/ss/v2.0/industry-anonymous-pdf.png)
+
+Rendered private Inventory PDF with named owner/placement detail.
+
+![Rendered private Inventory PDF with named owner/placement detail.](../static/ss/v2.0/inventory-private-pdf.png)

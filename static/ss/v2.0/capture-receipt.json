@@ -260,6 +260,71 @@
       "bytes": 54968,
       "width": 849,
       "height": 1200
+    },
+    {
+      "file": "industry-selected-storage.jpg",
+      "caption": "Station storage opt-in controls; public anonymity is mandatory.",
+      "captured_at_utc": "2026-10-29T01:52:54.020415+00:00",
+      "sha256": "d5284c6c2b6b1e71df4b177f9d2dbd0c4557e04f89f61db569725ebfda57dc60",
+      "bytes": 102246,
+      "width": 576,
+      "height": 998,
+      "source_base_commit": "d4591ba4c0e4172b55c6a10f00fb9641db702a5e",
+      "source_state": "Uncommitted Industry/Inventory split; not deployed.",
+      "data": "Synthetic SQLite fixtures only; real API/production frontend. Fictional private module/reaction types. Actual browser default width615px, report panel crops at document scroll top. Rightmost table columns remain horizontally scrollable. PDFs exported through ASGI routes and rendered with Poppler.",
+      "limitations": "Public Industry capture is the authenticated preview of the same anonymous public projection. Browser public-link navigation was blocked as invalid; API public routes independently tested. Viewport overrides were unavailable; no desktop/mobile override claim. Historical pre-split captures are retained as superseded."
+    },
+    {
+      "file": "industry-anonymous-stock.jpg",
+      "caption": "Anonymous Industry output preview: materials and approved stock; no character/corporation identities.",
+      "captured_at_utc": "2026-10-29T01:52:54.020922+00:00",
+      "sha256": "8ae763c91b24d02856082a6389695e9567f82e8cdec2a3a20cfb110833b51d84",
+      "bytes": 160857,
+      "width": 576,
+      "height": 2460,
+      "source_base_commit": "d4591ba4c0e4172b55c6a10f00fb9641db702a5e",
+      "source_state": "Uncommitted Industry/Inventory split; not deployed.",
+      "data": "Synthetic SQLite fixtures only; real API/production frontend. Fictional private module/reaction types. Actual browser default width615px, report panel crops at document scroll top. Rightmost table columns remain horizontally scrollable. PDFs exported through ASGI routes and rendered with Poppler.",
+      "limitations": "Public Industry capture is the authenticated preview of the same anonymous public projection. Browser public-link navigation was blocked as invalid; API public routes independently tested. Viewport overrides were unavailable; no desktop/mobile override claim. Historical pre-split captures are retained as superseded."
+    },
+    {
+      "file": "inventory-private-detail.jpg",
+      "caption": "Creator-only Inventory Report including named owners and personal/fitted items.",
+      "captured_at_utc": "2026-10-29T01:52:54.020922+00:00",
+      "sha256": "e77253477753a9415947164830cc78600a64feac1c6f23c2a29ac073d3ad4a9d",
+      "bytes": 126147,
+      "width": 576,
+      "height": 2059,
+      "source_base_commit": "d4591ba4c0e4172b55c6a10f00fb9641db702a5e",
+      "source_state": "Uncommitted Industry/Inventory split; not deployed.",
+      "data": "Synthetic SQLite fixtures only; real API/production frontend. Fictional private module/reaction types. Actual browser default width615px, report panel crops at document scroll top. Rightmost table columns remain horizontally scrollable. PDFs exported through ASGI routes and rendered with Poppler.",
+      "limitations": "Public Industry capture is the authenticated preview of the same anonymous public projection. Browser public-link navigation was blocked as invalid; API public routes independently tested. Viewport overrides were unavailable; no desktop/mobile override claim. Historical pre-split captures are retained as superseded."
+    },
+    {
+      "file": "industry-anonymous-pdf.png",
+      "caption": "Rendered anonymous Industry PDF with approved stock and industrial activity.",
+      "captured_at_utc": "2026-10-29T02:03:27.508465+00:00",
+      "sha256": "ad866b8e4e45e67eb73de70fe224a42a076e8f9c62f793bf383fdc77db528cb0",
+      "bytes": 149699,
+      "width": 990,
+      "height": 1400,
+      "source_base_commit": "d4591ba4c0e4172b55c6a10f00fb9641db702a5e",
+      "source_state": "Uncommitted Industry/Inventory split; not deployed.",
+      "data": "Synthetic SQLite fixtures only; real API/production frontend. Fictional private module/reaction types. Actual browser default width615px, report panel crops at document scroll top. Rightmost table columns remain horizontally scrollable. PDFs exported through ASGI routes and rendered with Poppler.",
+      "limitations": "Public Industry capture is the authenticated preview of the same anonymous public projection. Browser public-link navigation was blocked as invalid; API public routes independently tested. Viewport overrides were unavailable; no desktop/mobile override claim. Historical pre-split captures are retained as superseded."
+    },
+    {
+      "file": "inventory-private-pdf.png",
+      "caption": "Rendered private Inventory PDF with named owner/placement detail.",
+      "captured_at_utc": "2026-10-29T02:03:27.509470+00:00",
+      "sha256": "1c03107166cc85bb694fdbeb216a1661eda26e82894a98d8254f772da786ebb6",
+      "bytes": 140416,
+      "width": 990,
+      "height": 1400,
+      "source_base_commit": "d4591ba4c0e4172b55c6a10f00fb9641db702a5e",
+      "source_state": "Uncommitted Industry/Inventory split; not deployed.",
+      "data": "Synthetic SQLite fixtures only; real API/production frontend. Fictional private module/reaction types. Actual browser default width615px, report panel crops at document scroll top. Rightmost table columns remain horizontally scrollable. PDFs exported through ASGI routes and rendered with Poppler.",
+      "limitations": "Public Industry capture is the authenticated preview of the same anonymous public projection. Browser public-link navigation was blocked as invalid; API public routes independently tested. Viewport overrides were unavailable; no desktop/mobile override claim. Historical pre-split captures are retained as superseded."
     }
   ]
 }

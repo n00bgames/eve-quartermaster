@@ -1,3 +1,4 @@
+import {InventoryReportPage} from "./features/industryReports/InventoryReportPage";
 import {IndustryReportPage,PublicIndustryReportPage} from "./features/industryReports/IndustryReportPage";
 import { DScanPage } from "./features/dscan/DScanPage";
 import { PublicDScanPage } from "./features/dscan/PublicDScanPage";
@@ -518,6 +519,7 @@ function App() {
     if (window.location.hash.startsWith("#local-scan/") || window.location.hash.startsWith("#d-scan/") || window.location.hash.startsWith("#industry-report/")) { setAuthReady(true); return; }
 
     if (window.location.hash === "#navigation") setActiveTab("navigation");
+    else if (window.location.hash === "#inventory-reports") setActiveTab("inventory_reports");
     else if (window.location.hash === "#industry-reports") setActiveTab("industry_reports");
     else if (window.location.hash === "#d-scan") setActiveTab("dscan");
     else if (window.location.hash === "#local-scan") setActiveTab("local_scan");
@@ -680,7 +682,7 @@ function App() {
 
   return (
 
-    <main className={`app-shell${["local_scan", "dscan"].includes(activeTab) ? " scan-report-shell" : ""}`}>
+    <main className={`app-shell${["local_scan", "dscan", "industry_reports", "inventory_reports"].includes(activeTab) ? " scan-report-shell" : ""}`}>
 
       <aside className="sidebar">
 
@@ -744,10 +746,11 @@ function App() {
 
           {canView("bounty_analytics") && <button className={activeTab === "bounty_analytics" ? "active" : ""} onClick={() => { window.location.hash = "bounties"; setActiveTab("bounty_analytics"); }}><TrendingUp size={18} /> Bounty Analytics</button>}
 
-          {["quartermaster", "notes", "manufacturing", "mining", "planetary_industry", "corporations", "ownership", "assets", "industry", "contracts", "analytics"].some(canView) && <span className="nav-section-label">Inventory & Industry</span>}
+          {["inventory_reports", "industry_reports", "quartermaster", "notes", "manufacturing", "mining", "planetary_industry", "corporations", "ownership", "assets", "industry", "contracts", "analytics"].some(canView) && <span className="nav-section-label">Inventory & Industry</span>}
 
           {canView("notes") && <button className={activeTab === "notes" ? "active" : ""} onClick={() => setActiveTab("notes")}><NotebookTabs size={18} /> Notes & Lists</button>}
 
+          {canView("inventory_reports") && canView("assets") && <button className={activeTab === "inventory_reports" ? "active" : ""} onClick={()=>{window.location.hash="inventory-reports";setActiveTab("inventory_reports");}}><Boxes size={18}/> Inventory Report</button>}
           {canView("industry_reports") && <button className={activeTab === "industry_reports" ? "active" : ""} onClick={()=>{window.location.hash="industry-reports";setActiveTab("industry_reports");}}><ClipboardList size={18}/> Industry Report</button>}
           {canView("quartermaster") && <button className={activeTab === "quartermaster" ? "active" : ""} onClick={() => { window.location.hash = "quartermaster"; setActiveTab("quartermaster"); }}><Boxes size={18} /> Quartermaster</button>}
 
@@ -918,6 +921,7 @@ function App() {
 
         {activeTab === "esi" && canView("esi") && <EsiSyncPage load={load} currentUser={user} api={api} ManagedForm={ManagedForm} Metric={Metric} CharacterHoverName={CharacterHoverName} />}
 
+        {activeTab === "inventory_reports" && canView("inventory_reports") && canView("assets") && <InventoryReportPage api={api}/>}
         {activeTab === "industry_reports" && canView("industry_reports") && <IndustryReportPage api={api}/>}
         {activeTab === "profile" && canView("profile") && <ProfilePage currentUser={user} onUserUpdated={setUser} focus={profileFocus} api={api} ManagedForm={ManagedForm} accountLabel={accountLabel} />}
 
@@ -2372,6 +2376,7 @@ function ManagedForm({ children, onSubmit, submitLabel = "Save" }: { children: R
 
 
 function titleFor(tab: string) {
+  if(tab==="inventory_reports") return "Inventory Report";
   if(tab==="industry_reports") return "Industry Report";
   if (tab === "quartermaster") return "Quartermaster";
   if (tab === "dscan") return "D-Scan";
@@ -2387,7 +2392,8 @@ function titleFor(tab: string) {
 
 
 function subtitleFor(tab: string) {
-  if(tab==="industry_reports") return "Stock, blueprints, industry jobs and PI with private or expiring public reports.";
+  if(tab==="inventory_reports") return "Private ship, module and full asset totals with owner detail and exports.";
+  if(tab==="industry_reports") return "Industry materials, selected stock, blueprints, jobs and PI. Public views hide character identities.";
   if (tab === "quartermaster") return "View blueprint holdings, running industry jobs, and planetary infrastructure across linked owners.";
   if (tab === "dscan") return "Analyze directional scans, ship classes and deployables, and share timed intel reports.";
   if (tab === "local_scan") return "Turn local pilot lists into public alliance and corporation reports.";

@@ -103,9 +103,9 @@ New images show current components with synthetic demo data. Older screenshots a
 | --- | --- |
 | [![D-Scan with system and ship total at the top](static/ss/v2.0/dscan-system-total.jpg)](static/ss/v2.0/dscan-system-total.jpg) | [![Manual combat recon and linked-local controls](static/ss/v2.0/dscan-editor.png)](static/ss/v2.0/dscan-editor.png) |
 
-| Report privacy and identity | Dynamic Industry Report |
+| Report privacy and identity | Anonymous Industry Report |
 | --- | --- |
-| [![Anonymous private scan with no public link](static/ss/v2.0/scan-private-anonymous.jpg)](static/ss/v2.0/scan-private-anonymous.jpg) | [![Industry stock totals, jobs and PI](static/ss/v2.0/industry-report-dynamic.jpg)](static/ss/v2.0/industry-report-dynamic.jpg) |
+| [![Anonymous private scan with no public link](static/ss/v2.0/scan-private-anonymous.jpg)](static/ss/v2.0/scan-private-anonymous.jpg) | [![Industry stock totals, jobs and PI](static/ss/v2.0/industry-anonymous-stock.jpg)](static/ss/v2.0/industry-anonymous-stock.jpg) |
 
 [Main characters, retroactive names, private reports and dynamic sharing](docs/report-privacy.md) · [Threat-order D-Scan](static/ss/v2.0/dscan-threat-order.jpg)
 
@@ -833,3 +833,11 @@ This project is collaboratively created with generative AI. Human project direct
 See [Local Scan, multiple roles, ESI privacy, and SDE totals](docs/local-scan.md) for the 2.0 development features and rollout requirements.
 
 See [D-Scan formats, public reports, base mass and rollout](docs/dscan.md) for the directional scan module.
+
+### Industry and private Inventory Reports (2.0 development)
+
+Industry Reports contain industrial materials, BPOs/BPCs/reaction formulas, jobs and PI, plus finished stock only from explicitly selected NPC-station/Upwell cans or hangars. Public output always hides creator/owner names. Personal ships/modules, fittings and container detail belong in the separate creator-only Inventory Report, with CSV/PDF and no public links. Old unapproved Industry stock is omitted until regenerated. [Policy and storage rules](docs/report-privacy.md).
+
+| Industry stock selection | Private Inventory Report |
+| --- | --- |
+| ![Select station cans/hangars for finished stock](static/ss/v2.0/industry-selected-storage.jpg) | ![Private Inventory with named owners and fitted items](static/ss/v2.0/inventory-private-detail.jpg) |

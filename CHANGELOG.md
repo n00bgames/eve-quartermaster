@@ -6,6 +6,8 @@ Version sections are written as user-facing release notes first, with implementa
 
 ## [2.0.0] - Unreleased
 
+- Separate creator-only Inventory Reports for personal ships, modules, fittings and container stock, with totals/itemization and CSV/PDF. Industry Reports now default to industrial materials plus BPOs/BPCs/reaction formulas, jobs and PI; public identities are always anonymous, and finished goods require explicit NPC-station/Upwell storage selection. Legacy unapproved Industry stock is hidden pending regeneration.
+
 ### Added
 - Main-character identity in Profile, post-SSO and ESI character checkboxes; named report attribution follows the current linked main, including existing reports, with Anonymous as the safe fallback.
 - Anonymous/private Local Scan, D-Scan and Battle reports with authenticated-only private reads/exports, expiry and Battle PDF exports.

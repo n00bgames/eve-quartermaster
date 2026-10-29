@@ -68,12 +68,12 @@ def metadata(row):
     from app.services.report_identity import report_identity
     db = object_session(row)
     creator = db.get(User, row.created_by_user_id) if db and row.created_by_user_id else None
-    creator_name = report_identity(db, creator, row.anonymous)[0] if creator and creator.deleted_at is None else "Anonymous"
-    return {"token": row.token, "report_kind": row.report_kind, "is_private": row.is_private, "anonymous": row.anonymous, "dynamic": row.dynamic, "share_url": None if row.is_private else f"{get_settings().frontend_url.rstrip('/')}/#{ {'dscan':'d-scan','industry':'industry-report'}.get(row.report_kind,'local-scan') }/{row.token}",
+    creator_name = report_identity(db, creator, row.anonymous or (row.report_kind=="industry" and not row.is_private))[0] if creator and creator.deleted_at is None else "Anonymous"
+    return {"token": row.token, "report_kind": row.report_kind, "is_private": row.is_private, "anonymous": row.anonymous or (row.report_kind=="industry" and not row.is_private), "dynamic": row.dynamic, "share_url": None if row.is_private else f"{get_settings().frontend_url.rstrip('/')}/#{ {'dscan':'d-scan','industry':'industry-report'}.get(row.report_kind,'local-scan') }/{row.token}",
             "created_at": service.utc(row.created_at).isoformat(),
             "expires_at": service.utc(row.expires_at).isoformat() if row.expires_at else None,
             "retention": row.retention, "account_name": creator_name, "creator_name": creator_name,
-            "corporation_id": None if row.anonymous else row.corporation_id, "application_version": row.application_version,
+            "corporation_id": None if row.anonymous or (row.report_kind=="industry" and not row.is_private) else row.corporation_id, "application_version": row.application_version,
             "character_count": row.payload.get("character_count", 0), "input_count": row.payload.get("input_count", 0),
             "object_count": row.payload.get("object_count", 0), "ship_count": row.payload.get("ship_count", 0)}
 
@@ -247,7 +247,7 @@ def delete_scoped_reports(payload, user, db, kind):
         filters.append(LocalScanReport.token.in_(payload.tokens))
     elif payload.from_at is not None:
         filters.extend([LocalScanReport.created_at >= service.utc(payload.from_at), LocalScanReport.created_at < service.utc(payload.to_at)])
-    count = db.execute(delete(LocalScanReport).where(*filters)).rowcount
+    count = db.execute(delete(LocalScanReport).where(*filters).execution_options(synchronize_session="fetch")).rowcount
     record_audit_event(db, event_kind="intel", title=f"{'D-scan' if kind == 'dscan' else 'Local scan'} reports deleted", actor_user=user,
         body=f"count={count}; mode={'individual' if payload.tokens else 'date_range' if payload.from_at else 'all_in_scope'}")
     db.commit()

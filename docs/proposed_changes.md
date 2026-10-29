@@ -70,21 +70,23 @@ Local Scan and D-Scan implement the lifecycle below. Battle-report enhancements 
 
 - [x] Industry Report uses the EQM banner, generation-time application version and current main-character attribution (Anonymous fallback); account names are never published.
 - [x] Branded PDF and CSV metadata include attribution and generation/data timestamps. Explicitly anonymous reports remain anonymous.
-- [ ] Apply the same header scheme to Inventory Report when that separate workflow is implemented.
+- [x] Apply the same header scheme to Inventory Report with private main-character attribution.
 
 ## Industry Report
 
-- [x] Unified assets, blueprints, active industry jobs and PI reporting.
+- [x] Industrial materials, BPOs/BPCs/reaction formulas, active industry jobs and PI reporting; personal general assets use the separate private Inventory Report.
 - [x] Overall mineral/PI and stock totals by type, followed by owner/location itemization.
 - [x] CSV and PDF exports.
-- [x] Private by default; opt-in expiring public snapshots or dynamic current-stock links.
+- [x] Private by default; opt-in expiring public snapshots or dynamic current-stock links. Public creator/owner anonymity is mandatory.
+- [x] Explicit NPC-station/Upwell can or hangar selection for finished stock; exclude fittings/onboard contents and unselected finished goods.
 - [x] Dynamic scope/permission revalidation, fixed original scope and scoped individual/date/all deletion.
 
 ## Inventory Report
 
-- [ ] Add an **Inventory Report** with inventory totals grouped by item type and category, including all ship types, module types, and other inventory categories.
-- [ ] Use the same itemization order as the Industry Report: overall totals first, followed below by itemized assets grouped by character and corporation.
-- [ ] Export the Inventory Report to **CSV** or **PDF**.
+- [x] Add an **Inventory Report** with inventory totals grouped by item type and category, including all ship types, module types, and other inventory categories.
+- [x] Use the same itemization order as the Industry Report: overall totals first, followed below by itemized assets grouped by character and corporation.
+- [x] Export the Inventory Report to **CSV** or **PDF**.
+- [x] Inventory reports are creator-only with no public links/listings; named owner detail, retention and individual/date/all deletion.
 
 ## Themes and Personal Branding
 

@@ -9,7 +9,8 @@ from sqlalchemy import select,create_engine,text,inspect
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from app.models import Asset,EveCharacter,OwnershipEntity,EveType,EveGroup,EveCategory,EsiToken,UserSectionPermission,BattleReportShare
-from app.models.enums import OwnerKind
+from app.models.enums import OwnerKind,LocationKind
+from app.models import Location
 from app.models.local_scan import LocalScanReport
 from app.api import auth,industry_reports,battle_reports
 from app.services import local_scan as lifecycle
@@ -85,7 +86,7 @@ def test_threat_sort_handles_old_payload_and_faction_battleships():
 def seed_stock(env):
     char=main(env);cat=EveCategory(category_id=4,name='Material');group=EveGroup(group_id=18,name='Mineral',category=cat)
     item=EveType(type_id=34,name='Tritanium',group=group);owner=OwnershipEntity(owner_kind=OwnerKind.CHARACTER,character_id=char.id,display_name='Stock owner')
-    env.db.add_all([cat,group,item,owner]);env.db.flush();asset=Asset(ownership_entity_id=owner.id,type_id=34,quantity=100,last_synced_at=lifecycle.now());env.db.add(asset);env.db.commit()
+    env.db.add_all([cat,group,item,owner]);env.db.flush();location=Location(name='Example NPC station',location_kind=LocationKind.STATION);env.db.add(location);env.db.flush();asset=Asset(location_id=location.id,location_flag='Hangar',ownership_entity_id=owner.id,type_id=34,quantity=100,last_synced_at=lifecycle.now());env.db.add(asset);env.db.commit()
     env.app.include_router(industry_reports.router,prefix='/api');return asset
 
 def test_industry_private_default_csv_pdf_and_no_scope_leak(env):
@@ -190,8 +191,8 @@ def test_industry_totals_combine_inventory_and_pi_then_itemize(env):
     from app.services.industry_reports import build,csv_content
     asset=seed_stock(env);char=main(env)
     owner=env.db.get(OwnershipEntity,asset.ownership_entity_id)
-    env.db.add(EveType(type_id=3689,name='Mechanical Parts'));env.db.flush()
-    env.db.add(Asset(ownership_entity_id=owner.id,type_id=3689,quantity=80,last_synced_at=lifecycle.now()))
+    pi_category=EveCategory(category_id=43,name='Planetary Commodities');pi_group=EveGroup(group_id=1040,name='Planetary Commodities',category=pi_category);env.db.add_all([pi_category,pi_group,EveType(type_id=3689,name='Mechanical Parts',group=pi_group)]);env.db.flush()
+    env.db.add(Asset(location_id=asset.location_id,location_flag="Hangar",ownership_entity_id=owner.id,type_id=3689,quantity=80,last_synced_at=lifecycle.now()))
     colony=PlanetaryColony(character_id=char.id,planet_id=4001,planet_name='Example planet',last_synced_at=lifecycle.now());env.db.add(colony);env.db.flush()
     env.db.add(PlanetaryPin(colony_id=colony.id,pin_id=1,type_id=3689,contents_json=[{'type_id':3689,'amount':20}]))
     env.db.add(Blueprint(ownership_entity_id=owner.id,blueprint_type_id=34,is_copy=False,material_efficiency=10,time_efficiency=20,last_synced_at=lifecycle.now()))
