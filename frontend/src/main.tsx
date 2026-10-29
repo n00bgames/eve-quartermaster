@@ -1,3 +1,5 @@
+import {PasswordRecovery} from "./features/profile/PasswordRecovery";
+import {FullAssetExport} from "./features/quartermaster/FullAssetExport";
 import {LayoutRegion} from "./features/appearance/LayoutRegion";
 import {AppearanceProvider,AppearanceStatus,ArrangeButton,BrandImage,useAppearanceAccount} from "./features/appearance/AppearanceProvider";
 import {AppearanceSettings} from "./features/appearance/AppearanceSettings";
@@ -668,6 +670,8 @@ function App() {
 
   if (!authReady) return <main className="auth-shell"><section className="panel"><BrandImage className="auth-logo"/><p className="muted">Checking account session...</p></section></main>;
 
+  if (locationHash === "#forgot-password" || locationHash.startsWith("#reset-password")) return <PasswordRecovery key={locationHash} token={locationHash.startsWith("#reset-password/") ? locationHash.slice("#reset-password/".length) : undefined}/>;
+
   if (publicIndustryReportToken) return <PublicIndustryReportPage api={api} token={publicIndustryReportToken} onBack={()=>{window.location.hash="";window.location.reload();}}/>;
 
   if (publicDScanToken) return <PublicDScanPage api={api} token={publicDScanToken} onBack={() => { window.location.hash = ""; window.location.reload(); }} />;
@@ -1058,6 +1062,7 @@ function AuthScreen({ bootstrap, onAuth }: { bootstrap: BootstrapStatus | null; 
 
         </ManagedForm>
 
+        {!needsAdmin && <a className="auth-link" href="#forgot-password">Forgot password?</a>}
         {!needsAdmin && <a className="auth-link auth-recruiting-link" href="/#recruiting"><UserRoundCheck size={18} /> Apply / Recruiting</a>}
 
       </section>
@@ -1755,6 +1760,7 @@ function AssetTable({ assets, blueprints = [], seed, api, serverMode = false, on
       </div>}
       {allRecords && <p className="muted">Loaded snapshot: {allRecords.length.toLocaleString()} rows · {allRecords.reduce((sum, a) => sum + a.quantity, 0).toLocaleString()} units · {new Set(allRecords.map((a) => a.type_id)).size.toLocaleString()} item types. Refresh all records for current data.</p>}
 
+      {serverMode && api && <FullAssetExport filters={{owner_kind:ownerKindFilter||null,category:categoryFilter,subtype:subtypeFilter||null,filter_key:filter?.key??null,filter_value:filter?.value??null,filter_mode:filter?.mode??"exact",sort_key:sortKey,sort_direction:sortDirection}}/>}
       {serverMode && api && <InventoryExportControls api={api} endpoint="/quartermaster/assets-export" kind="assets" disabled={serverBusy} filters={{
         owner_kind: ownerKindFilter || null,
         category: categoryFilter,

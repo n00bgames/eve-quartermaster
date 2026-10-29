@@ -1,3 +1,5 @@
+from app.api.asset_downloads import router as asset_downloads_router
+from app.api.password_recovery import router as password_recovery_router
 from app.api.inventory_reports import router as inventory_reports_router
 from app.api.industry_reports import router as industry_reports_router
 from app.api.dscan import router as dscan_router
@@ -60,7 +62,9 @@ api_router.include_router(quartermaster_oversight_router)
 api_router.include_router(mission_atlas_router)
 api_router.include_router(pi_planner_router)
 api_router.include_router(analytics_router)
+api_router.include_router(asset_downloads_router)
 api_router.include_router(auth_router)
+api_router.include_router(password_recovery_router)
 api_router.include_router(bounty_analytics_router)
 api_router.include_router(battle_reports_router)
 api_router.include_router(characters_router)

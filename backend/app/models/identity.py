@@ -15,6 +15,8 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(320), unique=True, nullable=False, index=True)
     display_name: Mapped[str] = mapped_column(String(120), nullable=False)
     password_hash: Mapped[str | None] = mapped_column(String(255))
+    auth_version: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
+    password_reset_required: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
     role: Mapped[str] = mapped_column(String(40), default="member", nullable=False)
     main_character_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     timezone: Mapped[str] = mapped_column(String(64), default="UTC", nullable=False)

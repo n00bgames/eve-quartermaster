@@ -35,6 +35,14 @@ class Settings(BaseSettings):
     auth_secret_key: str = "dev-change-me"
     access_token_minutes: int = 720
     remember_me_days: int = 30
+    password_reset_minutes: int = Field(default=30, ge=5, le=120)
+    smtp_host: str = ""
+    smtp_port: int = Field(default=587, ge=1, le=65535)
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""
+    smtp_ssl: bool = False
+
     sde_source_path: str = "/sde"
     killboard_enabled_default: bool = True
     killboard_sync_period_hours_default: int = 6

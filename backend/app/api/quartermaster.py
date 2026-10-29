@@ -505,22 +505,7 @@ def list_assets(limit: int = Query(250, ge=1, le=1000), current_user: User = Dep
     return [serialize_asset(asset, hangar_names) for asset in rows]
 
 
-@router.get("/assets-page")
-def list_assets_page(
-    all_records: bool = Query(False),
-    page: int = Query(1, ge=1),
-    page_size: int = Query(100, ge=25, le=500),
-    sort_key: str = Query("item", pattern="^(item|owner|quantity|location|flag)$"),
-    sort_direction: str = Query("asc", pattern="^(asc|desc)$"),
-    owner_kind: str | None = Query(None, pattern="^(character|corporation|alliance|manual_group)$"),
-    category: str = Query("all"),
-    subtype: str | None = Query(None),
-    filter_key: str | None = Query(None, pattern="^(item|owner|location|flag)$"),
-    filter_value: str | None = Query(None),
-    filter_mode: str = Query("exact", pattern="^(exact|contains)$"),
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> dict[str, Any]:
+def filtered_asset_query(current_user, db, owner_kind, category, subtype, filter_key, filter_value, filter_mode):
     query = visible_asset_query(current_user, db).order_by(None)
     if owner_kind:
         query = query.where(Asset.ownership_entity.has(OwnershipEntity.owner_kind == owner_kind))
@@ -537,6 +522,26 @@ def list_assets_page(
         if filter_mode == "contains":
             predicate = func.lower(column).contains(filter_value.lower(), autoescape=True)
         query = query.where(Asset.item_type.has(predicate) if filter_key == "item" else Asset.ownership_entity.has(predicate))
+    return query
+
+
+@router.get("/assets-page")
+def list_assets_page(
+    all_records: bool = Query(False),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(100, ge=25, le=500),
+    sort_key: str = Query("item", pattern="^(item|owner|quantity|location|flag)$"),
+    sort_direction: str = Query("asc", pattern="^(asc|desc)$"),
+    owner_kind: str | None = Query(None, pattern="^(character|corporation|alliance|manual_group)$"),
+    category: str = Query("all"),
+    subtype: str | None = Query(None),
+    filter_key: str | None = Query(None, pattern="^(item|owner|location|flag)$"),
+    filter_value: str | None = Query(None),
+    filter_mode: str = Query("exact", pattern="^(exact|contains)$"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    query = filtered_asset_query(current_user, db, owner_kind, category, subtype, filter_key, filter_value, filter_mode)
     # Container paths and named corporation hangars are computed values; retain
     # their exact existing filter/sort semantics after narrowing candidates in SQL.
     computed = sort_key in {"location", "flag"} or (filter_key in {"location", "flag"} and filter_value)

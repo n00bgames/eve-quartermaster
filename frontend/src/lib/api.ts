@@ -67,3 +67,19 @@ export async function api<T>(path: string, options?: RequestInit): Promise<T> {
     options?.signal?.removeEventListener("abort", abortFromCaller);
   }
 }
+
+// File downloads bypass JSON parsing and never put authentication in a URL.
+export async function downloadApiFile(path: string, filename: string): Promise<void> {
+  const token=localStorage.getItem("eq_access_token");
+  const controller=new AbortController();
+  const timer=window.setTimeout(()=>controller.abort(),120000);
+  try {
+    const response=await fetch(`${API_BASE}${path}`,{credentials:"include",signal:controller.signal,headers:token?{Authorization:`Bearer ${token}`}:{}});
+    if(!response.ok){const payload=await response.json().catch(()=>null);throw new Error(formatApiError(payload?.detail??`Download failed (${response.status})`));}
+    const blob=await response.blob();
+    const url=URL.createObjectURL(blob);const link=document.createElement("a");
+    link.href=url;link.download=filename;document.body.appendChild(link);link.click();link.remove();
+    window.setTimeout(()=>URL.revokeObjectURL(url),60000);
+  } catch(error){if(error instanceof DOMException&&error.name==="AbortError")throw new Error("Export timed out. Try a narrower filter.");throw error;}
+  finally{window.clearTimeout(timer);}
+}

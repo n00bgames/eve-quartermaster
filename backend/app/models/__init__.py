@@ -1,3 +1,4 @@
+from app.models.password_recovery import PasswordReset, RecoveryRateLimit
 from app.models.local_scan import LocalScanReport, ScanHighlight
 from app.models.intel import IntelSubject, IntelCollection, IntelObservation, IntelSourceCache, IntelNote
 from app.models.fleet_assignments import FleetAssignmentOperation, FleetAssignmentPilot, FleetAssignmentPreset

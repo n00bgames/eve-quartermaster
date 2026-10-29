@@ -6,6 +6,9 @@ Version sections are written as user-facing release notes first, with implementa
 
 ## [2.0.0] - Unreleased
 
+- Add single-use password recovery links, optional SMTP delivery, administrator forced-reset controls and session revocation after password changes. Requires migration 0096 and matching frontend/API; SMTP is optional for admin-generated links.
+- Add complete filtered CSV and Janice downloads to Assets, independent of pagination and Load all records. Preserve owner visibility, support computed location/flag filters, aggregate Janice quantities and neutralize CSV formula text.
+
 - Add per-section navigation shortcut dropdowns for Quicklaunch menus. Keep links in their original sections, arrange shortcut copies independently, and remove individual copies. Preferences persist per account and respect existing permissions; deploy matching frontend/API with the existing appearance migration.
 
 - Add account-saved themes/custom colors, personal banners, drag-and-drop panel order and editable navigation groups/module placement, with keyboard move controls and independent resets. Admins can upload a site banner and login background. Apply migration 0095 with the matching frontend/API; presentation settings do not expand data access.

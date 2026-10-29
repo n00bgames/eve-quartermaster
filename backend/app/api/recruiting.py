@@ -9,7 +9,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.auth import get_current_user
-from app.core.security import create_access_token, hash_password
+from app.core.security import create_session_token, hash_password
 from app.db.session import get_db
 from app.models import EsiToken, EveCharacter, RecruitmentApplication, RecruitmentAuditLog, RecruitmentInterview, RecruitmentLinkedCharacter, RecruitmentMessage, RecruitmentNote, RecruitmentSettings, RecruitmentStatusHistory, RecruitmentUserCapability, User
 from app.services.esi_client import EsiClient, resolve_names
@@ -89,7 +89,7 @@ def register_applicant(payload: dict[str, Any], db: Session = Depends(get_db)) -
     applicant_application(db, user, create=True)
     audit(db, user, "applicant_registered", "Applicant account created")
     db.commit()
-    return {"access_token": create_access_token(str(user.id), {"role": user.role}), "token_type": "bearer", "user": {"id": user.id, "email": user.email, "display_name": user.display_name, "role": user.role, "timezone": user.timezone}}
+    return {"access_token": create_session_token(user, {"role": user.role}), "token_type": "bearer", "user": {"id": user.id, "email": user.email, "display_name": user.display_name, "role": user.role, "timezone": user.timezone}}
 
 
 @router.get("/context")

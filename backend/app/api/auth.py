@@ -12,7 +12,7 @@ from sqlalchemy import delete as sa_delete, func, select, update
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.core.security import create_access_token, decode_token, hash_password, verify_password
+from app.core.security import create_session_token, replace_account_password, decode_token, hash_password, verify_password
 from app.db.session import get_db
 from app.services.permissions import BUILT_IN_ROLES, ROLE_RANK, SECTION_DEFINITIONS, disabled_sections, effective_permissions, role_exists, role_payload, role_rank, role_names, section_payload, set_disabled_sections, base_role_for, assigned_roles, assign_roles, assigned_base_roles, quartermaster_read_only
 from app.services.user_accounts import retire_user_account
@@ -52,6 +52,7 @@ def clear_remember_me_cookie(response: Response) -> None:
 def serialize_user(user: User) -> dict[str, Any]:
     return {
         "id": user.id,
+        "password_reset_required": user.password_reset_required,
         "email": user.email,
         "display_name": user.display_name,
         "role": user.role,
@@ -149,6 +150,8 @@ def get_current_user(
     user = db.get(User, user_id)
     if user is None or user.deleted_at is not None:
         raise HTTPException(status_code=401, detail="User no longer exists")
+    if payload.get("kind") is not None or payload.get("auth_version", 0) != user.auth_version or user.password_reset_required:
+        raise HTTPException(401, "Your session has expired. Please sign in again or reset your password.")
     utility_path = request.url.path.rstrip("/").removeprefix(get_settings().api_prefix)
     quartermaster_utility = request.method == "POST" and (
         utility_path in {"/market/appraise", "/navigation/local-threat", "/navigation/local-threat/jobs", "/esi/ui/waypoint"}
@@ -158,6 +161,7 @@ def get_current_user(
     quartermaster_utility = quartermaster_utility or (request.method == "PUT" and utility_path == "/auth/me/main-character")
     quartermaster_utility = quartermaster_utility or (request.method == "POST" and utility_path in {"/industry-reports", "/industry-reports/reports/delete"})
     quartermaster_utility = quartermaster_utility or (request.method == "PATCH" and utility_path == "/appearance/me") or (request.method == "PUT" and utility_path == "/appearance/me/banner")
+    quartermaster_utility = quartermaster_utility or (request.method == "PATCH" and utility_path == "/auth/me")
     quartermaster_refresh = request.method == "POST" and request.url.path.rstrip("/") == f"{get_settings().api_prefix}/quartermaster-oversight/sync"
     if quartermaster_read_only(user, db) and request.method not in {"GET", "HEAD", "OPTIONS"} and not quartermaster_refresh and not quartermaster_utility:
         raise HTTPException(status_code=403, detail="Quartermaster is a view-only role")
@@ -329,7 +333,7 @@ def bootstrap_admin(payload: dict[str, Any], db: Session = Depends(get_db)) -> d
     user.password_hash = hash_password(password)
     db.commit()
     db.refresh(user)
-    token = create_access_token(str(user.id), {"role": user.role})
+    token = create_session_token(user, {"role": user.role})
     return {"access_token": token, "token_type": "bearer", "user": serialize_user(user)}
 
 
@@ -340,10 +344,12 @@ def login(payload: dict[str, Any], response: Response, db: Session = Depends(get
     user = db.scalar(select(User).where(User.email == email, User.deleted_at.is_(None)))
     if user is None or not verify_password(password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid email or password")
+    if user.password_reset_required:
+        raise HTTPException(403, "A password reset is required. Use your recovery link or Forgot password.")
     remember_me = payload.get("remember_me") is True
     settings = get_settings()
-    token = create_access_token(
-        str(user.id),
+    token = create_session_token(
+        user,
         {"role": user.role, "remember_me": remember_me},
         expires_minutes=settings.remember_me_days * 24 * 60 if remember_me else None,
     )
@@ -407,7 +413,7 @@ def update_me(payload: dict[str, Any], current_user: User = Depends(get_current_
             raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
         if not current_user.password_hash or not verify_password(current_password, current_user.password_hash):
             raise HTTPException(status_code=400, detail="Current password is required to change password")
-        current_user.password_hash = hash_password(new_password)
+        replace_account_password(db, current_user, new_password)
 
     db.commit()
     db.refresh(current_user)
@@ -465,7 +471,7 @@ def update_user(user_id: int, payload: dict[str, Any], current_user: User = Depe
         password = str(payload["password"])
         if len(password) < 8:
             raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
-        user.password_hash = hash_password(password)
+        replace_account_password(db, user, password)
     db.commit()
     db.refresh(user)
     return serialize_user(user)
@@ -581,7 +587,7 @@ def accept_invite(token: str, payload: dict[str, Any], db: Session = Depends(get
     invite.accepted_by_user_id = user.id
     db.commit()
     db.refresh(user)
-    token = create_access_token(str(user.id), {"role": user.role})
+    token = create_session_token(user, {"role": user.role})
     return {"access_token": token, "token_type": "bearer", "user": serialize_user(user)}
 
 

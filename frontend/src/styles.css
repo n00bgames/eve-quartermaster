@@ -1530,3 +1530,10 @@
 .analytics-jump-nav a:hover,.analytics-jump-nav a:focus-visible{color:#ffe8aa;border-color:var(--eqm-accent, #e8b84d);outline:none}
 .analytics-category-anchor{scroll-margin-top:76px}
 .analytics-scroll-anchor{grid-column:1/-1;height:0;scroll-margin-top:76px}
+
+/* Password recovery forms share the account theme and remain usable on mobile. */
+.recovery-form { display: grid; gap: 12px; margin: 12px 0; }
+.recovery-form label { display: grid; gap: 6px; }
+.recovery-form label.check { display: flex; align-items: center; }
+.recovery-form label.check input { width: auto; }
+.password-recovery .auth-link { display: inline-flex; margin-top: 12px; }

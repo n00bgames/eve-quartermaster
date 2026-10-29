@@ -168,6 +168,12 @@ export function ProfilePage({ currentUser, onUserUpdated, focus, api, ManagedFor
       if (currentPassword) payload.current_password = currentPassword;
 
       const updated = await api<ProfileUserAccount>("/auth/me", { method: "PATCH", body: JSON.stringify(payload) });
+      if (password) {
+        localStorage.removeItem("eq_access_token");
+        await api("/auth/logout", {method:"POST"});
+        window.location.assign("/");
+        return;
+      }
       onUserUpdated(updated);
       setMessage("Profile updated.");
     } catch (err) {

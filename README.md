@@ -869,3 +869,11 @@ Industry Reports now show **active jobs → blueprints/reactions → stock total
 Build a Quicklaunch section at the top of your navbar: **Customize navigation → Add section**, then use its **Add shortcut** dropdown to choose links from any permitted section. Original links stay in place. Reorder or remove shortcut copies and save the layout to your account. [Controls and rollout](docs/appearance.md) · [Editor and mobile screenshots](docs/screenshots.md#quicklaunch-shortcuts).
 
 ![Saved Quicklaunch with original Local Scan link retained](static/ss/v2.0/quicklaunch-navigation.jpg)
+
+### Password recovery and complete asset exports (2.0 development)
+
+Recover accounts with expiring single-use links, configurable email delivery and administrator reset controls. Download every matching asset as CSV or an aggregated Janice list while the ledger stays paginated. [Configuration, permissions and rollout](docs/password-recovery-and-exports.md) · [Screenshots](docs/screenshots.md#password-recovery-and-full-asset-downloads).
+
+![Full asset downloads](static/ss/v2.0/full-asset-downloads.jpg)
+
+![Password recovery](static/ss/v2.0/password-recovery.jpg)

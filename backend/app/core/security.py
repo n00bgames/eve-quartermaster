@@ -89,6 +89,10 @@ def create_access_token(
     return jwt.encode(payload, settings.auth_secret_key, algorithm=JWT_ALGORITHM)
 
 
+def create_session_token(user, extra=None, *, expires_minutes=None):
+    return create_access_token(str(user.id), {**(extra or {}), "auth_version": user.auth_version or 0}, expires_minutes=expires_minutes)
+
+
 def decode_token(token: str) -> dict[str, Any]:
     settings = get_settings()
     try:
@@ -121,3 +125,13 @@ def decode_sso_state(state: str | None) -> int | None:
         return int(payload.get("sub"))
     except (TypeError, ValueError):
         return None
+
+
+def replace_account_password(db, user, password):
+    """Atomic version increment also invalidates sessions under concurrent changes."""
+    from sqlalchemy import update
+    from app.models import User
+    db.execute(update(User).where(User.id == user.id).values(
+        password_hash=hash_password(password), auth_version=User.auth_version+1,
+        password_reset_required=False).execution_options(synchronize_session="fetch"))
+    db.refresh(user)

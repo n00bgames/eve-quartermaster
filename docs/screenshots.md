@@ -468,3 +468,23 @@ Quicklaunch editor with the Add shortcut dropdown, original-link notice, individ
 Quicklaunch shortcut dropdown at a 420px viewport; the navigation editor scrolls independently and the page has no horizontal overflow.
 
 ![Quicklaunch shortcut dropdown at a 420px viewport; the navigation editor scrolls independently and the page has no horizontal overflow.](../static/ss/v2.0/quicklaunch-mobile.jpg)
+
+## Password recovery and full asset downloads
+
+October 29, 2026, unreleased 2.0.0. [Setup and verification](password-recovery-and-exports.md). Synthetic data only.
+
+Forgot-password request with a generic response that does not reveal whether an account exists.
+
+![Forgot-password request with a generic response that does not reveal whether an account exists.](../static/ss/v2.0/password-recovery.jpg)
+
+New-password and confirmation form; no real credentials entered and the preview token is invalid.
+
+![New-password and confirmation form; no real credentials entered and the preview token is invalid.](../static/ss/v2.0/password-reset-form.jpg)
+
+Administrator recovery controls, including immediate sign-out and required reset; no link or password shown.
+
+![Administrator recovery controls, including immediate sign-out and required reset; no link or password shown.](../static/ss/v2.0/admin-password-recovery.jpg)
+
+Complete filtered CSV and Janice downloads alongside a ledger still displaying 100 of 621 synthetic rows.
+
+![Complete filtered CSV and Janice downloads alongside a ledger still displaying 100 of 621 synthetic rows.](../static/ss/v2.0/full-asset-downloads.jpg)

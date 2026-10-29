@@ -8,11 +8,11 @@ Continue improving fitting simulation Dogma fidelity as real fittings expose gap
 
 ## Password Reset
 
-Add an account password reset flow. Prefer a secure token-based reset path for users who cannot sign in, plus clear admin controls for forced resets.
+- [x] Implemented: expiring single-use recovery links, configurable SMTP, admin-generated links/forced resets, session invalidation and shared throttling. [Setup and validation](password-recovery-and-exports.md).
 
 ## Server-side Asset Exports
 
-Add full filtered CSV and Janice-list exports from the backend for the Assets ledger so large inventories can export complete filtered results without loading every row into browser memory.
+- [x] Implemented: full filtered CSV and aggregated Janice downloads, batched standard queries, existing visibility/permissions and filter parity, without loading all rows into the browser table. [Behavior and limits](password-recovery-and-exports.md#full-filtered-asset-downloads).
 
 ## Settings Maintenance Actions
 
