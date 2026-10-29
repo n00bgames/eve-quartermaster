@@ -6,6 +6,8 @@ Version sections are written as user-facing release notes first, with implementa
 
 ## [2.0.0] - Unreleased
 
+- Fix Industry Reports excluding blueprints and material stock in corporation offices. Recognize validated station/Upwell office hangars and station deliveries while preserving ship-cargo and cross-owner exclusions. Existing dynamic links update after backend deployment; snapshots require regeneration.
+
 - Separate creator-only Inventory Reports for personal ships, modules, fittings and container stock, with totals/itemization and CSV/PDF. Industry Reports now default to industrial materials plus BPOs/BPCs/reaction formulas, jobs and PI; public identities are always anonymous, and finished goods require explicit NPC-station/Upwell storage selection. Legacy unapproved Industry stock is hidden pending regeneration.
 
 ### Added

@@ -10,7 +10,7 @@ from app.models import Asset, EveType, EveGroup, OwnershipEntity, CorporationDiv
 
 CONTAINER_GROUPS = {12, 340, 448, 649}
 CONTAINER_NAMES = {"cargo container", "secure cargo container", "audit log secure container", "freight container", "station container"}
-STORED_FLAGS = {None, "Hangar", "Unlocked", "Locked"}
+STORED_FLAGS = {None, "Hangar", "Unlocked", "Locked", "CorpDeliveries"}
 
 
 def industry_category(item):
@@ -56,6 +56,19 @@ class StorageIndex:
             select(CorporationDivision).where(CorporationDivision.corporation_id.in_(corp_ids),CorporationDivision.division_type=="hangar"))}
         self._resolved = {}
 
+    def office_hangar(self, asset):
+        """ESI corporation offices are storage roots, not cargo containers."""
+        office = self.assets.get(asset.parent_asset_id)
+        owner = self.owners.get(asset.ownership_entity_id)
+        if not (office and owner and owner.owner_kind.value == "corporation"
+                and office.ownership_entity_id == asset.ownership_entity_id
+                and office.type_id == 27 and office.item_type and office.item_type.group_id == 16
+                and office.location_flag == "OfficeFolder" and office.parent_asset_id is None
+                and re.fullmatch(r"CorpSAG[1-7]", asset.location_flag or "")
+                and office.location and office.location.location_kind.value in {"station", "structure"}):
+            return None
+        return office.location, asset.location_flag
+
     def placement(self, asset):
         if asset.id in self._resolved:
             return self._resolved[asset.id]
@@ -68,6 +81,10 @@ class StorageIndex:
             if flag not in STORED_FLAGS and not re.fullmatch(r"CorpSAG[1-7]", flag or ""):
                 break
             if current.parent_asset_id is not None:
+                office_place = self.office_hangar(current)
+                if office_place:
+                    result = office_place
+                    break
                 parent = self.assets.get(current.parent_asset_id)
                 if not parent or parent.ownership_entity_id != asset.ownership_entity_id or not is_container(parent):
                     break
@@ -110,7 +127,7 @@ class StorageIndex:
                 continue
             location, flag = place
             owner = self.owner_label(asset.ownership_entity_id)
-            if asset.parent_asset_id is None:
+            if asset.parent_asset_id is None or self.office_hangar(asset):
                 key = self.key(asset)
                 corp_id=self.owners[asset.ownership_entity_id].corporation_id
                 name=self.hangar_names.get((corp_id,flag))
@@ -124,7 +141,7 @@ class StorageIndex:
     def selected(self, asset, keys):
         if not self.placement(asset) or is_container(asset):
             return False
-        if asset.parent_asset_id:
+        if asset.parent_asset_id and not self.office_hangar(asset):
             return self.key(self.assets[asset.parent_asset_id], True) in keys
         return self.key(asset) in keys
 

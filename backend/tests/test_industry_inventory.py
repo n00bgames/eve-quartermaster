@@ -241,3 +241,77 @@ def test_inventory_date_deletion_is_own_and_kind_scoped(stock):
     assert deleted.json()['deleted']==1
     assert stock.env.client.get('/api/industry-reports/reports/'+industry['token']).status_code==200
     assert stock.env.client.get('/api/inventory-reports/reports/'+inventory['token']).status_code==404
+
+
+@pytest.fixture
+def office_stock(stock):
+    db=stock.db
+    owner=OwnershipEntity(owner_kind=OwnerKind.CORPORATION,corporation_id=stock.char.corporation_id,display_name='Demo corporation')
+    group=EveGroup(group_id=16,name='Station Services',category_id=23)
+    db.add_all([owner,group]);db.flush()
+    db.add(EveType(type_id=27,name='Office',group=group));db.flush()
+    office=Asset(ownership_entity_id=owner.id,type_id=27,location_id=stock.station.id,location_flag='OfficeFolder')
+    db.add(office);db.flush()
+    can=Asset(ownership_entity_id=owner.id,type_id=1003,parent_asset_id=office.id,location_flag='CorpSAG7')
+    ammo=Asset(ownership_entity_id=owner.id,type_id=1001,quantity=20,parent_asset_id=office.id,location_flag='CorpSAG7')
+    mineral=Asset(ownership_entity_id=owner.id,type_id=34,quantity=123,parent_asset_id=office.id,location_flag='CorpSAG7')
+    db.add_all([can,ammo,mineral]);db.flush()
+    nested=Asset(ownership_entity_id=owner.id,type_id=1001,quantity=30,parent_asset_id=can.id,location_flag='Unlocked')
+    db.add(nested);db.commit()
+    scope={**stock.scope,'stock':[owner.id],'blueprint_characters':[],'blueprint_corporations':[stock.char.corporation_id]}
+    return SimpleNamespace(stock=stock,db=db,owner=owner,office=office,can=can,ammo=ammo,mineral=mineral,nested=nested,scope=scope)
+
+
+def test_corporate_office_hangars_and_nested_stock(office_stock):
+    o=office_stock
+    for location in (o.stock.station,o.stock.upwell):
+        o.office.location_id=location.id;o.db.commit()
+        idx=StorageIndex(o.db,[o.owner.id]);options=idx.options([o.owner.id])
+        hangar=next(x['key'] for x in options if x['kind']=='hangar')
+        can=next(x['key'] for x in options if x['kind']=='container')
+        assert hangar.endswith(':CorpSAG7')
+        assert quantities(service.build(o.db,o.scope))=={'Tritanium':123,'Mechanical Parts':20}
+        assert quantities(service.build(o.db,o.scope,[hangar]))['Antimatter Charge']==20
+        assert quantities(service.build(o.db,o.scope,[can]))['Antimatter Charge']==30
+        assert idx.placement(o.office) is None
+        public=service.present(service.build(o.db,o.scope,[hangar]),public=True)
+        assert o.stock.char.name not in str(public)
+
+
+def test_office_blueprints_above_2500_and_dynamic_existing_link(office_stock):
+    o=office_stock
+    assets=[Asset(ownership_entity_id=o.owner.id,type_id=1004,parent_asset_id=o.can.id,location_flag='Unlocked') for _ in range(2501)]
+    o.db.add_all(assets);o.db.flush()
+    o.db.add_all([Blueprint(asset_id=a.id,ownership_entity_id=o.owner.id,blueprint_type_id=1004,is_copy=False) for a in assets]);o.db.commit()
+    data=create(o.stock,is_private=False,dynamic=True)
+    saved=o.db.get(LocalScanReport,data['token']);saved.payload={**saved.payload,'_scope':o.scope};o.db.commit()
+    with patch.object(service,'permitted_scope',new=AsyncMock(return_value=o.scope)):
+        response=o.stock.env.client.get('/api/industry-reports/public/'+data['token'])
+        assert response.status_code==200,response.text
+        result=response.json();assert len(result['blueprints'])==2501 and result['summary']['bpos']==2501
+        csv=o.stock.env.client.get('/api/industry-reports/public/'+data['token']+'/export/csv')
+        assert csv.status_code==200 and csv.text.split('BLUEPRINTS',1)[1].split('JOBS',1)[0].count('Raven Blueprint')==2501
+
+
+@pytest.mark.parametrize('invalid',['foreign_owner','inside_ship','wrong_type','wrong_group','wrong_office_flag','wrong_child_flag','unknown_location'])
+def test_office_resolution_keeps_storage_boundary(office_stock,invalid):
+    o=office_stock
+    if invalid=='foreign_owner':o.office.ownership_entity_id=o.stock.other.id
+    elif invalid=='inside_ship':o.office.parent_asset_id=o.stock.assets['ship'].id
+    elif invalid=='wrong_type':o.office.type_id=638
+    elif invalid=='wrong_group':o.db.get(EveType,27).group_id=27
+    elif invalid=='wrong_office_flag':o.office.location_flag='Cargo'
+    elif invalid=='wrong_child_flag':o.can.location_flag='Cargo'
+    else:o.office.location_id=o.db.scalar(select(Location).where(Location.location_kind==LocationKind.UNKNOWN)).id
+    o.db.commit();idx=StorageIndex(o.db,[o.owner.id,o.stock.other.id])
+    assert idx.placement(o.can) is None and idx.placement(o.nested) is None
+
+
+def test_station_corporation_deliveries_are_storage_not_ship_cargo(office_stock):
+    o=office_stock
+    o.ammo.parent_asset_id=None;o.ammo.location_id=o.stock.station.id;o.ammo.location_flag='CorpDeliveries';o.db.commit()
+    idx=StorageIndex(o.db,[o.owner.id]);key=idx.key(o.ammo)
+    assert key and key.endswith(':CorpDeliveries')
+    assert quantities(service.build(o.db,o.scope,[key]))['Antimatter Charge']==20
+    o.ammo.parent_asset_id=o.stock.assets['ship'].id;o.db.commit()
+    assert StorageIndex(o.db,[o.owner.id,o.stock.owner.id]).placement(o.ammo) is None
