@@ -16,7 +16,7 @@
 .module-finder > label > svg {
   position: absolute;
   left: 11px;
-  color: #4fb3c7;
+  color: var(--eqm-accent, #4fb3c7);
   pointer-events: none;
 }
 
@@ -35,11 +35,11 @@
   padding: 0;
   border: 0;
   background: transparent;
-  color: #aab4c2;
+  color: var(--eqm-muted, #aab4c2);
 }
 
 .module-finder > small {
-  color: #8b98a8;
+  color: var(--eqm-muted, #8b98a8);
   white-space: nowrap;
   font-size: .78rem;
 }

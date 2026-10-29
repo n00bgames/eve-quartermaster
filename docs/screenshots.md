@@ -424,3 +424,31 @@ Current synthetic public report, superseding the earlier order and masked-struct
 
 ![Jobs, blueprints, totals, ownership and PI in order](../static/ss/v2.0/industry-jobs-first.jpg)
 ![Matching PDF order and resolved facility names](../static/ss/v2.0/industry-jobs-first-pdf.png)
+
+## Appearance, layouts and sortable reports
+
+October 29, 2026, unreleased 2.0.0. Actual synthetic browser checks; [controls and validation](appearance.md).
+
+Saved Deep space palette and navigation editor with group naming, module placement and move controls.
+
+![Saved Deep space palette and navigation editor with group naming, module placement and move controls.](../static/ss/v2.0/appearance-navigation.jpg)
+
+Daylight palette with custom colors and per-account layout controls.
+
+![Daylight palette with custom colors and per-account layout controls.](../static/ss/v2.0/appearance-daylight.jpg)
+
+Overview after dragging Blueprint Library ahead of Recent Assets; panel moves are saved automatically.
+
+![Overview after dragging Blueprint Library ahead of Recent Assets; panel moves are saved automatically.](../static/ss/v2.0/appearance-panels.jpg)
+
+Personal and admin site branding uploads with reset controls; bundled art used as synthetic upload fixtures.
+
+![Personal and admin site branding uploads with reset controls; bundled art used as synthetic upload fixtures.](../static/ss/v2.0/appearance-branding.jpg)
+
+Public login using the uploaded site banner and alternative bundled background; personal theme cleared on logout.
+
+![Public login using the uploaded site banner and alternative bundled background; personal theme cleared on logout.](../static/ss/v2.0/appearance-login.jpg)
+
+Existing public Industry Report sorted by quantity descending across the complete stock section.
+
+![Existing public Industry Report sorted by quantity descending across the complete stock section.](../static/ss/v2.0/industry-sortable-columns.jpg)

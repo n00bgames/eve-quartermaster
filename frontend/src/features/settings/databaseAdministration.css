@@ -4,7 +4,7 @@
 }
 
 .database-backup-note {
-  background: #111820;
+  background: var(--eqm-background, #111820);
   border: 1px solid #36424f;
   border-radius: 6px;
   color: #aeb9c7;

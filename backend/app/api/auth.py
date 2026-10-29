@@ -157,6 +157,7 @@ def get_current_user(
     )
     quartermaster_utility = quartermaster_utility or (request.method == "PUT" and utility_path == "/auth/me/main-character")
     quartermaster_utility = quartermaster_utility or (request.method == "POST" and utility_path in {"/industry-reports", "/industry-reports/reports/delete"})
+    quartermaster_utility = quartermaster_utility or (request.method == "PATCH" and utility_path == "/appearance/me") or (request.method == "PUT" and utility_path == "/appearance/me/banner")
     quartermaster_refresh = request.method == "POST" and request.url.path.rstrip("/") == f"{get_settings().api_prefix}/quartermaster-oversight/sync"
     if quartermaster_read_only(user, db) and request.method not in {"GET", "HEAD", "OPTIONS"} and not quartermaster_refresh and not quartermaster_utility:
         raise HTTPException(status_code=403, detail="Quartermaster is a view-only role")

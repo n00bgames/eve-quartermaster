@@ -1,3 +1,4 @@
+import {LayoutRegion} from "../appearance/LayoutRegion";
 import { Boxes, Database, Factory, KeyRound, MapIcon, PackagePlus, RefreshCw, ScrollText } from "lucide-react";
 import { Fragment, useEffect, useState, type ReactElement, type ReactNode } from "react";
 
@@ -126,8 +127,8 @@ export function SettingsPage({ currentUser, api, Metric, ManagedForm, accountLab
         : "No SDE import running";
 
   return (
-    <div className="stacked">
-      <section className="panel stacked">
+    <LayoutRegion region="settings" className="stacked">
+      <section key="settings-1" data-layout-id="settings-1" data-layout-label="Character Privacy" className="panel stacked">
         <h3>Character Privacy</h3>
         {message && <div className="notice inline">{message}</div>}
         {settingsError && <div className="mini-alert">{settingsError}</div>}
@@ -173,7 +174,7 @@ export function SettingsPage({ currentUser, api, Metric, ManagedForm, accountLab
       {hostAccess && <DatabaseAdministration api={api} />}
       {adminAccess && <SectionModuleSettings api={api} />}
       {adminAccess && <PermissionsAdmin api={api} ManagedForm={ManagedForm} accountLabel={accountLabel} />}
-    </div>
+    </LayoutRegion>
   );
 }
 

@@ -55,13 +55,15 @@ Implementation: [Battle Report management and migration 0094](battle-report-mana
 
 ## Personal Section Layouts
 
-- [ ] Let each user rearrange section panels/widgets with drag and drop.
-- [ ] Save layouts per EQM user and section, and restore them across sessions without changing other users' layouts.
+Implemented for multi-section workspaces; [controls, coverage and rollout](appearance.md).
 
-- [ ] Include navigation-menu customization: users can drag and drop whole sections to change their order and choose where each section appears.
-- [ ] Let users rename their navigation sections and move/reorder modules between sections.
-- [ ] Persist section order, custom section names, module grouping/order, and panel layouts per account across sessions; customization must not grant access to modules the user lacks permission to view.
-- [ ] Keep the standard navigation layout, including Intel as the second named group, as the default for users without a saved custom layout.
+- [x] Let each user rearrange section panels/widgets with drag and drop.
+- [x] Save layouts per EQM user and section, and restore them across sessions without changing other users' layouts.
+
+- [x] Include navigation-menu customization: users can drag and drop whole sections to change their order and choose where each section appears.
+- [x] Let users rename their navigation sections and move/reorder modules between sections.
+- [x] Persist section order, custom section names, module grouping/order, and panel layouts per account across sessions; customization must not grant access to modules the user lacks permission to view.
+- [x] Keep the standard navigation layout, including Intel as the second named group, as the default for users without a saved custom layout.
 
 ## Shared Report Header
 
@@ -70,6 +72,8 @@ Implementation: [Battle Report management and migration 0094](battle-report-mana
 - [x] Apply the same header scheme to Inventory Report with private main-character attribution.
 
 ## Industry Report
+
+- [x] Sortable section headers; full dataset sorted before pagination, including existing public reports.
 
 - [x] Industrial materials, BPOs/BPCs/reaction formulas, active industry jobs and PI reporting; personal general assets use the separate private Inventory Report.
 - [x] Overall mineral/PI and stock totals by type, followed by owner/location itemization.
@@ -87,9 +91,11 @@ Implementation: [Battle Report management and migration 0094](battle-report-mana
 
 ## Themes and Personal Branding
 
-- [ ] Add user-selectable color palettes/themes for the EQM interface.
-- [ ] Allow each user to choose or upload their own logo for their EQM interface.
-- [ ] Save theme and logo preferences per user and restore them across sessions without changing other users' branding.
+- [x] Admin-controlled site banner and login background uploads with validated images and reset controls.
+
+- [x] Add user-selectable color palettes/themes for the EQM interface.
+- [x] Allow each user to choose or upload their own logo for their EQM interface.
+- [x] Save theme and logo preferences per user and restore them across sessions without changing other users' branding.
 
 ## Implemented in the 2.0 development pass
 

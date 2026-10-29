@@ -1,3 +1,7 @@
+import {LayoutRegion} from "./features/appearance/LayoutRegion";
+import {AppearanceProvider,AppearanceStatus,ArrangeButton,BrandImage,useAppearanceAccount} from "./features/appearance/AppearanceProvider";
+import {AppearanceSettings} from "./features/appearance/AppearanceSettings";
+import {CustomNavigation} from "./features/appearance/CustomNavigation";
 import {InventoryReportPage} from "./features/industryReports/InventoryReportPage";
 import {IndustryReportPage,PublicIndustryReportPage} from "./features/industryReports/IndustryReportPage";
 import { DScanPage } from "./features/dscan/DScanPage";
@@ -639,7 +643,7 @@ function App() {
 
 
 
-  function canView(section: string) { if (quartermasterOnly.current && section === "settings") return false; return permissions[section] !== false || ["overview", "settings", "profile"].includes(section); }
+  function canView(section: string) { return permissions[section] !== false || ["overview", "settings", "profile"].includes(section); }
 
   function openThreatAnalyzer() {
     window.location.hash = "local-threat";
@@ -651,6 +655,8 @@ function App() {
 
 
 
+  useAppearanceAccount(user?.id);
+
   const inviteToken = new URLSearchParams(window.location.search).get("invite");
 
   const publicRecruiting = locationHash === "#recruiting" || locationHash === "#apply";
@@ -660,7 +666,7 @@ function App() {
   const publicLocalScanToken = locationHash.startsWith("#local-scan/") ? locationHash.slice("#local-scan/".length) : null;
   const publicBattleReportToken = locationHash.startsWith("#battle-report/") ? locationHash.slice("#battle-report/".length) : null;
 
-  if (!authReady) return <main className="auth-shell"><section className="panel"><img className="auth-logo" src="/eqm-logo.webp" alt="EVE Quartermaster" /><p className="muted">Checking account session...</p></section></main>;
+  if (!authReady) return <main className="auth-shell"><section className="panel"><BrandImage className="auth-logo"/><p className="muted">Checking account session...</p></section></main>;
 
   if (publicIndustryReportToken) return <PublicIndustryReportPage api={api} token={publicIndustryReportToken} onBack={()=>{window.location.hash="";window.location.reload();}}/>;
 
@@ -696,7 +702,7 @@ function App() {
             setActiveTab("overview");
           }}
         >
-          <img className="brand-logo" src="/eqm-logo.webp" alt="EVE Quartermaster" />
+          <BrandImage className="brand-logo" personal/>
         </button>
 
         <div>
@@ -707,103 +713,56 @@ function App() {
 
         </div>
 
-        <nav>
+        <CustomNavigation entries={{
+          overview: canView("overview") && <button className={activeTab === "overview" ? "active" : ""} onClick={() => setActiveTab("overview")}><Database size={18} /> Overview</button>,
+          navigation: canView("navigation") && <button className={activeTab === "navigation" ? "active" : ""} onClick={() => setActiveTab("navigation")}><MapIcon size={18} /> Navigation</button>,
+          characters: canView("characters") && <button className={activeTab === "characters" ? "active" : ""} onClick={() => setActiveTab("characters")}><UserRoundCheck size={18} /> Characters</button>,
+          skills: canView("skills") && <button className={activeTab === "skills" ? "active" : ""} onClick={() => { setSkillPlanFocusId(null); window.location.hash="skills"; setActiveTab("skills"); }}><GraduationCap size={18} /> Skills</button>,
+          fittings: canView("fittings") && <button className={`fittings-wip${activeTab === "fittings" ? " active" : ""}`} onClick={() => setActiveTab("fittings")}><ClipboardList size={18} /> Fittings - WIP</button>,
+          jump_clones: canView("jump_clones") && <button className={activeTab === "jump_clones" ? "active" : ""} onClick={() => setActiveTab("jump_clones")}><UserRoundCheck size={18} /> Jump Clones</button>,
+          roster: canView("roster") && <button className={activeTab === "roster" ? "active" : ""} onClick={() => setActiveTab("roster")}><Building2 size={18} /> Roster</button>,
+          esi: canView("esi") && <button className={activeTab === "esi" ? "active" : ""} onClick={() => setActiveTab("esi")}><KeyRound size={18} /> ESI Sync</button>,
+          local_scan: canView("local_scan") && <button className={activeTab === "local_scan" ? "active" : ""} onClick={() => { window.location.hash="local-scan"; setActiveTab("local_scan"); }}><UserRoundCheck size={18} /> Local Scan</button>,
+          dscan: canView("dscan") && <button className={activeTab === "dscan" ? "active" : ""} onClick={() => { window.location.hash="d-scan"; setActiveTab("dscan"); }}><Siren size={18} /> D-Scan</button>,
+          intel_reports: canView("intel_reports") && <button className={activeTab === "intel_reports" ? "active" : ""} onClick={() => { window.location.hash="intel"; setActiveTab("intel_reports"); }}><Siren size={18} /> Intel Reports</button>,
+          local_threat: canView("navigation") && <button type="button" className={activeTab === "navigation" && locationHash === "#local-threat" ? "active" : ""} onClick={openThreatAnalyzer}><Siren size={18} /> Local Threat Analyzer</button>,
+          market: canView("market") && <button className={activeTab === "market" ? "active" : ""} onClick={() => setActiveTab("market")}><ShoppingCart size={18} /> Market</button>,
+          exchange: canView("exchange") && <button className={activeTab === "exchange" ? "active" : ""} onClick={() => { window.location.hash = "exchange"; setActiveTab("exchange"); }}><Store size={18} /> Corporate Exchange</button>,
+          hypernet: canView("hypernet") && <button className={activeTab === "hypernet" ? "active" : ""} onClick={() => { window.location.hash = "hypernet"; setActiveTab("hypernet"); }}><Coins size={18} /> HyperNet Tracker</button>,
+          plex: canView("plex") && <button className={activeTab === "plex" ? "active" : ""} onClick={() => { window.location.hash = "plex"; setActiveTab("plex"); }}><Coins size={18} /> PLEX Tracker</button>,
+          bounty_analytics: canView("bounty_analytics") && <button className={activeTab === "bounty_analytics" ? "active" : ""} onClick={() => { window.location.hash = "bounties"; setActiveTab("bounty_analytics"); }}><TrendingUp size={18} /> Bounty Analytics</button>,
+          notes: canView("notes") && <button className={activeTab === "notes" ? "active" : ""} onClick={() => setActiveTab("notes")}><NotebookTabs size={18} /> Notes & Lists</button>,
+          inventory_reports: canView("inventory_reports") && canView("assets") && <button className={activeTab === "inventory_reports" ? "active" : ""} onClick={()=>{window.location.hash="inventory-reports";setActiveTab("inventory_reports");}}><Boxes size={18}/> Inventory Report</button>,
+          industry_reports: canView("industry_reports") && <button className={activeTab === "industry_reports" ? "active" : ""} onClick={()=>{window.location.hash="industry-reports";setActiveTab("industry_reports");}}><ClipboardList size={18}/> Industry Report</button>,
+          quartermaster: canView("quartermaster") && <button className={activeTab === "quartermaster" ? "active" : ""} onClick={() => { window.location.hash = "quartermaster"; setActiveTab("quartermaster"); }}><Boxes size={18} /> Quartermaster</button>,
+          manufacturing: canView("manufacturing") && <button className={activeTab === "manufacturing" ? "active" : ""} onClick={() => setActiveTab("manufacturing")}><Factory size={18} /> Manufacturing</button>,
+          research_projects: canView("industry") && <button className={activeTab === "research_projects" ? "active" : ""} onClick={() => setActiveTab("research_projects")}><FlaskConical size={18} /> Research Projects</button>,
+          mining: canView("mining") && <button className={activeTab === "mining" ? "active" : ""} onClick={() => setActiveTab("mining" )}><Pickaxe size={18} /> Mining Ledger</button>,
+          planetary_industry: canView("planetary_industry") && <button className={activeTab === "planetary_industry" ? "active" : ""} onClick={() => setActiveTab("planetary_industry")}><Globe2 size={18} /> Planetary Industry</button>,
+          corporations: canView("corporations") && <button className={activeTab === "corporations" ? "active" : ""} onClick={() => setActiveTab("corporations")}><Building2 size={18} /> Corporations</button>,
+          ownership: canView("ownership") && <button className={activeTab === "ownership" ? "active" : ""} onClick={() => setActiveTab("ownership")}><Boxes size={18} /> Ownership</button>,
+          assets: canView("assets") && <button className={activeTab === "assets" ? "active" : ""} onClick={() => setActiveTab("assets")}><PackagePlus size={18} /> Assets</button>,
+          industry: canView("industry") && <button className={activeTab === "industry" ? "active" : ""} onClick={() => setActiveTab("industry")}><Factory size={18} /> Industry</button>,
+          contracts: canView("contracts") && <button className={activeTab === "contracts" ? "active" : ""} onClick={() => setActiveTab("contracts")}><ScrollText size={18} /> Contracts</button>,
+          analytics: canView("analytics") && <button className={activeTab === "analytics" ? "active" : ""} onClick={() => setActiveTab("analytics")}><Activity size={18} /> Analytics</button>,
+          fleet_assignments: canView("fleet_assignments") && <button className={activeTab === "fleet_assignments" ? "active" : ""} onClick={() => { window.location.hash = "fleet-assignments"; setActiveTab("fleet_assignments"); }}><ClipboardList size={18} /> Fleet Assignments</button>,
+          doctrines: canView("doctrines") && <button className={activeTab === "doctrines" ? "active" : ""} onClick={() => { window.location.hash = "doctrines"; setActiveTab("doctrines"); }}><ShieldCheck size={18} /> Doctrines</button>,
+          srp: canView("srp") && <button className={activeTab === "srp" ? "active" : ""} onClick={() => { window.location.hash = "srp"; setActiveTab("srp"); }}><ClipboardList size={18} /> SRP Requests</button>,
+          killboard: canView("killboard") && <button className={activeTab === "killboard" ? "active" : ""} onClick={() => { window.location.hash = "killboard"; setActiveTab("killboard"); }}><Skull size={18} /> Killboard</button>,
+          battle_reports: canView("battle_reports") && <button className={activeTab === "battle_reports" ? "active" : ""} onClick={() => { window.location.hash = "battle-reports"; setActiveTab("battle_reports"); }}><Swords size={18} /> Battle Reports</button>,
+          calendar_events: canView("calendar_events") && <button className={activeTab === "calendar_events" ? "active" : ""} onClick={() => { window.location.hash = "events"; setActiveTab("calendar_events"); }}><CalendarDays size={18} /> Calendar & Events</button>,
+          recruiting: canView("recruiting") && <button className={activeTab === "recruiting" ? "active" : ""} onClick={() => setActiveTab("recruiting")}><UserRoundCheck size={18} /> Recruiting</button>,
+          profile: canView("profile") && <button className={activeTab === "profile" ? "active" : ""} onClick={() => setActiveTab("profile")}><UserRoundCheck size={18} /> Profile</button>,
+          settings: canView("settings") && <button className={activeTab === "settings" ? "active" : ""} onClick={() => setActiveTab("settings")}><Settings size={18} /> Settings</button>,
+          audit: canView("audit") && <button className={activeTab === "audit" ? "active" : ""} onClick={() => setActiveTab("audit")}><ScrollText size={18} /> Audit</button>,
+        }}/>
 
-          {canView("overview") && <button className={activeTab === "overview" ? "active" : ""} onClick={() => setActiveTab("overview")}><Database size={18} /> Overview</button>}
-
-          {canView("navigation") && <button className={activeTab === "navigation" ? "active" : ""} onClick={() => setActiveTab("navigation")}><MapIcon size={18} /> Navigation</button>}
-
-          {["characters", "skills", "fittings", "jump_clones", "roster", "esi"].some(canView) && <span className="nav-section-label">Character Functions</span>}
-
-          {canView("characters") && <button className={activeTab === "characters" ? "active" : ""} onClick={() => setActiveTab("characters")}><UserRoundCheck size={18} /> Characters</button>}
-
-          {canView("skills") && <button className={activeTab === "skills" ? "active" : ""} onClick={() => { setSkillPlanFocusId(null); window.location.hash="skills"; setActiveTab("skills"); }}><GraduationCap size={18} /> Skills</button>}
-
-          {canView("fittings") && <button className={`fittings-wip${activeTab === "fittings" ? " active" : ""}`} onClick={() => setActiveTab("fittings")}><ClipboardList size={18} /> Fittings - WIP</button>}
-
-          {canView("jump_clones") && <button className={activeTab === "jump_clones" ? "active" : ""} onClick={() => setActiveTab("jump_clones")}><UserRoundCheck size={18} /> Jump Clones</button>}
-
-          {canView("roster") && <button className={activeTab === "roster" ? "active" : ""} onClick={() => setActiveTab("roster")}><Building2 size={18} /> Roster</button>}
-
-          {canView("esi") && <button className={activeTab === "esi" ? "active" : ""} onClick={() => setActiveTab("esi")}><KeyRound size={18} /> ESI Sync</button>}
-
-          {["dscan", "local_scan", "intel_reports", "navigation"].some(canView) && <span className="nav-section-label">Intel</span>}
-
-          {canView("local_scan") && <button className={activeTab === "local_scan" ? "active" : ""} onClick={() => { window.location.hash="local-scan"; setActiveTab("local_scan"); }}><UserRoundCheck size={18} /> Local Scan</button>}
-          {canView("dscan") && <button className={activeTab === "dscan" ? "active" : ""} onClick={() => { window.location.hash="d-scan"; setActiveTab("dscan"); }}><Siren size={18} /> D-Scan</button>}
-          {canView("intel_reports") && <button className={activeTab === "intel_reports" ? "active" : ""} onClick={() => { window.location.hash="intel"; setActiveTab("intel_reports"); }}><Siren size={18} /> Intel Reports</button>}
-
-          {canView("navigation") && <button type="button" className={activeTab === "navigation" && locationHash === "#local-threat" ? "active" : ""} onClick={openThreatAnalyzer}><Siren size={18} /> Local Threat Analyzer</button>}
-
-          {["market", "exchange", "hypernet", "plex", "bounty_analytics"].some(canView) && <span className="nav-section-label">Finance & Trade</span>}
-
-          {canView("market") && <button className={activeTab === "market" ? "active" : ""} onClick={() => setActiveTab("market")}><ShoppingCart size={18} /> Market</button>}
-
-          {canView("exchange") && <button className={activeTab === "exchange" ? "active" : ""} onClick={() => { window.location.hash = "exchange"; setActiveTab("exchange"); }}><Store size={18} /> Corporate Exchange</button>}
-
-          {canView("hypernet") && <button className={activeTab === "hypernet" ? "active" : ""} onClick={() => { window.location.hash = "hypernet"; setActiveTab("hypernet"); }}><Coins size={18} /> HyperNet Tracker</button>}
-          {canView("plex") && <button className={activeTab === "plex" ? "active" : ""} onClick={() => { window.location.hash = "plex"; setActiveTab("plex"); }}><Coins size={18} /> PLEX Tracker</button>}
-
-          {canView("bounty_analytics") && <button className={activeTab === "bounty_analytics" ? "active" : ""} onClick={() => { window.location.hash = "bounties"; setActiveTab("bounty_analytics"); }}><TrendingUp size={18} /> Bounty Analytics</button>}
-
-          {["inventory_reports", "industry_reports", "quartermaster", "notes", "manufacturing", "mining", "planetary_industry", "corporations", "ownership", "assets", "industry", "contracts", "analytics"].some(canView) && <span className="nav-section-label">Inventory & Industry</span>}
-
-          {canView("notes") && <button className={activeTab === "notes" ? "active" : ""} onClick={() => setActiveTab("notes")}><NotebookTabs size={18} /> Notes & Lists</button>}
-
-          {canView("inventory_reports") && canView("assets") && <button className={activeTab === "inventory_reports" ? "active" : ""} onClick={()=>{window.location.hash="inventory-reports";setActiveTab("inventory_reports");}}><Boxes size={18}/> Inventory Report</button>}
-          {canView("industry_reports") && <button className={activeTab === "industry_reports" ? "active" : ""} onClick={()=>{window.location.hash="industry-reports";setActiveTab("industry_reports");}}><ClipboardList size={18}/> Industry Report</button>}
-          {canView("quartermaster") && <button className={activeTab === "quartermaster" ? "active" : ""} onClick={() => { window.location.hash = "quartermaster"; setActiveTab("quartermaster"); }}><Boxes size={18} /> Quartermaster</button>}
-
-          {canView("manufacturing") && <button className={activeTab === "manufacturing" ? "active" : ""} onClick={() => setActiveTab("manufacturing")}><Factory size={18} /> Manufacturing</button>}
-
-          {canView("industry") && <button className={activeTab === "research_projects" ? "active" : ""} onClick={() => setActiveTab("research_projects")}><FlaskConical size={18} /> Research Projects</button>}
-
-          {canView("mining") && <button className={activeTab === "mining" ? "active" : ""} onClick={() => setActiveTab("mining" )}><Pickaxe size={18} /> Mining Ledger</button>}
-
-          {canView("planetary_industry") && <button className={activeTab === "planetary_industry" ? "active" : ""} onClick={() => setActiveTab("planetary_industry")}><Globe2 size={18} /> Planetary Industry</button>}
-
-          {canView("corporations") && <button className={activeTab === "corporations" ? "active" : ""} onClick={() => setActiveTab("corporations")}><Building2 size={18} /> Corporations</button>}
-
-          {canView("ownership") && <button className={activeTab === "ownership" ? "active" : ""} onClick={() => setActiveTab("ownership")}><Boxes size={18} /> Ownership</button>}
-
-          {canView("assets") && <button className={activeTab === "assets" ? "active" : ""} onClick={() => setActiveTab("assets")}><PackagePlus size={18} /> Assets</button>}
-
-          {canView("industry") && <button className={activeTab === "industry" ? "active" : ""} onClick={() => setActiveTab("industry")}><Factory size={18} /> Industry</button>}
-
-          {canView("contracts") && <button className={activeTab === "contracts" ? "active" : ""} onClick={() => setActiveTab("contracts")}><ScrollText size={18} /> Contracts</button>}
-
-          {canView("analytics") && <button className={activeTab === "analytics" ? "active" : ""} onClick={() => setActiveTab("analytics")}><Activity size={18} /> Analytics</button>}
-
-          {["fleet_assignments", "doctrines", "srp", "killboard", "battle_reports", "calendar_events", "recruiting"].some(canView) && <span className="nav-section-label">Fleet & Community</span>}
-
-          {canView("fleet_assignments") && <button className={activeTab === "fleet_assignments" ? "active" : ""} onClick={() => { window.location.hash = "fleet-assignments"; setActiveTab("fleet_assignments"); }}><ClipboardList size={18} /> Fleet Assignments</button>}
-
-          {canView("doctrines") && <button className={activeTab === "doctrines" ? "active" : ""} onClick={() => { window.location.hash = "doctrines"; setActiveTab("doctrines"); }}><ShieldCheck size={18} /> Doctrines</button>}
-
-          {canView("srp") && <button className={activeTab === "srp" ? "active" : ""} onClick={() => { window.location.hash = "srp"; setActiveTab("srp"); }}><ClipboardList size={18} /> SRP Requests</button>}
-
-          {canView("killboard") && <button className={activeTab === "killboard" ? "active" : ""} onClick={() => { window.location.hash = "killboard"; setActiveTab("killboard"); }}><Skull size={18} /> Killboard</button>}
-
-          {canView("battle_reports") && <button className={activeTab === "battle_reports" ? "active" : ""} onClick={() => { window.location.hash = "battle-reports"; setActiveTab("battle_reports"); }}><Swords size={18} /> Battle Reports</button>}
-
-          {canView("calendar_events") && <button className={activeTab === "calendar_events" ? "active" : ""} onClick={() => { window.location.hash = "events"; setActiveTab("calendar_events"); }}><CalendarDays size={18} /> Calendar & Events</button>}
-
-          {canView("recruiting") && <button className={activeTab === "recruiting" ? "active" : ""} onClick={() => setActiveTab("recruiting")}><UserRoundCheck size={18} /> Recruiting</button>}
-
-          {["profile", "settings", "audit"].some(canView) && <span className="nav-section-label">Account & Admin</span>}
-
-          {canView("profile") && <button className={activeTab === "profile" ? "active" : ""} onClick={() => setActiveTab("profile")}><UserRoundCheck size={18} /> Profile</button>}
-
-          {canView("settings") && <button className={activeTab === "settings" ? "active" : ""} onClick={() => setActiveTab("settings")}><Settings size={18} /> Settings</button>}
-
-          {canView("audit") && <button className={activeTab === "audit" ? "active" : ""} onClick={() => setActiveTab("audit")}><ScrollText size={18} /> Audit</button>}
-
-        </nav>
       </aside>
 
 
 
       <section className="content">
+        <AppearanceStatus/>
 
         <header className="hero compact">
 
@@ -818,6 +777,8 @@ function App() {
           </div>
 
           <div className="toolbar">
+            <ArrangeButton/>
+            <button type="button" onClick={()=>setActiveTab("settings")}>Appearance</button>
 
             <HeaderClocks localTimeZone={preferredTimeZone(user)} />
 
@@ -911,7 +872,8 @@ function App() {
 
         {activeTab === "jump_clones" && canView("jump_clones") && <JumpClonesPage api={api} EveEntityIcon={EveEntityIcon} formatDateTime={(value) => formatDateTime(value, preferredTimeZone(user))} />}
 
-        {activeTab === "settings" && canView("settings") && <SettingsPage currentUser={user} api={api} Metric={Metric} ManagedForm={ManagedForm} accountLabel={accountLabel} />}
+        {activeTab === "settings" && <AppearanceSettings roles={user.roles??[user.role]}/>}
+        {activeTab === "settings" && !utilityOnly.current && !quartermasterOnly.current && canView("settings") && <SettingsPage currentUser={user} api={api} Metric={Metric} ManagedForm={ManagedForm} accountLabel={accountLabel} />}
 
         {activeTab === "corporations" && canView("corporations") && <CorporationsPage api={api} loadAssets={load} EveEntityIcon={EveEntityIcon} />}
 
@@ -1013,9 +975,9 @@ function NotificationBubble({ currentUser, onOpenMessages }: { currentUser: User
 function NavigationPlanner({ currentUser }: { currentUser: UserAccount }) {
   const [atlasRoute, setAtlasRoute] = useState<RouteRequest | null>(null);
   const [mapRoute, setMapRoute] = useState<NavigationRoute | null>(null);
-  return <>
-    <NavigationAtlas route={mapRoute} onRoute={(request) => { setAtlasRoute(request); document.getElementById("atlas-route-planner")?.scrollIntoView({behavior:"smooth",block:"start"}); }} />
-    <div id="atlas-route-planner">
+  return <LayoutRegion region="navigation-planner">
+    <NavigationAtlas key="navigation-planner-1" data-layout-id="navigation-planner-1" data-layout-label="Navigation Atlas" route={mapRoute} onRoute={(request) => { setAtlasRoute(request); document.getElementById("atlas-route-planner")?.scrollIntoView({behavior:"smooth",block:"start"}); }} />
+    <div key="navigation-planner-2" data-layout-id="navigation-planner-2" data-layout-label="Section 2" id="atlas-route-planner">
     <RouteChecker
       routeRequest={atlasRoute}
       onRouteChange={setMapRoute}
@@ -1028,14 +990,14 @@ function NavigationPlanner({ currentUser }: { currentUser: UserAccount }) {
       UedamaScoutLiveLink={UedamaScoutLiveLink}
     />
     </div>
-    <JumpFreighterPlanner currentUser={currentUser} api={api} numberFormatter={numberFormatter} Metric={Metric} EveEntityIcon={EveEntityIcon} CharacterHoverName={CharacterHoverName} UedamaScoutLiveLink={UedamaScoutLiveLink} />
-    <IndustrialSystemThreatWidget currentUser={currentUser} api={api} Metric={Metric} />
-    <PvpIntelWidget currentUser={currentUser} api={api} Metric={Metric} />
-    <div id="local-threat-analyzer" className="threat-analyzer-anchor">
+    <JumpFreighterPlanner key="navigation-planner-3" data-layout-id="navigation-planner-3" data-layout-label="Jump Freighter Planner" currentUser={currentUser} api={api} numberFormatter={numberFormatter} Metric={Metric} EveEntityIcon={EveEntityIcon} CharacterHoverName={CharacterHoverName} UedamaScoutLiveLink={UedamaScoutLiveLink} />
+    <IndustrialSystemThreatWidget key="navigation-planner-4" data-layout-id="navigation-planner-4" data-layout-label="Industrial System Threat Widget" currentUser={currentUser} api={api} Metric={Metric} />
+    <PvpIntelWidget key="navigation-planner-5" data-layout-id="navigation-planner-5" data-layout-label="Pvp Intel Widget" currentUser={currentUser} api={api} Metric={Metric} />
+    <div key="navigation-planner-6" data-layout-id="navigation-planner-6" data-layout-label="Section 6" id="local-threat-analyzer" className="threat-analyzer-anchor">
       <LocalThreatWidget currentUser={currentUser} api={api} Metric={Metric} EveEntityIcon={EveEntityIcon} CharacterHoverName={CharacterHoverName} />
     </div>
-    <SystemDistanceCalculator api={api} />
-  </>;
+    <SystemDistanceCalculator key="navigation-planner-7" data-layout-id="navigation-planner-7" data-layout-label="System Distance Calculator" api={api} />
+  </LayoutRegion>;
 }
 function AuditLog({ currentUser }: { currentUser: UserAccount }) {
 
@@ -1076,7 +1038,7 @@ function AuthScreen({ bootstrap, onAuth }: { bootstrap: BootstrapStatus | null; 
 
       <section className="panel auth-panel">
 
-        <img className="auth-logo" src="/eqm-logo.webp" alt="EVE Quartermaster" />
+        <BrandImage className="auth-logo"/>
 
         <span className="status-badge version-badge auth-version">v{APP_VERSION}</span>
 
@@ -1136,7 +1098,7 @@ function InviteScreen({ token, onAuth }: { token: string; onAuth: (path: string,
 
       <section className="panel auth-panel">
 
-        <img className="auth-logo" src="/eqm-logo.webp" alt="EVE Quartermaster" />
+        <BrandImage className="auth-logo"/>
 
         <span className="status-badge version-badge auth-version">v{APP_VERSION}</span>
 
@@ -1178,9 +1140,9 @@ function Overview({ data, api, timeZone, onOpenIndustry, onOpenEvents }: { data:
 
   return (
 
-    <>
+    <LayoutRegion region="overview">
 
-      <div className="status-grid wide">
+      <div key="overview-1" data-layout-id="overview-1" data-layout-label="Overview totals" className="status-grid wide">
 
         <Metric icon={<Activity size={22} />} label="API status" value={data.health?.status ?? "checking"} />
 
@@ -1196,17 +1158,17 @@ function Overview({ data, api, timeZone, onOpenIndustry, onOpenEvents }: { data:
 
       </div>
 
-      <div className="two-column">
+      <LayoutRegion key="overview-2" data-layout-id="overview-2" data-layout-label="Assets and blueprints" region="overview-inventory" className="two-column">
 
-        <section className="panel"><h3>Recent Assets</h3><AssetTable assets={data.assets.slice(0, 6)} blueprints={data.blueprints} /></section>
+        <section key="recent-assets" data-layout-id="recent-assets" data-layout-label="Recent Assets" className="panel"><h3>Recent Assets</h3><AssetTable assets={data.assets.slice(0, 6)} blueprints={data.blueprints} /></section>
 
-        <section className="panel"><h3>Blueprint Library</h3><BlueprintPreview blueprints={data.blueprints} onOpenIndustry={onOpenIndustry} /></section>
+        <section key="blueprint-library" data-layout-id="blueprint-library" data-layout-label="Blueprint Library" className="panel"><h3>Blueprint Library</h3><BlueprintPreview blueprints={data.blueprints} onOpenIndustry={onOpenIndustry} /></section>
 
-      </div>
+      </LayoutRegion>
 
-      <UpcomingEventsWidget api={api} timeZone={timeZone} onOpen={onOpenEvents} />
+      <UpcomingEventsWidget key="overview-3" data-layout-id="overview-3" data-layout-label="Upcoming Events Widget" api={api} timeZone={timeZone} onOpen={onOpenEvents} />
 
-    </>
+    </LayoutRegion>
 
   );
 
@@ -1218,9 +1180,9 @@ function Ownership({ data, submit }: { data: AppData; submit: (path: string, bod
 
   return (
 
-    <div className="two-column">
+    <LayoutRegion region="ownership" className="two-column">
 
-      <section className="panel">
+      <section key="ownership-1" data-layout-id="ownership-1" data-layout-label="Owners" className="panel">
 
         <h3>Owners</h3>
 
@@ -1228,13 +1190,13 @@ function Ownership({ data, submit }: { data: AppData; submit: (path: string, bod
 
       </section>
 
-      <section className="panel"><h3>Add Owner</h3><OwnerForm submit={submit} /></section>
+      <section key="ownership-2" data-layout-id="ownership-2" data-layout-label="Add Owner" className="panel"><h3>Add Owner</h3><OwnerForm submit={submit} /></section>
 
-      <section className="panel"><h3>Locations</h3><div className="card-list">{data.locations.map((location) => <article key={location.id}><strong>{location.name}</strong><span>{location.location_kind}</span></article>)}</div></section>
+      <section key="ownership-3" data-layout-id="ownership-3" data-layout-label="Locations" className="panel"><h3>Locations</h3><div className="card-list">{data.locations.map((location) => <article key={location.id}><strong>{location.name}</strong><span>{location.location_kind}</span></article>)}</div></section>
 
-      <section className="panel"><h3>Add Location</h3><LocationForm submit={submit} /></section>
+      <section key="ownership-4" data-layout-id="ownership-4" data-layout-label="Add Location" className="panel"><h3>Add Location</h3><LocationForm submit={submit} /></section>
 
-    </div>
+    </LayoutRegion>
 
   );
 
@@ -1308,19 +1270,19 @@ function Industry({ data, submit, ownerOptions, typeOptions, locationOptions, ac
 
   return (
 
-    <div className="two-column">
+    <LayoutRegion region="industry" className="two-column">
 
-      <section className="panel"><h3>Blueprints</h3><BlueprintList blueprints={data.blueprints} assets={data.assets} api={api} onOpenMarket={onOpenMarket} onOpenAssets={onOpenAssets} /></section>
+      <section key="industry-1" data-layout-id="industry-1" data-layout-label="Blueprints" className="panel"><h3>Blueprints</h3><BlueprintList blueprints={data.blueprints} assets={data.assets} api={api} onOpenMarket={onOpenMarket} onOpenAssets={onOpenAssets} /></section>
 
-      <section className="panel"><h3>Add Blueprint</h3><BlueprintForm submit={submit} ownerOptions={ownerOptions} typeOptions={typeOptions} locationOptions={locationOptions} /></section>
+      <section key="industry-2" data-layout-id="industry-2" data-layout-label="Add Blueprint" className="panel"><h3>Add Blueprint</h3><BlueprintForm submit={submit} ownerOptions={ownerOptions} typeOptions={typeOptions} locationOptions={locationOptions} /></section>
 
-      <section className="panel"><h3>Recipes</h3><p className="muted">Showing {recipes.length.toLocaleString()} loaded recipes. Scroll the list to load more.</p>{recipeError && <div className="mini-alert">{recipeError}</div>}<RecipeList activities={recipes} blueprints={data.blueprints} onSelect={setSelectedRecipe} onLoadMore={() => void loadMoreRecipes()} loadingMore={recipeBusy} hasMore={hasMoreRecipes} /></section>
+      <section key="industry-3" data-layout-id="industry-3" data-layout-label="Recipes" className="panel"><h3>Recipes</h3><p className="muted">Showing {recipes.length.toLocaleString()} loaded recipes. Scroll the list to load more.</p>{recipeError && <div className="mini-alert">{recipeError}</div>}<RecipeList activities={recipes} blueprints={data.blueprints} onSelect={setSelectedRecipe} onLoadMore={() => void loadMoreRecipes()} loadingMore={recipeBusy} hasMore={hasMoreRecipes} /></section>
 
-      <section className="panel stacked"><h3>Add Recipe</h3><RecipeForm submit={submit} typeOptions={typeOptions} /><h3>Add Recipe Input</h3><RecipeInputForm submit={submit} typeOptions={typeOptions} activityOptions={activityOptions} /></section>
+      <section key="industry-4" data-layout-id="industry-4" data-layout-label="Add Recipe" className="panel stacked"><h3>Add Recipe</h3><RecipeForm submit={submit} typeOptions={typeOptions} /><h3>Add Recipe Input</h3><RecipeInputForm submit={submit} typeOptions={typeOptions} activityOptions={activityOptions} /></section>
 
       {selectedRecipe && <RecipeDetailModal activity={selectedRecipe} blueprints={data.blueprints} assets={data.assets} onOpenMarket={onOpenMarket} onOpenAssets={onOpenAssets} onClose={() => setSelectedRecipe(null)} />}
 
-    </div>
+    </LayoutRegion>
 
   );
 
@@ -2407,4 +2369,4 @@ function subtitleFor(tab: string) {
 
 
 
-createRoot(document.getElementById("root")!).render(<App />);
+createRoot(document.getElementById("root")!).render(<AppearanceProvider><App /></AppearanceProvider>);

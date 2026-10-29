@@ -1,3 +1,4 @@
+import {LayoutRegion} from "../appearance/LayoutRegion";
 import { BarChart3, Calculator, Clock3, Coins, Dice5, History, LayoutGrid, List, Pencil, Plus, RefreshCw, TicketCheck, Trophy, XCircle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -179,13 +180,13 @@ export function HyperNetTrackerPage({ api }: { api: ApiClient }) {
   }
   if (route.kind === "detail") return selected?.id === route.id ? <>{itemHistory}<HyperNetOfferDetail onItemHistory={() => setHistoryItem(selected.item)} api={api} offer={selected} onBack={() => navigate()} onChanged={(offer) => { setSelected(offer); void loadBoard(); }} /></> : <section className="panel"><p className="muted">Loading HyperNet offer…</p>{error && <div className="mini-alert">{error}</div>}</section>;
 
-  return <div className="hypernet-page">
+  return <LayoutRegion region="hyper-net-tracker" className="hypernet-page">
     {itemHistory}
-    <div className="hypernet-toolbar"><div><span className="eyebrow">Finance and trade</span><h3>HyperNet Tracker</h3><p>Seller offers, nodes purchased, win/loss history, seeded-node risk, and combined HyperNet performance.</p></div><div className="button-row"><button type="button" disabled={busy} onClick={() => void loadBoard()}><RefreshCw className={busy ? "spin" : ""} size={17} /> Refresh</button><button type="button" disabled={busy || !canRecord} onClick={() => navigate("hypernet/bids/new")}><Dice5 size={17} /> Record bid</button><button type="button" disabled={busy || !canRecord} onClick={() => navigate("hypernet/new")}><Plus size={17} /> Plan or record offer</button></div></div>
+    <div key="hyper-net-tracker-1" data-layout-id="hyper-net-tracker-1" data-layout-label="Section 1" className="hypernet-toolbar"><div><span className="eyebrow">Finance and trade</span><h3>HyperNet Tracker</h3><p>Seller offers, nodes purchased, win/loss history, seeded-node risk, and combined HyperNet performance.</p></div><div className="button-row"><button type="button" disabled={busy} onClick={() => void loadBoard()}><RefreshCw className={busy ? "spin" : ""} size={17} /> Refresh</button><button type="button" disabled={busy || !canRecord} onClick={() => navigate("hypernet/bids/new")}><Dice5 size={17} /> Record bid</button><button type="button" disabled={busy || !canRecord} onClick={() => navigate("hypernet/new")}><Plus size={17} /> Plan or record offer</button></div></div>
     {pauseControls}
     {pauseNotice}
-    <div className="hypernet-manual-placard"><TicketCheck size={21} /><span><strong>Manual data source active.</strong> ESI supports character, item, location, and market context, but EQM does not assume it can read HyperNet offers. Reconcile outcomes from the in-game offer.</span></div>
-    <div className="hypernet-character-filter"><label><span>View</span><select aria-label="HyperNet view" value={side} onChange={(event) => setSide(event.target.value as typeof side)}><option value="seller">Selling</option><option value="buyer">Bidding</option><option value="combined">Combined</option></select></label><label><span>Character</span><select aria-label="Character" value={characterId} onChange={(event) => {
+    <div key="hyper-net-tracker-2" data-layout-id="hyper-net-tracker-2" data-layout-label="Section 2" className="hypernet-manual-placard"><TicketCheck size={21} /><span><strong>Manual data source active.</strong> ESI supports character, item, location, and market context, but EQM does not assume it can read HyperNet offers. Reconcile outcomes from the in-game offer.</span></div>
+    <div key="hyper-net-tracker-3" data-layout-id="hyper-net-tracker-3" data-layout-label="Section 3" className="hypernet-character-filter"><label><span>View</span><select aria-label="HyperNet view" value={side} onChange={(event) => setSide(event.target.value as typeof side)}><option value="seller">Selling</option><option value="buyer">Bidding</option><option value="combined">Combined</option></select></label><label><span>Character</span><select aria-label="Character" value={characterId} onChange={(event) => {
       ++boardRequest.current;
       setSummary(null); setOffers([]); setParticipations([]); setBusy(true);
       setCharacterId(event.target.value);
@@ -235,7 +236,7 @@ export function HyperNetTrackerPage({ api }: { api: ApiClient }) {
     </>}
 
     {showBidding && <p className="muted">Expired bids are fully refunded and kept in history. They do not affect bid exposure, spend, win rate, luck, or ROI statistics.</p>}
-    <section className="panel hypernet-board">
+    <section key="hyper-net-tracker-4" data-layout-id="hyper-net-tracker-4" data-layout-label="Section 4" className="panel hypernet-board">
       <div className="section-heading"><div><h3>{side === "combined" ? "Combined activity" : side === "seller" ? "Selling activity" : "Bidding activity"}</h3><p>{visibleCount} manual record{visibleCount === 1 ? "" : "s"}</p></div><div className="hypernet-board-controls"><ModuleFinder query={query} onQueryChange={setQuery} label="Search HyperNet records" placeholder="Item, seller, location, character…" resultCount={visibleCount} totalCount={totalCount} />
         {showSelling && <label>Offer status<select aria-label="Offer status" value={status} onChange={(event) => { ++boardRequest.current; setOffers([]); setBusy(true); setStatus(event.target.value); }}><option value="active">Active</option><option value="all">All history</option>{meta?.statuses.filter((value) => value !== "active").map((value) => <option key={value} value={value}>{value.replace(/_/g, " ")}</option>)}</select></label>}
         {showBidding && <label>Bid outcome<select aria-label="Bid outcome" value={bidOutcome} onChange={(event) => { ++boardRequest.current; setParticipations([]); setBusy(true); setBidOutcome(event.target.value); }}><option value="all">All bids</option><option value="pending">Pending</option><option value="won">Won</option><option value="lost">Lost</option><option value="expired">Expired · refunded</option><option value="cancelled">Cancelled</option></select></label>}
@@ -249,6 +250,6 @@ export function HyperNetTrackerPage({ api }: { api: ApiClient }) {
     </section>
     {showSelling && summary?.node_positions && <HyperNetNodeResearch summary={summary.node_positions} />}
     {showSelling && summary && <section className="panel hypernet-history-strip"><div><BarChart3 size={19} /><span><strong>Average completed profit</strong><small>{formatIsk(summary.average_profit_per_completed_offer)}</small></span></div><div><History size={19} /><span><strong>Average first organic node</strong><small>{summary.average_hours_to_first_node == null ? "Insufficient sample" : `${summary.average_hours_to_first_node.toFixed(1)} hours`}</small></span></div><div><Coins size={19} /><span><strong>Active HyperCore expense</strong><small>{formatIsk(summary.hypercore_cost)}</small></span></div></section>}
-    <HyperNetAnalytics api={api} characterId={characterId} refreshToken={summary} />
-  </div>;
+    <HyperNetAnalytics key="hyper-net-tracker-5" data-layout-id="hyper-net-tracker-5" data-layout-label="Hyper Net Analytics" api={api} characterId={characterId} refreshToken={summary} />
+  </LayoutRegion>;
 }

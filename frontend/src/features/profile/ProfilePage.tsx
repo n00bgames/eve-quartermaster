@@ -1,3 +1,4 @@
+import {LayoutRegion} from "../appearance/LayoutRegion";
 import { useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
 
 import { MainCharacterSettings } from "./MainCharacterSettings";
@@ -226,8 +227,8 @@ export function ProfilePage({ currentUser, onUserUpdated, focus, api, ManagedFor
   const replySubject = replyTo?.subject?.toLowerCase().startsWith("re:") ? replyTo.subject : replyTo ? `Re: ${replyTo.subject}` : "";
 
   return (
-    <div className="profile-page">
-      <section className="panel stacked">
+    <LayoutRegion region="profile" className="profile-page">
+      <section key="profile-1" data-layout-id="profile-1" data-layout-label="Profile" className="panel stacked">
         <h3>Profile</h3>
         {message && <div className="notice inline">{message}</div>}
         {profileError && <div className="mini-alert">{profileError}</div>}
@@ -239,8 +240,8 @@ export function ProfilePage({ currentUser, onUserUpdated, focus, api, ManagedFor
           <label>New password<input name="password" type="password" minLength={8} placeholder="Leave blank to keep current password" /></label>
         </ManagedForm>
       </section>
-      <MainCharacterSettings api={api}/>
-      <section className="panel stacked eve-mail-panel">
+      <MainCharacterSettings key="profile-2" data-layout-id="profile-2" data-layout-label="Main Character Settings" api={api}/>
+      <section key="profile-3" data-layout-id="profile-3" data-layout-label="Section 3" className="panel stacked eve-mail-panel">
         <div className="section-heading">
           <div>
             <h3>EVE Mail</h3>
@@ -291,7 +292,7 @@ export function ProfilePage({ currentUser, onUserUpdated, focus, api, ManagedFor
           </div>
         </div>
       </section>
-      <section className="panel stacked" ref={messagesRef}>
+      <section key="profile-4" data-layout-id="profile-4" data-layout-label="Section 4" className="panel stacked" ref={messagesRef}>
         <div className="section-heading"><h3>Private Messages</h3><button type="button" onClick={() => void loadInbox()}>Refresh</button></div>
         <div className="two-column">
           <div className="stacked">
@@ -317,6 +318,6 @@ export function ProfilePage({ currentUser, onUserUpdated, focus, api, ManagedFor
         </ManagedForm>
       </section>
       {["host", "admin"].includes(currentUser.role) && <UsersAdmin currentUser={currentUser} api={api} ManagedForm={ManagedForm} accountLabel={accountLabel} />}
-    </div>
+    </LayoutRegion>
   );
 }

@@ -177,3 +177,5 @@ __all__ = [
     "UserSectionPermission",
     "ZkillEnrichment",
 ]
+
+from app.models.appearance import UserAppearance, SiteBranding

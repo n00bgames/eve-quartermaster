@@ -2,7 +2,7 @@
 .plex-page h2, .plex-page h3 { margin: 0 0 10px; }
 .plex-page h2 { font-size: 1.8rem; }
 .plex-page h2, .plex-actions, .plex-page button { display: flex; align-items: center; gap: 8px; }
-.plex-page button { border: 1px solid #d5a735; border-radius: 6px; background: #ebbd4a; color: #101820; padding: 9px 12px; font: inherit; font-weight: 600; cursor: pointer; }
+.plex-page button { border: 1px solid #d5a735; border-radius: 6px; background: #ebbd4a; color: var(--eqm-background, #101820); padding: 9px 12px; font: inherit; font-weight: 600; cursor: pointer; }
 .plex-page button:hover:not(:disabled) { background: #f7cf68; }
 .plex-page button:disabled { opacity: .5; cursor: default; }
 .plex-page button:focus-visible { outline: 2px solid #64d7e5; outline-offset: 3px; }

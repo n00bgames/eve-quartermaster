@@ -52,7 +52,7 @@
 
 .mining-table-wrap { max-height: 620px; }
 .mining-table { min-width: 1320px; }
-.mining-table th { position: sticky; top: 0; z-index: 2; background: #17202a; }
+.mining-table th { position: sticky; top: 0; z-index: 2; background: var(--eqm-panel, #17202a); }
 .mining-table td { vertical-align: top; font-weight: 400; }
 .mining-table td > span { display: block; margin-top: 3px; color: #7f90a4; font-size: .73rem; }
 .mining-table td .unmeasured { color: #c09b5c; }
@@ -90,7 +90,7 @@
 .settlement-row-total { align-self: center; text-align: right; color: #d8e1e9; font-size: .82rem; }
 .settlement-add-row { justify-self: start; }
 .settlement-refiner-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.settlement-reserve-grid { display: grid; grid-template-columns: minmax(210px, 1fr) minmax(150px, .55fr) 2fr; gap: 9px; align-items: end; padding: 12px; border: 1px solid #34414c; background: #101820; }
+.settlement-reserve-grid { display: grid; grid-template-columns: minmax(210px, 1fr) minmax(150px, .55fr) 2fr; gap: 9px; align-items: end; padding: 12px; border: 1px solid #34414c; background: var(--eqm-background, #101820); }
 .settlement-reserve-grid small { align-self: center; color: #8d9daf; }
 .settlement-deduction-row { display: grid; grid-template-columns: minmax(140px, .8fr) minmax(200px, 1.5fr) minmax(140px, .8fr) minmax(130px, .7fr) 38px; gap: 8px; align-items: end; padding: 9px; border: 1px solid #293640; background: #0b1218; }
 .settlement-participant-row { display: grid; grid-template-columns: repeat(6, minmax(125px, 1fr)) 38px; gap: 8px; align-items: end; padding: 9px; border: 1px solid #293640; background: #0b1218; }

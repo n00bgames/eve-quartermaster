@@ -4,7 +4,7 @@
   border: 0 !important;
   border-radius: 4px !important;
   box-shadow: none !important;
-  color: #f5f7fa !important;
+  color: var(--eqm-text, #f5f7fa) !important;
   display: inline-flex !important;
   font-weight: 850 !important;
   gap: 5px !important;
@@ -19,27 +19,27 @@
 .skill-dogma-trigger span {
   color: inherit;
   font-size: inherit;
-  text-decoration: underline dotted #4fb3c7;
+  text-decoration: underline dotted var(--eqm-accent, #4fb3c7);
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
 }
 
 .skill-dogma-trigger svg {
-  color: #4fb3c7;
+  color: var(--eqm-accent, #4fb3c7);
   flex: 0 0 auto;
 }
 
 .skill-dogma-trigger:focus-visible {
-  outline: 2px solid #e8b84d;
+  outline: 2px solid var(--eqm-accent, #e8b84d);
   outline-offset: 2px;
 }
 
 .skill-dogma-popover {
-  background: #111820f7;
-  border: 1px solid #4fb3c7;
+  background: color-mix(in srgb, var(--eqm-background, #111820) 96.86%, transparent);
+  border: 1px solid var(--eqm-accent, #4fb3c7);
   border-radius: 10px;
   box-shadow: 0 20px 55px #000c, 0 0 0 1px #ffffff0a inset;
-  color: #dce3ec;
+  color: var(--eqm-text, #dce3ec);
   max-height: min(76vh, 720px);
   overflow: auto;
   padding: 14px;
@@ -49,7 +49,7 @@
 
 .skill-dogma-popover > header {
   align-items: flex-start;
-  border-bottom: 1px solid #303741;
+  border-bottom: 1px solid var(--eqm-border, #303741);
   display: flex;
   gap: 12px;
   justify-content: space-between;
@@ -69,7 +69,7 @@
 }
 
 .skill-dogma-popover h4 {
-  color: #f5f7fa;
+  color: var(--eqm-text, #f5f7fa);
   font-size: 1.05rem;
 }
 
@@ -84,9 +84,9 @@
 .skill-dogma-close {
   align-items: center;
   background: #171f28;
-  border: 1px solid #3b4654;
+  border: 1px solid var(--eqm-border, #3b4654);
   border-radius: 7px;
-  color: #dce3ec;
+  color: var(--eqm-text, #dce3ec);
   cursor: pointer;
   display: inline-flex;
   flex: 0 0 auto;
@@ -123,21 +123,21 @@
 
 .skill-dogma-meta div {
   background: #080d13b8;
-  border: 1px solid #303741;
+  border: 1px solid var(--eqm-border, #303741);
   border-radius: 7px;
   min-width: 0;
   padding: 8px;
 }
 
 .skill-dogma-meta dt {
-  color: #8b98a8;
+  color: var(--eqm-muted, #8b98a8);
   font-size: .68rem;
   font-weight: 800;
   text-transform: uppercase;
 }
 
 .skill-dogma-meta dd {
-  color: #f5f7fa;
+  color: var(--eqm-text, #f5f7fa);
   font-size: .86rem;
   font-weight: 800;
   margin: 3px 0 0;
@@ -156,13 +156,13 @@
 .skill-dogma-prerequisites li,
 .skill-dogma-bonuses li {
   background: #080d137a;
-  border-left: 3px solid #4fb3c7;
+  border-left: 3px solid var(--eqm-accent, #4fb3c7);
   border-radius: 4px;
   padding: 6px 8px;
 }
 
 .skill-dogma-prerequisites li {
-  color: #dce3ec;
+  color: var(--eqm-text, #dce3ec);
   font-size: .85rem;
 }
 
@@ -188,7 +188,7 @@
 
 .skill-dogma-profiles details {
   background: #0b1118;
-  border: 1px solid #303741;
+  border: 1px solid var(--eqm-border, #303741);
   border-radius: 7px;
   overflow: hidden;
 }
@@ -202,18 +202,18 @@
 }
 
 .skill-dogma-profiles summary span {
-  color: #dce3ec;
+  color: var(--eqm-text, #dce3ec);
   font-size: .82rem;
   font-weight: 800;
 }
 
 .skill-dogma-profiles summary small {
-  color: #8b98a8;
+  color: var(--eqm-muted, #8b98a8);
   font-size: .7rem;
 }
 
 .skill-dogma-profiles .skill-dogma-bonuses {
-  border-top: 1px solid #303741;
+  border-top: 1px solid var(--eqm-border, #303741);
   padding: 8px;
 }
 
@@ -225,20 +225,20 @@
 
 .skill-dogma-chips span {
   background: #17313a;
-  border: 1px solid #4fb3c777;
+  border: 1px solid color-mix(in srgb, var(--eqm-accent, #4fb3c7) 46.67%, transparent);
   border-radius: 999px;
-  color: #c9f6ff;
+  color: var(--eqm-text, #c9f6ff);
   font-size: .7rem;
   padding: 4px 7px;
 }
 
 .skill-dogma-empty {
-  color: #8b98a8 !important;
+  color: var(--eqm-muted, #8b98a8) !important;
   font-size: .82rem !important;
 }
 
 .skill-dogma-content footer {
-  border-top: 1px solid #303741;
+  border-top: 1px solid var(--eqm-border, #303741);
   color: #6f7f92;
   font-family: Consolas, "Liberation Mono", monospace;
   font-size: .67rem;
@@ -247,7 +247,7 @@
 
 .skill-dogma-loading {
   align-items: center;
-  color: #c9f6ff;
+  color: var(--eqm-text, #c9f6ff);
   display: flex;
   gap: 9px;
   min-height: 54px;
@@ -255,9 +255,9 @@
 
 .skill-dogma-loading i {
   animation: skill-dogma-spin .8s linear infinite;
-  border: 2px solid #4fb3c755;
+  border: 2px solid color-mix(in srgb, var(--eqm-accent, #4fb3c7) 33.33%, transparent);
   border-radius: 50%;
-  border-top-color: #e8b84d;
+  border-top-color: var(--eqm-accent, #e8b84d);
   height: 18px;
   width: 18px;
 }

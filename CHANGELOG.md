@@ -6,6 +6,9 @@ Version sections are written as user-facing release notes first, with implementa
 
 ## [2.0.0] - Unreleased
 
+- Add account-saved themes/custom colors, personal banners, drag-and-drop panel order and editable navigation groups/module placement, with keyboard move controls and independent resets. Admins can upload a site banner and login background. Apply migration 0095 with the matching frontend/API; presentation settings do not expand data access.
+- Add sortable Industry/Inventory Report headers with numeric/date/natural ordering across all rows before pagination. Existing reports gain the controls automatically; exports retain their standard ordering.
+
 - Industry Reports and CSV/PDF now lead with active jobs, then blueprints/reactions, stock totals, ownership detail and PI. Resolved Upwell/facility names are shown publicly while creator/owner fields remain anonymous; job labels prefer synchronized location names and blueprints use their verified storage root.
 
 - Fix Industry Reports excluding blueprints and material stock in corporation offices. Recognize validated station/Upwell office hangars and station deliveries while preserving ship-cargo and cross-owner exclusions. Existing dynamic links update after backend deployment; snapshots require regeneration.

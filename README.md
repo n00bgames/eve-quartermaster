@@ -801,7 +801,7 @@ After `docker compose up --build`, confirm:
 
 ## Roadmap
 
-See [Proposed Changes](docs/proposed_changes.md) for the to-do list, including persistent per-user drag-and-drop section layouts. Local Scan and [D-Scan](docs/dscan.md) are implemented in the 2.0 development build.
+See [Proposed Changes](docs/proposed_changes.md) for the to-do list, for remaining work. [Themes, personal branding and persistent drag-and-drop layouts](docs/appearance.md) are implemented in the 2.0 development build. Local Scan and [D-Scan](docs/dscan.md) are implemented in the 2.0 development build.
 
 - Hardening pass for public testers, including clearer empty states and friendlier setup diagnostics.
 - More complete industry planning: owned vs missing materials, procurement options, build readiness, and market pricing.
@@ -851,3 +851,15 @@ Manage saved battles by ownership/corporation, generation dates or selection, wi
 Industry Reports now show **active jobs → blueprints/reactions → stock totals → ownership detail → PI**, including CSV/PDF. Resolved Upwell names are visible while public owner fields remain anonymous.
 
 ![Industry Report with jobs first and resolved structure names](static/ss/v2.0/industry-jobs-first.jpg)
+
+### Personal appearance and layouts (2.0 development)
+
+[Customize EQM](docs/appearance.md) with saved palettes/custom colors, a personal banner, draggable panels, and renamed/reordered navigation groups with modules placed where you want them. Admins can upload the default site banner and login background. Keyboard move controls and reset buttons are included; permissions still control access. Industry/Inventory table headers now sort every row before pagination.
+
+![Themes and navigation editor](static/ss/v2.0/appearance-navigation.jpg)
+
+![Draggable overview panels](static/ss/v2.0/appearance-panels.jpg)
+
+![Sortable Industry Report columns](static/ss/v2.0/industry-sortable-columns.jpg)
+
+[Light palette, branding and login captures](docs/screenshots.md#appearance-layouts-and-sortable-reports). Unreleased synthetic previews; deploy matching API/frontend with migration 0095_appearance.

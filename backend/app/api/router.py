@@ -103,3 +103,6 @@ api_router.include_router(srp_router)
 api_router.include_router(fleet_assignments_router)
 
 api_router.include_router(intel_router)
+
+from app.api.appearance import router as appearance_router
+api_router.include_router(appearance_router)

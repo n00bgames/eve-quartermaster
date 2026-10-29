@@ -403,6 +403,84 @@
       "source_state": "Uncommitted Industry order/names change; not deployed.",
       "data": "Actual local production frontend/API; synthetic disposable SQLite with Example Industrial Hub. Browser full-page capture; PDF rendered with Poppler.",
       "limitations": "No live user data. Historical captures retain their former order/masking."
+    },
+    {
+      "file": "appearance-navigation.jpg",
+      "caption": "Saved Deep space palette and navigation editor with group naming, module placement and move controls.",
+      "captured_at_utc": "2026-10-29T11:30:00.943392+00:00",
+      "sha256": "3b31c0be19846017acaa851bc29ba88ecb10c276a2061ce541fa6331afea3999",
+      "bytes": 112494,
+      "width": 1280,
+      "height": 720,
+      "source_base_commit": "328dabfa56134a947e372b6e7dd11260af0eeb55",
+      "source_state": "Unreleased appearance/layout/sorting working tree; not deployed.",
+      "data": "Actual production frontend and API with disposable synthetic SQLite. Existing bundled EQM images used as upload fixtures.",
+      "limitations": "Desktop screenshots show the selected viewport/section, except the full-page login capture. No production accounts or EVE data. Public report exports retain standard order."
+    },
+    {
+      "file": "appearance-daylight.jpg",
+      "caption": "Daylight palette with custom colors and per-account layout controls.",
+      "captured_at_utc": "2026-10-29T11:23:03.006465+00:00",
+      "sha256": "efaa953b930d598a5a5d9a420086d7be916496e61d0f9215bc676de6de3ef0f7",
+      "bytes": 107610,
+      "width": 1280,
+      "height": 720,
+      "source_base_commit": "328dabfa56134a947e372b6e7dd11260af0eeb55",
+      "source_state": "Unreleased appearance/layout/sorting working tree; not deployed.",
+      "data": "Actual production frontend and API with disposable synthetic SQLite. Existing bundled EQM images used as upload fixtures.",
+      "limitations": "Desktop screenshots show the selected viewport/section, except the full-page login capture. No production accounts or EVE data. Public report exports retain standard order."
+    },
+    {
+      "file": "appearance-panels.jpg",
+      "caption": "Overview after dragging Blueprint Library ahead of Recent Assets; panel moves are saved automatically.",
+      "captured_at_utc": "2026-10-29T09:24:12.082388+00:00",
+      "sha256": "a38c9f7ef43236b9c9009dcd67c7d19b7016b6cc18df6178c9b82fe5e10f6dac",
+      "bytes": 125974,
+      "width": 1280,
+      "height": 720,
+      "source_base_commit": "328dabfa56134a947e372b6e7dd11260af0eeb55",
+      "source_state": "Unreleased appearance/layout/sorting working tree; not deployed.",
+      "data": "Actual production frontend and API with disposable synthetic SQLite. Existing bundled EQM images used as upload fixtures.",
+      "limitations": "Desktop screenshots show the selected viewport/section, except the full-page login capture. No production accounts or EVE data. Public report exports retain standard order."
+    },
+    {
+      "file": "appearance-branding.jpg",
+      "caption": "Personal and admin site branding uploads with reset controls; bundled art used as synthetic upload fixtures.",
+      "captured_at_utc": "2026-10-29T11:23:36.672880+00:00",
+      "sha256": "5c93a02175c68a80ab2adecd98daae78380365939551411516b7ca17863769e2",
+      "bytes": 104059,
+      "width": 1280,
+      "height": 720,
+      "source_base_commit": "328dabfa56134a947e372b6e7dd11260af0eeb55",
+      "source_state": "Unreleased appearance/layout/sorting working tree; not deployed.",
+      "data": "Actual production frontend and API with disposable synthetic SQLite. Existing bundled EQM images used as upload fixtures.",
+      "limitations": "Desktop screenshots show the selected viewport/section, except the full-page login capture. No production accounts or EVE data. Public report exports retain standard order."
+    },
+    {
+      "file": "appearance-login.jpg",
+      "caption": "Public login using the uploaded site banner and alternative bundled background; personal theme cleared on logout.",
+      "captured_at_utc": "2026-10-29T11:25:03.441661+00:00",
+      "sha256": "074b062f9c29a8c7ce6400f86d773dcc75428b3fe57d49730008fa1fe3d65104",
+      "bytes": 60643,
+      "width": 1264,
+      "height": 908,
+      "source_base_commit": "328dabfa56134a947e372b6e7dd11260af0eeb55",
+      "source_state": "Unreleased appearance/layout/sorting working tree; not deployed.",
+      "data": "Actual production frontend and API with disposable synthetic SQLite. Existing bundled EQM images used as upload fixtures.",
+      "limitations": "Desktop screenshots show the selected viewport/section, except the full-page login capture. No production accounts or EVE data. Public report exports retain standard order."
+    },
+    {
+      "file": "industry-sortable-columns.jpg",
+      "caption": "Existing public Industry Report sorted by quantity descending across the complete stock section.",
+      "captured_at_utc": "2026-10-29T11:24:25.162487+00:00",
+      "sha256": "d4fcdd10f27a578ce31ef5d0c395a3da709c17a817d71fcec457958df313d344",
+      "bytes": 85810,
+      "width": 1265,
+      "height": 712,
+      "source_base_commit": "328dabfa56134a947e372b6e7dd11260af0eeb55",
+      "source_state": "Unreleased appearance/layout/sorting working tree; not deployed.",
+      "data": "Actual production frontend and API with disposable synthetic SQLite. Existing bundled EQM images used as upload fixtures.",
+      "limitations": "Desktop screenshots show the selected viewport/section, except the full-page login capture. No production accounts or EVE data. Public report exports retain standard order."
     }
   ]
 }

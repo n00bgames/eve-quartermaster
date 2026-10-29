@@ -1,3 +1,4 @@
+import {LayoutRegion} from "../appearance/LayoutRegion";
 import { BarChart3, CalendarDays, Plus, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -93,16 +94,16 @@ export function EventsPage({ api, currentUser }: { api: ApiClient; currentUser: 
   if (route.view === "detail" && detail) return <EventDetailPanel api={api} event={detail} timeZone={timeZone} onBack={() => navigate("events")} onEdit={() => navigate(`events/${detail.id}/edit`)} onOpenComposition={() => navigate(`events/${detail.id}/composition`)} onOpenAttendance={() => navigate(`events/${detail.id}/attendance`)} onRefresh={() => loadDetail(detail.id)} />;
   if (route.view !== "board") return <section className="panel">{error ? <div className="mini-alert">{error}</div> : <p className="muted">Loading event…</p>}</section>;
 
-  return <div className="events-page">
-    <div className="event-board-toolbar">
+  return <LayoutRegion region="events" className="events-page">
+    <div key="events-1" data-layout-id="events-1" data-layout-label="Section 1" className="event-board-toolbar">
       <div className="event-filter-row"><label><span>Type</span><select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}><option value="all">All event types</option>{meta.constants.event_types.map((value) => <option key={value} value={value}>{value.replace(/_/g, " ")}</option>)}</select></label><label><span>Status</span><select value={lifecycleFilter} onChange={(event) => setLifecycleFilter(event.target.value)}><option value="active">Active</option><option value="all">All states</option>{meta.constants.lifecycle_statuses.map((value) => <option key={value} value={value}>{value.replace(/_/g, " ")}</option>)}</select></label></div>
       <div className="event-board-actions">{meta.permissions.can_view_analytics && <button type="button" className="event-secondary-button" onClick={() => navigate("events/analytics")}><BarChart3 size={17} /> Analytics</button>}<button type="button" className="event-secondary-button" onClick={() => void loadBoard()}><RefreshCw className={busy ? "spin" : ""} size={17} /> Refresh</button>{meta.permissions.can_create && <button type="button" onClick={() => navigate("events/new")}><Plus size={17} /> Create event</button>}</div>
     </div>
     {error && <div className="mini-alert">{error}</div>}
-    <div className="event-board-layout">
+    <div key="events-2" data-layout-id="events-2" data-layout-label="Section 2" className="event-board-layout">
       <EventCalendarPane events={filteredEvents} month={month} timeZone={timeZone} onMonthChange={setMonth} onSelect={(event) => navigate(`events/${event.id}`)} />
       <UpcomingEventsPane events={filteredEvents} timeZone={timeZone} onSelect={(event) => navigate(`events/${event.id}`)} />
     </div>
-    <div className="event-board-placard"><CalendarDays size={18} /><span><strong>Times are shown twice where it matters.</strong> Calendar cards use your profile timezone; detail views also show UTC as EVE time.</span></div>
-  </div>;
+    <div key="events-3" data-layout-id="events-3" data-layout-label="Section 3" className="event-board-placard"><CalendarDays size={18} /><span><strong>Times are shown twice where it matters.</strong> Calendar cards use your profile timezone; detail views also show UTC as EVE time.</span></div>
+  </LayoutRegion>;
 }

@@ -1,3 +1,4 @@
+import {LayoutRegion} from "../appearance/LayoutRegion";
 import { AlertTriangle, CircleCheck, Clock3, Plus, RefreshCw, ShieldOff, Trash2, UserRoundCheck } from "lucide-react";
 import { useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
 
@@ -247,9 +248,9 @@ export function EsiSyncPage({ currentUser, load, api, ManagedForm, Metric, Chara
   }
 
   return (
-    <div className="esi-sync-page">
-      <SyncFreshnessCenter payload={freshness} busy={freshnessBusy} error={freshnessError} onRefresh={refreshFreshness} Metric={Metric} CharacterHoverName={CharacterHoverName} />
-      <div className="two-column">
+    <LayoutRegion region="esi-sync" className="esi-sync-page">
+      <SyncFreshnessCenter key="esi-sync-1" data-layout-id="esi-sync-1" data-layout-label="Sync Freshness Center" payload={freshness} busy={freshnessBusy} error={freshnessError} onRefresh={refreshFreshness} Metric={Metric} CharacterHoverName={CharacterHoverName} />
+      <div key="esi-sync-2" data-layout-id="esi-sync-2" data-layout-label="Section 2" className="two-column">
       <section className="panel stacked">
         <h3>Linked Characters</h3>
         {linked.length > 0 ? (
@@ -310,7 +311,7 @@ export function EsiSyncPage({ currentUser, load, api, ManagedForm, Metric, Chara
         <ManagedForm onSubmit={importPublic} submitLabel="Import"><label>Kind<select name="kind"><option value="type">Item type</option><option value="character">Character</option><option value="corporation">Corporation</option><option value="alliance">Alliance</option><option value="system">System</option><option value="station">Station</option></select></label><label>ESI ID<input name="id" type="number" required placeholder="34" /></label></ManagedForm>
       </section>
       </div>
-    </div>
+    </LayoutRegion>
   );
 }
 

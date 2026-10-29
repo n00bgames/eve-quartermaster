@@ -15,8 +15,8 @@
 
 .skill-search-panel {
   align-items: end;
-  background: #10151b99;
-  border: 1px solid #303741;
+  background: color-mix(in srgb, var(--eqm-background, #10151b) 60.00%, transparent);
+  border: 1px solid var(--eqm-border, #303741);
   border-radius: 8px;
   display: grid;
   gap: 10px;
@@ -31,9 +31,9 @@
 .skill-search-panel button {
   align-items: center;
   background: #17313a;
-  border: 1px solid #4fb3c7;
+  border: 1px solid var(--eqm-accent, #4fb3c7);
   border-radius: 8px;
-  color: #d9f8ff;
+  color: var(--eqm-text, #d9f8ff);
   cursor: pointer;
   display: inline-flex;
   font-weight: 800;
@@ -45,7 +45,7 @@
 
 .skill-search-summary {
   align-items: center;
-  color: #aab4c2;
+  color: var(--eqm-muted, #aab4c2);
   display: flex;
   gap: 7px;
   grid-column: 1 / -1;
@@ -80,7 +80,7 @@
 }
 
 .skill-search-more {
-  color: #aab4c2;
+  color: var(--eqm-muted, #aab4c2);
   font-size: .78rem;
 }
 
@@ -141,9 +141,9 @@
 .skill-profile-overflow > summary {
   align-items: center;
   background: #17313a;
-  border: 1px solid #4fb3c7;
+  border: 1px solid var(--eqm-accent, #4fb3c7);
   border-radius: 8px;
-  color: #d9f8ff;
+  color: var(--eqm-text, #d9f8ff);
   cursor: pointer;
   display: inline-flex;
   gap: 6px;
@@ -163,12 +163,12 @@
 }
 
 .skill-profile-overflow[open] > summary {
-  border-color: #e8b84d;
+  border-color: var(--eqm-accent, #e8b84d);
 }
 
 .skill-profile-overflow-menu {
-  background: #111820;
-  border: 1px solid #4fb3c7;
+  background: var(--eqm-background, #111820);
+  border: 1px solid var(--eqm-accent, #4fb3c7);
   border-radius: 9px;
   box-shadow: 0 14px 34px #000a;
   display: grid;
