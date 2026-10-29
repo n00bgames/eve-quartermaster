@@ -1,3 +1,4 @@
+from app.models.account_sso import AccountSsoAttempt
 from app.models.sde_maintenance import SdeMaintenanceJob
 from app.models.password_recovery import PasswordReset, RecoveryRateLimit
 from app.models.local_scan import LocalScanReport, ScanHighlight

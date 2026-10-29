@@ -598,6 +598,62 @@
       "source_state": "Uncommitted SDE maintenance working tree; unreleased 2.0.0, not deployed.",
       "data": "Actual EQM frontend/API and disposable SQLite; mocked queue/CCP HTTP transport. Tiny synthetic build1234567 ZIP. Running fixture pauses and simulates byte progress.",
       "limitations": "Viewport screenshots at scrolled Settings panel; no live database or full SDE download. No pixels generated or repainted."
+    },
+    {
+      "file": "eve-sso-login.jpg",
+      "caption": "Identity-only EVE SSO sign-in beside password sign-in and centered recovery link; lower login page at default viewport.",
+      "captured_at_utc": "2026-10-29T22:58:43.533229+00:00",
+      "sha256": "ec9363cce4f81eeb94e7cc44c27caa1ca959ac5819f18d363d8539e7cee96eae",
+      "bytes": 52457,
+      "width": 1265,
+      "height": 712,
+      "source_base_commit": "74c1ae31efbff0409c9266398825d47ce76017d7",
+      "source_state": "Uncommitted 2.0.0 development tree; not a deployed or published release.",
+      "method": "Actual default-viewport Codex in-app browser screenshot; no pixel edits or generated UI.",
+      "data": "Isolated SQLite synthetic accounts, characters, corporation and stock. No production credentials or data.",
+      "limitations": "Relevant scrolled page region; no live CCP authentication. API exchanges mocked in tests. Ship quantities reflect demo fixtures only."
+    },
+    {
+      "file": "eve-sso-invite.jpg",
+      "caption": "Synthetic invitation with combined roles, EVE SSO account acceptance and password alternative.",
+      "captured_at_utc": "2026-10-29T22:58:43.533735+00:00",
+      "sha256": "75251a7692416af32f515babed3e4e5fbe3351d553f44a35d4af2d1b44bb0b3b",
+      "bytes": 54039,
+      "width": 1265,
+      "height": 712,
+      "source_base_commit": "74c1ae31efbff0409c9266398825d47ce76017d7",
+      "source_state": "Uncommitted 2.0.0 development tree; not a deployed or published release.",
+      "method": "Actual default-viewport Codex in-app browser screenshot; no pixel edits or generated UI.",
+      "data": "Isolated SQLite synthetic accounts, characters, corporation and stock. No production credentials or data.",
+      "limitations": "Relevant scrolled page region; no live CCP authentication. API exchanges mocked in tests. Ship quantities reflect demo fixtures only."
+    },
+    {
+      "file": "ship-report-summary.jpg",
+      "caption": "Private Ship Report heading with 28 synthetic hulls across three types, creator/date attribution and CSV/PDF controls.",
+      "captured_at_utc": "2026-10-29T22:58:43.534742+00:00",
+      "sha256": "be750772d118405ab0afd81c89fc0dd78ee08d77e8a6b2d68358efb548b929ff",
+      "bytes": 86082,
+      "width": 1265,
+      "height": 712,
+      "source_base_commit": "74c1ae31efbff0409c9266398825d47ce76017d7",
+      "source_state": "Uncommitted 2.0.0 development tree; not a deployed or published release.",
+      "method": "Actual default-viewport Codex in-app browser screenshot; no pixel edits or generated UI.",
+      "data": "Isolated SQLite synthetic accounts, characters, corporation and stock. No production credentials or data.",
+      "limitations": "Relevant scrolled page region; no live CCP authentication. API exchanges mocked in tests. Ship quantities reflect demo fixtures only."
+    },
+    {
+      "file": "ship-report-totals.jpg",
+      "caption": "Private Ship Report showing 28 synthetic hulls, three hull types and sortable totals with CSV/PDF controls.",
+      "captured_at_utc": "2026-10-29T22:58:43.535249+00:00",
+      "sha256": "ea511712500f048118ab62c9934fb33c905623d0093b06eaab0b43263920897f",
+      "bytes": 80705,
+      "width": 1265,
+      "height": 712,
+      "source_base_commit": "74c1ae31efbff0409c9266398825d47ce76017d7",
+      "source_state": "Uncommitted 2.0.0 development tree; not a deployed or published release.",
+      "method": "Actual default-viewport Codex in-app browser screenshot; no pixel edits or generated UI.",
+      "data": "Isolated SQLite synthetic accounts, characters, corporation and stock. No production credentials or data.",
+      "limitations": "Relevant scrolled page region; no live CCP authentication. API exchanges mocked in tests. Ship quantities reflect demo fixtures only."
     }
   ]
 }

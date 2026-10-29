@@ -1,3 +1,4 @@
+import {EveSsoButton} from "./features/auth/EveSsoButton";
 import {PasswordRecovery} from "./features/profile/PasswordRecovery";
 import {FullAssetExport} from "./features/quartermaster/FullAssetExport";
 import {LayoutRegion} from "./features/appearance/LayoutRegion";
@@ -93,7 +94,7 @@ type AuthResponse = { access_token?: string | null; remembered?: boolean; user: 
 
 type BootstrapStatus = { needs_admin: boolean; roles: string[] };
 
-type InviteInfo = { email: string; role: string; expires_at?: string | null };
+type InviteInfo = { email: string; role: string; roles?: string[]; expires_at?: string | null };
 
 
 type MarketSeed = { text: string; nonce: number };
@@ -513,6 +514,15 @@ function App() {
   useEffect(() => {
 
     const params = new URLSearchParams(window.location.search);
+    if (params.get("sso_status") === "signed_in") {
+      localStorage.removeItem("eq_access_token");
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+    if (params.get("sso_error")) {
+      setError(params.get("sso_error"));
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+
 
     const esiMode = params.get("esi_mode");
     const esiDestination = esiMode === "recruitment" || window.location.hash === "#recruiting"
@@ -525,6 +535,7 @@ function App() {
     if (window.location.hash.startsWith("#local-scan/") || window.location.hash.startsWith("#d-scan/") || window.location.hash.startsWith("#industry-report/")) { setAuthReady(true); return; }
 
     if (window.location.hash === "#navigation") setActiveTab("navigation");
+    else if (window.location.hash === "#ship-reports") setActiveTab("ship_reports");
     else if (window.location.hash === "#inventory-reports") setActiveTab("inventory_reports");
     else if (window.location.hash === "#industry-reports") setActiveTab("industry_reports");
     else if (window.location.hash === "#d-scan") setActiveTab("dscan");
@@ -686,13 +697,13 @@ function App() {
 
   if (!user && publicExchangeId) return <PublicExchangeListingPage api={api} publicId={publicExchangeId} onBack={() => { window.location.hash = ""; window.location.reload(); }} />;
 
-  if (!user) return <AuthScreen bootstrap={bootstrap} onAuth={completeAuth} />;
+  if (!user) return <AuthScreen bootstrap={bootstrap} onAuth={completeAuth} error={error} />;
 
 
 
   return (
 
-    <main className={`app-shell${["local_scan", "dscan", "industry_reports", "inventory_reports"].includes(activeTab) ? " scan-report-shell" : ""}`}>
+    <main className={`app-shell${["local_scan", "dscan", "industry_reports", "inventory_reports", "ship_reports"].includes(activeTab) ? " scan-report-shell" : ""}`}>
 
       <aside className="sidebar">
 
@@ -736,6 +747,7 @@ function App() {
           plex: canView("plex") && <button className={activeTab === "plex" ? "active" : ""} onClick={() => { window.location.hash = "plex"; setActiveTab("plex"); }}><Coins size={18} /> PLEX Tracker</button>,
           bounty_analytics: canView("bounty_analytics") && <button className={activeTab === "bounty_analytics" ? "active" : ""} onClick={() => { window.location.hash = "bounties"; setActiveTab("bounty_analytics"); }}><TrendingUp size={18} /> Bounty Analytics</button>,
           notes: canView("notes") && <button className={activeTab === "notes" ? "active" : ""} onClick={() => setActiveTab("notes")}><NotebookTabs size={18} /> Notes & Lists</button>,
+          ship_reports: canView("ship_reports") && canView("inventory_reports") && canView("assets") && <button className={activeTab === "ship_reports" ? "active" : ""} onClick={()=>{window.location.hash="ship-reports";setActiveTab("ship_reports");}}><Boxes size={18}/> Ship Reports</button>,
           inventory_reports: canView("inventory_reports") && canView("assets") && <button className={activeTab === "inventory_reports" ? "active" : ""} onClick={()=>{window.location.hash="inventory-reports";setActiveTab("inventory_reports");}}><Boxes size={18}/> Inventory Report</button>,
           industry_reports: canView("industry_reports") && <button className={activeTab === "industry_reports" ? "active" : ""} onClick={()=>{window.location.hash="industry-reports";setActiveTab("industry_reports");}}><ClipboardList size={18}/> Industry Report</button>,
           quartermaster: canView("quartermaster") && <button className={activeTab === "quartermaster" ? "active" : ""} onClick={() => { window.location.hash = "quartermaster"; setActiveTab("quartermaster"); }}><Boxes size={18} /> Quartermaster</button>,
@@ -887,6 +899,7 @@ function App() {
 
         {activeTab === "esi" && canView("esi") && <EsiSyncPage load={load} currentUser={user} api={api} ManagedForm={ManagedForm} Metric={Metric} CharacterHoverName={CharacterHoverName} />}
 
+        {activeTab === "ship_reports" && canView("ship_reports") && canView("inventory_reports") && canView("assets") && <InventoryReportPage api={api} ships/>}
         {activeTab === "inventory_reports" && canView("inventory_reports") && canView("assets") && <InventoryReportPage api={api}/>}
         {activeTab === "industry_reports" && canView("industry_reports") && <IndustryReportPage api={api}/>}
         {activeTab === "profile" && canView("profile") && <ProfilePage currentUser={user} onUserUpdated={setUser} focus={profileFocus} api={api} ManagedForm={ManagedForm} accountLabel={accountLabel} />}
@@ -1032,7 +1045,8 @@ function AuditLog({ currentUser }: { currentUser: UserAccount }) {
 
 }
 
-function AuthScreen({ bootstrap, onAuth }: { bootstrap: BootstrapStatus | null; onAuth: (path: string, body: Record<string, unknown>) => Promise<void> }) {
+function AuthScreen({ bootstrap, onAuth, error }: { bootstrap: BootstrapStatus | null; onAuth: (path: string, body: Record<string, unknown>) => Promise<void>; error: string | null }) {
+  const [rememberMe, setRememberMe] = useState(false);
 
   const needsAdmin = bootstrap?.needs_admin ?? false;
 
@@ -1048,7 +1062,9 @@ function AuthScreen({ bootstrap, onAuth }: { bootstrap: BootstrapStatus | null; 
 
         <h2>{needsAdmin ? "Create Admin Account" : "Sign In"}</h2>
 
-        <p className="muted">{needsAdmin ? "Set up the first Quartermaster host account." : "Use your Quartermaster account before linking EVE characters."}</p><p className="auth-tagline">EVE is Excel in a flight suit.</p>
+        <p className="muted">{needsAdmin ? "Set up the first Quartermaster host account." : "Sign in with your Quartermaster account or a linked EVE character."}</p><p className="auth-tagline">EVE is Excel in a flight suit.</p>
+
+        {error && <div className="mini-alert" role="alert">{error}</div>}
 
         <ManagedForm submitLabel={needsAdmin ? "Create host" : "Sign in"} onSubmit={(form) => onAuth(needsAdmin ? "/auth/bootstrap" : "/auth/login", { email: form.get("email"), password: form.get("password"), display_name: form.get("display_name"), remember_me: !needsAdmin && form.get("remember_me") === "on" })}>
 
@@ -1058,11 +1074,13 @@ function AuthScreen({ bootstrap, onAuth }: { bootstrap: BootstrapStatus | null; 
 
           <label>Password<input name="password" type="password" minLength={8} required /></label>
 
-          {!needsAdmin && <label className="check auth-remember"><input name="remember_me" type="checkbox" /><span><strong>Remember me</strong><small>Stay signed in on this device for 30 days.</small></span></label>}
+          {!needsAdmin && <label className="check auth-remember"><input name="remember_me" type="checkbox" checked={rememberMe} onChange={(event) => setRememberMe(event.target.checked)} /><span><strong>Remember me</strong><small>Stay signed in on this device for 30 days.</small></span></label>}
 
         </ManagedForm>
 
-        {!needsAdmin && <a className="auth-link" href="#forgot-password">Forgot password?</a>}
+        {!needsAdmin && <EveSsoButton rememberMe={rememberMe} />}
+
+        {!needsAdmin && <div className="auth-recovery-link"><a className="auth-link" href="#forgot-password">Forgot password?</a></div>}
         {!needsAdmin && <a className="auth-link auth-recruiting-link" href="/#recruiting"><UserRoundCheck size={18} /> Apply / Recruiting</a>}
 
       </section>
@@ -1115,7 +1133,10 @@ function InviteScreen({ token, onAuth }: { token: string; onAuth: (path: string,
 
           <p className="muted">Create your Quartermaster account for {invite.email}.</p><p className="auth-tagline">EVE is Excel in a flight suit.</p>
 
-          <div className="invite-summary"><span>Assigned role</span><strong>{invite.role}</strong></div>
+          <div className="invite-summary"><span>Assigned roles</span><strong>{(invite.roles ?? [invite.role]).map(role=>role.replace(/_/g," ")).join(", ")}</strong></div>
+
+          <EveSsoButton inviteToken={token} />
+          <p className="auth-alternative">Or create an account with a password</p>
 
           <ManagedForm submitLabel="Create account" onSubmit={(form) => onAuth(`/auth/invites/${token}/accept`, { display_name: form.get("display_name"), password: form.get("password") })}>
 
@@ -2344,6 +2365,7 @@ function ManagedForm({ children, onSubmit, submitLabel = "Save" }: { children: R
 
 
 function titleFor(tab: string) {
+  if(tab==="ship_reports") return "Ship Reports";
   if(tab==="inventory_reports") return "Inventory Report";
   if(tab==="industry_reports") return "Industry Report";
   if (tab === "quartermaster") return "Quartermaster";
@@ -2360,6 +2382,7 @@ function titleFor(tab: string) {
 
 
 function subtitleFor(tab: string) {
+  if(tab==="ship_reports") return "Private ship counts by hull type, character/corporation and location, with CSV and PDF exports.";
   if(tab==="inventory_reports") return "Private ship, module and full asset totals with owner detail and exports.";
   if(tab==="industry_reports") return "Industry materials, selected stock, blueprints, jobs and PI. Public views hide character identities.";
   if (tab === "quartermaster") return "View blueprint holdings, running industry jobs, and planetary infrastructure across linked owners.";

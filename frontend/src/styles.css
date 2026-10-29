@@ -1541,3 +1541,11 @@
 .sde-maintenance-actions button { color: var(--eqm-background, #101215); background: var(--eqm-accent, #e8b84d); border: 1px solid var(--eqm-border, #3b4654); border-radius: 8px; padding: 10px 14px; font-weight: 700; cursor: pointer; }
 .sde-maintenance-actions button:disabled { opacity: .55; cursor: wait; }
 .sde-maintenance-actions .notice { overflow-wrap: anywhere; }
+
+.auth-recovery-link { display: flex; justify-content: center; padding: 16px 0 4px; }
+.auth-recovery-link .auth-link { margin: 0; }
+
+.auth-sso { display: grid; gap: 8px; margin-top: 16px; }
+.auth-sso-button { width: 100%; min-height: 44px; padding: 10px 16px; border: 1px solid var(--eqm-accent, #e8b84d); border-radius: 8px; color: var(--eqm-text, #f5f7fa); background: var(--eqm-background, #101215); font-weight: 800; cursor: pointer; }
+.auth-sso small { color: var(--eqm-muted, #aab4c2); text-align: center; line-height: 1.5; }
+.auth-alternative { margin: 18px 0 12px; text-align: center; color: var(--eqm-muted, #aab4c2); }

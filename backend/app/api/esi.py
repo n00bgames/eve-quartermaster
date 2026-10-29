@@ -13,7 +13,7 @@ from typing import Any
 import httpx
 
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import Request, APIRouter, Depends, HTTPException, Query, Response
 from fastapi.responses import RedirectResponse
 from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -3002,7 +3002,10 @@ def public_exchange_mail_redirect(frontend_url: str, public_id: str, *, opened: 
 
 
 @router.get("/auth/callback")
-async def auth_callback(code: str | None = None, state: str | None = None, db: Session = Depends(get_db)) -> dict[str, Any]:
+async def auth_callback(code: str | None = None, state: str | None = None, db: Session = Depends(get_db), request: Request = None, error: str | None = None) -> dict[str, Any]:
+    from app.api import account_sso
+    if state and state.startswith(account_sso.STATE_PREFIX):
+        return await account_sso.callback(request, db, state, code, error)
     if not code:
         raise HTTPException(status_code=400, detail="Missing SSO authorization code")
     settings = get_settings()
@@ -3162,6 +3165,8 @@ async def auth_callback(code: str | None = None, state: str | None = None, db: S
             token = EsiToken(user_id=user.id, character_id=character.id, scopes=scopes, encrypted_refresh_token=encrypted_refresh)
             db.add(token)
         token.user_id = user.id
+        owner_hash = claims.get("owner")
+        token.sso_owner_hash = owner_hash if isinstance(owner_hash, str) and 0 < len(owner_hash) <= 128 else None
         token.scopes = scopes
         token.encrypted_refresh_token = encrypted_refresh
         token.access_token_expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)

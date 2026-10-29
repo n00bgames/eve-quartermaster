@@ -6,6 +6,10 @@ Version sections are written as user-facing release notes first, with implementa
 
 ## [2.0.0] - Unreleased
 
+- Add identity-only EVE SSO login and one-time invitation acceptance with combined invited roles, browser-bound PKCE and verified character ownership. Existing linked characters can sign in after ownership proof; requires migration 0098 and matching API/frontend.
+- Add creator-only Ship Reports with total hull count, counts per hull type/class, character/corporation/location detail, sortable columns, CSV/PDF, retention and scoped history/deletion. Count packaged quantities; exclude drones, modules and blueprints.
+- Move expensive report builds, storage indexing and export rendering off the API event loop, limit heavy operations per process, and return retryable overload responses. Center the login recovery link with padding.
+
 - Add administrator SDE download/validation and optional import controls in Settings. Persist worker progress across reloads, prevent overlapping operations, preserve versioned archives and show download receipts. Existing imports now use Redis/RQ; requires migration 0097 and a writable worker SDE mount. Host update-helper design documented separately.
 
 - Add single-use password recovery links, optional SMTP delivery, administrator forced-reset controls and session revocation after password changes. Requires migration 0096 and matching frontend/API; SMTP is optional for admin-generated links.

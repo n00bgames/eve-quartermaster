@@ -18,7 +18,7 @@ from app.models.appearance import UserAppearance, SiteBranding
 from app.services.permissions import role_rank, ROLE_RANK
 
 router=APIRouter(prefix="/appearance",tags=["appearance"])
-MODULES=set("overview navigation characters skills fittings jump_clones roster esi local_scan dscan intel_reports local_threat market exchange hypernet plex bounty_analytics notes inventory_reports industry_reports quartermaster manufacturing research_projects mining planetary_industry corporations ownership assets industry contracts analytics fleet_assignments doctrines srp killboard battle_reports calendar_events recruiting profile settings audit".split())
+MODULES=set("overview navigation characters skills fittings jump_clones roster esi local_scan dscan intel_reports local_threat market exchange hypernet plex bounty_analytics notes ship_reports inventory_reports industry_reports quartermaster manufacturing research_projects mining planetary_industry corporations ownership assets industry contracts analytics fleet_assignments doctrines srp killboard battle_reports calendar_events recruiting profile settings audit".split())
 Key=Annotated[str,Field(pattern=r"^[a-zA-Z0-9_.:-]{1,100}$")]
 Color=Annotated[str,Field(pattern=r"^#[0-9a-fA-F]{6}$")]
 

@@ -883,3 +883,12 @@ Recover accounts with expiring single-use links, configurable email delivery and
 Download and validate CCP’s latest SDE from Settings, optionally import it, or save the archive for later. Worker jobs keep their progress across reloads and prevent concurrent SDE operations. [Setup and limitations](docs/sde-maintenance.md) · [Screenshots](docs/screenshots.md#sde-maintenance).
 
 ![Validated synthetic SDE archive](static/ss/v2.0/sde-maintenance-complete.jpg)
+
+
+### EVE SSO and private Ship Reports (2.0 development)
+
+Sign in with a linked EVE character, or accept an invitation and link your first character through identity-only EVE SSO. Ship Reports show total hulls, counts per type and private ownership/location detail, with CSV and PDF exports. [Setup and privacy](docs/sso-and-ship-reports.md) · [Screenshots](docs/screenshots.md#eve-sso-and-ship-reports).
+
+![Private ship totals and attribution](static/ss/v2.0/ship-report-summary.jpg)
+
+[SSO login](static/ss/v2.0/eve-sso-login.jpg) · [Invite acceptance](static/ss/v2.0/eve-sso-invite.jpg)

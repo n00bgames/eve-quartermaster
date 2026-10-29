@@ -139,7 +139,12 @@ def test_main_selection_exception_does_not_unlock_other_quartermaster_writes(env
     user=env.users['quartermaster'];char=env.db.scalar(select(EveCharacter).where(EveCharacter.owner_user_id==user.id))
     headers={'Authorization':'Bearer '+create_access_token(str(user.id))}
     assert env.client.put('/api/auth/me/main-character',json={'main_character_id':char.character_id},headers=headers).status_code==200
-    assert env.client.patch('/api/auth/me',json={'role':'host'},headers=headers).status_code==403
+    # Profile updates became available to utility roles with password recovery;
+    # the self-service endpoint must still ignore attempts to change role.
+    response=env.client.patch('/api/auth/me',json={'role':'host'},headers=headers)
+    assert response.status_code==200 and response.json()['role']=='quartermaster'
+    assert env.client.patch('/api/auth/users/'+str(user.id),json={'role':'host'},headers=headers).status_code==403
+    env.db.refresh(user);assert user.role=='quartermaster'
     assert env.client.put('/api/auth/me/main-character',json={'main_character_id':char.character_id,'role':'host'},headers=headers).status_code==422
 
 def test_privacy_migration_redacts_legacy_accounts_and_safe_downgrade():

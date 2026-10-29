@@ -24,6 +24,7 @@ class EsiToken(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
     character_id: Mapped[int] = mapped_column(ForeignKey("eve_characters.id"), nullable=False, index=True)
+    sso_owner_hash: Mapped[str | None] = mapped_column(String(128))
     scopes: Mapped[str] = mapped_column(Text, nullable=False)
     encrypted_refresh_token: Mapped[str] = mapped_column(Text, nullable=False)
     access_token_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

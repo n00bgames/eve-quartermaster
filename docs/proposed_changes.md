@@ -85,6 +85,14 @@ Implemented for multi-section workspaces; [controls, coverage and rollout](appea
 - [x] Explicit NPC-station/Upwell can or hangar selection for finished stock; exclude fittings/onboard contents and unselected finished goods.
 - [x] Dynamic scope/permission revalidation, fixed original scope and scoped individual/date/all deletion.
 
+## Ship Reports
+
+- [x] Creator-only ship snapshots with total hulls and counts for each hull type/class, then character/corporation and location detail.
+- [x] Count packaged stack quantities and exclude modules, drones and blueprints; keep existing asset visibility and Inventory Report restrictions.
+- [x] Sortable tables, CSV/PDF totals, retention, saved history and individual/date/all deletion; no public ship links.
+
+Implementation: [Ship Reports and account SSO](sso-and-ship-reports.md). Source complete; deployment is separate.
+
 ## Inventory Report
 
 - [x] Add an **Inventory Report** with inventory totals grouped by item type and category, including all ship types, module types, and other inventory categories.
@@ -108,3 +116,11 @@ Implemented for multi-section workspaces; [controls, coverage and rollout](appea
 - [x] Local-scan optional system search and selected-character Set Destination, with explicit waypoint consent and per-character results.
 - [x] Per-user persistent corporation/alliance red-highlight preferences, captured in public local reports and PDFs.
 - [x] SDE stored/import totals for every import-stat field and nested celestial/Dogma/blueprint/PI counts.
+
+
+## EVE account sign-in
+
+- [x] Log in with a linked EVE character using identity-only SSO, with browser-bound single-use PKCE and character ownership verification.
+- [x] Accept an administrator invite and link the first EVE character without choosing an EQM password; retain exactly the invited combined roles.
+
+Implementation and rollout: [EVE SSO sign-in](sso-and-ship-reports.md). Requires migration 0098 and matching frontend/API; no live CCP sign-in or deployment performed during local verification.

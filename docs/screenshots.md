@@ -500,3 +500,15 @@ SDE maintenance running with overlapping actions disabled; synthetic worker/HTTP
 Completed synthetic SDE archive with build, filename, size, checksum and a later-import selector.
 
 ![Completed synthetic SDE archive with build, filename, size, checksum and a later-import selector.](../static/ss/v2.0/sde-maintenance-complete.jpg)
+
+## EVE SSO and Ship Reports
+
+October 29, 2026, unreleased 2.0.0. [Permissions, rollout and limitations](sso-and-ship-reports.md). Actual UI with synthetic accounts; CCP exchanges were mocked in API tests and no live sign-in was performed. Login/invite captures show the relevant lower page at the default browser viewport.
+
+![EVE SSO login alongside password sign-in, with a centered recovery link.](../static/ss/v2.0/eve-sso-login.jpg)
+
+![Invitation with combined roles, identity-only EVE SSO acceptance and password alternative.](../static/ss/v2.0/eve-sso-invite.jpg)
+
+![Private Ship Report heading with total hull count and creator attribution.](../static/ss/v2.0/ship-report-summary.jpg)
+
+![Ship Report totals section with 28 synthetic hulls across three types, sortable quantities and CSV/PDF exports.](../static/ss/v2.0/ship-report-totals.jpg)

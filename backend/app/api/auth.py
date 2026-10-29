@@ -70,7 +70,7 @@ def hash_invite_token(token: str) -> str:
 def is_invite_usable(invite: UserInvite | None) -> bool:
     if invite is None or invite.accepted_at or invite.revoked_at:
         return False
-    return invite.expires_at is None or invite.expires_at > datetime.now(timezone.utc)
+    return invite.expires_at is None or invite.expires_at.replace(tzinfo=invite.expires_at.tzinfo or timezone.utc) > datetime.now(timezone.utc)
 
 
 def serialize_invite(invite: UserInvite, include_status: bool = True) -> dict[str, Any]:
@@ -556,7 +556,16 @@ def inspect_invite(token: str, db: Session = Depends(get_db)) -> dict[str, Any]:
     invite = db.scalar(select(UserInvite).where(UserInvite.token_hash == hash_invite_token(token)))
     if not is_invite_usable(invite):
         raise HTTPException(status_code=404, detail="Invite is invalid or expired")
-    return {"email": invite.email, "role": invite.role, "expires_at": invite.expires_at.isoformat() if invite.expires_at else None}
+    return {"email": invite.email, "role": invite.role, "roles": invite.roles_json or [invite.role], "expires_at": invite.expires_at.isoformat() if invite.expires_at else None}
+
+
+def claim_invite(db, invite):
+    at = datetime.now(timezone.utc)
+    claimed = db.execute(update(UserInvite).where(UserInvite.id == invite.id,
+        UserInvite.accepted_at.is_(None), UserInvite.revoked_at.is_(None),
+        (UserInvite.expires_at.is_(None)) | (UserInvite.expires_at > at)).values(accepted_at=at).execution_options(synchronize_session="fetch"))
+    if claimed.rowcount != 1:
+        raise HTTPException(409, "Invite is no longer available")
 
 
 @router.post("/invites/{token}/accept")
@@ -565,6 +574,7 @@ def accept_invite(token: str, payload: dict[str, Any], db: Session = Depends(get
     if not is_invite_usable(invite):
         raise HTTPException(status_code=404, detail="Invite is invalid or expired")
 
+    claim_invite(db, invite)
     display_name = str(payload.get("display_name") or invite.email).strip()
     password = str(payload.get("password", ""))
     if not display_name or not password or len(password) < 8:
