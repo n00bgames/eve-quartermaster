@@ -377,6 +377,32 @@
       "source_state": "Battle management working tree; unreleased and not deployed.",
       "data": "Synthetic local SQLite/real API and production frontend. Browser at default1280x720. PDF rendered with Poppler.",
       "limitations": "Screenshots show scrolled sections, not the entire report. No mobile breakpoint claim. Browser deletion review cancelled; actual deletion covered by ASGI tests."
+    },
+    {
+      "file": "industry-jobs-first.jpg",
+      "caption": "Actual public Industry UI: requested section order and resolved Upwell names.",
+      "captured_at_utc": "2026-10-29T08:29:17.386752+00:00",
+      "sha256": "b26ec344465c946ac85a7e02d19e6973311069b89291aa252556200b73a65d95",
+      "bytes": 246800,
+      "width": 1264,
+      "height": 2224,
+      "source_base_commit": "0af804fdd7963afe56e5fe2c46bce80acc9e7092",
+      "source_state": "Uncommitted Industry order/names change; not deployed.",
+      "data": "Actual local production frontend/API; synthetic disposable SQLite with Example Industrial Hub. Browser full-page capture; PDF rendered with Poppler.",
+      "limitations": "No live user data. Historical captures retain their former order/masking."
+    },
+    {
+      "file": "industry-jobs-first-pdf.png",
+      "caption": "Rendered PDF with the same section order and names.",
+      "captured_at_utc": "2026-10-29T08:29:17.395513+00:00",
+      "sha256": "954b31b93bbd3dbae0561415fc3a88f3f29e56a00707fcf39669e36e1183083e",
+      "bytes": 149591,
+      "width": 990,
+      "height": 1400,
+      "source_base_commit": "0af804fdd7963afe56e5fe2c46bce80acc9e7092",
+      "source_state": "Uncommitted Industry order/names change; not deployed.",
+      "data": "Actual local production frontend/API; synthetic disposable SQLite with Example Industrial Hub. Browser full-page capture; PDF rendered with Poppler.",
+      "limitations": "No live user data. Historical captures retain their former order/masking."
     }
   ]
 }

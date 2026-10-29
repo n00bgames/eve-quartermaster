@@ -163,5 +163,5 @@ class StorageIndex:
         if not place:
             return "Undisclosed location"
         location, _ = place
-        # Player-assigned Upwell/container names can themselves contain pilot names.
-        return location.name if location.location_kind.value == "station" else "Upwell structure"
+        # Report policy permits station/Upwell names, while owner identity stays anonymous.
+        return location.name

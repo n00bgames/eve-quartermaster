@@ -6,6 +6,8 @@ Version sections are written as user-facing release notes first, with implementa
 
 ## [2.0.0] - Unreleased
 
+- Industry Reports and CSV/PDF now lead with active jobs, then blueprints/reactions, stock totals, ownership detail and PI. Resolved Upwell/facility names are shown publicly while creator/owner fields remain anonymous; job labels prefer synchronized location names and blueprints use their verified storage root.
+
 - Fix Industry Reports excluding blueprints and material stock in corporation offices. Recognize validated station/Upwell office hangars and station deliveries while preserving ship-cargo and cross-owner exclusions. Existing dynamic links update after backend deployment; snapshots require regeneration.
 
 - Separate creator-only Inventory Reports for personal ships, modules, fittings and container stock, with totals/itemization and CSV/PDF. Industry Reports now default to industrial materials plus BPOs/BPCs/reaction formulas, jobs and PI; public identities are always anonymous, and finished goods require explicit NPC-station/Upwell storage selection. Legacy unapproved Industry stock is hidden pending regeneration.

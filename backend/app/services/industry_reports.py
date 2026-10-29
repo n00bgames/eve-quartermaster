@@ -5,7 +5,7 @@ from sqlalchemy import select, func, or_, and_
 from sqlalchemy.orm import selectinload
 from fastapi import HTTPException
 from app.models import (Asset, Blueprint, EveCharacter, OwnershipEntity, EveType, EveGroup,
-                        PlanetaryColony, PlanetaryPin, ResearchProject)
+                        PlanetaryColony, PlanetaryPin, ResearchProject, Location)
 from app.services.industry_storage import StorageIndex, industry_category, is_container, is_blueprint
 from app.services.asset_visibility import visible_owner_clause
 from app.services.permissions import can_view_section
@@ -123,9 +123,14 @@ def build(db, scope, selections=()):
         ResearchProject.installer_character_id.in_(select(EveCharacter.character_id).where(EveCharacter.id.in_(scope["job_characters"]))),
         and_(ResearchProject.source_type=="corporation",ResearchProject.corporation_id.in_(scope["job_corporations"]))))
         .options(selectinload(ResearchProject.character),selectinload(ResearchProject.corporation),selectinload(ResearchProject.blueprint_type),selectinload(ResearchProject.product_type))))
+    facility_ids={j.facility_id for j in projects if j.facility_id is not None}
+    facility_names={location.eve_location_id:location.name for location in db.scalars(
+        select(Location).where(Location.eve_location_id.in_(facility_ids)))
+        if location.location_kind.value in {"station", "structure"} and location.name
+        and not location.name.startswith(("Structure ", "Location "))}
     jobs=[{"job_id":str(j.job_id),"owner":j.corporation.name if j.source_type=="corporation" and j.corporation else j.character.name if j.character else j.installer_name or "Unknown",
         "owner_kind":"corporation" if j.source_type=="corporation" else "character", "activity":RESEARCH_ACTIVITY_NAMES.get(j.activity_id,str(j.activity_id)),"blueprint":j.blueprint_type.name if j.blueprint_type else str(j.blueprint_type_id),
-        "product":j.product_type.name if j.product_type else None,"status":j.status,"runs":j.runs,"facility":j.facility_name,"end_date":iso(j.end_date),"last_synced_at":iso(j.last_synced_at)} for j in projects]
+        "product":j.product_type.name if j.product_type else None,"status":j.status,"runs":j.runs,"facility":facility_names.get(j.facility_id) or j.facility_name or "Unresolved facility","end_date":iso(j.end_date),"last_synced_at":iso(j.last_synced_at)} for j in projects]
     bp_owners=list(db.scalars(select(OwnershipEntity).where(or_(OwnershipEntity.character_id.in_(scope["blueprint_characters"]),OwnershipEntity.corporation_id.in_(scope["blueprint_corporations"]))).options(selectinload(OwnershipEntity.character),selectinload(OwnershipEntity.corporation))))
     bp_owner_names={o.id:o.character.name if o.character else o.corporation.name if o.corporation else o.display_name for o in bp_owners}
     bp_owner_kinds={o.id:o.owner_kind.value for o in bp_owners}
@@ -133,15 +138,16 @@ def build(db, scope, selections=()):
     blueprints=[]
     recorded_assets=set()
     for b in db.scalars(select(Blueprint).where(Blueprint.ownership_entity_id.in_(bp_owner_names)).options(selectinload(Blueprint.blueprint_type),selectinload(Blueprint.location),selectinload(Blueprint.asset),selectinload(Blueprint.blueprint_type).selectinload(EveType.group))):
-        if b.asset and not bp_index.placement(b.asset):
+        place = bp_index.placement(b.asset) if b.asset else None
+        if b.asset and not place:
             continue
         recorded_assets.add(b.asset_id)
         bp_type = b.blueprint_type
         reaction = bool(bp_type and bp_type.group and "reaction" in bp_type.group.name.casefold())
         blueprints.append({"owner":bp_owner_names[b.ownership_entity_id],"owner_kind":bp_owner_kinds[b.ownership_entity_id],
-            "_public_location":bp_index.public_location(b.asset) if b.asset else b.location.name if b.location and b.location.location_kind.value=="station" else "Industry storage","blueprint":b.blueprint_type.name if b.blueprint_type else str(b.blueprint_type_id),
+            "_public_location":bp_index.public_location(b.asset) if b.asset else b.location.name if b.location and b.location.location_kind.value in {"station", "structure"} else "Industry storage","blueprint":b.blueprint_type.name if b.blueprint_type else str(b.blueprint_type_id),
             "kind":"Reaction formula" if reaction else "BPC" if b.is_copy else "BPO","quantity":1 if b.is_copy else max(1,b.asset.quantity if b.asset else 1),"me":b.material_efficiency,"te":b.time_efficiency,
-            "runs":b.runs_remaining,"location":b.location.name if b.location else "Unknown location","last_synced_at":iso(b.last_synced_at)})
+            "runs":b.runs_remaining,"location":place[0].name if place else b.location.name if b.location else "Unknown location","last_synced_at":iso(b.last_synced_at)})
     # Some reaction formulas are present in the assets feed before blueprint sync.
     for asset in bp_index.assets.values():
         item=asset.item_type
@@ -183,7 +189,7 @@ def present(data, public=False, inventory=False):
                     row["location"] = original.get("_public_location", "Industry storage")
                 if key=="stock":
                     row.pop("placement",None); row.pop("container",None)
-                if key=="jobs": row["facility"]="Industry facility"
+                if key=="jobs": row["facility"]=original.get("facility") or "Unresolved facility"
             elif key=="pi":
                 row["infrastructure"] = original.get("infrastructure",[])
             cleaned.append(row)
@@ -205,7 +211,7 @@ def csv_content(data):
         return "'"+text if text.startswith(("=","+","-","@","\t","\r")) else text
     writer.writerow(["Generated by EVE Quartermaster v"+data["application_version"]+" by "+data["account_name"]])
     writer.writerow(["Generated",data["created_at"],"Data as of",data["as_of"]])
-    for section in (("totals","stock") if data.get("report_kind")=="inventory" else ("totals","stock","blueprints","jobs","pi")):
+    for section in (("totals","stock") if data.get("report_kind")=="inventory" else ("jobs","blueprints","totals","stock","pi")):
         rows=data[section];writer.writerow([]);writer.writerow([section.upper()])
         if rows:
             fields=list(rows[0]);writer.writerow(fields)
@@ -232,8 +238,10 @@ def pdf_content(data):
         _,height=identity.wrap(A4[0]-64,35);identity.drawOn(canvas,32,A4[1]-40-height)
         canvas.setFont('Helvetica',7);canvas.drawString(32,A4[1]-67,'Generated '+data['created_at'][:19].replace('T',' ')+' UTC');canvas.drawString(32,A4[1]-80,'Data as of '+data['as_of'][:19].replace('T',' ')+' UTC');canvas.drawRightString(A4[0]-32,20,str(doc.page))
     story=[p(data['notice']),Spacer(1,12)]
-    specifications=[('Overall stock totals','totals',['category','item','quantity']),('Stock by ownership','stock',['owner','item','quantity','location','source']),
-        ('Blueprints and reaction formulas','blueprints',['owner','blueprint','kind','quantity','me','te','runs','location']),('Active industry jobs','jobs',['owner','activity','product','status','runs','facility','end_date']),('Planetary infrastructure','pi',['owner','planet','upgrade_level','pins','links','routes'])]
+    specifications=[('Active industry jobs','jobs',['owner','activity','product','status','runs','facility','end_date']),
+        ('Blueprints and reaction formulas','blueprints',['owner','blueprint','kind','quantity','me','te','runs','location']),
+        ('Overall stock totals','totals',['category','item','quantity']),('Stock by ownership','stock',['owner','item','quantity','location','source']),
+        ('Planetary infrastructure','pi',['owner','planet','upgrade_level','pins','links','routes'])]
     if data.get('report_kind')=='inventory':
         specifications=[('Overall inventory totals','totals',['category','item','quantity']),('Private inventory by character / corporation','stock',['owner','category','item','quantity','location','placement','container'])]
     for heading,key,fields in specifications:

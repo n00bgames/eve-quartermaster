@@ -417,3 +417,10 @@ Actual local UI with synthetic accounts and six saved battles. The management ca
 ![Date-range deletion review](../static/ss/v2.0/battle-report-deletion-review.jpg)
 ![PDF team totals and hull composition](../static/ss/v2.0/battle-report-pdf-summary.png)
 ![PDF pilots and complete timeline](../static/ss/v2.0/battle-report-pdf-details.png)
+
+### Industry jobs first and structure names — unreleased 2.0
+
+Current synthetic public report, superseding the earlier order and masked-structure examples. Actual browser full-page capture and a rendered one-page PDF; creator and owner fields remain anonymous.
+
+![Jobs, blueprints, totals, ownership and PI in order](../static/ss/v2.0/industry-jobs-first.jpg)
+![Matching PDF order and resolved facility names](../static/ss/v2.0/industry-jobs-first-pdf.png)

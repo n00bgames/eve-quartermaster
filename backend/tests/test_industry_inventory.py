@@ -31,7 +31,7 @@ def stock(env):
     other_char=db.scalar(select(EveCharacter).where(EveCharacter.owner_user_id==env.users['other'].id))
     other=OwnershipEntity(owner_kind=OwnerKind.CHARACTER,character_id=other_char.id,display_name=other_char.name);db.add(other)
     station=Location(name='Jita IV - NPC station',location_kind=LocationKind.STATION)
-    upwell=Location(name=char.name+' secret citadel',location_kind=LocationKind.STRUCTURE)
+    upwell=Location(name='Example Industrial Citadel',location_kind=LocationKind.STRUCTURE)
     unknown=Location(name='Unresolved',location_kind=LocationKind.UNKNOWN)
     db.add_all([station,upwell,unknown]);db.flush()
     assets={}
@@ -111,7 +111,7 @@ def test_foreign_ship_unresolved_and_forged_storage_denied(stock):
     assert e.client.post('/api/industry-reports',json={'storage':['x'*101]}).status_code==422
 
 
-def test_public_json_csv_pdf_hide_all_creator_owner_identifiers_and_custom_names(stock):
+def test_public_json_csv_pdf_hide_creator_owner_identifiers_but_show_structure_names(stock):
     data=create(stock,is_private=False,anonymous=False)
     assert data['anonymous'] and data['account_name']=='Anonymous'
     token=data['token'];stock.env.current[0]=None
@@ -119,7 +119,7 @@ def test_public_json_csv_pdf_hide_all_creator_owner_identifiers_and_custom_names
         response=stock.env.client.get('/api/industry-reports/public/'+token+suffix)
         assert response.status_code==200,response.text
         text=''.join(p.extract_text() for p in PdfReader(BytesIO(response.content)).pages) if suffix.endswith('pdf') else response.text
-        for secret in [stock.char.name,'secret citadel','73001','78652','owner_user_id','_scope','_storage']:
+        for secret in [stock.char.name,'73001','78652','owner_user_id','_scope','_storage']:
             assert secret not in text
         assert 'Character Owned' in text
         assert 'Private Laser' not in text and 'Antimatter Charge' not in text
@@ -229,7 +229,7 @@ def test_upwell_corporation_hangar_selection_and_generic_public_ownership(stock)
     report=create(stock,is_private=False,storage=[option['key']])
     assert quantities(report)['Antimatter Charge']==250
     row=next(r for r in report['stock'] if r['item']=='Antimatter Charge')
-    assert row['owner']=='Corporation Owned' and row['location']=='Upwell structure'
+    assert row['owner']=='Corporation Owned' and row['location']==stock.upwell.name
     assert corp.name not in str(report) and stock.char.name not in str(report)
 
 
@@ -290,7 +290,7 @@ def test_office_blueprints_above_2500_and_dynamic_existing_link(office_stock):
         assert response.status_code==200,response.text
         result=response.json();assert len(result['blueprints'])==2501 and result['summary']['bpos']==2501
         csv=o.stock.env.client.get('/api/industry-reports/public/'+data['token']+'/export/csv')
-        assert csv.status_code==200 and csv.text.split('BLUEPRINTS',1)[1].split('JOBS',1)[0].count('Raven Blueprint')==2501
+        assert csv.status_code==200 and csv.text.split('BLUEPRINTS',1)[1].split('TOTALS',1)[0].count('Raven Blueprint')==2501
 
 
 @pytest.mark.parametrize('invalid',['foreign_owner','inside_ship','wrong_type','wrong_group','wrong_office_flag','wrong_child_flag','unknown_location'])
@@ -315,3 +315,42 @@ def test_station_corporation_deliveries_are_storage_not_ship_cargo(office_stock)
     assert quantities(service.build(o.db,o.scope,[key]))['Antimatter Charge']==20
     o.ammo.parent_asset_id=o.stock.assets['ship'].id;o.db.commit()
     assert StorageIndex(o.db,[o.owner.id,o.stock.owner.id]).placement(o.ammo) is None
+
+
+def test_industry_exports_jobs_first_and_inventory_still_totals_first(stock):
+    data=create(stock)
+    csv=service.csv_content(data)
+    order=['JOBS','BLUEPRINTS','TOTALS','STOCK','PI']
+    assert [csv.index('\r\n'+name+'\r\n') for name in order]==sorted(csv.index('\r\n'+name+'\r\n') for name in order)
+    pdf=''.join(page.extract_text() for page in PdfReader(BytesIO(service.pdf_content(data))).pages)
+    headings=['Active industry jobs','Blueprints and reaction formulas','Overall stock totals','Stock by ownership','Planetary infrastructure']
+    assert [pdf.index(name) for name in headings]==sorted(pdf.index(name) for name in headings)
+    inventory=create(stock,'/inventory-reports')
+    csv=service.csv_content(inventory)
+    assert csv.index('TOTALS')<csv.index('STOCK') and '\r\nJOBS\r\n' not in csv
+
+
+def test_structure_names_and_latest_cached_facility_name_in_reports_and_exports(stock):
+    from app.models import ResearchProject
+    stock.upwell.name=stock.char.name+" Industrial Citadel"
+    stock.upwell.eve_location_id=1000000000099
+    job=stock.db.scalar(select(ResearchProject));job.facility_id=stock.upwell.eve_location_id;job.facility_name='Structure 1000000000099'
+    # Blueprint location may still point to a can; resolve the verified station root.
+    can=stock.assets['can'];can.location_id=stock.upwell.id
+    bp=stock.db.scalar(select(Blueprint).where(Blueprint.asset_id==stock.assets['bp_asset'].id))
+    bp.asset.parent_asset_id=can.id;bp.asset.location_id=None;bp.asset.location_flag='Unlocked';bp.location_id=stock.station.id
+    stock.db.commit()
+    data=create(stock,is_private=False,dynamic=True)
+    assert data['account_name']=='Anonymous'
+    assert all(x['owner']=='Character Owned' for key in ('stock','blueprints','jobs','pi') for x in data[key])
+    assert data['jobs'][0]['facility']==stock.upwell.name
+    assert next(b for b in data['blueprints'] if b['kind']=='BPO')['location']==stock.upwell.name
+    for fmt in ('csv','pdf'):
+        result=stock.env.client.get('/api/industry-reports/public/'+data['token']+'/export/'+fmt)
+        assert result.status_code==200
+        content=''.join(p.extract_text() for p in PdfReader(BytesIO(result.content)).pages) if fmt=='pdf' else result.text
+        assert stock.upwell.name in ' '.join(content.split())
+    stock.upwell.name='Renamed Upwell';stock.db.commit()
+    refreshed=stock.env.client.get('/api/industry-reports/public/'+data['token']).json()
+    assert refreshed['jobs'][0]['facility']=='Renamed Upwell'
+    assert next(b for b in refreshed['blueprints'] if b['kind']=='BPO')['location']=='Renamed Upwell'

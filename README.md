@@ -847,3 +847,7 @@ Industry Reports contain industrial materials, BPOs/BPCs/reaction formulas, jobs
 Manage saved battles by ownership/corporation, generation dates or selection, with deletion review and creator-only private snapshots. PDFs now include team totals, ship composition, pilots and timeline. [Access rules and migration 0094](docs/battle-report-management.md).
 
 ![Saved Battle Report management with synthetic data](static/ss/v2.0/battle-report-management.jpg)
+
+Industry Reports now show **active jobs → blueprints/reactions → stock totals → ownership detail → PI**, including CSV/PDF. Resolved Upwell names are visible while public owner fields remain anonymous.
+
+![Industry Report with jobs first and resolved structure names](static/ss/v2.0/industry-jobs-first.jpg)
