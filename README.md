@@ -877,3 +877,9 @@ Recover accounts with expiring single-use links, configurable email delivery and
 ![Full asset downloads](static/ss/v2.0/full-asset-downloads.jpg)
 
 ![Password recovery](static/ss/v2.0/password-recovery.jpg)
+
+### SDE maintenance (2.0 development)
+
+Download and validate CCP’s latest SDE from Settings, optionally import it, or save the archive for later. Worker jobs keep their progress across reloads and prevent concurrent SDE operations. [Setup and limitations](docs/sde-maintenance.md) · [Screenshots](docs/screenshots.md#sde-maintenance).
+
+![Validated synthetic SDE archive](static/ss/v2.0/sde-maintenance-complete.jpg)

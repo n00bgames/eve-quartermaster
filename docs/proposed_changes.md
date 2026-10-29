@@ -16,7 +16,8 @@ Continue improving fitting simulation Dogma fidelity as real fittings expose gap
 
 ## Settings Maintenance Actions
 
-Add Settings-page maintenance buttons for safe backend-worker tasks such as fetching the latest SDE into `/sde` and optionally queueing SDE import. For host-level update/rebuild controls, prefer a small explicit host helper service over mounting the Docker socket into the app container.
+- [x] Settings controls to download/validate the latest CCP SDE into `/sde/downloads`, optionally import it, and show durable worker progress. Existing manual/agents imports now use the same worker and overlap guard. Requires migration 0097 and a writable worker SDE mount. [Controls and rollout](sde-maintenance.md).
+- [ ] Host-level update/rebuild controls through a narrowly scoped, explicitly installed helper service. [Helper design](sde-maintenance.md#host-updaterebuild-helper-design-not-enabled).
 
 ## Local Scan Analysis
 

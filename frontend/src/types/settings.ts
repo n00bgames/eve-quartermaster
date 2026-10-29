@@ -59,6 +59,13 @@ export type SdeImportResult = SdeStatus & {
 };
 
 export type SdeImportProgress = {
+  id?: string;
+  action?: "download" | "import";
+  created_at?: string;
+  bytes_received?: number;
+  total_bytes?: number | null;
+  import_after_download?: boolean;
+  download?: {build?:string; released_at?:string; bytes?:number; sha256?:string; path?:string; source_url?:string};
   running: boolean;
   status: string;
   stage?: string | null;

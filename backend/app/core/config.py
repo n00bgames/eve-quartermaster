@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     smtp_ssl: bool = False
 
     sde_source_path: str = "/sde"
+    sde_download_path: str = "/sde/downloads"
+    sde_job_timeout_seconds: int = Field(default=7200, ge=60, le=21600)
+    sde_download_max_bytes: int = Field(default=536870912, ge=1024)
+
     killboard_enabled_default: bool = True
     killboard_sync_period_hours_default: int = 6
     killboard_lookback_days_default: int = 90

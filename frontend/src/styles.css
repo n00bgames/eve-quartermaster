@@ -1537,3 +1537,7 @@
 .recovery-form label.check { display: flex; align-items: center; }
 .recovery-form label.check input { width: auto; }
 .password-recovery .auth-link { display: inline-flex; margin-top: 12px; }
+
+.sde-maintenance-actions button { color: var(--eqm-background, #101215); background: var(--eqm-accent, #e8b84d); border: 1px solid var(--eqm-border, #3b4654); border-radius: 8px; padding: 10px 14px; font-weight: 700; cursor: pointer; }
+.sde-maintenance-actions button:disabled { opacity: .55; cursor: wait; }
+.sde-maintenance-actions .notice { overflow-wrap: anywhere; }

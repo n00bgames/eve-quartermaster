@@ -6,6 +6,8 @@ Version sections are written as user-facing release notes first, with implementa
 
 ## [2.0.0] - Unreleased
 
+- Add administrator SDE download/validation and optional import controls in Settings. Persist worker progress across reloads, prevent overlapping operations, preserve versioned archives and show download receipts. Existing imports now use Redis/RQ; requires migration 0097 and a writable worker SDE mount. Host update-helper design documented separately.
+
 - Add single-use password recovery links, optional SMTP delivery, administrator forced-reset controls and session revocation after password changes. Requires migration 0096 and matching frontend/API; SMTP is optional for admin-generated links.
 - Add complete filtered CSV and Janice downloads to Assets, independent of pagination and Load all records. Preserve owner visibility, support computed location/flag filters, aggregate Janice quantities and neutralize CSV formula text.
 

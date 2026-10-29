@@ -572,6 +572,32 @@
       "source_state": "Uncommitted recovery/export changes, unreleased 2.0.0; not deployed.",
       "data": "Actual EQM UI with disposable synthetic SQLite accounts and inventory. No live accounts, SMTP deliveries or EVE actions.",
       "limitations": "Recovery pages captured full-page; admin/export captures show scrolled viewport. Admin form not submitted in browser; password changes covered by synthetic API tests. No pixels repainted or generated."
+    },
+    {
+      "file": "sde-maintenance-progress.jpg",
+      "caption": "SDE maintenance running with overlapping actions disabled; synthetic worker/HTTP progress fixture.",
+      "captured_at_utc": "2026-10-29T20:10:11.104027+00:00",
+      "sha256": "5ee70d3f736f9f0210229a330f988afe682791fa3d689b0773c0ed59604f52c4",
+      "bytes": 78166,
+      "width": 1280,
+      "height": 720,
+      "source_base_commit": "04cacf9a01c30a98f9efd9cd7df2f562adf9a1ea",
+      "source_state": "Uncommitted SDE maintenance working tree; unreleased 2.0.0, not deployed.",
+      "data": "Actual EQM frontend/API and disposable SQLite; mocked queue/CCP HTTP transport. Tiny synthetic build1234567 ZIP. Running fixture pauses and simulates byte progress.",
+      "limitations": "Viewport screenshots at scrolled Settings panel; no live database or full SDE download. No pixels generated or repainted."
+    },
+    {
+      "file": "sde-maintenance-complete.jpg",
+      "caption": "Completed synthetic SDE archive with build, filename, size, checksum and a later-import selector.",
+      "captured_at_utc": "2026-10-29T20:10:49.295784+00:00",
+      "sha256": "8291eb89f8099fed4d31ad6b1c0677d7f0ef23fb6c9d0e0579f0feecaf689c93",
+      "bytes": 94102,
+      "width": 1280,
+      "height": 720,
+      "source_base_commit": "04cacf9a01c30a98f9efd9cd7df2f562adf9a1ea",
+      "source_state": "Uncommitted SDE maintenance working tree; unreleased 2.0.0, not deployed.",
+      "data": "Actual EQM frontend/API and disposable SQLite; mocked queue/CCP HTTP transport. Tiny synthetic build1234567 ZIP. Running fixture pauses and simulates byte progress.",
+      "limitations": "Viewport screenshots at scrolled Settings panel; no live database or full SDE download. No pixels generated or repainted."
     }
   ]
 }

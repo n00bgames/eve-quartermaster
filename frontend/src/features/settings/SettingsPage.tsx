@@ -1,6 +1,6 @@
 import {LayoutRegion} from "../appearance/LayoutRegion";
 import { Boxes, Database, Factory, KeyRound, MapIcon, PackagePlus, RefreshCw, ScrollText } from "lucide-react";
-import { Fragment, useEffect, useState, type ReactElement, type ReactNode } from "react";
+import { Fragment, useEffect, useState, useRef, type ReactElement, type ReactNode } from "react";
 
 import { isAdminRole, isHostRole } from "../../lib/roles";
 import type { EqmCharacter } from "../../types/characters";
@@ -20,6 +20,10 @@ type SettingsPageProps = {
   accountLabel: (user: UserAccount) => string;
 };
 
+function sdeSize(bytes:number) {
+  return bytes < 1048576 ? `${(bytes/1024).toFixed(1)} KiB` : `${(bytes/1048576).toFixed(1)} MiB`;
+}
+
 export function SettingsPage({ currentUser, api, Metric, ManagedForm, accountLabel }: SettingsPageProps) {
   const adminAccess = isAdminRole(currentUser.role);
   const hostAccess = isHostRole(currentUser.role);
@@ -29,6 +33,8 @@ export function SettingsPage({ currentUser, api, Metric, ManagedForm, accountLab
   const [suppressPeekNotifications, setSuppressPeekNotifications] = useState(false);
   const [sdeStatus, setSdeStatus] = useState<SdeStatus | null>(null);
   const [sdePath, setSdePath] = useState("/sde");
+  const lastCompletedSdeJob = useRef<string | null>(null);
+  const [sdeImportAfterDownload, setSdeImportAfterDownload] = useState(false);
   const [sdeBusy, setSdeBusy] = useState(false);
   const [sdeImportState, setSdeImportState] = useState<SdeImportProgress | null>(null);
 
@@ -41,19 +47,20 @@ export function SettingsPage({ currentUser, api, Metric, ManagedForm, accountLab
 
     const status = await api<SdeStatus>("/sde/status");
     setSdeStatus(status);
-    setSdePath((current) => current || status.default_source_path || "/sde");
+    setSdePath((current) => current === "/sde" ? status.default_source_path || "/sde" : current);
   }
 
   async function loadSdeImportState() {
     if (!adminAccess) return;
 
-    const previousCompletedAt = sdeImportState?.completed_at;
     const state = await api<SdeImportProgress>("/sde/import-status");
     setSdeImportState(state);
     setSdeBusy(Boolean(state.running));
-    if (state.status === "success" && state.completed_at && state.completed_at !== previousCompletedAt) {
+    if (state.status === "success" && state.completed_at && (state.id || state.completed_at) !== lastCompletedSdeJob.current) {
+      lastCompletedSdeJob.current = state.id || state.completed_at;
       await loadSdeStatus();
-      setMessage("SDE import complete. Static data counts refreshed.");
+      if (state.action === "download" && state.source_path) setSdePath(state.source_path);
+      setMessage(state.action === "download" && !state.import_after_download ? "SDE archive downloaded and validated. It is ready to import." : "SDE import complete. Static data counts refreshed.");
     }
   }
 
@@ -88,6 +95,17 @@ export function SettingsPage({ currentUser, api, Metric, ManagedForm, accountLab
     await patchCharacter(character, { wallet_corporation_analytics_opt_in: optedIn }, optedIn ? `${character.name} explicitly opted into corporation Financial Analytics.` : `${character.name} was removed from corporation Financial Analytics.`);
   }
 
+  async function downloadSde() {
+    setSdeBusy(true);setSettingsError(null);setMessage(null);
+    try {
+      const state=await api<SdeImportProgress>("/sde/download",{method:"POST",body:JSON.stringify({import_after_download:sdeImportAfterDownload})});
+      setSdeImportState(state);setMessage("SDE download queued. Progress stays available if you leave this page.");
+    } catch(err) {
+      setSettingsError(err instanceof Error?err.message:"Unable to queue download");
+      await loadSdeImportState().catch(()=>setSdeBusy(false));
+    }
+  }
+
   async function importSde(agentsOnly = false) {
     setSdeBusy(true);
     setSettingsError(null);
@@ -96,11 +114,11 @@ export function SettingsPage({ currentUser, api, Metric, ManagedForm, accountLab
       const state = await api<SdeImportProgress>("/sde/import", { method: "POST", body: JSON.stringify({ source_path: sdePath, ...(agentsOnly ? {sections:["agents"]} : {}) }) });
       setSdeImportState(state);
       setSdeBusy(Boolean(state.running));
-      setMessage("SDE import started. You can leave this page open and watch the progress badge.");
+      setMessage("SDE import queued for the worker. Progress stays available if you leave this page.");
     } catch (err) {
       setMessage(null);
-      setSdeBusy(false);
       setSettingsError(err instanceof Error ? err.message : "SDE import failed");
+      await loadSdeImportState().catch(()=>setSdeBusy(false));
     }
   }
 
@@ -121,10 +139,10 @@ export function SettingsPage({ currentUser, api, Metric, ManagedForm, accountLab
   const sdeProgressLabel = sdeImportState?.running
     ? `${sdeImportState.stage ?? "working"}${sdeProgressStats?.type_dogma_attributes ? ` · ${sdeProgressStats.type_dogma_attributes.toLocaleString()} type dogma attrs` : ""}${sdeProgressStats?.type_dogma_effects ? ` · ${sdeProgressStats.type_dogma_effects.toLocaleString()} type effects` : ""}${sdeProgressStats?.blueprint_activities ? ` · ${sdeProgressStats.blueprint_activities.toLocaleString()} recipes` : ""}`
     : sdeImportState?.status === "success"
-      ? `Last import complete${sdeImportState.completed_at ? ` at ${new Date(sdeImportState.completed_at).toLocaleString()}` : ""}`
+      ? `Last ${sdeImportState.action === "download" && !sdeImportState.import_after_download ? "download" : "import"} complete${sdeImportState.completed_at ? ` at ${new Date(sdeImportState.completed_at).toLocaleString()}` : ""}`
       : sdeImportState?.status === "failed"
         ? sdeImportState.error ?? "Last import failed"
-        : "No SDE import running";
+        : "No SDE maintenance running";
 
   return (
     <LayoutRegion region="settings" className="stacked">
@@ -158,17 +176,27 @@ export function SettingsPage({ currentUser, api, Metric, ManagedForm, accountLab
       {adminAccess && (
         <section className="panel stacked">
           <div className="section-heading">
-            <div><h3>SDE Import</h3><p>Load EVE static data from a mounted SDE folder or zip inside the backend container.</p></div>
+            <div><h3>SDE Maintenance</h3><p>Download CCP’s latest static data and import it through the background worker.</p></div>
             <button type="button" onClick={() => { void loadSdeStatus(); void loadSdeImportState(); }}>Refresh</button>
+          </div>
+          <div className="sde-maintenance-actions stacked">
+            <h4>Get the latest SDE</h4>
+            <p className="muted">Download and validate CCP’s YAML archive. Downloading alone leaves the imported data as it is.</p>
+            <label className="check"><input type="checkbox" checked={sdeImportAfterDownload} disabled={sdeBusy} onChange={event=>setSdeImportAfterDownload(event.target.checked)}/>Import automatically after a successful download</label>
+            <button type="button" disabled={sdeBusy} onClick={()=>void downloadSde()}>{sdeBusy?"SDE maintenance in progress":"Download latest SDE"}</button>
+            <p className="muted" role="status">{sdeProgressLabel}{sdeImportState?.status === "queued" ? " — waiting for the worker" : ""}</p>
+            {sdeImportState?.action === "download" && <p className="muted">Downloaded {sdeSize(sdeImportState.bytes_received??0)}{sdeImportState.total_bytes?` of ${sdeSize(sdeImportState.total_bytes)}`:""}</p>}
+            {sdeImportState?.download?.build && <div className="notice inline"><strong>SDE build {sdeImportState.download.build}</strong><p>{sdeImportState.download.path?.split(/[\\/]/).pop()}</p><p>Archive SHA-256: <code style={{overflowWrap:"anywhere"}}>{sdeImportState.download.sha256}</code></p>
+              {sdeImportState.source_path && <button type="button" disabled={sdeBusy} onClick={()=>setSdePath(sdeImportState.source_path!)}>Use downloaded archive for import</button>}</div>}
+            {sdeImportState?.status === "failed" && <p className="mini-alert" role="alert">{sdeImportState.error}</p>}
           </div>
           <p className="muted">Stored totals show all current rows. This import shows rows processed in the current or last run; zero may mean that dataset was not selected. Indented rows show related detail counts.</p>
           <div className="table-scroll"><table className="sde-counts-table"><thead><tr><th>Imported dataset</th><th>Stored total</th><th>{sdeBusy ? "This import (so far)" : "Last import"}</th></tr></thead><tbody>
             {SDE_COUNT_GROUPS.map(group => <Fragment key={group.label}><tr><th colSpan={3}>{group.label}</th></tr>{group.rows.map(([key,label,nested]) => <tr key={key}><td>{nested ? "↳ " : ""}{label}</td><td>{typeof sdeStatus?.[key] === "number" ? Number(sdeStatus[key]).toLocaleString() : "—"}</td><td>{typeof sdeProgressStats?.[key] === "number" ? Number(sdeProgressStats[key]).toLocaleString() : "—"}</td></tr>)}</Fragment>)}
           </tbody></table></div>
-          {sdeImportState && <div className={sdeImportState.status === "failed" ? "mini-alert" : "notice inline"}>{sdeProgressLabel}</div>}
           <label>SDE path<input value={sdePath} onChange={(event) => setSdePath(event.target.value)} placeholder="/sde or /sde/sde.zip" /></label>
-          <button type="button" disabled={sdeBusy} onClick={() => void importSde()}><RefreshCw size={18} /> {sdeBusy ? "Importing" : "Import SDE"}</button>
-          <button type="button" disabled={sdeBusy} onClick={() => void importSde(true)}>Import agents only</button>
+          <button type="button" disabled={sdeBusy} onClick={() => void importSde()}><RefreshCw size={18} /> {sdeBusy ? "Maintenance in progress" : "Queue SDE import"}</button>
+          <button type="button" disabled={sdeBusy} onClick={() => void importSde(true)}>Queue agents-only import</button>
         </section>
       )}
       {hostAccess && <DatabaseAdministration api={api} />}

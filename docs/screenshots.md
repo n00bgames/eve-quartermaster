@@ -488,3 +488,15 @@ Administrator recovery controls, including immediate sign-out and required reset
 Complete filtered CSV and Janice downloads alongside a ledger still displaying 100 of 621 synthetic rows.
 
 ![Complete filtered CSV and Janice downloads alongside a ledger still displaying 100 of 621 synthetic rows.](../static/ss/v2.0/full-asset-downloads.jpg)
+
+## SDE maintenance
+
+October 29, 2026, unreleased 2.0.0. [Controls, worker requirements and verification](sde-maintenance.md). Synthetic data and mocked queue/CCP transport; these are not production download measurements.
+
+SDE maintenance running with overlapping actions disabled; synthetic worker/HTTP progress fixture.
+
+![SDE maintenance running with overlapping actions disabled; synthetic worker/HTTP progress fixture.](../static/ss/v2.0/sde-maintenance-progress.jpg)
+
+Completed synthetic SDE archive with build, filename, size, checksum and a later-import selector.
+
+![Completed synthetic SDE archive with build, filename, size, checksum and a later-import selector.](../static/ss/v2.0/sde-maintenance-complete.jpg)
