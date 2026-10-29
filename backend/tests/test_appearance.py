@@ -127,3 +127,21 @@ def test_quartermaster_real_auth_only_allows_personal_appearance(app):
     assert app.client.put('/api/appearance/branding/banner',json={'revision':0,'image':image()},headers=headers).status_code==403
     assert app.client.post('/api/local-scans',json={'text':'Alpha One','retention':'24h'},headers=headers).status_code==403
     assert effective_permissions(user,app.db)==before
+
+@pytest.mark.parametrize('role',['host','intel_analyst','quartermaster'])
+def test_quicklaunch_links_round_trip_without_granting_permissions(app,role):
+    from app.services.permissions import effective_permissions
+    user=app.users[role];app.current[0]=user
+    before=effective_permissions(user,app.db)
+    groups=[{'id':'quick','name':'Quicklaunch','modules':['navigation','market']},
+            {'id':'main','name':'General','modules':['navigation']},
+            {'id':'finance','name':'Finance','modules':['market']}]
+    saved=app.client.patch('/api/appearance/me',json={'revision':0,'navigation':groups})
+    assert saved.status_code==200,saved.text
+    assert app.client.get('/api/appearance/me').json()['preferences']['navigation']==groups
+    assert effective_permissions(user,app.db)==before
+    groups[0]['modules'].remove('market')
+    assert app.client.patch('/api/appearance/me',json={'revision':1,'navigation':groups}).status_code==200
+    assert app.client.get('/api/appearance/me').json()['preferences']['navigation']==groups
+    app.current[0]=app.users['other']
+    assert app.client.get('/api/appearance/me').json()['preferences']=={}

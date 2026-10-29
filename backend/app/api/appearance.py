@@ -63,8 +63,8 @@ class PreferencesPatch(Strict):
     def validate_layout(self):
         if self.navigation is not None:
             groups=[g.id for g in self.navigation];modules=[m for g in self.navigation for m in g.modules]
-            if len(groups)!=len(set(groups)) or len(modules)!=len(set(modules)) or set(modules)-MODULES:
-                raise ValueError("Navigation groups and modules must be unique known entries.")
+            if len(groups)!=len(set(groups)) or any(len(g.modules)!=len(set(g.modules)) for g in self.navigation) or set(modules)-MODULES:
+                raise ValueError("Navigation groups must be unique, with known modules appearing once per group.")
         if self.layouts is not None and (len(self.layouts)>150 or any(len(v)>100 or len(v)!=len(set(v)) for v in self.layouts.values())):
             raise ValueError("Layout lists must be unique and bounded.")
         return self

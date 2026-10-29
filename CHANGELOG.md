@@ -6,6 +6,8 @@ Version sections are written as user-facing release notes first, with implementa
 
 ## [2.0.0] - Unreleased
 
+- Add per-section navigation shortcut dropdowns for Quicklaunch menus. Keep links in their original sections, arrange shortcut copies independently, and remove individual copies. Preferences persist per account and respect existing permissions; deploy matching frontend/API with the existing appearance migration.
+
 - Add account-saved themes/custom colors, personal banners, drag-and-drop panel order and editable navigation groups/module placement, with keyboard move controls and independent resets. Admins can upload a site banner and login background. Apply migration 0095 with the matching frontend/API; presentation settings do not expand data access.
 - Add sortable Industry/Inventory Report headers with numeric/date/natural ordering across all rows before pagination. Existing reports gain the controls automatically; exports retain their standard ordering.
 

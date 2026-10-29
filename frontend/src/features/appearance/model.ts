@@ -19,14 +19,29 @@ export const defaultNavigation:NavGroup[] = [
 ];
 export function navigationWithDefaults(saved?:NavGroup[]):NavGroup[]{
  const known=new Set(defaultNavigation.flatMap(g=>g.modules)),seen=new Set<string>(),groups=new Set<string>();
- const out=(saved??defaultNavigation).filter(g=>{if(groups.has(g.id))return false;groups.add(g.id);return true;}).map(g=>({...g,modules:g.modules.filter(m=>{if(!known.has(m)||seen.has(m))return false;seen.add(m);return true;})}));
+ // A module may appear in several groups as a shortcut, but only once in each group.
+ const out=(saved??defaultNavigation).filter(g=>{if(groups.has(g.id))return false;groups.add(g.id);return true;}).map(g=>{
+  const local=new Set<string>();
+  return {...g,modules:g.modules.filter(m=>{if(!known.has(m)||local.has(m))return false;local.add(m);seen.add(m);return true;})};
+ });
  for(const group of defaultNavigation){const missing=group.modules.filter(m=>!seen.has(m));if(!missing.length)continue;const target=out.find(g=>g.id===group.id);if(target)target.modules.push(...missing);else if(out.length<20)out.push({...group,modules:missing});else out[0].modules.push(...missing);}
  return out;
 }
 export function move<T>(items:T[],from:number,to:number):T[]{const out=[...items];if(from<0||from>=out.length||to<0||to>=out.length)return out;out.splice(to,0,out.splice(from,1)[0]);return out;}
-export function moveModule(groups:NavGroup[],module:string,target:string,before?:string):NavGroup[]{
- if(module===before||!groups.some(g=>g.id===target))return groups;
- const out=groups.map(g=>({...g,modules:g.modules.filter(m=>m!==module)}));const destination=out.find(g=>g.id===target)!;
+export function addShortcut(groups:NavGroup[],module:string,target:string):NavGroup[]{
+ if(!defaultNavigation.some(g=>g.modules.includes(module)))return groups;
+ return groups.map(g=>g.id===target&&!g.modules.includes(module)?{...g,modules:[...g.modules,module]}:g);
+}
+export function removeShortcut(groups:NavGroup[],module:string,source:string):NavGroup[]{
+ // Keep at least one navigation entry, including entries temporarily hidden by permissions.
+ if(groups.filter(g=>g.modules.includes(module)).length<2)return groups;
+ return groups.map(g=>g.id===source?{...g,modules:g.modules.filter(m=>m!==module)}:g);
+}
+export function moveModule(groups:NavGroup[],module:string,source:string,target:string,before?:string):NavGroup[]{
+ if(module===before||!groups.some(g=>g.id===source&&g.modules.includes(module))||!groups.some(g=>g.id===target))return groups;
+ // Move this occurrence only. A destination that already has the link keeps a single copy.
+ const out=groups.map(g=>({...g,modules:g.modules.filter(m=>m!==module||(g.id!==source&&g.id!==target))}));
+ const destination=out.find(g=>g.id===target)!;
  const index=before?destination.modules.indexOf(before):-1;destination.modules.splice(index<0?destination.modules.length:index,0,module);return out;
 }
 export function orderedKeys(available:string[],saved?:string[]):string[]{return [...new Set([...(saved??[]).filter(id=>available.includes(id)),...available])];}

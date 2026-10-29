@@ -452,3 +452,19 @@ Public login using the uploaded site banner and alternative bundled background; 
 Existing public Industry Report sorted by quantity descending across the complete stock section.
 
 ![Existing public Industry Report sorted by quantity descending across the complete stock section.](../static/ss/v2.0/industry-sortable-columns.jpg)
+
+## Quicklaunch shortcuts
+
+October 29, 2026, unreleased 2.0.0. [Setup and validation](appearance.md#quicklaunch-validation). Actual UI with synthetic accounts.
+
+Quicklaunch at the top of the sidebar, with Local Scan retained in Intel and its shortcut opening the same page.
+
+![Quicklaunch at the top of the sidebar, with Local Scan retained in Intel and its shortcut opening the same page.](../static/ss/v2.0/quicklaunch-navigation.jpg)
+
+Quicklaunch editor with the Add shortcut dropdown, original-link notice, individual move controls and Remove shortcut actions.
+
+![Quicklaunch editor with the Add shortcut dropdown, original-link notice, individual move controls and Remove shortcut actions.](../static/ss/v2.0/quicklaunch-editor.jpg)
+
+Quicklaunch shortcut dropdown at a 420px viewport; the navigation editor scrolls independently and the page has no horizontal overflow.
+
+![Quicklaunch shortcut dropdown at a 420px viewport; the navigation editor scrolls independently and the page has no horizontal overflow.](../static/ss/v2.0/quicklaunch-mobile.jpg)

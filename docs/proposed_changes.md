@@ -55,6 +55,8 @@ Implementation: [Battle Report management and migration 0094](battle-report-mana
 
 ## Personal Section Layouts
 
+- [x] Add cross-section shortcut dropdowns to navigation groups for persistent Quicklaunch menus, preserving original links and allowing individual shortcut removal.
+
 Implemented for multi-section workspaces; [controls, coverage and rollout](appearance.md).
 
 - [x] Let each user rearrange section panels/widgets with drag and drop.

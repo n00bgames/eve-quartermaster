@@ -481,6 +481,45 @@
       "source_state": "Unreleased appearance/layout/sorting working tree; not deployed.",
       "data": "Actual production frontend and API with disposable synthetic SQLite. Existing bundled EQM images used as upload fixtures.",
       "limitations": "Desktop screenshots show the selected viewport/section, except the full-page login capture. No production accounts or EVE data. Public report exports retain standard order."
+    },
+    {
+      "file": "quicklaunch-navigation.jpg",
+      "caption": "Quicklaunch at the top of the sidebar, with Local Scan retained in Intel and its shortcut opening the same page.",
+      "captured_at_utc": "2026-10-29T16:48:28.094056+00:00",
+      "sha256": "510cd4b8fe16eacc85f69c641f54b0e5fdbed0af092b0d5be7df6fe13376f62c",
+      "bytes": 87422,
+      "width": 1265,
+      "height": 889,
+      "source_base_commit": "678fbe718c48f24ed3284814d77999dc1aa7198e",
+      "source_state": "Uncommitted Quicklaunch shortcut working tree; unreleased 2.0.0, not deployed.",
+      "data": "Actual EQM frontend and API with synthetic accounts in disposable SQLite. No live accounts or EVE actions.",
+      "limitations": "Desktop captures show the current viewport/scroll position. Mobile is an unsaved D-Scan addition subsequently cancelled. No pixels repainted or generated."
+    },
+    {
+      "file": "quicklaunch-editor.jpg",
+      "caption": "Quicklaunch editor with the Add shortcut dropdown, original-link notice, individual move controls and Remove shortcut actions.",
+      "captured_at_utc": "2026-10-29T16:49:50.252886+00:00",
+      "sha256": "bb95b6cf7313973d21bbcfd4f2ca249444f94584a7c38ffb9ab599fc41d898d4",
+      "bytes": 82220,
+      "width": 1265,
+      "height": 889,
+      "source_base_commit": "678fbe718c48f24ed3284814d77999dc1aa7198e",
+      "source_state": "Uncommitted Quicklaunch shortcut working tree; unreleased 2.0.0, not deployed.",
+      "data": "Actual EQM frontend and API with synthetic accounts in disposable SQLite. No live accounts or EVE actions.",
+      "limitations": "Desktop captures show the current viewport/scroll position. Mobile is an unsaved D-Scan addition subsequently cancelled. No pixels repainted or generated."
+    },
+    {
+      "file": "quicklaunch-mobile.jpg",
+      "caption": "Quicklaunch shortcut dropdown at a 420px viewport; the navigation editor scrolls independently and the page has no horizontal overflow.",
+      "captured_at_utc": "2026-10-29T16:51:39.958937+00:00",
+      "sha256": "2d6ad21bf05254962d9cb2f03f759d34505a5f428d5f5a2c9500826864bd34e0",
+      "bytes": 38630,
+      "width": 405,
+      "height": 868,
+      "source_base_commit": "678fbe718c48f24ed3284814d77999dc1aa7198e",
+      "source_state": "Uncommitted Quicklaunch shortcut working tree; unreleased 2.0.0, not deployed.",
+      "data": "Actual EQM frontend and API with synthetic accounts in disposable SQLite. No live accounts or EVE actions.",
+      "limitations": "Desktop captures show the current viewport/scroll position. Mobile is an unsaved D-Scan addition subsequently cancelled. No pixels repainted or generated."
     }
   ]
 }

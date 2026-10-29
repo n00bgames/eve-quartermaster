@@ -863,3 +863,9 @@ Industry Reports now show **active jobs → blueprints/reactions → stock total
 ![Sortable Industry Report columns](static/ss/v2.0/industry-sortable-columns.jpg)
 
 [Light palette, branding and login captures](docs/screenshots.md#appearance-layouts-and-sortable-reports). Unreleased synthetic previews; deploy matching API/frontend with migration 0095_appearance.
+
+### Quicklaunch navigation shortcuts (2.0 development)
+
+Build a Quicklaunch section at the top of your navbar: **Customize navigation → Add section**, then use its **Add shortcut** dropdown to choose links from any permitted section. Original links stay in place. Reorder or remove shortcut copies and save the layout to your account. [Controls and rollout](docs/appearance.md) · [Editor and mobile screenshots](docs/screenshots.md#quicklaunch-shortcuts).
+
+![Saved Quicklaunch with original Local Scan link retained](static/ss/v2.0/quicklaunch-navigation.jpg)
