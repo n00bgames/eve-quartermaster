@@ -1,3 +1,4 @@
+import {EveItemName} from "../clientLinks/EveClientLinks";
 import { ShoppingCart } from "lucide-react";
 import type { ComponentType, FormEvent } from "react";
 import { Fragment, useEffect, useMemo, useState } from "react";
@@ -256,7 +257,7 @@ export function MarketAppraisalPage({
               const canQuoteItem = item.matched && Boolean(item.type_id);
               return <Fragment key={`${item.input}-${index}`}><tr>
                 <td>
-                  {canQuoteItem?<button type="button" className="market-item-expander" aria-expanded={expandedItems.has(index)} aria-controls={`market-history-${index}`} onClick={()=>setExpandedItems(old=>{const next=new Set(old);if(next.has(index))next.delete(index);else next.add(index);return next;})}>{expandedItems.has(index)?"▾":"▸"} {itemName}<small>Market history</small></button>:<strong>{itemName}</strong>}
+                  {canQuoteItem?<button type="button" className="market-item-expander" aria-expanded={expandedItems.has(index)} aria-controls={`market-history-${index}`} onClick={()=>setExpandedItems(old=>{const next=new Set(old);if(next.has(index))next.delete(index);else next.add(index);return next;})}>{expandedItems.has(index)?"▾":"▸"} {itemName}<small>Market history</small></button>:<strong>{itemName}</strong>}{item.type_id&&<EveItemName name={itemName} typeId={item.type_id} children="In EVE"/>}
                   <span>{item.matched ? `Type ${item.type_id}` : "No SDE match"}</span>
                   <span className={owned.quantity > 0 ? "context-owned" : "context-missing"}>Owned {numberFormatter.format(owned.quantity)}</span>
                   {owned.locations.length > 0 && <small>{owned.locations.join(" | ")}</small>}

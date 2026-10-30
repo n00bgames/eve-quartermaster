@@ -1,3 +1,4 @@
+import {EveItemName} from "../clientLinks/EveClientLinks";
 import {
   formatMarketIsk,
   marketHubDestinationId,
@@ -64,7 +65,7 @@ export function MarketMarginHints({ insights }: { insights: MarketInsight[] }) {
 
   return <div className="market-margin-hints">
     {insights.map(({ key, item, best }) => <article key={key} className="market-margin-card positive">
-      <strong>{item.type_name ?? item.name}</strong>
+      <strong><EveItemName name={item.type_name ?? item.name} typeId={item.type_id}/></strong>
       <span>Buy at {best.buyHubLabel} / sell to {best.sellHubLabel}</span>
       <b>+{formatMarketIsk(best.margin)}</b>
     </article>)}

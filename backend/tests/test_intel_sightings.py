@@ -77,7 +77,7 @@ def test_date_boundaries_filter_sightings_without_affecting_profile_history(seen
 
 def test_invalid_system_ship_kind_timestamp_and_partial_payload_rejected(seen):
     sid=subject(seen)['id'];org=subject(seen,'corporation',8002)['id']
-    bad=[fields(system_id=999),fields(ship_type_id=201),fields(ship_type_id=301),fields(ship_type_id=999),fields(system_id='30000001'),fields(observed_at='2001-01-01T00:00:00Z'),{'system_id':30000001,'request_id':str(uuid4())}]
+    bad=[fields(system_id=999),fields(ship_type_id=201),fields(ship_type_id=301),fields(ship_type_id=999),fields(system_id='30000001'),fields(observed_at='2001-01-01T00:00:00Z'),{'ship_type_id':100,'request_id':str(uuid4())}]
     for body in bad:
         r=seen.client.post(f'/intel/subjects/{sid}/sightings',json=body);assert r.status_code==422,r.text
     assert seen.client.post(f'/intel/subjects/{org}/sightings',json=fields()).status_code==422
@@ -119,7 +119,7 @@ def test_sighting_migration_roundtrip_and_head():
             module.upgrade();assert 'intel_sightings' in inspect(conn).get_table_names()
             assert any(x['column_names']==['subject_id','observer_user_id','request_id'] for x in inspect(conn).get_unique_constraints('intel_sightings'))
             module.downgrade();assert 'intel_sightings' not in inspect(conn).get_table_names();module.upgrade()
-    config=Config();config.set_main_option('script_location',str(path.parents[1]));assert ScriptDirectory.from_config(config).get_heads()==['0099_intel_sightings']
+    config=Config();config.set_main_option('script_location',str(path.parents[1]));assert ScriptDirectory.from_config(config).get_heads()==['0100_unknown_ship_sightings']
 
 
 def test_backdated_sighting_preserves_posting_time_and_utc_offset(seen):

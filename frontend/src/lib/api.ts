@@ -31,6 +31,7 @@ function requestTimeoutMs(path: string): number {
   if (path.startsWith("/doctrines/") && path.endsWith("/appraise")) return 180000;
   if (path.startsWith("/manufacturing/appraise")) return 180000;
   if (path.startsWith("/contracts/sync/")) return 180000;
+  if (path.startsWith("/client-links/")) return 60000;
   if (path.startsWith("/mail/")) return 60000;
   return 20000;
 }

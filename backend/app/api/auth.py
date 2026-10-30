@@ -154,7 +154,7 @@ def get_current_user(
         raise HTTPException(401, "Your session has expired. Please sign in again or reset your password.")
     utility_path = request.url.path.rstrip("/").removeprefix(get_settings().api_prefix)
     quartermaster_utility = request.method == "POST" and (
-        utility_path in {"/market/appraise", "/navigation/local-threat", "/navigation/local-threat/jobs", "/esi/ui/waypoint"}
+        utility_path in {"/market/appraise", "/navigation/local-threat", "/navigation/local-threat/jobs", "/esi/ui/waypoint", "/client-links/preview", "/client-links/draft"}
         or re.fullmatch(r"/navigation/local-threat/jobs/[A-Za-z0-9_-]+/cancel", utility_path) is not None
         or re.fullmatch(r"/navigation/systems/\d+/objects/(?:sync|structures/\d+)", utility_path) is not None
     )

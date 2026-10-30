@@ -544,3 +544,31 @@ Actual built 2.0 development UI at localhost:8784, backed by isolated SQLite and
 ![Two source-labelled sightings and the daily 0/0 timeline](../static/ss/v2.0/intel-sighting-timeline.jpg)
 
 Full normal viewport captures at relevant scroll positions. No resizing or pixel changes. Apply migration 0099 before matching API/frontend rollout; these screenshots do not claim a release or production deployment. Per-file provenance/checksums are in the capture receipt.
+
+## Intel affiliations and unknown hull sightings
+
+Actual built frontend with an isolated SQLite demo on localhost:8785. A UI report run recorded Example Visitor in Example Entry at an explicitly entered earlier UTC time, with ship blank. Reload retained exactly one Unknown Ship Type sighting, 0/0 K/L and a separate posting timestamp. Names/tags are synthetic; the corporation/alliance logos come from the public EVE Image Server solely as visual references. Organization metadata and pilot identity are mocked; no live account or game action.
+
+![Corp/alliance logos, names and tags next to the pilot portrait](../static/ss/v2.0/intel-affiliation-header.jpg)
+
+![Unknown ship icon, historical sighting and 0/0 timeline](../static/ss/v2.0/intel-unknown-ship-sighting.jpg)
+
+Full normal viewport captures with no pixel edits or viewport resizing. These are unreleased feature demonstrations, not evidence of production deployment. Migration 0100 is required for nullable hull IDs.
+
+## Saved Battle Report search
+
+Actual 2.0 development UI with isolated SQLite on localhost:8786. Thirty synthetic saved snapshots include an older 46-versus-312 battle at the public system Hagilua, with fictional Example corporations/alliances/pilots and real EVE type labels. No real engagement is represented. Search found that older report from beyond the initial page using Hostile Side, Example Cyno alliance/corporation, capital class, Revelation, 251–350 combatants and Hagilua.
+
+![Date selectors followed by all remembered-detail controls](../static/ss/v2.0/battle-search-controls.jpg)
+
+![Matching battle time, system, pilot totals and selected-side hulls](../static/ss/v2.0/battle-search-results.jpg)
+
+Full normal viewport captures at relevant scroll positions, without pixel changes or viewport resizing. The source was not deployed or released. The manager remains usable while live discovery is disabled in the preview; no real ESI, account, report deletion or game action occurred.
+
+### In-game links and optional support — v2.0 development
+
+Actual built UI with synthetic accounts and owned items; unsent draft calls are mocked. No real mail or ISK actions. [Behavior, permissions and limits](in-game-links.md).
+
+![Optional Overview support card](../static/ss/v2.0/overview-support-card.jpg)
+
+![Owned blueprint instance link and character picker](../static/ss/v2.0/blueprint-client-link.jpg)

@@ -1,3 +1,4 @@
+import {EveItemName} from "../clientLinks/EveClientLinks";
 import { useEffect, useId, useMemo, useState } from "react";
 import type { PlanetarySchematic } from "../../types/planetaryIndustry";
 
@@ -73,14 +74,14 @@ export function ProductionCalculator({ recipes, hangar, api }: {
       <label>Final product factories<input type="number" min="1" max="10000" step="1" value={factories} onChange={e => setFactories(e.target.value)} /></label>
     </div>
     {recipe && <>
-      <p>{number.format(recipe.output.quantity)} {recipe.output.name} per {duration(recipe.cycle_time)} factory cycle.</p>
+      <p>{number.format(recipe.output.quantity)} <EveItemName name={recipe.output.name} typeId={recipe.output.type_id}/> per {duration(recipe.cycle_time)} factory cycle.</p>
       <div className="button-row compact"><button type="button" disabled={!hangar} onClick={() => setStock(Object.fromEntries(chain.inputs.map(i => [String(i.type_id), String(hangar?.items[String(i.type_id)] ?? 0)])))}>Use selected hangar stock</button></div>
       <small className="muted">Use I beside an ingredient to import only that quantity from the selected hangar's latest asset snapshot.</small>
       <div className="planetary-controls">{chain.inputs.map(i => {
         const typeId = String(i.type_id);
         const available = hangar?.items[typeId] ?? 0;
         return <div className="pi-ingredient-field" key={typeId}>
-          <label htmlFor={`${stockId}-${typeId}`}>{i.name}{feedTier === null ? ` · ${number.format(i.quantity)} per cycle` : " · on hand"}</label>
+          <label htmlFor={`${stockId}-${typeId}`}><EveItemName name={i.name} typeId={i.type_id}/>{feedTier === null ? ` · ${number.format(i.quantity)} per cycle` : " · on hand"}</label>
           <div className="pi-ingredient-input">
             <input id={`${stockId}-${typeId}`} type="number" min="0" max="1000000000000" step="1" value={stock[typeId] ?? ""} placeholder="0" onChange={e => setStock(s => ({ ...s, [typeId]: e.target.value }))} />
             <button type="button" className="pi-import-ingredient" disabled={!hangar}
@@ -92,8 +93,8 @@ export function ProductionCalculator({ recipes, hangar, api }: {
       })}</div>
     </>}
     {recipe && feedTier !== null && <>
-      <p>Enter the listed feed materials, including any lower-tier ingredients used directly by this recipe. Shared materials are counted once. Intermediate production is allocated to maximize complete {recipe.output.name} batches.</p>
-      <div className="planetary-controls">{chain.stages.filter(r => r.id !== recipe.id).map(r => <label key={r.id}>{r.output.name} factories<input type="number" min="1" max="10000" step="1" value={stageFactories[String(r.id)] ?? "1"} onChange={e => setStageFactories(s => ({ ...s, [String(r.id)]: e.target.value }))} /></label>)}</div>
+      <p>Enter the listed feed materials, including any lower-tier ingredients used directly by this recipe. Shared materials are counted once. Intermediate production is allocated to maximize complete <EveItemName name={recipe.output.name} typeId={recipe.output.type_id}/> batches.</p>
+      <div className="planetary-controls">{chain.stages.filter(r => r.id !== recipe.id).map(r => <label key={r.id}><EveItemName name={r.output.name} typeId={r.output.type_id}/> factories<input type="number" min="1" max="10000" step="1" value={stageFactories[String(r.id)] ?? "1"} onChange={e => setStageFactories(s => ({ ...s, [String(r.id)]: e.target.value }))} /></label>)}</div>
     </>}
     {busy && <p className="muted">Calculating…</p>}
     {error && <p className="mini-alert">{error}</p>}

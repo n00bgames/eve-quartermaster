@@ -9,7 +9,7 @@ class ResolveInput(Input):
     text: str = Field(min_length=1,max_length=30000)
 class SightingInput(Input):
     system_id: int = Field(gt=0,le=2147483647,strict=True)
-    ship_type_id: int = Field(gt=0,le=2147483647,strict=True)
+    ship_type_id: int | None = Field(default=None,gt=0,le=2147483647,strict=True)
     request_id: UUID
     observed_at: AwareDatetime | None = None
 

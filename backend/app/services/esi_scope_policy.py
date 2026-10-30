@@ -8,7 +8,7 @@ from app.models import User
 from app.services.permissions import base_role_for, effective_permissions, assigned_base_roles
 
 UTILITY_ROLES = {"quartermaster", "intel_analyst", "fleet_commander"}
-UTILITY_SCOPES = {"publicData", "esi-ui.write_waypoint.v1", "esi-universe.read_structures.v1", "esi-search.search_structures.v1"}
+UTILITY_SCOPES = {"esi-ui.open_window.v1", "publicData", "esi-ui.write_waypoint.v1", "esi-universe.read_structures.v1", "esi-search.search_structures.v1"}
 SCOPE_SECTIONS = {
     "esi-location.read_location.v1": {"characters"},
     "esi-location.read_ship_type.v1": {"characters"},
@@ -71,8 +71,8 @@ def allowed_scopes(db, user):
         return set()
     permissions = effective_permissions(user, db)
     if is_utility_user(db, user):
-        return {"publicData"} | ({"esi-ui.write_waypoint.v1", "esi-universe.read_structures.v1", "esi-search.search_structures.v1"} if permissions.get("navigation") else set())
-    allowed = {"publicData"} | {scope for scope, sections in SCOPE_SECTIONS.items() if any(permissions.get(s) for s in sections)}
+        return {"publicData", "esi-ui.open_window.v1"} | ({"esi-ui.write_waypoint.v1", "esi-universe.read_structures.v1", "esi-search.search_structures.v1"} if permissions.get("navigation") else set())
+    allowed = {"publicData", "esi-ui.open_window.v1"} | {scope for scope, sections in SCOPE_SECTIONS.items() if any(permissions.get(s) for s in sections)}
     # Recruiting consent is a separate, explicit applicant workflow.
     if base_role_for(db, user.role) == "applicant":
         allowed.add("esi-skills.read_skills.v1")

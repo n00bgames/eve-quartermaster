@@ -1,3 +1,4 @@
+import {EveItemName} from "../clientLinks/EveClientLinks";
 import { Boxes, Check, Clipboard, Coins, ExternalLink, Gavel, MapPin, PackagePlus, Pencil, RefreshCw, Search, Share2, ShoppingCart, Tag, X } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import "./exchange.css";
@@ -123,7 +124,7 @@ function ListingDetail({
             {listing.items.map((item, index) => (
               <div key={item.id ?? `${item.name}-${index}`}>
                 {item.type_id ? <img src={`https://images.evetech.net/types/${item.type_id}/icon?size=64`} alt="" loading="lazy" /> : <span className="exchange-item-fallback"><Boxes size={20} /></span>}
-                <span><strong>{item.name}</strong><small>{item.notes || `Type ${item.type_id || "unresolved"}`}</small></span>
+                <span><strong><EveItemName name={item.name} typeId={item.type_id}/></strong><small>{item.notes || `Type ${item.type_id || "unresolved"}`}</small></span>
                 <b>x{integer.format(item.quantity)}</b>
               </div>
             ))}

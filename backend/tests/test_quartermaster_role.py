@@ -172,7 +172,6 @@ def test_live_local_revocation_wins_over_cached_corporate_grant(env, change):
     ('post', '/api/research-projects/queue', {}),
     ('post', '/api/esi/sync/characters/all?sync_kind=research', {}),
     ('post', '/api/planetary-industry/sync/1', {}),
-    ('patch', '/api/auth/me', {'display_name': 'No'}),
     ('post', '/api/auth/roles', {'name': 'No'}),
 ])
 def test_direct_mutations_and_sync_denied_even_with_host_claim(env, method, path, payload):
@@ -376,3 +375,9 @@ def test_existing_staff_roles_do_not_automatically_gain_global_oversight(env, ro
     assert not effective_permissions(env.viewer, env.db)['quartermaster']
     assert env.client.get('/api/quartermaster-oversight').status_code == 403
     assert env.client.post('/api/quartermaster-oversight/sync', json={}).status_code == 403
+
+
+def test_personal_profile_remains_a_quartermaster_utility(env):
+    response=env.client.patch("/api/auth/me",json={"display_name":"My own display name"})
+    assert response.status_code==200
+    assert response.json()["display_name"]=="My own display name"

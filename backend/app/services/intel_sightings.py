@@ -32,12 +32,12 @@ def validate(db,payload,kind='character'):
     row=db.execute(select(EveSystem,EveRegion).outerjoin(EveConstellation,EveConstellation.constellation_id==EveSystem.constellation_id)
         .outerjoin(EveRegion,EveRegion.region_id==EveConstellation.region_id).where(EveSystem.system_id==payload.system_id)).first()
     ship=db.scalar(select(EveType).join(EveGroup,EveGroup.group_id==EveType.group_id)
-        .where(EveType.type_id==payload.ship_type_id,EveGroup.category_id==6,EveType.published.is_(True)))
+        .where(EveType.type_id==payload.ship_type_id,EveGroup.category_id==6,EveType.published.is_(True))) if payload.ship_type_id is not None else None
     if row is None:raise HTTPException(422,'Select a solar system from the imported SDE')
-    if ship is None:raise HTTPException(422,'Select a published ship hull from the imported SDE')
+    if payload.ship_type_id is not None and ship is None:raise HTTPException(422,'Select a published ship hull from the imported SDE')
     system,region=row
     return {'system_id':system.system_id,'system_name':system.name,'region_id':region.region_id if region else None,
-        'region_name':region.name if region else None,'ship_type_id':ship.type_id,'ship_type_name':ship.name}
+        'region_name':region.name if region else None,'ship_type_id':ship.type_id if ship else None,'ship_type_name':ship.name if ship else 'Unknown Ship Type'}
 
 
 def record(db,subject,payload,user,at=None):
@@ -86,7 +86,7 @@ def merge(db,subject,summary,from_at,to_at):
         key=at.isoformat() if hasattr(at,'isoformat') else str(at)
         timeline.setdefault(key,{'date':key,'kills':0,'losses':0})['sightings']=n
     for key,rows in [('ships',ships),('systems',systems)]:
-        summary[key]=sorted(rows.values(),key=lambda r:(-(r['kills']+r['losses']),-r.get('sightings',0),r['id']))
+        summary[key]=sorted(rows.values(),key=lambda r:(-(r['kills']+r['losses']),-r.get('sightings',0),r['id'] or 0))
     summary['timeline']=[timeline[key] for key in sorted(timeline)]
     summary['sightings']=total
     rows=db.execute(select(IntelSighting,User.display_name).join(User,User.id==IntelSighting.observer_user_id).where(*filters)

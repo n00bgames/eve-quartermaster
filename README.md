@@ -918,3 +918,27 @@ Record a pilot's ship and system when opening a dossier, even without an engagem
 ![Intel sighting timeline with current and historical reports](static/ss/v2.0/intel-sighting-timeline.jpg)
 
 [Sighting-entry fields](static/ss/v2.0/intel-sighting-entry.jpg). Actual unreleased UI with synthetic pilots, locations and sightings; no live operational data.
+
+### Intel affiliations and unknown ships (2.0 development)
+
+Record a system and optional UTC time even when the hull is unknown. **Unknown Ship Type** sightings use the silver-bordered question-mark icon and remain separate from combat statistics. Corporation and alliance logos, names and tags sit beside the pilot portrait and link to zKillboard. [Workflow and migration 0100](docs/intel-reports.md#unknown-hulls-and-affiliation-identity).
+
+![Linked corporation and alliance identity beside the portrait](static/ss/v2.0/intel-affiliation-header.jpg)
+
+[Unknown-hull timeline example](static/ss/v2.0/intel-unknown-ship-sighting.jpg). Actual unreleased UI with synthetic names, tags and locations; public EVE logos are visual references.
+
+### Find remembered battles (2.0 development)
+
+Filter saved Battle Reports below the date range by **My Side / Hostile Side**, pilot, corporation, alliance, class and specific hull/object, pilot-count range, and system. Combine detail clues with AND or OR; search all accessible reports before pagination. Battle dates, systems, side counts and hulls help identify the result quickly. [Search rules and examples](docs/battle-report-management.md#find-a-battle-by-remembered-details).
+
+![Hostile capital battle found by remembered details](static/ss/v2.0/battle-search-results.jpg)
+
+[All search controls below the date selectors](static/ss/v2.0/battle-search-controls.jpg). Unreleased actual UI with synthetic battles, including an illustrative 46-versus-312 encounter; not real operational intelligence.
+
+### In-game item links — v2.0 development preview
+
+Open Show Info links through an unsent draft on your own selected EVE character. Owned BPO/BPC links retain the item instance and include synced ME/TE and copy runs. A quiet optional Overview card links to the creator. [Consent and client limitations](docs/in-game-links.md).
+
+![Owned blueprint link preview](static/ss/v2.0/blueprint-client-link.jpg)
+
+[Optional support card](static/ss/v2.0/overview-support-card.jpg). Actual UI with synthetic holdings and mocked game-window calls; unreleased working-tree feature.

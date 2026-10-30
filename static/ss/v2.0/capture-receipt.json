@@ -745,6 +745,84 @@
       "bytes": 89999,
       "width": 1280,
       "height": 720
+    },
+    {
+      "file": "intel-affiliation-header.jpg",
+      "caption": "System-only sighting entry and corporation/alliance logos, names, tags and zKill links beside the pilot portrait.",
+      "captured_at_utc": "2026-10-30T07:55:07.751892+00:00",
+      "source_base_commit": "e8f7bdeb4a5d62ba678f854e6c3c75b343480661",
+      "source_state": "Uncommitted unknown-hull and affiliation-header follow-up.",
+      "provenance": "Actual built UI at localhost:8785 with isolated SQLite, synthetic account/pilot/system/names/tags, mocked public identity/organization metadata and public EVE logos as visual references. No live production data/actions.",
+      "cropping": "Full normal viewport at relevant scroll position; no pixel edits or viewport resizing.",
+      "sha256": "c02dee645b1bf5bf33f7396b5377cf4366e4cca38ba9b70454e2599dc8235cda",
+      "bytes": 104121,
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "file": "intel-unknown-ship-sighting.jpg",
+      "caption": "Historical Unknown Ship Type sighting with generated bordered icon, separate posting time and 0/0 combat totals.",
+      "captured_at_utc": "2026-10-30T07:55:57.068667+00:00",
+      "source_base_commit": "e8f7bdeb4a5d62ba678f854e6c3c75b343480661",
+      "source_state": "Uncommitted unknown-hull and affiliation-header follow-up.",
+      "provenance": "Actual built UI at localhost:8785 with isolated SQLite, synthetic account/pilot/system/names/tags, mocked public identity/organization metadata and public EVE logos as visual references. No live production data/actions.",
+      "cropping": "Full normal viewport at relevant scroll position; no pixel edits or viewport resizing.",
+      "sha256": "4fb910c2bfd1a4e265fb2f803fd04c22183e0832a7f1b08e5d581bd8e0b691a1",
+      "bytes": 99321,
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "file": "battle-search-controls.jpg",
+      "caption": "Battle detail filters below generation dates: side, pilot, organizations, class/type, size range, system and AND/OR.",
+      "captured_at_utc": "2026-10-30T08:48:27.057456+00:00",
+      "source_base_commit": "e8f7bdeb4a5d62ba678f854e6c3c75b343480661",
+      "source_state": "Uncommitted saved-battle search on top of pending Intel follow-up; version2.0.0 unchanged.",
+      "provenance": "Actual built frontend at localhost:8786 with isolated SQLite and 30 entirely synthetic saved battles. Hagilua and EVE type labels are public references, not real combat intelligence. No live ESI or production data/actions.",
+      "cropping": "Full normal viewport at relevant scroll positions; no pixel edits or viewport resizing.",
+      "sha256": "3676087c3252d2b2f002089aaf57eb0c17057a0f08d48dde4bf36cdc9943132b",
+      "bytes": 112130,
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "file": "battle-search-results.jpg",
+      "caption": "Older 46-versus-312 saved battle found across 30 synthetic reports, with system, time and hostile hull summary.",
+      "captured_at_utc": "2026-10-30T08:55:45.315465+00:00",
+      "source_base_commit": "e8f7bdeb4a5d62ba678f854e6c3c75b343480661",
+      "source_state": "Uncommitted saved-battle search on top of pending Intel follow-up; version2.0.0 unchanged.",
+      "provenance": "Actual built frontend at localhost:8786 with isolated SQLite and 30 entirely synthetic saved battles. Hagilua and EVE type labels are public references, not real combat intelligence. No live ESI or production data/actions.",
+      "cropping": "Full normal viewport at relevant scroll positions; no pixel edits or viewport resizing.",
+      "sha256": "e4f911ca32df6e8402410c3ea4058b211b3bd44132ac6835af1b9d1d60ea3377",
+      "bytes": 107563,
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "file": "overview-support-card.jpg",
+      "caption": "Optional support card at the bottom of Overview, with the creator link and in-game donation reason.",
+      "captured_at_utc": "2026-10-30T09:44:52.149235+00:00",
+      "source_base_commit": "e8f7bdeb4a5d62ba678f854e6c3c75b343480661",
+      "source_state": "Uncommitted in-game link/support feature on top of pending Intel and Battle search work; version 2.0.0 unchanged.",
+      "provenance": "Actual production frontend build at localhost:8787, isolated SQLite with entirely synthetic accounts and holdings. ESI draft calls are mocked and only save local fixture payloads. Steihl Lianul is the explicitly requested public creator reference. No production data or live game action.",
+      "cropping": "Full normal 1280x720 viewport at the demonstrated scroll position. No pixel edits.",
+      "sha256": "dc5c5e716754a90d81d8f29a783f1defef071f900820aae9193596773eb882da",
+      "bytes": 81714,
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "file": "blueprint-client-link.jpg",
+      "caption": "Owned BPC preview with ME/TE, remaining runs, exact-instance indication and own-character picker.",
+      "captured_at_utc": "2026-10-30T09:44:26.003658+00:00",
+      "source_base_commit": "e8f7bdeb4a5d62ba678f854e6c3c75b343480661",
+      "source_state": "Uncommitted in-game link/support feature on top of pending Intel and Battle search work; version 2.0.0 unchanged.",
+      "provenance": "Actual production frontend build at localhost:8787, isolated SQLite with entirely synthetic accounts and holdings. ESI draft calls are mocked and only save local fixture payloads. Steihl Lianul is the explicitly requested public creator reference. No production data or live game action.",
+      "cropping": "Full normal 1280x720 viewport at the demonstrated scroll position. No pixel edits.",
+      "sha256": "ccbd177444c43d451e981fa8b09180d35b07df6905d790d608fe359a5296ade9",
+      "bytes": 60489,
+      "width": 1280,
+      "height": 720
     }
   ]
 }

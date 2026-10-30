@@ -1,3 +1,4 @@
+import {EveItemName} from "../clientLinks/EveClientLinks";
 import { Activity, Database, Factory, MapIcon } from "lucide-react";
 import type { FormEvent, ReactElement, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
@@ -905,7 +906,7 @@ export function JumpFreighterPlanner({
                                 key={station.station_id}
                                 className={`station-risk station-${station.cyno_guidance.risk}`}
                               >
-                                <strong>{station.name}</strong>
+                                <strong><EveItemName name={station.name} typeId={station.type_id}/></strong>
                                 <span>
                                   {station.type_name ?? "Unknown station type"}
                                 </span>

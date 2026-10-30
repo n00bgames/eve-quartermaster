@@ -90,6 +90,13 @@ class PublicSource:
         result["source_errors"] = errors
         return result
 
+    async def organization(self, kind: str, eve_id: int) -> dict:
+        if kind not in {'corporation','alliance'}:raise ValueError('Unsupported organization kind')
+        path='corporations' if kind=='corporation' else 'alliances'
+        payload=await self.esi.get(f'/{path}/{eve_id}/')
+        if not isinstance(payload,dict) or not payload.get('name'):raise IntelSourceError('Public organization metadata unavailable')
+        return {'name':plain(payload['name'],255),'ticker':plain(payload.get('ticker'),20) or None}
+
     async def stats(self, kind: str, eve_id: int) -> dict:
         payload = await self.zget(f"stats/{ENTITY_MODIFIER[kind]}/{eve_id}/kills")
         if not isinstance(payload,dict): raise IntelSourceError("Invalid zKill statistics response")

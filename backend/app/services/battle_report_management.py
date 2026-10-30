@@ -7,9 +7,10 @@ from sqlalchemy import and_, or_
 from app.models import BattleReportShare
 from app.services.local_scan import corporations, now, utc
 from app.services.permissions import ROLE_RANK, role_rank
+from app.services.battle_report_search import SearchFilters,conditions as search_conditions
 
 
-class DeleteReportsInput(BaseModel):
+class DeleteReportsInput(SearchFilters):
     model_config = ConfigDict(extra="forbid")
     ids: list[Annotated[int, Field(strict=True, gt=0)]] = Field(default_factory=list, max_length=500)
     from_at: datetime | None = None
@@ -75,6 +76,7 @@ def filters(db, user, scope="own", corporation_id=None, from_at=None, to_at=None
 
 def delete_filters(db, user, payload):
     result = filters(db, user, payload.scope, payload.corporation_id, payload.from_at, payload.to_at, payload.created_before)
+    result.extend(search_conditions(db,payload))
     if payload.ids:
         result.append(BattleReportShare.id.in_(payload.ids))
     return result

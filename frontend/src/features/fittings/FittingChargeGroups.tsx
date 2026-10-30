@@ -1,3 +1,4 @@
+import {EveItemName} from "../clientLinks/EveClientLinks";
 import { useEffect, useMemo, useState } from "react";
 
 import type { CharacterFittingRecord, FittingItem, FittingSearchType } from "../../types/fittings";
@@ -110,7 +111,7 @@ export function FittingChargeGroups({ selected, fittedControlItems, ammoCatalog,
         </select></label>
         <button type="button" disabled={editorBusy || selectedCount === 0} onClick={() => void applyChargeGroup(group)}>Apply to group</button>
         <small>{selectedCount} selected{group.chargeTypeId !== "" ? ` · ${compatibleCount} compatible` : ""}</small>
-        <div className="charge-group-members">{chargeGroupItems.map((item) => <label key={`${group.id}-${item.id}`} className="check"><input type="checkbox" checked={group.itemIds.includes(item.id)} onChange={() => toggleChargeGroupItem(group.id, item.id)} /> {item.flag} · {item.type_name}{item.charge_type_name ? ` · ${item.charge_type_name}` : ""}</label>)}</div>
+        <div className="charge-group-members">{chargeGroupItems.map((item) => <label key={`${group.id}-${item.id}`} className="check"><input type="checkbox" checked={group.itemIds.includes(item.id)} onChange={() => toggleChargeGroupItem(group.id, item.id)} /> {item.flag} · <EveItemName name={item.type_name} typeId={item.type_id}/>{item.charge_type_name ? ` · ${item.charge_type_name}` : ""}</label>)}</div>
       </section>;
     })}
   </div>;

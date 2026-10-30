@@ -1,3 +1,4 @@
+import {EveItemName} from "../clientLinks/EveClientLinks";
 import { useEffect, useRef, useState } from "react";
 import type { ApiClient, HyperNetItemBidHistory as ItemHistory, HyperNetMeta } from "../../types/hypernet";
 import { formatIsk, hypernetItemIcon, profitClass } from "./hypernetPresentation";
@@ -30,7 +31,7 @@ export function HyperNetItemBidHistory({ api, item, characters, initialCharacter
   const stats = data?.summary;
   const metric = (label: string, value: string, detail?: string, tone?: string) => <article className={`hypernet-summary-metric ${tone ?? ""}`}><span>{label}</span><strong>{value}</strong>{detail && <small>{detail}</small>}</article>;
   return <dialog ref={dialog} className="hypernet-item-history panel" aria-labelledby="hypernet-item-history-title" onCancel={(event) => { event.preventDefault(); onClose(); }}>
-    <div className="section-heading"><div><span className="eyebrow">Item bid history</span><h3 id="hypernet-item-history-title"><img src={hypernetItemIcon(item)} alt="" />{item.name}</h3></div><button type="button" onClick={onClose} autoFocus>Close</button></div>
+    <div className="section-heading"><div><span className="eyebrow">Item bid history</span><h3 id="hypernet-item-history-title"><img src={hypernetItemIcon(item)} alt="" /><EveItemName name={item.name} typeId={item.type_id}/></h3></div><button type="button" onClick={onClose} autoFocus>Close</button></div>
     <label className="hypernet-history-character">History character<select aria-label="History character" value={characterId} onChange={(event) => { setData(null); setError(null); setCharacterId(event.target.value); setOffset(0); }}><option value="">All My Characters</option>{characters.map((character) => <option key={character.id} value={character.id}>{character.name}</option>)}</select></label>
     <p className="muted">All recorded bids for this exact item, independent of board search and outcome filters. Wins use the recorded item value, not cash from a later sale. Pending bids and refunded outcomes are excluded from settled results, win rate, and ROI.</p>
     {error ? <div className="mini-alert" role="alert">{error} <button type="button" onClick={() => setRetry((value) => value + 1)}>Retry</button></div> : !data ? <p role="status">Loading item bid history…</p> : stats && <>

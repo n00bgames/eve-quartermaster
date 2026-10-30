@@ -56,7 +56,10 @@ from app.api.srp import router as srp_router
 
 from app.api.quartermaster_oversight import router as quartermaster_oversight_router
 
+from app.api.client_links import router as client_links_router
+
 api_router = APIRouter()
+api_router.include_router(client_links_router)
 api_router.include_router(account_sso_router)
 api_router.include_router(ship_reports_router)
 api_router.include_router(ship_analytics_router)

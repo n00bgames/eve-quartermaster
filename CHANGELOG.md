@@ -6,6 +6,12 @@ Version sections are written as user-facing release notes first, with implementa
 
 ## [2.0.0] - Unreleased
 
+- Add optional Overview creator support and own-character in-game Show Info drafts throughout typed item displays. Owned blueprint links use authorized instance IDs with synced ME/TE/copy runs; explicit minimal UI consent preserves utility privacy and existing grants. No automatic mail sending or ISK transfer. [Details](docs/in-game-links.md).
+
+- Search saved Battle Reports by selected-pilot/opposing side, pilot/corporation/alliance, class and dependent hull/object, combatant range and system, with AND/OR detail matching. Filter before pagination, preserve privacy, show battle dates/locations/side totals/hulls, and use the same filters for deletion reviews.
+
+- Allow system-only Intel sightings as Unknown Ship Type, with a generated bordered question-mark icon and unchanged 0/0 combat counts. Add corporation/alliance header logos, names, tags and zKill links via cached public metadata. Requires migration 0100 after 0099.
+
 - Add identity-only EVE SSO login and one-time invitation acceptance with combined invited roles, browser-bound PKCE and verified character ownership. Existing linked characters can sign in after ownership proof; requires migration 0098 and matching API/frontend.
 - Add Intel Report ship/system sightings beside name entry, with default server report time or optional historical UTC time, separate posting time/analyst, a Timeline tab and 0/0 sighting-only ship/system rows. Combat metrics remain unchanged; requires migration 0099.
 - Add author editing/deletion of Intel Report notes, Admin/Host moderation, stale-change protection and audit metadata; honor Intel Analyst custom/combined roles at the dossier access gate.

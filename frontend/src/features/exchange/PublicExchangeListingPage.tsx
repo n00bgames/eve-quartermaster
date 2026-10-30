@@ -1,3 +1,4 @@
+import {EveItemName} from "../clientLinks/EveClientLinks";
 import { ArrowLeft, Boxes, Clock3, Coins, Gavel, Mail, MapPin, RefreshCw, ShieldCheck, UserRound } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
@@ -209,7 +210,7 @@ export function PublicExchangeListingPage({ api, publicId, onBack }: Props) {
               {listing.items.map((item, index) => (
                 <div key={`${item.type_id || item.name}-${index}`}>
                   {item.type_id ? <img src={`https://images.evetech.net/types/${item.type_id}/icon?size=64`} alt="" /> : <span className="exchange-item-fallback"><Boxes size={20} /></span>}
-                  <span><strong>{item.name}</strong><small>{item.notes || "Included in each listing unit"}</small></span>
+                  <span><strong><EveItemName name={item.name} typeId={item.type_id}/></strong><small>{item.notes || "Included in each listing unit"}</small></span>
                   <b>x{(item.quantity * listing.quantity_total).toLocaleString()}</b>
                 </div>
               ))}

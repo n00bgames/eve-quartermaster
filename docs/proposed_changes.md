@@ -143,3 +143,24 @@ Implementation: [Intel notes](intel-reports.md#editing-and-deleting-analyst-note
 - [x] Retry deduplication, canonical SDE validation, current Intel permissions, bounded detail list/full counts and migration 0099.
 
 Implementation: [Non-combat sightings](intel-reports.md#non-combat-ship-sightings). Source complete; migration and deployment are separate.
+
+### Intel sighting follow-up
+
+- [x] System-only/historical sightings as Unknown Ship Type with nullable canonical hull ID and generated placeholder icon.
+- [x] Corporation/alliance logos, names, ticker tags and zKill links alongside character portraits, including cached public metadata for existing dossiers.
+
+Source complete; migration 0100 and matching API/frontend rollout are separate.
+
+## Saved battle discovery
+
+- [x] My/Hostile side filters, partial pilot/corporation/alliance names, SDE class and dependent hull/deployable/structure choices.
+- [x] Inclusive combatant ranges from Solo through 1,001+, deduplicated by recorded pilot, and optional system name.
+- [x] Same-combatant AND or same-side OR matching, full accessible saved history before pagination, informative result summaries and filtered deletion parity.
+
+Implementation: [Find a battle by remembered details](battle-report-management.md#find-a-battle-by-remembered-details). Source complete; matching API/frontend rollout is separate. No additional schema migration for search.
+
+## In-game item links and optional support
+
+- [x] Quiet optional Overview card, creator Character Info link, own-character draft picker and minimal in-game window consent.
+- [x] Shared item actions across typed displays; owned blueprint instance links with synced ME/TE/runs, permission checks, generic/private-public fallback, and synthetic screenshot documentation.
+- [ ] In-game acceptance check: open a real owned BPO and BPC through the new draft link and verify the client's instance details. Automated checks deliberately use mocked game-window calls. [Implementation](in-game-links.md).

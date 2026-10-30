@@ -1,3 +1,4 @@
+import {EveItemName} from "../clientLinks/EveClientLinks";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../../lib/api";
 import type { Agent, AtlasSystem, Corporation, Loyalty, Offer } from "./atlasTypes";
@@ -100,7 +101,7 @@ export function MissionsPanel({origin,onMap,onRoute,corporationId,onCorporation}
         {!offers&&!offerError&&<p role="status">Loading rewards…</p>}
         {offers&&<p>{filtered.length} matching rewards</p>}
         <div className="atlas-offers">{filtered.map(o=><article key={o.offer_id}><img src={`https://images.evetech.net/types/${o.type_id}/icon?size=64`} alt="" loading="lazy"/>
-          <div><strong>{n(o.quantity)} × {o.name}</strong><span>{n(o.lp_cost)} LP · {n(o.isk_cost)} ISK{o.ak_cost?` · ${n(o.ak_cost)} Analysis Kredits`:""}</span>
+          <div><strong>{n(o.quantity)} × <EveItemName name={o.name} typeId={o.type_id}/></strong><span>{n(o.lp_cost)} LP · {n(o.isk_cost)} ISK{o.ak_cost?` · ${n(o.ak_cost)} Analysis Kredits`:""}</span>
             {o.required_items.length>0&&<span>Requires: {o.required_items.map(i=>`${n(i.quantity)} × ${i.name}`).join(", ")}</span>}
             <span className={lpCovered(o,balance)?"atlas-covered":"muted"}>{balance===null?"Select a pilot to check LP":lpCovered(o,balance)?"LP covered":`${n(Math.max(0,o.lp_cost-balance))} more LP needed`}</span></div></article>)}</div>
         <h4>Corporation stations</h4><p className="muted">Confirm the relevant LP store service in-game. Distances use shortest gate paths.</p>

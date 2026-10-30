@@ -1,3 +1,4 @@
+import {EveItemName} from "../clientLinks/EveClientLinks";
 import { Info, X } from "lucide-react";
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -173,7 +174,7 @@ export function SkillDogmaPopover({ api, skillTypeId, skillName, trainedLevel }:
         <div><dt>Attributes</dt><dd>{[data.primary_attribute, data.secondary_attribute].filter(Boolean).join(" / ") || "Unknown"}</dd></div>
         <div><dt>Type ID</dt><dd>{data.type_id}</dd></div>
       </dl>
-      <section><h5>Prerequisites</h5>{data.prerequisites.length ? <ul className="skill-dogma-prerequisites">{data.prerequisites.map((prerequisite) => <li key={prerequisite.type_id}>{prerequisite.name} {roman(prerequisite.level)}</li>)}</ul> : <p className="skill-dogma-empty">No prerequisite skills.</p>}</section>
+      <section><h5>Prerequisites</h5>{data.prerequisites.length ? <ul className="skill-dogma-prerequisites">{data.prerequisites.map((prerequisite) => <li key={prerequisite.type_id}><EveItemName name={prerequisite.name} typeId={prerequisite.type_id}/> {roman(prerequisite.level)}</li>)}</ul> : <p className="skill-dogma-empty">No prerequisite skills.</p>}</section>
       {data.direct_bonuses.length > 0 && <section><h5>Per-level bonuses</h5><BonusRows bonuses={data.direct_bonuses} trainedLevel={trainedLevel} /></section>}
       {groupedProfiles.length > 0 && <section><h5>Bonuses by affected type</h5><div className="skill-dogma-profiles">{groupedProfiles.map((profile, index) => <details key={`${profile.names[0]}-${index}`} open={groupedProfiles.length <= 4 || index === 0}><summary><span>{profile.names.slice(0, 4).join(", ")}{profile.names.length > 4 ? ` +${profile.names.length - 4} more` : ""}</span><small>{profile.groupName ?? "Affected item"}</small></summary><BonusRows bonuses={profile.bonuses} trainedLevel={trainedLevel} /></details>)}</div></section>}
       {data.affected_categories.length > 0 && <section><h5>Affected categories</h5><div className="skill-dogma-chips">{data.affected_categories.map((category) => <span key={category}>{category}</span>)}</div></section>}

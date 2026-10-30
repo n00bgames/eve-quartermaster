@@ -1,3 +1,4 @@
+import {EveItemName} from "../clientLinks/EveClientLinks";
 import { AlertTriangle, BarChart3, ChevronDown, Download, Factory, Globe2, RefreshCw, Timer, Warehouse } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { scopePlanetaryCharacters } from "./planetaryCharacterScope";
@@ -358,7 +359,7 @@ function PlanetaryShortageReportPanel({
     <div className="table-wrap planetary-report-table-wrap"><table className="planetary-report-table">
       <thead><tr><th>Commodity</th><th>Coverage</th><th>Supply / day</th><th>Demand / day</th><th>Net gap / day</th><th>Colony stock</th><th>Hangar stock</th><th>Runway at gap</th><th>Base materials / planets</th><th>Added processors</th></tr></thead>
       <tbody>{shortages.map((row) => <tr key={row.type_id} className={`shortage-${row.severity}`}>
-        <td><strong>{row.name}</strong><small>{row.configured_producers} producers · {row.configured_consumers} consumers</small></td>
+        <td><strong><EveItemName name={row.name} typeId={row.type_id}/></strong><small>{row.configured_producers} producers · {row.configured_consumers} consumers</small></td>
         <td><strong>{percent(row.coverage)}</strong><small>{row.severity}</small></td>
         <td>{number.format(row.configured_supply_per_day)}</td>
         <td>{number.format(row.configured_demand_per_day)}</td>
@@ -366,7 +367,7 @@ function PlanetaryShortageReportPanel({
         <td>{number.format(row.projected_inventory)}</td><td>{number.format(row.hangar_inventory)}</td>
         <td>{days(row.runway_days_at_net_shortfall)}</td>
         <td className="planetary-base-components">{row.base_components.length
-          ? row.base_components.map((component) => <span key={component.type_id}><strong>{component.name} · {number.format(component.quantity_per_day)}/day</strong><small>{component.planet_types.join(", ")}</small></span>)
+          ? row.base_components.map((component) => <span key={component.type_id}><strong><EveItemName name={component.name} typeId={component.type_id}/> · {number.format(component.quantity_per_day)}/day</strong><small>{component.planet_types.join(", ")}</small></span>)
           : <span>—</span>}</td>
         <td>{row.additional_processors_to_balance == null ? "Extractor capacity" : number.format(row.additional_processors_to_balance)}</td>
       </tr>)}</tbody>
@@ -375,7 +376,7 @@ function PlanetaryShortageReportPanel({
     <h4 className="planetary-surplus-heading">Surpluses · {surpluses.length}</h4>
     <div className="table-wrap planetary-report-table-wrap"><table className="planetary-report-table planetary-surplus-table">
       <thead><tr><th>Commodity</th><th>Supply / day</th><th>Demand / day</th><th>Net surplus / day</th><th>Colony stock</th><th>Hangar stock</th><th>Total stock</th></tr></thead>
-      <tbody>{surpluses.map(row => <tr key={row.type_id}><td><strong>{row.name}</strong><small>{row.configured_consumers ? "Excess configured supply" : "Output with no configured consumers"}</small></td><td>{number.format(row.configured_supply_per_day)}</td><td>{number.format(row.configured_demand_per_day)}</td><td><strong>+{number.format(row.net_surplus_per_day)}</strong></td><td>{number.format(row.projected_inventory)}</td><td>{number.format(row.hangar_inventory)}</td><td>{number.format(row.total_inventory)}</td></tr>)}</tbody>
+      <tbody>{surpluses.map(row => <tr key={row.type_id}><td><strong><EveItemName name={row.name} typeId={row.type_id}/></strong><small>{row.configured_consumers ? "Excess configured supply" : "Output with no configured consumers"}</small></td><td>{number.format(row.configured_supply_per_day)}</td><td>{number.format(row.configured_demand_per_day)}</td><td><strong>+{number.format(row.net_surplus_per_day)}</strong></td><td>{number.format(row.projected_inventory)}</td><td>{number.format(row.hangar_inventory)}</td><td>{number.format(row.total_inventory)}</td></tr>)}</tbody>
     </table></div>
     {!surpluses.length && <p className="empty">No configured production surpluses in this scope.</p>}
     <small className="planetary-report-caveat">Runway includes colony and selected hangar stock. Inventory may need hauling. Surpluses assume configured factories remain supplied; upstream shortages can reduce actual output. Processor counts are throughput equivalents; confirm CPU and powergrid in-game.</small>
@@ -460,9 +461,9 @@ function PinRow({ pin }: { pin: PlanetaryPin }) {
   const warning = status === "expired" || status === "starved" || status === "blocked" || status === "full";
   const changed = contentsDiffer(pin);
   return <tr className={warning ? "pin-warning" : ""}>
-    <td><strong>{pin.type_name}</strong><span>Pin {pin.pin_id}</span></td>
+    <td><strong><EveItemName name={pin.type_name} typeId={pin.type_id}/></strong><span>Pin {pin.pin_id}</span></td>
     <td><span className={`planetary-status status-${status}`}>{role} · {status}</span>{pin.schematic && <small>{pin.schematic.name}</small>}{pin.schematic_id && !pin.schematic && <small>Schematic {pin.schematic_id}</small>}</td>
-    <td>{pin.extractor ? <><strong>{pin.extractor.product_name ?? "Unknown product"}</strong><span>{number.format(pin.extractor.projected_daily_output)} units/day projected</span><small>{contents}{pin.stored_volume > 0 ? ` · ${number.format(pin.stored_volume)} m3 projected` : ""}</small><small>{number.format(pin.extractor.projected_remaining_output)} remaining · {number.format(pin.extractor.projected_program_output)} full program · {pin.extractor.projection_source === "dogma" ? "SDE Dogma" : "CCP defaults"}</small></> : pin.schematic ? <><strong>{pin.schematic.output.name} x{number.format(pin.schematic.output.quantity)} / cycle</strong><span>{pin.schematic.inputs.map((item) => `${item.name} x${number.format(item.quantity)}`).join(" + ")}</span><small>{contents}{pin.stored_volume > 0 ? ` · ${number.format(pin.stored_volume)} m3 projected` : ""}</small></> : <><span>{contents}</span>{pin.stored_volume > 0 && <small>{number.format(pin.stored_volume)} m3 projected</small>}</>}{changed && <small className="planetary-observed">ESI observed: {observedContents}{pin.observed_stored_volume > 0 ? ` · ${number.format(pin.observed_stored_volume)} m3` : ""}</small>}{pin.projected_blocked.length > 0 && <small className="text-danger">Unrouted/full: {contentText(pin.projected_blocked)}</small>}</td>
+    <td>{pin.extractor ? <><strong>{pin.extractor.product_name ?? "Unknown product"}</strong><span>{number.format(pin.extractor.projected_daily_output)} units/day projected</span><small>{contents}{pin.stored_volume > 0 ? ` · ${number.format(pin.stored_volume)} m3 projected` : ""}</small><small>{number.format(pin.extractor.projected_remaining_output)} remaining · {number.format(pin.extractor.projected_program_output)} full program · {pin.extractor.projection_source === "dogma" ? "SDE Dogma" : "CCP defaults"}</small></> : pin.schematic ? <><strong><EveItemName name={pin.schematic.output.name} typeId={pin.schematic.output.type_id}/> x{number.format(pin.schematic.output.quantity)} / cycle</strong><span>{pin.schematic.inputs.map((item) => `${item.name} x${number.format(item.quantity)}`).join(" + ")}</span><small>{contents}{pin.stored_volume > 0 ? ` · ${number.format(pin.stored_volume)} m3 projected` : ""}</small></> : <><span>{contents}</span>{pin.stored_volume > 0 && <small>{number.format(pin.stored_volume)} m3 projected</small>}</>}{changed && <small className="planetary-observed">ESI observed: {observedContents}{pin.observed_stored_volume > 0 ? ` · ${number.format(pin.observed_stored_volume)} m3` : ""}</small>}{pin.projected_blocked.length > 0 && <small className="text-danger">Unrouted/full: {contentText(pin.projected_blocked)}</small>}</td>
     <td>{pin.extractor ? <><strong>{duration(pin.extractor.cycle_time)} cycle</strong><span>{expiryLabel(pin.expiry_time)} remaining · {pin.extractor.head_count} heads</span></> : pin.schematic ? <><strong>{duration(pin.schematic.cycle_time)} cycle</strong><span>{status === "running" ? "Production active" : status === "starved" ? "Inputs unavailable" : status === "blocked" ? "Output blocked" : "Idle"}</span></> : <span>Not cyclical</span>}</td>
     <td><span className={warning ? "text-danger" : ""}>{routing}</span></td>
   </tr>;

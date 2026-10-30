@@ -3131,6 +3131,10 @@ async def auth_callback(code: str | None = None, state: str | None = None, db: S
             )
         return public_exchange_mail_redirect(settings.frontend_url, public_listing_id, opened=True)
 
+    if state_mode.startswith("client_ui_"):
+        from app.api.client_links import validate_ui_consent_character
+        validate_ui_consent_character(db, state_user_id, state_mode, character_eve_id)
+
     character_payload = await EsiClient(access_token=access_token).get(f"/characters/{character_eve_id}/")
     character = db.scalar(select(EveCharacter).where(EveCharacter.character_id == character_eve_id))
     if character is None:
@@ -3222,7 +3226,9 @@ async def auth_callback(code: str | None = None, state: str | None = None, db: S
             "esi_mode": state_mode,
         }
     )
-    if state_mode in {"recruitment", "recruiting", "applicant"}:
+    if state_mode.startswith("client_ui_"):
+        destination = "overview"
+    elif state_mode in {"recruitment", "recruiting", "applicant"}:
         destination = "recruiting"
     elif state_mode in {"planet", "planets", "planetary", "planetary_industry", "pi"}:
         destination = "planetary_industry"

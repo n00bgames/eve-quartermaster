@@ -65,7 +65,7 @@ No new migration is needed; existing Intel notes and audit tables are used. The 
 
 ## Non-combat ship sightings
 
-Beside the name entry, the optional **Sighting system** and **Sighting ship type** fields search imported SDE names. Exact matches resolve automatically; otherwise choose a matching result. Ship choices are published hulls, not modules or blueprints. Both fields must resolve to record a sighting. With either field blank, opening a report remains a read-only dossier lookup. With both text fields filled but unresolved, the UI asks you to select valid matches instead of silently recording incorrect data.
+Beside the name entry, the optional **Sighting system** and **Sighting ship type** fields search imported SDE names. Exact matches resolve automatically; otherwise choose a matching result. Ship choices are published hulls, not modules or blueprints. A valid system records a sighting; ship type is optional. Leave ship blank to record **Unknown Ship Type**. Without a system, opening a report remains a read-only dossier lookup. Entered but unresolved system/ship text must be corrected or selected instead of silently recording incorrect data.
 
 **Sighting time (UTC)** is optional. Leave it blank to use the server's report-run time. Enter a past date/time to post an older sighting. The system also records the posting time and analyst separately; a historical sighting never masquerades as a newly observed location. API timestamps must include a timezone and are normalized to UTC. Future times, naive timestamps and dates before 6 May 2003 are rejected.
 
@@ -77,10 +77,22 @@ Sightings are analyst reports, not verified current locations or combat evidence
 
 Apply migration **0099_intel_sightings** after 0098 before deploying the matching API/frontend. It adds `intel_sightings`, subject/time indexing and a unique subject/analyst/request key; no extra ESI scope is required. This pass does not deploy or migrate a live database. The migration and model store canonical IDs plus names captured when recorded.
 
-API: optional `sighting` on `POST /intel/subjects`, or `POST /intel/subjects/{id}/sightings`, containing `system_id`, `ship_type_id`, UUID `request_id`, and optional timezone-aware `observed_at`. The server supplies posting time; clients cannot set analyst/source/K/L. `GET /intel/sighting-lookups?kind=system|ship&q=...` supplies bounded permission-scoped choices. Report reads remain side-effect free.
+API: optional `sighting` on `POST /intel/subjects`, or `POST /intel/subjects/{id}/sightings`, containing `system_id`, UUID `request_id`, optional nullable `ship_type_id`, and optional timezone-aware `observed_at`. A missing/null ship ID means Unknown Ship Type; invalid supplied IDs remain errors. The server supplies posting time; clients cannot set analyst/source/K/L. `GET /intel/sighting-lookups?kind=system|ship&q=...` supplies bounded permission-scoped choices. Report reads remain side-effect free.
 
 Verified with zero-combat dossiers, existing combat evidence, idempotent retries, malformed/partial payloads, invalid/non-ship/unpublished SDE types, role revocation, exact date boundaries, historical offsets, distinct posting time, future-time rejection, bounded event lists with full counts, and migration upgrade/downgrade. Actual built UI exercises a new pilot's report-time sighting and an older sighting in a second hull/system; both remain 0/0 and survive page reload.
 
 ![System, ship and optional historical UTC time beside name entry](../static/ss/v2.0/intel-sighting-entry.jpg)
 
 ![Non-combat timeline with separate sighting and posting times](../static/ss/v2.0/intel-sighting-timeline.jpg)
+
+## Unknown hulls and affiliation identity
+
+System-only sightings use **Unknown Ship Type**, including historical UTC sightings. The canonical hull ID stays NULL; no fake SDE type is created. Unknown hulls form one distinct 0/0 row with their own sighting count and use the generated yellow-question-mark icon, soft white glow and thin silver square border. Known hulls use EVE Image Server icons in observed ships and timeline rows, with the placeholder as an image-load fallback.
+
+Character dossier headers show corporation/alliance logos, full names and `[ticker]` tags beside the portrait. Each complete card links to the corresponding corporation/alliance zKillboard page in a new tab. No alliance is shown as such; missing public metadata is labelled unavailable, never fabricated. Existing reports use the same header immediately with the matching frontend/API.
+
+`GET /intel/subjects/{id}/affiliations` uses the existing authenticated Intel permission boundary and performs only bounded public organization lookups. It loads independently of the main report, reuses 24-hour organization metadata and releases its DB transaction before network waits. A failed lookup keeps any prior name/tag and backs off for 60 seconds; partial failures do not hide the other organization. Read-only cache fills do not record sightings or enroll outside characters. Identity affiliations reflect the dossier's retained public ESI snapshot; normal public collection refreshes that membership snapshot.
+
+Apply **0100_unknown_ship_sightings** after 0099 before matching API/frontend rollout. It makes the sighting hull FK nullable and preserves existing rows and request/time indexes. Downgrade refuses to proceed while unknown-hull rows exist, so it cannot silently delete those sightings. No extra ESI scope or live database migration was performed in this development pass.
+
+The placeholder is `static/icons/unknown-ship.png`, generated and edited using the built-in imagegen tool. The adjacent provenance JSON records the exact generation/edit prompts, source base and checksum. It is an original EQM placeholder, not an EVE ship render.

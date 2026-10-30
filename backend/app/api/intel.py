@@ -155,6 +155,12 @@ def report(subject_id: int,from_at: datetime|None=None,to_at: datetime|None=None
     return build_report(db,subject,start,end)
 
 
+@router.get("/subjects/{subject_id}/affiliations")
+async def affiliations(subject_id:int,user:User=Depends(get_current_user),db:Session=Depends(get_db)):
+    from app.services.intel_affiliations import load
+    return await load(db,subject_or_404(db,subject_id))
+
+
 @router.get("/subjects/{subject_id}/authorized")
 def authorized(subject_id: int,user: User=Depends(get_current_user),db: Session=Depends(get_db)):
     subject=subject_or_404(db,subject_id)

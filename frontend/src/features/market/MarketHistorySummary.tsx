@@ -1,3 +1,4 @@
+import {EveItemName} from "../clientLinks/EveClientLinks";
 import {useEffect,useMemo,useState} from "react";
 import type {MarketHub} from "../../types/market";
 type Api=<T>(path:string,options?:RequestInit)=>Promise<T>;
@@ -15,7 +16,7 @@ export function MarketHistorySummary({api,typeId,itemName,hubs}:{api:Api;typeId:
   void api<Summary>(`/market/items/${typeId}/history?hub=${encodeURIComponent(selected)}&limit=5`,{signal:controller.signal}).then(next=>{if(active)setData(next);}).catch(err=>{if(active)setError(err instanceof Error?err.message:"Market history unavailable.");}).finally(()=>{if(active)setBusy(false);});
   return()=>{active=false;controller.abort();};
  },[api,typeId,selected,refresh]);
- return <section className="market-history-summary" aria-label={`Market history for ${itemName}`}><h4>{itemName} · Market history</h4>
+ return <section className="market-history-summary" aria-label={`Market history for ${itemName}`}><h4><EveItemName name={itemName} typeId={typeId}/> · Market history</h4>
  {!choices.length?<p className="muted">Choose an individual trade hub for regional history; the NPC aggregate has no single market region.</p>:<>
  <div className="market-history-controls"><label>History market<select aria-label={`History market for ${itemName}`} value={selected} onChange={e=>setHub(e.target.value)}>{choices.map(h=><option key={h.key} value={h.key}>{h.label} — {h.region_name??`Region ${h.region_id}`}</option>)}</select></label><button disabled={busy} onClick={()=>setRefresh(n=>n+1)}>Refresh market history</button></div>
  {busy&&<p role="status">Loading completed trade history and current orders…</p>}{error&&<p role="alert">{error}</p>}

@@ -15,6 +15,7 @@ from app.db.session import get_db
 from app.models import BattleReportShare, User
 from app.services.battle_reports import available_report_pilots, battle_report_history, build_latest_battle_report
 from app.services import battle_report_management as management
+from app.services import battle_report_search as search_service
 from app.services.killboard_entities import refresh_killboard_entity_names
 from app.services.killboard_settings import killboard_settings
 from app.services.permissions import ROLE_RANK, can_view_section, role_rank
@@ -186,6 +187,12 @@ def list_shares(
 
 
 
+@router.get("/report-search-options")
+def report_search_options(class_key:str=Query('',max_length=40,pattern=r'^(|capitals|deployables|structures|g:[1-9][0-9]{0,9})$'),
+    current_user:User=Depends(require_view),db:Session=Depends(get_db)):
+    return search_service.options(db,class_key)
+
+
 @router.get("/reports")
 def managed_reports(
     scope: Literal["own", "managed"] = "own",
@@ -193,14 +200,16 @@ def managed_reports(
     from_at: datetime | None = None, to_at: datetime | None = None,
     offset: int = Query(default=0, ge=0), limit: int = Query(default=25, ge=1, le=100),
     response: Response = None,
+    search: search_service.SearchFilters = Depends(),
     current_user: User = Depends(require_view), db: Session = Depends(get_db),
 ):
     from app.api.local_scan import public_headers
     public_headers(response if response is not None else Response())
     conditions = management.filters(db, current_user, scope, corporation_id, from_at, to_at)
+    conditions.extend(search_service.conditions(db,search))
     rows = db.scalars(select(BattleReportShare).where(*conditions)
         .order_by(BattleReportShare.created_at.desc(), BattleReportShare.id.desc()).offset(offset).limit(limit)).all()
-    return {"reports": [{**share_payload(row), "is_owner": row.created_by_user_id == current_user.id} for row in rows],
+    return {"reports": [{**share_payload(row), "is_owner": row.created_by_user_id == current_user.id,"battle_summary":search_service.summary(row.report_payload,search.side)} for row in rows],
         "total": db.scalar(select(func.count()).select_from(BattleReportShare).where(*conditions))}
 
 

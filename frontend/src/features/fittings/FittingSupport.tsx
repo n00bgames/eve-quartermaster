@@ -1,3 +1,4 @@
+import {EveItemName} from "../clientLinks/EveClientLinks";
 import type { SyntheticEvent } from "react";
 import { useMemo } from "react";
 
@@ -397,7 +398,7 @@ export function FittingStatsPanel({ stats }: { stats?: FittingSimulationStats | 
 
       <div className="fitting-stat-pair"><span>Drones</span><b>{fittingStatValue(stats.offense.drone_dps, 1)}</b></div>
 
-      {stats.offense.weapons.length > 0 && <details><summary>Weapon estimates</summary><div className="mini-list fitting-weapon-list">{stats.offense.weapons.map((weapon) => <div key={`${weapon.name}-${weapon.charge_name ?? "native"}`}><strong>{weapon.name}</strong><span>{fittingStatValue(weapon.dps, 1)} DPS{weapon.charge_name ? ` · ${weapon.charge_name}` : ""}</span></div>)}</div></details>}
+      {stats.offense.weapons.length > 0 && <details><summary>Weapon estimates</summary><div className="mini-list fitting-weapon-list">{stats.offense.weapons.map((weapon) => <div key={`${weapon.name}-${weapon.charge_name ?? "native"}`}><strong><EveItemName name={weapon.name} typeId={weapon.type_id}/></strong><span>{fittingStatValue(weapon.dps, 1)} DPS{weapon.charge_name ? ` · ${weapon.charge_name}` : ""}</span></div>)}</div></details>}
 
     </article>
 
@@ -570,9 +571,9 @@ export function FittingContextPanel({ fitting, assets, assetSummaries = [], cont
 
     {contextLoading && <p className="muted">Checking full visible inventory...</p>}
 
-    <div className="fitting-context-grid"><article><span>Hull</span><strong className={(hullNeed?.owned ?? 0) > 0 ? "context-owned" : "context-missing"}>{(hullNeed?.owned ?? 0) > 0 ? "Owned" : "Missing"}</strong><small>{fitting.ship_type_name} x{numberFormatter.format(hullNeed?.owned ?? 0)}</small></article><article><span>Fit coverage</span><strong>{coveredCount}/{needs.length}</strong><small>{needs.length ? Math.round((coveredCount / needs.length) * 100) : 0}% covered by visible assets</small></article><article><span>Missing units</span><strong className={missingUnits > 0 ? "context-missing" : "context-owned"}>{numberFormatter.format(missingUnits)}</strong><small>{missing.length} item type{missing.length === 1 ? "" : "s"} short</small></article></div>
+    <div className="fitting-context-grid"><article><span>Hull</span><strong className={(hullNeed?.owned ?? 0) > 0 ? "context-owned" : "context-missing"}>{(hullNeed?.owned ?? 0) > 0 ? "Owned" : "Missing"}</strong><small><EveItemName name={fitting.ship_type_name} typeId={fitting.ship_type_id}/> x{numberFormatter.format(hullNeed?.owned ?? 0)}</small></article><article><span>Fit coverage</span><strong>{coveredCount}/{needs.length}</strong><small>{needs.length ? Math.round((coveredCount / needs.length) * 100) : 0}% covered by visible assets</small></article><article><span>Missing units</span><strong className={missingUnits > 0 ? "context-missing" : "context-owned"}>{numberFormatter.format(missingUnits)}</strong><small>{missing.length} item type{missing.length === 1 ? "" : "s"} short</small></article></div>
 
-    <div className="fitting-context-list">{needs.map((need) => <div key={need.type_id} className={`fitting-context-row ${need.missing > 0 ? "missing" : "covered"}`}><b>{need.name}</b><span>Need {numberFormatter.format(need.required)}</span><span>Own {numberFormatter.format(need.owned)}</span><span className={need.missing > 0 ? "missing-count" : "covered-count"}>{need.missing > 0 ? `Short ${numberFormatter.format(need.missing)}` : "Covered"}</span><small>{need.locations.length > 0 ? need.locations.map((location) => `${location.owner} @ ${location.location}${location.flag ? ` (${location.flag})` : ""} x${numberFormatter.format(location.quantity)}`).join(" | ") : "Not in visible assets"}</small><div className="context-actions"><button type="button" onClick={() => onOpenAssets(need.name)}>Assets</button><button type="button" onClick={() => onOpenMarket(`${Math.max(1, need.missing || need.required)} ${need.name}`)}>Price</button></div></div>)}</div>
+    <div className="fitting-context-list">{needs.map((need) => <div key={need.type_id} className={`fitting-context-row ${need.missing > 0 ? "missing" : "covered"}`}><b><EveItemName name={need.name} typeId={need.type_id}/></b><span>Need {numberFormatter.format(need.required)}</span><span>Own {numberFormatter.format(need.owned)}</span><span className={need.missing > 0 ? "missing-count" : "covered-count"}>{need.missing > 0 ? `Short ${numberFormatter.format(need.missing)}` : "Covered"}</span><small>{need.locations.length > 0 ? need.locations.map((location) => `${location.owner} @ ${location.location}${location.flag ? ` (${location.flag})` : ""} x${numberFormatter.format(location.quantity)}`).join(" | ") : "Not in visible assets"}</small><div className="context-actions"><button type="button" onClick={() => onOpenAssets(need.name)}>Assets</button><button type="button" onClick={() => onOpenMarket(`${Math.max(1, need.missing || need.required)} ${need.name}`)}>Price</button></div></div>)}</div>
 
   </section>;
 

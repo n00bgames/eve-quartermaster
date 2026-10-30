@@ -1,3 +1,4 @@
+import {EveItemName} from "../clientLinks/EveClientLinks";
 import { Activity, Boxes, ClipboardList, GraduationCap, PackagePlus, ScrollText, ShoppingCart, WalletCards } from "lucide-react";
 import { useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
 
@@ -346,7 +347,7 @@ export function CharactersPage({
                 <section>
                   <h4>Fittings</h4>
                   <div className="mini-list">
-                    {dossier.fittings.map((fitting) => <div key={fitting.id}><strong>{fitting.ship_type_name}</strong><span>{fitting.name}{fitting.is_draft ? " · Draft" : ""}{fitting.is_shared ? " · Shared" : " · Private"}</span></div>)}
+                    {dossier.fittings.map((fitting) => <div key={fitting.id}><strong><EveItemName name={fitting.ship_type_name} typeId={fitting.ship_type_id}/></strong><span>{fitting.name}{fitting.is_draft ? " · Draft" : ""}{fitting.is_shared ? " · Shared" : " · Private"}</span></div>)}
                     {dossier.fittings.length === 0 && <p className="empty">No saved fittings stored.</p>}
                   </div>
                 </section>

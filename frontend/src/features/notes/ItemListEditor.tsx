@@ -1,3 +1,4 @@
+import {EveItemName} from "../clientLinks/EveClientLinks";
 import { ArrowDown, ArrowUp, CheckCheck, ClipboardCopy, PackageSearch, Search, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -243,7 +244,7 @@ export function ItemListEditor({ api, note, assetScope, ownerIds, onAssetScopeCh
                 <td>
                   <div className="notes-item-name">
                     {item.type_id ? <img src={"https://images.evetech.net/types/" + item.type_id + "/icon?size=64"} alt="" /> : <span className="notes-unresolved-icon">?</span>}
-                    <span><strong>{item.name}</strong><small>{item.group_name ?? (item.type_id ? "SDE item" : "Unresolved item")}</small></span>
+                    <span><strong><EveItemName name={item.name} typeId={item.type_id}/></strong><small>{item.group_name ?? (item.type_id ? "SDE item" : "Unresolved item")}</small></span>
                   </div>
                   {!item.type_id && <label className="notes-resolve-select">Resolve<select defaultValue="" onChange={(event) => event.target.value && void patchItem(item.id, { type_id: Number(event.target.value) })}><option value="">Choose SDE match...</option>{item.candidates.map((candidate: EveTypeCandidate) => <option key={candidate.type_id} value={candidate.type_id}>{candidate.name} · {candidate.group_name ?? "Unknown group"}</option>)}</select></label>}
                   {item.asset_context.locations.length > 0 && <details><summary>Asset locations</summary><div className="notes-location-list">{item.asset_context.locations.map((row, index) => <span key={row.owner_name + row.location_name + index}><b>{number.format(row.quantity)}</b> {row.owner_name} · {row.location_name}{row.at_destination ? " · destination" : ""}</span>)}</div></details>}

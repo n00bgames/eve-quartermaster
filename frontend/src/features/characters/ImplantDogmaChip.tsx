@@ -1,3 +1,4 @@
+import {EveItemName} from "../clientLinks/EveClientLinks";
 import { eveTypeImageUrl, hideBrokenImage } from "../fittings/FittingSupport";
 import type { ImplantDogmaAttribute, ImplantDogmaEffect, JumpCloneImplant } from "../../types/jumpClones";
 
@@ -31,12 +32,12 @@ export function ImplantDogmaChip({ implant }: ImplantDogmaChipProps) {
   return (
     <span className="implant-chip" tabIndex={0}>
       <img src={eveTypeImageUrl(implant.type_id, "icon", 32)} alt="" loading="lazy" onError={hideBrokenImage} />
-      <span className="implant-chip-label">{implant.slot ? `Slot ${implant.slot}` : "Implant"} · {implant.name}</span>
+      <span className="implant-chip-label">{implant.slot ? `Slot ${implant.slot}` : "Implant"} · <EveItemName name={implant.name} typeId={implant.type_id}/></span>
       <span className="implant-dogma-card" role="tooltip">
         <span className="implant-dogma-heading">
           <img src={eveTypeImageUrl(implant.type_id, "icon", 64)} alt="" loading="lazy" onError={hideBrokenImage} />
           <span>
-            <strong>{implant.name}</strong>
+            <strong><EveItemName name={implant.name} typeId={implant.type_id}/></strong>
             <small>{implant.slot ? `Slot ${implant.slot}` : "Implant"}{implant.group_name ? ` · ${implant.group_name}` : ""} · Type {implant.type_id}</small>
           </span>
         </span>

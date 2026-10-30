@@ -132,6 +132,7 @@ export type BattleReportPayload = {
 };
 
 export type BattleReportShare = {
+  battle_summary?:{battle_start:string|null;battle_end:string|null;systems:string[];my_pilots:number;hostile_pilots:number;side:"my"|"hostile";side_hulls:string[];side_hull_types:number};
   is_owner?: boolean;
   corporation_id?: number|null;
   expires_at?: string|null;

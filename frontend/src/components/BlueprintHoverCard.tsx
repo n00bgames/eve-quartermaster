@@ -1,3 +1,5 @@
+import {EveItemName} from "../features/clientLinks/EveClientLinks";
+import { useEveClientLink } from "../features/clientLinks/EveClientLinks";
 import { createPortal } from "react-dom";
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
@@ -17,6 +19,8 @@ export type BlueprintUse = {
 
 export type BlueprintHoverDetails = {
   name: string;
+  typeId?: number | null;
+  blueprintId?: number | null;
   owner?: string | null;
   kind?: "BPO" | "BPC" | null;
   materialEfficiency?: number | null;
@@ -32,6 +36,8 @@ export type BlueprintHoverDetails = {
 
 export function blueprintHoverDetails(blueprint: {
   blueprint_type_name: string;
+  blueprint_type_id?: number | null;
+  id?: number | null;
   owner_name?: string | null;
   is_copy?: boolean | null;
   material_efficiency?: number | null;
@@ -42,6 +48,8 @@ export function blueprintHoverDetails(blueprint: {
 }): BlueprintHoverDetails {
   return {
     name: blueprint.blueprint_type_name,
+    typeId: blueprint.blueprint_type_id,
+    blueprintId: blueprint.id && blueprint.id > 0 ? blueprint.id : undefined,
     owner: blueprint.owner_name,
     kind: blueprint.is_copy == null ? null : blueprint.is_copy ? "BPC" : "BPO",
     materialEfficiency: blueprint.material_efficiency,
@@ -53,6 +61,8 @@ export function blueprintHoverDetails(blueprint: {
 }
 
 export function BlueprintHoverCard({ details, children, className = "" }: { details: BlueprintHoverDetails; children: ReactNode; className?: string }) {
+  const clientLinks = useEveClientLink();
+  const launch = () => clientLinks.open({name:details.name,type_id:details.typeId || undefined,blueprint_id:details.blueprintId || undefined});
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
   const [position, setPosition] = useState({ left: 16, top: 16 });
   const cardRef = useRef<HTMLDivElement>(null);
@@ -75,12 +85,17 @@ export function BlueprintHoverCard({ details, children, className = "" }: { deta
 
   return <span
     className={`blueprint-hover-target ${className}`.trim()}
+    tabIndex={clientLinks.account ? 0 : undefined}
+    title={clientLinks.account ? "Open in EVE (Alt+Enter or right-click); hover for blueprint details" : undefined}
+    onContextMenu={event => {if(clientLinks.account){event.preventDefault();event.stopPropagation();setAnchor(null);launch();}}}
+    onClick={event => {if(clientLinks.account && !(event.target as HTMLElement).closest("button,a,input,select")){event.stopPropagation();setAnchor(null);launch();}}}
+    onKeyDown={event => {if(clientLinks.account && event.altKey && event.key==="Enter"){event.preventDefault();event.stopPropagation();setAnchor(null);launch();}}}
     onMouseEnter={(event) => setAnchor(event.currentTarget.getBoundingClientRect())}
     onMouseLeave={() => setAnchor(null)}
   >
     {children}
     {anchor && createPortal(<div ref={cardRef} className="blueprint-hover-card" style={position} role="tooltip">
-      <header><strong>{details.name}</strong><span className={isActive ? "in-use" : "available"}>{isActive ? "In use" : details.definitionOnly ? "Blueprint reference" : "Available"}</span></header>
+      <header><strong><EveItemName name={details.name} typeId={details.typeId}/></strong><span className={isActive ? "in-use" : "available"}>{isActive ? "In use" : details.definitionOnly ? "Blueprint reference" : "Available"}</span></header>
       <div className="blueprint-hover-meta">
         <span><b>ME</b>{details.materialEfficiencyLabel ?? (details.materialEfficiency != null ? details.materialEfficiency : "—")}</span>
         <span><b>TE</b>{details.timeEfficiencyLabel ?? (details.timeEfficiency != null ? details.timeEfficiency : "—")}</span>

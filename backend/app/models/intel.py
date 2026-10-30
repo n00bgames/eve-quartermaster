@@ -79,6 +79,6 @@ class IntelSighting(Base):
     system_name: Mapped[str] = mapped_column(String(255),nullable=False)
     region_id: Mapped[int | None] = mapped_column(Integer)
     region_name: Mapped[str | None] = mapped_column(String(255))
-    ship_type_id: Mapped[int] = mapped_column(ForeignKey('eve_types.type_id'),nullable=False)
+    ship_type_id: Mapped[int | None] = mapped_column(ForeignKey('eve_types.type_id'),nullable=True)
     ship_type_name: Mapped[str] = mapped_column(String(255),nullable=False)
     observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),nullable=False)

@@ -1,3 +1,4 @@
+import {EveItemName} from "../clientLinks/EveClientLinks";
 import { ClipboardList } from "lucide-react";
 
 import type { CharacterFittingRecord, FittingSyncToken } from "../../types/fittings";
@@ -55,7 +56,7 @@ export function FittingListPanel({ filter, fittings, selectedId, onFilterChange,
   return <section className="fitting-list-panel">
     <label>Search fittings<input value={filter} onChange={(event) => onFilterChange(event.target.value)} placeholder="Ship, fitting, character, owner" /></label>
     <div className="card-list fitting-list">
-      {fittings.map((fitting) => <button key={fitting.id} type="button" className={selectedId === fitting.id ? "active fitting-card" : "fitting-card"} onClick={() => onSelectFitting(fitting.id)}><strong>{fitting.ship_type_name}</strong><span>{fitting.name}</span><small>{fitting.character_name} · {fitting.is_draft ? "draft" : "ESI"}{fitting.is_shared ? " · shared" : " · private"}</small></button>)}
+      {fittings.map((fitting) => <button key={fitting.id} type="button" className={selectedId === fitting.id ? "active fitting-card" : "fitting-card"} onClick={() => onSelectFitting(fitting.id)}><strong><EveItemName name={fitting.ship_type_name} typeId={fitting.ship_type_id} contextOnly/></strong><span>{fitting.name}</span><small>{fitting.character_name} · {fitting.is_draft ? "draft" : "ESI"}{fitting.is_shared ? " · shared" : " · private"}</small></button>)}
       {fittings.length === 0 && <p className="empty">No saved fittings found.</p>}
     </div>
   </section>;

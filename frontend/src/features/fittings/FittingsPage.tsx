@@ -1,3 +1,4 @@
+import {EveItemName} from "../clientLinks/EveClientLinks";
 import { useEffect, useMemo, useState } from "react";
 import type { DragEvent } from "react";
 
@@ -1085,7 +1086,7 @@ export function FittingsPage({ currentUser, assets, seed, onOpenAssets, onOpenMa
 
           <div className="section-heading compact">
 
-            <div><h3>{selected.ship_type_name}</h3><p>{selected.name} · {selected.character_name}{selected.owner_display_name ? ` · ${selected.owner_display_name}` : ""}</p></div>
+            <div><h3><EveItemName name={selected.ship_type_name} typeId={selected.ship_type_id}/></h3><p>{selected.name} · {selected.character_name}{selected.owner_display_name ? ` · ${selected.owner_display_name}` : ""}</p></div>
 
             <div className="button-row compact">{selected.can_manage && !selected.is_draft && <button type="button" disabled={editorBusy} onClick={() => void createDraft(selected)}>Create draft</button>}{selected.can_manage && <button type="button" onClick={() => void toggleShare(selected)}>{selected.is_shared ? "Make private" : "Share fitting"}</button>}<button type="button" onClick={() => setSendPanelOpen((open) => !open)}>Send to EVE</button><button type="button" onClick={() => void copyScratch()}>Copy fitting</button></div>
 
@@ -1131,7 +1132,7 @@ export function FittingsPage({ currentUser, assets, seed, onOpenAssets, onOpenMa
 
                   {catalogBusy && <p className="muted">Loading {pickerTab.toLowerCase()}...</p>}
 
-                  {!catalogBusy && groupedPickerResults.map(([group, rows], index) => <details key={group} className="fitting-picker-group" open={index < 2 || Boolean(itemSearch.trim())}><summary>{group}<span>{rows.length.toLocaleString()}</span></summary>{rows.map((item) => <button key={item.type_id} type="button" draggable className={selectedItemTypeId === item.type_id ? "active fitting-picker-item" : "fitting-picker-item"} onClick={() => { setSelectedItemTypeId(item.type_id); setDraftFlag(defaultFlagForPickerItem(item)); }} onDoubleClick={() => void addDraftItemToFlag(selected, item.type_id, defaultFlagForPickerItem(item), draftQuantity, false)} onDragStart={(event) => beginPickerDrag(event, item)}><img src={eveTypeImageUrl(item.type_id, "icon", 64)} alt="" loading="lazy" onError={hideBrokenImage} /><span>{item.name}<small>{item.group_name ?? `Type ${item.type_id}`}</small></span></button>)}</details>)}
+                  {!catalogBusy && groupedPickerResults.map(([group, rows], index) => <details key={group} className="fitting-picker-group" open={index < 2 || Boolean(itemSearch.trim())}><summary>{group}<span>{rows.length.toLocaleString()}</span></summary>{rows.map((item) => <button key={item.type_id} type="button" draggable className={selectedItemTypeId === item.type_id ? "active fitting-picker-item" : "fitting-picker-item"} onClick={() => { setSelectedItemTypeId(item.type_id); setDraftFlag(defaultFlagForPickerItem(item)); }} onDoubleClick={() => void addDraftItemToFlag(selected, item.type_id, defaultFlagForPickerItem(item), draftQuantity, false)} onDragStart={(event) => beginPickerDrag(event, item)}><img src={eveTypeImageUrl(item.type_id, "icon", 64)} alt="" loading="lazy" onError={hideBrokenImage} /><span><EveItemName name={item.name} typeId={item.type_id} contextOnly/><small>{item.group_name ?? `Type ${item.type_id}`}</small></span></button>)}</details>)}
 
                   {!catalogBusy && itemCatalog[pickerTab].length > 0 && pickerResults.length === 0 && <p className="empty">No {pickerTab.toLowerCase()} match this filter.</p>}
 
@@ -1173,7 +1174,7 @@ export function FittingsPage({ currentUser, assets, seed, onOpenAssets, onOpenMa
 
             <div className="fitting-visual">
 
-              <div className="ship-core"><img src={eveTypeImageUrl(selected.ship_type_id, "render", 512)} alt="" loading="lazy" onError={(event) => fallbackShipImage(event, selected.ship_type_id)} /><div><strong>{selected.ship_type_name}</strong><span>{selected.name}</span></div></div>
+              <div className="ship-core"><img src={eveTypeImageUrl(selected.ship_type_id, "render", 512)} alt="" loading="lazy" onError={(event) => fallbackShipImage(event, selected.ship_type_id)} /><div><strong><EveItemName name={selected.ship_type_name} typeId={selected.ship_type_id}/></strong><span>{selected.name}</span></div></div>
 
               {visualSlotGroups.map((group) => <div key={group.key} className={`slot-band ${group.ok ? "" : "over-limit"}`}>
 
@@ -1203,7 +1204,7 @@ export function FittingsPage({ currentUser, assets, seed, onOpenAssets, onOpenMa
 
                     <img src={eveTypeImageUrl(item.type_id, "icon", 64)} alt="" loading="lazy" onError={hideBrokenImage} />
 
-                    <span>{item.type_name}</span>
+                    <span><EveItemName name={item.type_name} typeId={item.type_id}/></span>
 
                     {item.charge_type_name && <small className="slot-charge">{item.charge_type_name}</small>}
 
@@ -1235,12 +1236,12 @@ export function FittingsPage({ currentUser, assets, seed, onOpenAssets, onOpenMa
 
             <FittingChargeGroups selected={selected} fittedControlItems={fittedControlItems} ammoCatalog={itemCatalog.Ammo} editorBusy={editorBusy} api={api} setEditorBusy={setEditorBusy} setError={setError} setMessage={setMessage} onFittingUpdated={(updated) => { replaceFitting(updated); void loadSimulation(updated, simulationCharacterId, simulationHeat); }} />
 
-            <div>{fittedControlItems.map((item) => <div key={item.id} className="fitting-module-control-row"><img src={eveTypeImageUrl(item.type_id, "icon", 64)} alt="" loading="lazy" onError={hideBrokenImage} /><span>{item.type_name}<small>{item.flag}{item.charge_type_name ? ` · ${item.charge_type_name}` : ""}</small></span>{renderItemControls(item, { showChargeSelector: false })}</div>)}</div>
+            <div>{fittedControlItems.map((item) => <div key={item.id} className="fitting-module-control-row"><img src={eveTypeImageUrl(item.type_id, "icon", 64)} alt="" loading="lazy" onError={hideBrokenImage} /><span><EveItemName name={item.type_name} typeId={item.type_id}/><small>{item.flag}{item.charge_type_name ? ` · ${item.charge_type_name}` : ""}</small></span>{renderItemControls(item, { showChargeSelector: false })}</div>)}</div>
 
           </article>}
 
-          {cargoBayGroups.length > 0 && <article className="fitting-cargo-hold fitting-cargo-card"><div><h4>Cargo</h4><span>{formatVolumeM3(cargoBayTotals.used)} carried{cargoBayTotals.capacity == null ? "" : ` / ${formatVolumeM3(cargoBayTotals.capacity)} known capacity`}</span></div><div className="cargo-bay-grid">{cargoBayGroups.map((bay) => <section key={bay.key} className={bay.ok ? "cargo-bay-section fitting-drop-target" : "cargo-bay-section fitting-drop-target over-limit"} onDragOver={allowFittingDrop} onDrop={(event) => void dropPickerItem(event, bay.key)}><div className="cargo-bay-heading"><h5>{bay.label}</h5><span>{cargoBayUsageText(bay)}</span></div>{bay.capacity != null && <i className="cargo-bay-meter"><b style={{ width: `${Math.min(100, bay.percent ?? 0)}%` }} /></i>}<div className="cargo-bay-items">{bay.items.length > 0 ? bay.items.map((item) => <div key={item.id} className="fitting-bay-item" title={fittingItemTooltip(item, estimateByItemId.get(item.id))}><img src={eveTypeImageUrl(item.type_id, "icon", 64)} alt="" loading="lazy" onError={hideBrokenImage} /><span>{item.type_name}</span><strong>{item.quantity > 1 ? `x${item.quantity.toLocaleString()}` : ""}</strong>{renderItemControls(item)}</div>) : <p className="empty">Drop items here.</p>}</div></section>)}</div></article>}
-          <details><summary>Text item groups</summary><div className="fitting-items">{groupedItems.map(([group, items]) => <article key={group}><h4>{group}</h4>{items.map((item) => <div key={item.id}><span>{item.type_name}</span><strong>{item.quantity > 1 ? `x${item.quantity}` : ""}</strong><small>{item.flag}</small>{renderItemControls(item)}</div>)}</article>)}</div></details>
+          {cargoBayGroups.length > 0 && <article className="fitting-cargo-hold fitting-cargo-card"><div><h4>Cargo</h4><span>{formatVolumeM3(cargoBayTotals.used)} carried{cargoBayTotals.capacity == null ? "" : ` / ${formatVolumeM3(cargoBayTotals.capacity)} known capacity`}</span></div><div className="cargo-bay-grid">{cargoBayGroups.map((bay) => <section key={bay.key} className={bay.ok ? "cargo-bay-section fitting-drop-target" : "cargo-bay-section fitting-drop-target over-limit"} onDragOver={allowFittingDrop} onDrop={(event) => void dropPickerItem(event, bay.key)}><div className="cargo-bay-heading"><h5>{bay.label}</h5><span>{cargoBayUsageText(bay)}</span></div>{bay.capacity != null && <i className="cargo-bay-meter"><b style={{ width: `${Math.min(100, bay.percent ?? 0)}%` }} /></i>}<div className="cargo-bay-items">{bay.items.length > 0 ? bay.items.map((item) => <div key={item.id} className="fitting-bay-item" title={fittingItemTooltip(item, estimateByItemId.get(item.id))}><img src={eveTypeImageUrl(item.type_id, "icon", 64)} alt="" loading="lazy" onError={hideBrokenImage} /><span><EveItemName name={item.type_name} typeId={item.type_id}/></span><strong>{item.quantity > 1 ? `x${item.quantity.toLocaleString()}` : ""}</strong>{renderItemControls(item)}</div>) : <p className="empty">Drop items here.</p>}</div></section>)}</div></article>}
+          <details><summary>Text item groups</summary><div className="fitting-items">{groupedItems.map(([group, items]) => <article key={group}><h4>{group}</h4>{items.map((item) => <div key={item.id}><span><EveItemName name={item.type_name} typeId={item.type_id}/></span><strong>{item.quantity > 1 ? `x${item.quantity}` : ""}</strong><small>{item.flag}</small>{renderItemControls(item)}</div>)}</article>)}</div></details>
 
           <label>Scratchpad<textarea className="fitting-scratch" value={scratch} onChange={(event) => setScratch(event.target.value)} /></label>
 
