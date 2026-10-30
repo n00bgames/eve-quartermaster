@@ -1,6 +1,6 @@
 from __future__ import annotations
 from datetime import datetime
-from sqlalchemy import BigInteger, CheckConstraint, DateTime, ForeignKey, Integer, Index, JSON, String, text, Text, UniqueConstraint
+from sqlalchemy import BigInteger, Boolean, CheckConstraint, DateTime, ForeignKey, Integer, Index, JSON, String, text, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 from app.models.base import Base
@@ -65,3 +65,20 @@ class IntelNote(Base):
     author_user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
     body: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+class IntelSighting(Base):
+    __tablename__='intel_sightings'
+    __table_args__=(UniqueConstraint('subject_id','observer_user_id','request_id',name='uq_intel_sighting_request'),Index('ix_intel_sightings_subject_time','subject_id','observed_at'))
+    id: Mapped[int] = mapped_column(primary_key=True)
+    subject_id: Mapped[int] = mapped_column(ForeignKey('intel_subjects.id',ondelete='CASCADE'),nullable=False)
+    observer_user_id: Mapped[int] = mapped_column(ForeignKey('users.id',ondelete='RESTRICT'),nullable=False)
+    request_id: Mapped[str] = mapped_column(String(36),nullable=False)
+    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),nullable=False,server_default=func.now())
+    manual_time: Mapped[bool] = mapped_column(Boolean,nullable=False,default=False)
+    system_id: Mapped[int] = mapped_column(ForeignKey('eve_systems.system_id'),nullable=False)
+    system_name: Mapped[str] = mapped_column(String(255),nullable=False)
+    region_id: Mapped[int | None] = mapped_column(Integer)
+    region_name: Mapped[str | None] = mapped_column(String(255))
+    ship_type_id: Mapped[int] = mapped_column(ForeignKey('eve_types.type_id'),nullable=False)
+    ship_type_name: Mapped[str] = mapped_column(String(255),nullable=False)
+    observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),nullable=False)

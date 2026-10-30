@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from app.models import Base, EsiSyncJob, EsiToken, EveAlliance, EveCharacter, EveCorporation, OwnershipEntity, User
+from app.models import Base, EsiSyncJob, EsiToken, EveAlliance, EveCharacter, EveCorporation, OwnershipEntity, User, UserRoleAssignment, RoleDefinition
 from app.models.enums import OwnerKind, SyncStatus
 from app.services.analytics import analytics_corporation_ids, privileged_analytics_corporation_ids
 from app.services.analytics_scope import apply_anonymous_analytics_privacy, resolve_analytics_character_scope
@@ -19,6 +19,8 @@ class AnalyticsCorporationScopeTests(unittest.TestCase):
             self.engine,
             tables=[
                 User.__table__,
+                UserRoleAssignment.__table__,
+                RoleDefinition.__table__,
                 EveAlliance.__table__,
                 EveCorporation.__table__,
                 EveCharacter.__table__,

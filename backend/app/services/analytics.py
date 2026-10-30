@@ -220,6 +220,8 @@ def create_snapshot(
     try:
         retention_kwargs = {} if retention_mode == RETENTION_MODE_FULL else {"retention_mode": retention_mode}
         if scope_type == "global":
+            from app.services.ship_analytics import capture_global_characters
+            capture_global_characters(db,run,**retention_kwargs)
             snapshot_character_wallets(db, run, **retention_kwargs)
             snapshot_character_skills(db, run, **retention_kwargs)
             snapshot_character_standings(db, run, **retention_kwargs)
@@ -328,6 +330,8 @@ def snapshot_character_assets(db: Session, run: SnapshotRun, character_id: int, 
             OwnershipEntity.character_id == character_id,
         )
     )
+    from app.services.ship_analytics import capture_owner
+    capture_owner(db,run,owner,retention_mode=retention_mode)
     asset_rows = asset_units = blueprint_count = 0
     if owner is not None:
         asset_rows = int(db.scalar(select(func.count()).select_from(Asset).where(Asset.ownership_entity_id == owner.id)) or 0)
@@ -662,6 +666,8 @@ def snapshot_corporations(db: Session, run: SnapshotRun, requested_corporation_i
             asset_rows = db.scalar(select(func.count()).select_from(Asset).where(Asset.ownership_entity_id == owner.id)) or 0
             asset_units = db.scalar(select(func.coalesce(func.sum(Asset.quantity), 0)).where(Asset.ownership_entity_id == owner.id)) or 0
             blueprint_count = blueprint_counts.get(owner.id, 0)
+        from app.services.ship_analytics import capture_owner
+        capture_owner(db,run,owner,retention_mode=retention_mode)
         wallets = db.scalars(select(CorporationWalletDivision).where(CorporationWalletDivision.corporation_id == corporation.id)).all()
         wallet_total = sum(decimal_value(wallet.balance) for wallet in wallets)
         detail_due = retention_mode == RETENTION_MODE_FULL or _daily_checkpoint_due(db, CorporationSnapshot, run, CorporationSnapshot.corporation_id == corporation.id)

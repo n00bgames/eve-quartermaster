@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response
 from sqlalchemy.orm import Session
 
 from app.api.auth import get_current_user
@@ -45,3 +45,10 @@ def remove_market_hub(key: str, _: User = Depends(require_market_admin), db: Ses
 async def market_appraise(payload: dict[str, Any], _: User = Depends(require_market), db: Session = Depends(get_db)) -> dict[str, Any]:
     hubs = payload.get("hubs")
     return await appraise_market(db, str(payload.get("text") or ""), hubs if isinstance(hubs, list) else None)
+
+@router.get("/items/{type_id}/history")
+async def item_history(response:Response,type_id:int=Path(gt=0,le=2147483647),hub:str=Query("jita",max_length=120),limit:int=Query(5,ge=1,le=30),
+    _:User=Depends(require_market),db:Session=Depends(get_db)):
+    from app.services.market_history import market_history_summary
+    response.headers["Cache-Control"]="private, no-store"
+    return await market_history_summary(db,type_id,hub,limit)

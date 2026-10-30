@@ -7,7 +7,7 @@ from sqlalchemy.orm import object_session
 from app.models import User
 from app.services.permissions import base_role_for, effective_permissions, assigned_base_roles
 
-UTILITY_ROLES = {"quartermaster", "intel_analyst"}
+UTILITY_ROLES = {"quartermaster", "intel_analyst", "fleet_commander"}
 UTILITY_SCOPES = {"publicData", "esi-ui.write_waypoint.v1", "esi-universe.read_structures.v1", "esi-search.search_structures.v1"}
 SCOPE_SECTIONS = {
     "esi-location.read_location.v1": {"characters"},

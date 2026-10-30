@@ -7,12 +7,13 @@ from sqlalchemy.orm import Session, object_session
 
 from app.models import AppSetting, RecruitmentUserCapability, RoleDefinition, RoleSectionPermission, User, UserSectionPermission, UserRoleAssignment
 
-BUILT_IN_ROLES: list[str] = ["host", "admin", "director", "officer", "member", "intel_analyst", "quartermaster", "view_only", "applicant"]
-ROLE_RANK: dict[str, int] = {"applicant": -1, "quartermaster": 0, "view_only": 0, "rookie": 0, "member": 1, "intel_analyst": 1, "officer": 2, "director": 3, "admin": 4, "host": 5}
+BUILT_IN_ROLES: list[str] = ["host", "admin", "director", "fleet_commander", "officer", "member", "intel_analyst", "quartermaster", "view_only", "applicant"]
+ROLE_RANK: dict[str, int] = {"applicant": -1, "quartermaster": 0, "view_only": 0, "rookie": 0, "member": 1, "intel_analyst": 1, "officer": 2, "fleet_commander": 3, "director": 4, "admin": 5, "host": 6}
 ROLE_LABELS: dict[str, str] = {
     "host": "Host",
     "admin": "Admin",
     "director": "Director",
+    "fleet_commander": "Fleet Commander",
     "officer": "Officer",
     "member": "Member",
     "quartermaster": "Quartermaster",
@@ -22,7 +23,7 @@ ROLE_LABELS: dict[str, str] = {
 }
 
 SECTION_DEFINITIONS: dict[str, dict[str, object]] = {
-    "ship_reports": {"label": "Ship Reports", "default_roles": ["admin","director","officer","member","view_only"]},
+    "ship_reports": {"label": "Ship Reports", "default_roles": ["admin","director", "fleet_commander","officer","member","view_only"]},
     "inventory_reports": {"label": "Inventory Reports", "default_roles": ["admin","director","officer","member","view_only"]},
     "industry_reports": {"label": "Industry Reports", "default_roles": ["admin","director","officer","member","quartermaster","view_only"]},
     "quartermaster": {"label": "Quartermaster", "default_roles": ["quartermaster"]},
@@ -43,7 +44,7 @@ SECTION_DEFINITIONS: dict[str, dict[str, object]] = {
     "calendar_events": {"label": "Calendar & Events", "default_roles": ["admin", "director", "officer", "member", "view_only"]},
     "notes": {"label": "Notes & Lists", "default_roles": ["admin", "director", "officer", "member", "view_only"]},
     "contracts": {"label": "Contracts", "default_roles": ["admin", "director", "officer", "member"]},
-    "analytics": {"label": "Analytics", "default_roles": ["admin", "director", "officer"]},
+    "analytics": {"label": "Analytics", "default_roles": ["admin", "director", "fleet_commander", "officer"]},
     "skills": {"label": "Skills", "default_roles": ["admin", "director", "officer", "member"]},
     "fittings": {"label": "Fittings", "default_roles": ["admin", "director", "officer", "member"]},
     "doctrines": {"label": "Doctrine Management", "default_roles": ["admin", "director", "officer", "member", "view_only"]},

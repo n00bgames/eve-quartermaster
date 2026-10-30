@@ -6,6 +6,7 @@ from sqlalchemy.orm import selectinload
 from fastapi import HTTPException
 from app.models import (Asset, Blueprint, EveCharacter, OwnershipEntity, EveType, EveGroup,
                         PlanetaryColony, PlanetaryPin, ResearchProject, Location)
+from app.services.ship_hulls import capsule_class
 from app.services.industry_storage import StorageIndex, industry_category, is_container, is_blueprint
 from app.services.asset_visibility import visible_owner_clause
 from app.services.permissions import can_view_section
@@ -43,7 +44,7 @@ def category(item):
     return industry_category(item) or (item.group.category.name if item and item.group and item.group.category else "Unclassified")
 
 
-def stock_data(db, scope, selections=(), inventory=False, ships=False):
+def stock_data(db, scope, selections=(), inventory=False, ships=False, excluded_groups=()):
     index = StorageIndex(db, scope["stock"])
     valid = {option["key"] for option in index.options(scope["stock"])}
     if not set(selections).issubset(valid):
@@ -51,7 +52,7 @@ def stock_data(db, scope, selections=(), inventory=False, ships=False):
     stocks = []
     for asset in index.assets.values():
         item = asset.item_type
-        if ships and (not item or not item.group or item.group.category_id != 6 or asset.quantity <= 0):
+        if ships and (not item or not item.group or item.group.category_id != 6 or capsule_class(item.group_id,item.group.name) or item.group_id in excluded_groups or asset.quantity <= 0):
             continue
         material = industry_category(item)
         if not inventory:
@@ -69,7 +70,7 @@ def stock_data(db, scope, selections=(), inventory=False, ships=False):
             "location": location, "source": "Assets", "last_synced_at": iso(asset.last_synced_at),
             "placement": asset.location_flag or "Unknown", "container": parent.item_type.name if parent and parent.item_type else None,
             "_public_location": index.public_location(asset), "_approved": True,
-            **({"ship_class":item.group.name} if ships else {})})
+            **({"ship_class":item.group.name,"_ship_group_id":item.group_id} if ships else {})})
     return stocks
 
 
@@ -101,9 +102,13 @@ def build_inventory(db, scope):
         "notice":"Private inventory: all accessible synchronized assets, including ships, fitted items and containers. Totals first, then owner and location detail."})
 
 
-def build_ships(db, scope):
+def build_ships(db, scope, excluded_groups=()):
+    excluded_groups=sorted(set(excluded_groups))
+    groups=list(db.scalars(select(EveGroup).where(EveGroup.group_id.in_(excluded_groups),EveGroup.category_id==6)))
+    if len(groups)!=len(excluded_groups):raise HTTPException(422,"Choose valid ship classes")
     return summarize({"report_kind":"ships", "as_of":datetime.now(timezone.utc).isoformat(),
-        "stock":stock_data(db,scope,inventory=True,ships=True), "blueprints":[], "jobs":[], "pi":[],
+        "ship_filters":{"excluded_group_ids":excluded_groups,"excluded_classes":sorted(g.name for g in groups),"capsules_excluded":True},
+        "stock":stock_data(db,scope,inventory=True,ships=True,excluded_groups=excluded_groups), "blueprints":[], "jobs":[], "pi":[],
         "notice":"Private Ship Report: synchronized ship hulls within your existing asset permissions, including assembled ships and quantities in packaged stacks. Totals by hull type, then character/corporation and location. Modules, drones and blueprints are excluded; no fitted or active-ship status is inferred."})
 
 
@@ -179,6 +184,10 @@ def present(data, public=False, inventory=False):
     """One allowlisted projection for JSON and both exports, including old links."""
     from copy import deepcopy
     result = deepcopy(data)
+    if result.get("report_kind")=="ships":
+        # Apply the capsule policy to previously saved snapshots as well.
+        result["stock"]=[row for row in result.get("stock",[]) if not capsule_class(row.get("_ship_group_id"),row.get("ship_class"))]
+        result.setdefault("ship_filters",{"excluded_group_ids":[],"excluded_classes":[],"capsules_excluded":True})
     legacy = not inventory and result.get("policy_version",0) < 2
     if legacy:
         # Old aggregated stock lacks ancestry/approval evidence. Do not publish it.
@@ -213,7 +222,7 @@ def present(data, public=False, inventory=False):
     summarize(result)
     allowed={"token","report_kind","is_private","anonymous","dynamic","share_url","created_at","expires_at","retention",
         "account_name","creator_name","corporation_id","application_version","policy_version","as_of","latest_sync_at","oldest_sync_at",
-        "notice","totals","stock","blueprints","jobs","pi","summary"}
+        "notice","totals","stock","blueprints","jobs","pi","summary","ship_filters"}
     return {k:v for k,v in result.items() if k in allowed}
 
 
@@ -227,6 +236,7 @@ def csv_content(data):
     writer.writerow(["Generated",data["created_at"],"Data as of",data["as_of"]])
     if data.get("report_kind")=="ships":
         writer.writerow(["SHIP REPORT", "TOTAL SHIPS", data["summary"]["ships"], "SHIP TYPES", data["summary"]["ship_types"]])
+        writer.writerow(["EXCLUDED CLASSES","Capsules",*data.get("ship_filters",{}).get("excluded_classes",[])])
     for section in (("totals","stock") if data.get("report_kind") in {"inventory","ships"} else ("jobs","blueprints","totals","stock","pi")):
         rows=data[section];writer.writerow([]);writer.writerow([section.upper()])
         if rows:
@@ -255,6 +265,7 @@ def pdf_content(data):
         canvas.setFont('Helvetica',7);canvas.drawString(32,A4[1]-67,'Generated '+data['created_at'][:19].replace('T',' ')+' UTC');canvas.drawString(32,A4[1]-80,'Data as of '+data['as_of'][:19].replace('T',' ')+' UTC');canvas.drawRightString(A4[0]-32,20,str(doc.page))
     story=[p(data['notice']),Spacer(1,12)]
     if data.get('report_kind')=='ships':
+        story.insert(0,p('Excluded classes: Capsules'+(', '+', '.join(data.get('ship_filters',{}).get('excluded_classes',[])) if data.get('ship_filters',{}).get('excluded_classes') else '')))
         story.insert(0,Paragraph(f"Total ships: {data['summary']['ships']:,} &nbsp; Ship types: {data['summary']['ship_types']:,}",styles['Heading2']))
     specifications=[('Active industry jobs','jobs',['owner','activity','product','status','runs','facility','end_date']),
         ('Blueprints and reaction formulas','blueprints',['owner','blueprint','kind','quantity','me','te','runs','location']),

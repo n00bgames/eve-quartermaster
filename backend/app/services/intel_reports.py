@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.domain.intel import SCHEMA_VERSION, summarize_evidence, utc
 from app.models import EveAlliance, EveCharacter, EveConstellation, EveCorporation, EveRegion, EveSystem, EveType, Killmail, KillmailAttacker, KillboardEntityName, User, ZkillEnrichment
 from app.models.intel import IntelSubject, IntelCollection, IntelObservation, IntelSourceCache
-from app.services.permissions import can_view_section, can_view_at_least
+from app.services.permissions import assigned_base_roles, can_view_section, can_view_at_least
 
 FACT_LIMIT=10000
 PARTICIPANT_LIMIT=250000
@@ -17,8 +17,8 @@ PARTICIPANT_LIMIT=250000
 
 def require_intel(user: User, db: Session):
     from app.services.recruiting import is_recruiter
-    if user.deleted_at or user.role=="applicant" or not can_view_section(user,"intel_reports",db) or not (can_view_at_least(user,"officer",db) or is_recruiter(db,user)):
-        raise HTTPException(403,"Intel Reports requires section access and an Officer role or Recruiter capability")
+    if user.deleted_at or user.role=="applicant" or not can_view_section(user,"intel_reports",db) or not (can_view_at_least(user,"officer",db) or "intel_analyst" in assigned_base_roles(user,db) or is_recruiter(db,user)):
+        raise HTTPException(403,"Intel Reports requires section access and an Intel Analyst/Officer role or Recruiter capability")
 
 
 def subject_or_404(db: Session, subject_id: int):
@@ -112,11 +112,13 @@ def build_report(db: Session, subject: IntelSubject, from_at: datetime, to_at: d
         names=name_map(db,kind,ids)
         for row in summary["associates"]:
             if row["kind"]==kind:row["name"]=names.get(row["id"],f"{kind.title()} {row['id']}")
+    from app.services.intel_sightings import merge
+    sightings=merge(db,subject,summary,from_at,to_at)
     region_totals={}
     for row in summary["systems"]:
         if row["region_id"] is None:continue
-        entry=region_totals.setdefault(row["region_id"],{"id":row["region_id"],"name":row["region_name"],"kills":0,"losses":0})
-        entry["kills"]+=row["kills"];entry["losses"]+=row["losses"]
+        entry=region_totals.setdefault(row["region_id"],{"id":row["region_id"],"name":row["region_name"],"kills":0,"losses":0,"sightings":0})
+        entry["kills"]+=row["kills"];entry["losses"]+=row["losses"];entry["sightings"]+=row.get("sightings",0)
     summary["regions"]=sorted(region_totals.values(),key=lambda row:-(row["kills"]+row["losses"]))
     latest=db.scalar(select(IntelCollection).where(IntelCollection.subject_id==subject.id).order_by(IntelCollection.created_at.desc()).limit(1))
     collection_rows=db.scalars(select(IntelCollection).where(IntelCollection.subject_id==subject.id).order_by(IntelCollection.created_at.desc()).limit(20)).all()
@@ -140,6 +142,6 @@ def build_report(db: Session, subject: IntelSubject, from_at: datetime, to_at: d
     if profile.get("corporation_ids"):
         corporations=name_map(db,"corporation",set(profile["corporation_ids"]))
         profile["corporations"]=[{"id":eid,"name":corporations.get(eid,f"Corporation {eid}")} for eid in profile["corporation_ids"]]
-    return {"schema_version":SCHEMA_VERSION,"subject":subject_info,"window":{"from_at":from_at,"to_at":to_at},"summary":summary,"coverage":coverage,"total_associates":total_associates,
+    return {"schema_version":SCHEMA_VERSION,"subject":subject_info,"window":{"from_at":from_at,"to_at":to_at},"summary":summary,"sightings":sightings,"coverage":coverage,"total_associates":total_associates,
             "latest_collection":collection_payload(latest) if latest else None,"observations":[{"source":row.source,"observed_at":row.observed_at,"payload":row.payload} for row in history],
             "definitions":{"associates":"Shared attacker appearances; not proof of same fleet or intent. Engagements use same-system gaps of at most 30 minutes.","smartbomb":"Subject's own attacker weapon is a smartbomb (SDE group 72). Confirmed share uses all observed PvP kills; missing weapon metadata remains unknown. Frequent means at least five confirmed kills and at least 20% of observed kills.","badges":"Upstream badges keep their own rolling windows and are not recalculated for the selected report dates.","evidence":"Up to 200 recent records; ranking evidence links are samples (up to 10 per row)."}}

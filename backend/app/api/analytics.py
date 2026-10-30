@@ -1045,8 +1045,9 @@ def analytics_summary(
     }
 
 
-def analytics_metric_rows(db: Session, days: int) -> list[SnapshotMetric]:
-    query = select(SnapshotMetric).where(SnapshotMetric.recorded_at >= start_cutoff(days))
+def analytics_metric_rows(db: Session, days: int, current_user: User | None = None) -> list[SnapshotMetric]:
+    from app.services.ship_analytics import SHIP_METRICS,metric_visibility
+    query = select(SnapshotMetric).where(SnapshotMetric.recorded_at >= start_cutoff(days),or_(SnapshotMetric.metric_key.notin_(SHIP_METRICS),metric_visibility(db,current_user,include_subcapital_gauges=False)))
     corporation_ids = analytics_corporation_ids(db)
     corporation_filter = SnapshotMetric.owner_type != "corporation"
     if corporation_ids:
@@ -1060,7 +1061,7 @@ def analytics_metric_rows(db: Session, days: int) -> list[SnapshotMetric]:
 @router.get("/exports/metrics.csv")
 def export_metrics_csv(days: int = Query(365, ge=0, le=3660), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> StreamingResponse:
     require_analytics(current_user, db)
-    rows = analytics_metric_rows(db, days)
+    rows = analytics_metric_rows(db, days, current_user)
     buffer = io.StringIO()
     writer = csv.writer(buffer)
     writer.writerow(["recorded_at", "snapshot_run_id", "owner_type", "owner_id", "owner_name", "metric_key", "metric_version", "metric_value", "dimensions_json"])
@@ -1073,7 +1074,7 @@ def export_metrics_csv(days: int = Query(365, ge=0, le=3660), current_user: User
 @router.get("/exports/metrics.json")
 def export_metrics_json(days: int = Query(365, ge=0, le=3660), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[dict[str, Any]]:
     require_analytics(current_user, db)
-    rows = analytics_metric_rows(db, days)
+    rows = analytics_metric_rows(db, days, current_user)
     return [
         {
             "recorded_at": iso(row.recorded_at),

@@ -892,3 +892,29 @@ Sign in with a linked EVE character, or accept an invitation and link your first
 ![Private ship totals and attribution](static/ss/v2.0/ship-report-summary.jpg)
 
 [SSO login](static/ss/v2.0/eve-sso-login.jpg) · [Invite acceptance](static/ss/v2.0/eve-sso-invite.jpg)
+
+### Ship classes, Fleet Commander and history (2.0 development)
+
+Exclude individual hull classes or choose **Subcaps** when generating a Ship Report. Capsules are always omitted, including in old reports. **Fleet Commander** sits below Director, can generate fleet Ship Reports, and unlocks capital hulls in Analytics; lower roles see noncapital hulls only. Track total hulls, distinct types and individual hull-type history from synchronized observations. [Behavior and privacy](docs/ship-filters-and-analytics.md).
+
+![Ship Report class exclusions and Subcaps preset](static/ss/v2.0/ship-class-exclusions.jpg)
+
+![Fleet Commander ship inventory Analytics with all hull sizes](static/ss/v2.0/ship-analytics-fleet-commander.jpg)
+
+[Lower-role noncapital view](static/ss/v2.0/ship-analytics-subcapital.jpg). Actual UI with synthetic data; unreleased source, no production deployment.
+
+### Intel notes and expandable market history (2.0 development)
+
+Edit or delete your own Intel Report notes, with Admin/Host moderation and protection against overwriting another editor's changes. In Market Appraisal, click an item name to expand its latest five regional trading dates, units traded, average/low/high prices and current hub orders. Change the hub inside the summary; data loads on demand and expanded results scroll with the page. [Notes guide](docs/intel-reports.md#editing-and-deleting-analyst-notes) · [Market history guide](docs/market-history.md).
+
+![Expandable market history in a price check](static/ss/v2.0/market-item-history.jpg)
+
+[Intel note controls](static/ss/v2.0/intel-note-management.jpg). Actual unreleased UI with synthetic accounts and market responses; prices are illustrative, not live quotes.
+
+### Intel ship sightings (2.0 development)
+
+Record a pilot's ship and system when opening a dossier, even without an engagement. Leave time blank to use the report-run time, or enter an older UTC sighting. The Timeline retains sighting and posting times separately; sightings add **0 kills and 0 losses**, with separate counts in ship/system and daily summaries. [Sighting workflow and migration 0099](docs/intel-reports.md#non-combat-ship-sightings).
+
+![Intel sighting timeline with current and historical reports](static/ss/v2.0/intel-sighting-timeline.jpg)
+
+[Sighting-entry fields](static/ss/v2.0/intel-sighting-entry.jpg). Actual unreleased UI with synthetic pilots, locations and sightings; no live operational data.

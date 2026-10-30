@@ -88,7 +88,9 @@ Implemented for multi-section workspaces; [controls, coverage and rollout](appea
 ## Ship Reports
 
 - [x] Creator-only ship snapshots with total hulls and counts for each hull type/class, then character/corporation and location detail.
-- [x] Count packaged stack quantities and exclude modules, drones and blueprints; keep existing asset visibility and Inventory Report restrictions.
+- [x] Count packaged stack quantities and exclude modules, drones, blueprints and capsules; per-class exclusions and Subcaps preset are saved with each report.
+- [x] Assignable Fleet Commander below Director with ship-only reports; lower roles cannot see capitals in ship Analytics totals, history, type lists or exports.
+- [x] Ship quantity/type history from asset sync/manual snapshots; owner privacy, zero observations for removed types and distinct-type deduplication.
 - [x] Sortable tables, CSV/PDF totals, retention, saved history and individual/date/all deletion; no public ship links.
 
 Implementation: [Ship Reports and account SSO](sso-and-ship-reports.md). Source complete; deployment is separate.
@@ -124,3 +126,20 @@ Implementation: [Ship Reports and account SSO](sso-and-ship-reports.md). Source 
 - [x] Accept an administrator invite and link the first EVE character without choosing an EQM password; retain exactly the invited combined roles.
 
 Implementation and rollout: [EVE SSO sign-in](sso-and-ship-reports.md). Requires migration 0098 and matching frontend/API; no live CCP sign-in or deployment performed during local verification.
+
+## Intel notes and market history
+
+- [x] Edit/delete own Intel Report notes; Admin/Host moderation, inline deletion confirmation, concurrency conflicts and audit metadata.
+- [x] Permit the assigned/custom-base Intel Analyst role through the Intel Reports access gate while retaining private-enrichment boundaries.
+- [x] Expand matched appraisal items into regional completed-trade history with per-unit average/low/high, volume, current hub orders and a hub selector; load on demand and respect ESI caching.
+
+Implementation: [Intel notes](intel-reports.md#editing-and-deleting-analyst-notes) · [Market history](market-history.md). Source complete; deployment is separate.
+
+## Non-combat Intel sightings
+
+- [x] Searchable system and ship type beside name entry; record sightings during explicit character report runs without requiring killmail evidence.
+- [x] Default server report-run time plus optional historical UTC entry; retain posting time and analyst separately.
+- [x] Timeline details and daily sightings, with 0/0 ship/system/region entries; keep kills/losses, combat activity and associations unchanged.
+- [x] Retry deduplication, canonical SDE validation, current Intel permissions, bounded detail list/full counts and migration 0099.
+
+Implementation: [Non-combat sightings](intel-reports.md#non-combat-ship-sightings). Source complete; migration and deployment are separate.

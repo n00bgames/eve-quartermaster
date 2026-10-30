@@ -243,7 +243,8 @@ def update_section_enabled_settings(payload: dict[str, Any], current_user: User 
 
 @router.get("/permissions/effective")
 def my_effective_permissions(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
-    return {"sections": section_payload(), "permissions": effective_permissions(current_user, db), "read_only_quartermaster": quartermaster_read_only(current_user, db), "utility_only": is_utility_user(db, current_user)}
+    from app.api.industry_reports import can_ships
+    return {"ship_reports_available":can_ships(db,current_user),"sections": section_payload(), "permissions": effective_permissions(current_user, db), "read_only_quartermaster": quartermaster_read_only(current_user, db), "utility_only": is_utility_user(db, current_user)}
 
 
 @router.get("/permissions")

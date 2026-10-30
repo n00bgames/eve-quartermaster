@@ -88,7 +88,7 @@ type Health = { status: string; app: string };
 
 type UserAccount = { id: number; email: string; display_name: string; role: string; roles?: string[]; main_character_id?: number|null; timezone?: string; created_at?: string };
 
-type EffectivePermissions = { sections: SectionPermission[]; permissions: Record<string, boolean>; read_only_quartermaster?: boolean; utility_only?: boolean };
+type EffectivePermissions = { ship_reports_available?:boolean; sections: SectionPermission[]; permissions: Record<string, boolean>; read_only_quartermaster?: boolean; utility_only?: boolean };
 
 type AuthResponse = { access_token?: string | null; remembered?: boolean; user: UserAccount };
 
@@ -262,6 +262,7 @@ function syncedTodayLabel(value: number, unit: string) {
 function App() {
 
   const [activeTab, setActiveTab] = useState("overview");
+  const [shipReportsAvailable,setShipReportsAvailable]=useState(false);
 
   const [profileFocus, setProfileFocus] = useState<ProfileFocus | null>(null);
 
@@ -320,6 +321,7 @@ function App() {
           const permissionPayload = await api<EffectivePermissions>("/auth/permissions/effective");
 
           setPermissions(permissionPayload.permissions);
+    setShipReportsAvailable(permissionPayload.ship_reports_available===true);
           quartermasterOnly.current = permissionPayload.read_only_quartermaster === true;
           utilityOnly.current = permissionPayload.utility_only === true;
 
@@ -360,6 +362,7 @@ function App() {
     const permissionPayload = await api<EffectivePermissions>("/auth/permissions/effective");
 
     setPermissions(permissionPayload.permissions);
+    setShipReportsAvailable(permissionPayload.ship_reports_available===true);
     quartermasterOnly.current = permissionPayload.read_only_quartermaster === true;
           utilityOnly.current = permissionPayload.utility_only === true;
 
@@ -747,7 +750,7 @@ function App() {
           plex: canView("plex") && <button className={activeTab === "plex" ? "active" : ""} onClick={() => { window.location.hash = "plex"; setActiveTab("plex"); }}><Coins size={18} /> PLEX Tracker</button>,
           bounty_analytics: canView("bounty_analytics") && <button className={activeTab === "bounty_analytics" ? "active" : ""} onClick={() => { window.location.hash = "bounties"; setActiveTab("bounty_analytics"); }}><TrendingUp size={18} /> Bounty Analytics</button>,
           notes: canView("notes") && <button className={activeTab === "notes" ? "active" : ""} onClick={() => setActiveTab("notes")}><NotebookTabs size={18} /> Notes & Lists</button>,
-          ship_reports: canView("ship_reports") && canView("inventory_reports") && canView("assets") && <button className={activeTab === "ship_reports" ? "active" : ""} onClick={()=>{window.location.hash="ship-reports";setActiveTab("ship_reports");}}><Boxes size={18}/> Ship Reports</button>,
+          ship_reports: canView("ship_reports") && shipReportsAvailable && <button className={activeTab === "ship_reports" ? "active" : ""} onClick={()=>{window.location.hash="ship-reports";setActiveTab("ship_reports");}}><Boxes size={18}/> Ship Reports</button>,
           inventory_reports: canView("inventory_reports") && canView("assets") && <button className={activeTab === "inventory_reports" ? "active" : ""} onClick={()=>{window.location.hash="inventory-reports";setActiveTab("inventory_reports");}}><Boxes size={18}/> Inventory Report</button>,
           industry_reports: canView("industry_reports") && <button className={activeTab === "industry_reports" ? "active" : ""} onClick={()=>{window.location.hash="industry-reports";setActiveTab("industry_reports");}}><ClipboardList size={18}/> Industry Report</button>,
           quartermaster: canView("quartermaster") && <button className={activeTab === "quartermaster" ? "active" : ""} onClick={() => { window.location.hash = "quartermaster"; setActiveTab("quartermaster"); }}><Boxes size={18} /> Quartermaster</button>,
@@ -899,7 +902,7 @@ function App() {
 
         {activeTab === "esi" && canView("esi") && <EsiSyncPage load={load} currentUser={user} api={api} ManagedForm={ManagedForm} Metric={Metric} CharacterHoverName={CharacterHoverName} />}
 
-        {activeTab === "ship_reports" && canView("ship_reports") && canView("inventory_reports") && canView("assets") && <InventoryReportPage api={api} ships/>}
+        {activeTab === "ship_reports" && canView("ship_reports") && shipReportsAvailable && <InventoryReportPage api={api} ships/>}
         {activeTab === "inventory_reports" && canView("inventory_reports") && canView("assets") && <InventoryReportPage api={api}/>}
         {activeTab === "industry_reports" && canView("industry_reports") && <IndustryReportPage api={api}/>}
         {activeTab === "profile" && canView("profile") && <ProfilePage currentUser={user} onUserUpdated={setUser} focus={profileFocus} api={api} ManagedForm={ManagedForm} accountLabel={accountLabel} />}

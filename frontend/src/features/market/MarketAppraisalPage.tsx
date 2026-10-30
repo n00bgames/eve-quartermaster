@@ -1,6 +1,7 @@
 import { ShoppingCart } from "lucide-react";
 import type { ComponentType, FormEvent } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import {MarketHistorySummary} from "./MarketHistorySummary";
 
 import { MarketHubGrid, MarketLegend, MarketMarginHints, MarketTotalsGrid } from "./MarketAppraisalWidgets";
 import {
@@ -70,6 +71,7 @@ export function MarketAppraisalPage({
   const [selectedHubs, setSelectedHubs] = useState<string[]>(["jita", "amarr", "hek", "dodixie", "rens"]);
   const [text, setText] = useState(defaultText);
   const [result, setResult] = useState<MarketAppraisal | null>(null);
+  const [expandedItems,setExpandedItems]=useState<Set<number>>(new Set());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isMarketAdmin = ["host", "admin"].includes(currentUser.role);
@@ -176,6 +178,7 @@ export function MarketAppraisalPage({
     setError(null);
 
     try {
+      setExpandedItems(new Set());
       setResult(await api<MarketAppraisal>("/market/appraise", { method: "POST", body: JSON.stringify({ text, hubs: selectedHubs }) }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Market appraisal failed.");
@@ -251,9 +254,9 @@ export function MarketAppraisalPage({
               const owned = ownedSummaryForQuote(item);
               const itemName = item.type_name ?? item.name;
               const canQuoteItem = item.matched && Boolean(item.type_id);
-              return <tr key={`${item.input}-${index}`}>
+              return <Fragment key={`${item.input}-${index}`}><tr>
                 <td>
-                  <strong>{itemName}</strong>
+                  {canQuoteItem?<button type="button" className="market-item-expander" aria-expanded={expandedItems.has(index)} aria-controls={`market-history-${index}`} onClick={()=>setExpandedItems(old=>{const next=new Set(old);if(next.has(index))next.delete(index);else next.add(index);return next;})}>{expandedItems.has(index)?"▾":"▸"} {itemName}<small>Market history</small></button>:<strong>{itemName}</strong>}
                   <span>{item.matched ? `Type ${item.type_id}` : "No SDE match"}</span>
                   <span className={owned.quantity > 0 ? "context-owned" : "context-missing"}>Owned {numberFormatter.format(owned.quantity)}</span>
                   {owned.locations.length > 0 && <small>{owned.locations.join(" | ")}</small>}
@@ -279,7 +282,7 @@ export function MarketAppraisalPage({
                     </div>
                   </td>;
                 })}
-              </tr>;
+              </tr>{canQuoteItem&&expandedItems.has(index)&&<tr className="market-history-row"><td colSpan={selectedResultHubs.length+2}><div id={`market-history-${index}`}><MarketHistorySummary api={api} typeId={item.type_id!} itemName={itemName} hubs={selectedResultHubs}/></div></td></tr>}</Fragment>;
             })}
           </tbody>
         </table>

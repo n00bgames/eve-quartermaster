@@ -67,7 +67,7 @@ async def generate(payload:IndustryInput,request:Request,user:User=Depends(requi
     return await create_report(payload,request,user,db)
 
 
-async def create_report(payload,request,user,db,inventory=False,ships=False):
+async def create_report(payload,request,user,db,inventory=False,ships=False,ship_excluded_groups=()):
     inventory = inventory or ships
     if ships and not can_ships(db,user):raise HTTPException(403,"Ship Report access is required")
     if user.id in shared._generating or len(shared._generating)>=4:raise HTTPException(429,"Report generation is busy; retry shortly")
@@ -75,13 +75,13 @@ async def create_report(payload,request,user,db,inventory=False,ships=False):
         raise HTTPException(429,"Generate at most 10 reports per minute")
     shared._generating.add(user.id)
     try:
-        scope=inventory_scope(db,user) if inventory else await service.permitted_scope(db,user)
+        scope=ship_scope(db,user) if ships else inventory_scope(db,user) if inventory else await service.permitted_scope(db,user)
         storage=[] if inventory else payload.storage
-        snapshot=await report_work(service.build_ships if ships else service.build_inventory,db,scope) if inventory else await report_work(service.build,db,scope,storage)
+        snapshot=await report_work(service.build_ships,db,scope,ship_excluded_groups) if ships else await report_work(service.build_inventory,db,scope) if inventory else await report_work(service.build,db,scope,storage)
         db.refresh(user)
         if ships and not can_ships(db,user):raise HTTPException(403,"Ship Report access changed")
-        if user.deleted_at is not None or not (can_inventory(db,user) if inventory else service.can_report(db,user)):raise HTTPException(403,"Report access changed")
-        scope = service.validate_scope(scope, inventory_scope(db,user) if inventory else await service.permitted_scope(db,user))
+        if user.deleted_at is not None or not (can_ships(db,user) if ships else can_inventory(db,user) if inventory else service.can_report(db,user)):raise HTTPException(403,"Report access changed")
+        scope = service.validate_scope(scope, ship_scope(db,user) if ships else inventory_scope(db,user) if inventory else await service.permitted_scope(db,user))
         creator,_=report_identity(db,user,payload.anonymous or not payload.is_private)
         lifetime=RETENTIONS[payload.retention];at=now()
         row=LocalScanReport(report_kind="ships" if ships else "inventory" if inventory else "industry",token=secrets.token_urlsafe(32),created_by_user_id=user.id,account_name=creator,
@@ -99,7 +99,17 @@ def can_inventory(db,user):
 
 def can_ships(db,user):
     from app.services.permissions import can_view_section
-    return can_inventory(db,user) and can_view_section(user,"ship_reports",db)
+    from app.services.permissions import role_rank,ROLE_RANK
+    return can_view_section(user,"ship_reports",db) and (can_inventory(db,user) or role_rank(user,db)>=ROLE_RANK["fleet_commander"])
+
+
+def ship_scope(db,user):
+    from app.services.permissions import role_rank,ROLE_RANK
+    from app.models import OwnershipEntity
+    if not can_ships(db,user):raise HTTPException(403,"Ship Report access is required")
+    if role_rank(user,db)>=ROLE_RANK["fleet_commander"]:
+        return {"stock":list(db.scalars(select(OwnershipEntity.id)))}
+    return inventory_scope(db,user)
 
 
 def inventory_scope(db,user):

@@ -39,7 +39,7 @@ export function UsersAdmin({ currentUser, api, ManagedForm, accountLabel }: User
   const [latestInviteUrl, setLatestInviteUrl] = useState<string | null>(null);
   const [userError, setUserError] = useState<string | null>(null);
 
-  const roles = roleDefinitions.length ? roleDefinitions.map((role) => role.name) : ["host", "admin", "director", "officer", "member", "intel_analyst", "quartermaster", "view_only"];
+  const roles = roleDefinitions.length ? roleDefinitions.map((role) => role.name) : ["host", "admin", "director", "fleet_commander", "officer", "member", "intel_analyst", "quartermaster", "view_only"];
   const roleLabel = (roleName: string) => roleDefinitions.find((role) => role.name === roleName)?.display_name ?? roleName;
 
   async function loadUsers() {

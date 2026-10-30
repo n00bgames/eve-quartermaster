@@ -1,6 +1,7 @@
 """Creator-only ship snapshots. No public generation or read/export routes."""
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, Query
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+from typing import Annotated
 from typing import Literal
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
@@ -14,20 +15,22 @@ router=APIRouter(prefix="/ship-reports",tags=["ship-reports"])
 
 class ShipInput(BaseModel):
     model_config=ConfigDict(extra="forbid")
+    excluded_group_ids: list[Annotated[int,Field(strict=True,gt=0)]]=Field(default_factory=list,max_length=256)
     retention: Literal["30m","1h","2h","12h","24h","3days","7days","30days","permanent"] = "24h"
 
 def require_ships(response:Response,user:User=Depends(get_current_user),db:Session=Depends(get_db)):
-    if not reports.can_ships(db,user):raise HTTPException(403,"Ship Report, Inventory Report and Assets permissions are required")
+    if not reports.can_ships(db,user):raise HTTPException(403,"Ship Report access is required")
     shared.public_headers(response)
     return user
 
 @router.get("/context")
 def context(user:User=Depends(require_ships),db:Session=Depends(get_db)):
-    return {"retentions":list(reports.RETENTIONS),"creator_name":reports.report_identity(db,user)[0]}
+    from app.services.ship_hulls import ship_classes
+    return {"retentions":list(reports.RETENTIONS),"creator_name":reports.report_identity(db,user)[0],"ship_classes":ship_classes(db)}
 
 @router.post("",status_code=201)
 async def generate(payload:ShipInput,request:Request,user:User=Depends(require_ships),db:Session=Depends(get_db)):
-    return await reports.create_report(reports.IndustryInput(retention=payload.retention,is_private=True),request,user,db,ships=True)
+    return await reports.create_report(reports.IndustryInput(retention=payload.retention,is_private=True),request,user,db,ships=True,ship_excluded_groups=payload.excluded_group_ids)
 
 @router.get("/reports")
 def listing(user:User=Depends(require_ships),db:Session=Depends(get_db),offset:int=Query(0,ge=0),limit:int=Query(25,ge=1,le=100)):

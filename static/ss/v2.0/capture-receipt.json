@@ -654,6 +654,97 @@
       "method": "Actual default-viewport Codex in-app browser screenshot; no pixel edits or generated UI.",
       "data": "Isolated SQLite synthetic accounts, characters, corporation and stock. No production credentials or data.",
       "limitations": "Relevant scrolled page region; no live CCP authentication. API exchanges mocked in tests. Ship quantities reflect demo fixtures only."
+    },
+    {
+      "file": "ship-class-exclusions.jpg",
+      "caption": "Fleet Commander Ship Report generation with per-class exclusions and Subcaps preset selected.",
+      "captured_at_utc": "2026-10-30T00:41:27.059210+00:00",
+      "source_base_commit": "d9d2fbc720566c849cd7d84cf8919ad7424876df",
+      "source_state": "Uncommitted ship class filters, Fleet Commander and ship history implementation on the last pushed main.",
+      "provenance": "Actual built frontend at localhost:8782 with isolated synthetic SQLite accounts, ship assets and three dated metric observations. No production accounts or live ESI actions.",
+      "cropping": "Full normal viewport at component scroll position; no pixel edits or viewport resizing.",
+      "sha256": "1323b605adddf7501dd19edca8a4a219c6b46276f3023961b8b8532b3d13e917",
+      "bytes": 98393,
+      "width": 1265,
+      "height": 712
+    },
+    {
+      "file": "ship-analytics-fleet-commander.jpg",
+      "caption": "Fleet Commander ship Analytics: 40 hulls and seven distinct types including capitals, with daily history.",
+      "captured_at_utc": "2026-10-30T00:48:29.953709+00:00",
+      "source_base_commit": "d9d2fbc720566c849cd7d84cf8919ad7424876df",
+      "source_state": "Uncommitted ship class filters, Fleet Commander and ship history implementation on the last pushed main.",
+      "provenance": "Actual built frontend at localhost:8782 with isolated synthetic SQLite accounts, ship assets and three dated metric observations. No production accounts or live ESI actions.",
+      "cropping": "Full normal viewport at component scroll position; no pixel edits or viewport resizing.",
+      "sha256": "9ee3a509c4a6f2ac99cbf0dc814824c5d524bc6631ea5ccee5c7fad60e39e2f1",
+      "bytes": 72129,
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "file": "ship-analytics-subcapital.jpg",
+      "caption": "Lower Officer ship Analytics: 35 noncapital hulls and four distinct types; capital rows and counts absent.",
+      "captured_at_utc": "2026-10-30T00:52:05.824145+00:00",
+      "source_base_commit": "d9d2fbc720566c849cd7d84cf8919ad7424876df",
+      "source_state": "Uncommitted ship class filters, Fleet Commander and ship history implementation on the last pushed main.",
+      "provenance": "Actual built frontend at localhost:8782 with isolated synthetic SQLite accounts, ship assets and three dated metric observations. No production accounts or live ESI actions.",
+      "cropping": "Full normal viewport at component scroll position; no pixel edits or viewport resizing.",
+      "sha256": "08705e93f112a250474091c48f779d448cc8a6619a2e66363cc44df1521fd8b2",
+      "bytes": 72066,
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "file": "intel-note-management.jpg",
+      "caption": "Intel Analyst author controls, saved edit and inline deletion confirmation; a different author remains read-only.",
+      "captured_at_utc": "2026-10-30T05:37:26.180512+00:00",
+      "source_base_commit": "d9d2fbc720566c849cd7d84cf8919ad7424876df",
+      "source_state": "Uncommitted Intel note management and lazy Market item history, alongside the prior local Fleet Commander/ship changes.",
+      "provenance": "Actual production frontend build at localhost:8783. Isolated synthetic SQLite accounts/dossier/notes and mocked public ESI history/orders. Illustrative market figures/dates are not a live quote. No production mutation.",
+      "cropping": "Full normal viewport at component scroll position; no pixel modifications or viewport resizing.",
+      "sha256": "35372796472770abe3fa91dca7d68e6952a261da46a6eaa5e2ef1bab8f38dd93",
+      "bytes": 75482,
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "file": "market-item-history.jpg",
+      "caption": "Expanded appraisal summary: latest five synthetic regional trading dates and separate Jita-local current order depth.",
+      "captured_at_utc": "2026-10-30T05:42:20.155588+00:00",
+      "source_base_commit": "d9d2fbc720566c849cd7d84cf8919ad7424876df",
+      "source_state": "Uncommitted Intel note management and lazy Market item history, alongside the prior local Fleet Commander/ship changes.",
+      "provenance": "Actual production frontend build at localhost:8783. Isolated synthetic SQLite accounts/dossier/notes and mocked public ESI history/orders. Illustrative market figures/dates are not a live quote. No production mutation.",
+      "cropping": "Full normal viewport at component scroll position; no pixel modifications or viewport resizing.",
+      "sha256": "ecbce25f59d5ad27f92fc3da4ef15e158b339b9c755c18d037d6191d163ab2d2",
+      "bytes": 123481,
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "file": "intel-sighting-entry.jpg",
+      "caption": "Validated ship/system pickers and optional historical UTC time beside dossier name entry.",
+      "captured_at_utc": "2026-10-30T06:54:26.997347+00:00",
+      "source_base_commit": "d9d2fbc720566c849cd7d84cf8919ad7424876df",
+      "source_state": "Uncommitted Intel sightings/historical time feature, alongside prior pending Fleet Commander/notes/Market work.",
+      "provenance": "Actual built frontend at localhost:8784. Isolated SQLite and synthetic analyst/pilot/system fixtures, mocked public character identity. Real UI report runs persisted the sightings; no live game or production data/actions.",
+      "cropping": "Full normal viewport at relevant scroll position; no pixel edits or viewport resizing.",
+      "sha256": "7c3df5619e80aa9e6fb60d806125981ebe75f255b31c6f89bae1fd4ec852c7a4",
+      "bytes": 111461,
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "file": "intel-sighting-timeline.jpg",
+      "caption": "A sighting-only pilot with report-time and backdated sightings, separate posting times and 0/0 K/L daily counts.",
+      "captured_at_utc": "2026-10-30T06:53:55.620192+00:00",
+      "source_base_commit": "d9d2fbc720566c849cd7d84cf8919ad7424876df",
+      "source_state": "Uncommitted Intel sightings/historical time feature, alongside prior pending Fleet Commander/notes/Market work.",
+      "provenance": "Actual built frontend at localhost:8784. Isolated SQLite and synthetic analyst/pilot/system fixtures, mocked public character identity. Real UI report runs persisted the sightings; no live game or production data/actions.",
+      "cropping": "Full normal viewport at relevant scroll position; no pixel edits or viewport resizing.",
+      "sha256": "91645fbe45f9f8a3d45a78ceac5d7bb311034a744a5afa73b9e6966c72420064",
+      "bytes": 89999,
+      "width": 1280,
+      "height": 720
     }
   ]
 }

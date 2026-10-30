@@ -1549,3 +1549,10 @@
 .auth-sso-button { width: 100%; min-height: 44px; padding: 10px 16px; border: 1px solid var(--eqm-accent, #e8b84d); border-radius: 8px; color: var(--eqm-text, #f5f7fa); background: var(--eqm-background, #101215); font-weight: 800; cursor: pointer; }
 .auth-sso small { color: var(--eqm-muted, #aab4c2); text-align: center; line-height: 1.5; }
 .auth-alternative { margin: 18px 0 12px; text-align: center; color: var(--eqm-muted, #aab4c2); }
+
+.ship-class-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(210px,1fr)); gap: 10px 18px; margin-top: 16px; }
+.ship-class-options summary { cursor: pointer; font-weight: 700; }
+.ship-analytics { margin: 20px 0; }
+
+.market-item-expander{display:flex!important;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;white-space:normal;max-width:100%;border:0;background:transparent;padding:4px;color:var(--eqm-text,#d8e3f0);font-weight:700}.market-item-expander:hover{color:var(--eqm-accent,#e8b84d)}.market-item-expander small{font-weight:400;color:var(--eqm-muted,#8b98a8)}.market-history-summary{padding:16px;border:1px solid var(--eqm-border,#303741);border-radius:8px;max-width:100%;box-sizing:border-box;background:var(--eqm-background,#10151b);white-space:normal}.market-history-summary h4{margin:0}.market-history-summary label{display:grid;gap:6px;max-width:360px}.market-history-summary .market-history-controls{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin:12px 0}.market-history-summary table{min-width:520px;width:100%}.market-history-summary th,.market-history-summary td{padding:8px!important;white-space:nowrap}.market-history-summary p{max-width:90ch}.market-history-current{display:flex;gap:24px;flex-wrap:wrap;margin:12px 0}.market-history-current div{display:grid;gap:4px}.market-history-current strong{font-size:1rem}.market-history-current small{display:block}
+.market-table-wrap{max-height:none;container-type:inline-size}.market-history-summary{width:calc(100cqw - 24px)}.market-history-summary .table-wrap{max-height:none}.market-item-expander{min-width:190px;max-width:280px}

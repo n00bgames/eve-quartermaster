@@ -512,3 +512,35 @@ October 29, 2026, unreleased 2.0.0. [Permissions, rollout and limitations](sso-a
 ![Private Ship Report heading with total hull count and creator attribution.](../static/ss/v2.0/ship-report-summary.jpg)
 
 ![Ship Report totals section with 28 synthetic hulls across three types, sortable quantities and CSV/PDF exports.](../static/ss/v2.0/ship-report-totals.jpg)
+
+## Ship classes and Fleet Commander Analytics
+
+Unreleased 2.0 development captures from an isolated SQLite preview of the actual built frontend. All accounts, stock and three dated observations are synthetic. The fixture contains 40 non-capsule hulls across seven types, including five capital hulls; the lower Officer view has 35 hulls/four types. Subcaps additionally removes seven shuttles, producing 28 hulls/three types. No production permissions or records were changed.
+
+![Fleet Commander Ship Report class checkboxes and Subcaps preset](../static/ss/v2.0/ship-class-exclusions.jpg)
+
+![Fleet Commander sees all hull sizes in ship inventory Analytics](../static/ss/v2.0/ship-analytics-fleet-commander.jpg)
+
+![Officer sees subcapital totals and history only](../static/ss/v2.0/ship-analytics-subcapital.jpg)
+
+Full normal viewport captures at scroll positions showing the relevant controls. Charts continue below the viewport. Per-file provenance/checksums are in the capture receipt. [Behavior and verification](ship-filters-and-analytics.md).
+
+## Intel note management and Market item history
+
+Actual built 2.0 development UI on localhost:8783, isolated SQLite accounts/dossiers and mocked public ESI market responses. No production account, note, permission or order was changed. The market dates/prices are synthetic demonstration data and must not be treated as live quotes.
+
+![An analyst's edited note and inline deletion confirmation; another author's note remains read-only](../static/ss/v2.0/intel-note-management.jpg)
+
+![Expanded Jita item with The Forge completed-trade history and separate current hub orders](../static/ss/v2.0/market-item-history.jpg)
+
+Full normal viewport captures at the relevant scroll position, without resizing or pixel edits. API tests exercise permanent deletion; the browser capture shows confirmation/cancel without executing a permanent UI deletion. See the per-file capture receipt for hashes and provenance.
+
+## Intel non-combat sightings
+
+Actual built 2.0 development UI at localhost:8784, backed by isolated SQLite and synthetic Example Visitor/Example Entry/Example Pocket records. Ship labels use imported demo hull metadata. Name resolution/identity are mocked; no outside character was enrolled or live location reported. One explicit report run created a current-time Tristan sighting; a second created an earlier Caracal sighting with a separate later posting time. Both show 0/0 K/L. Reload preserved both records without adding more.
+
+![System, ship and historical time controls beside the dossier entry](../static/ss/v2.0/intel-sighting-entry.jpg)
+
+![Two source-labelled sightings and the daily 0/0 timeline](../static/ss/v2.0/intel-sighting-timeline.jpg)
+
+Full normal viewport captures at relevant scroll positions. No resizing or pixel changes. Apply migration 0099 before matching API/frontend rollout; these screenshots do not claim a release or production deployment. Per-file provenance/checksums are in the capture receipt.

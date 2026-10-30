@@ -7,6 +7,11 @@ Version sections are written as user-facing release notes first, with implementa
 ## [2.0.0] - Unreleased
 
 - Add identity-only EVE SSO login and one-time invitation acceptance with combined invited roles, browser-bound PKCE and verified character ownership. Existing linked characters can sign in after ownership proof; requires migration 0098 and matching API/frontend.
+- Add Intel Report ship/system sightings beside name entry, with default server report time or optional historical UTC time, separate posting time/analyst, a Timeline tab and 0/0 sighting-only ship/system rows. Combat metrics remain unchanged; requires migration 0099.
+- Add author editing/deletion of Intel Report notes, Admin/Host moderation, stale-change protection and audit metadata; honor Intel Analyst custom/combined roles at the dossier access gate.
+- Expand Market appraisal items into lazy regional completed-trade summaries (latest five trading dates, volume, average/low/high), selectable hub, current hub orders and cache/error states. Expanded results scroll with the page.
+- Add assignable Fleet Commander below Director, ship-only report access, and server-enforced capital visibility in Analytics for Fleet Commander and higher, including history/type lists/exports. Combined and custom-base roles are supported.
+- Exclude capsules retroactively from Ship Reports, add saved per-class exclusion checkboxes and a Subcaps preset, and record synchronized ship totals/distinct types/per-type history with owner privacy and retention checks.
 - Add creator-only Ship Reports with total hull count, counts per hull type/class, character/corporation/location detail, sortable columns, CSV/PDF, retention and scoped history/deletion. Count packaged quantities; exclude drones, modules and blueprints.
 - Move expensive report builds, storage indexing and export rendering off the API event loop, limit heavy operations per process, and return retryable overload responses. Center the login recovery link with padding.
 

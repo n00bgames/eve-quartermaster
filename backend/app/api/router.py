@@ -1,3 +1,4 @@
+from app.api.ship_analytics import router as ship_analytics_router
 from app.api.ship_reports import router as ship_reports_router
 from app.api.account_sso import router as account_sso_router
 from app.api.asset_downloads import router as asset_downloads_router
@@ -58,6 +59,7 @@ from app.api.quartermaster_oversight import router as quartermaster_oversight_ro
 api_router = APIRouter()
 api_router.include_router(account_sso_router)
 api_router.include_router(ship_reports_router)
+api_router.include_router(ship_analytics_router)
 api_router.include_router(industry_reports_router)
 api_router.include_router(inventory_reports_router)
 api_router.include_router(local_scan_router)
