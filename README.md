@@ -942,3 +942,13 @@ Open Show Info links through an unsent draft on your own selected EVE character.
 ![Owned blueprint link preview](static/ss/v2.0/blueprint-client-link.jpg)
 
 [Optional support card](static/ss/v2.0/overview-support-card.jpg). Actual UI with synthetic holdings and mocked game-window calls; unreleased working-tree feature.
+
+### Persistent Local Scan organization colors (unreleased follow-up)
+
+Pick EVE-style colors directly from generated alliance/corporation rows, save rules across sessions, and carry their snapshot into public reports and PDFs. Corporation overrides take precedence over alliance colors; linked Local Scan results in D-Scan use the same scheme. Requires migration `0101_scan_highlight_colors` and matching API/frontend. [Controls and rollout](docs/scan-colors.md).
+
+![Local Scan with persistent alliance and corporation colors](static/ss/v2.0.1/local-scan-colors.jpg)
+
+Optional **Automatic standings colors** uses one of your own linked characters' read-only corporation/alliance contacts, with a saved source and refresh timestamp. Manual rules take priority; utility-role private collection stays disabled. [Standings source and scope details](docs/scan-colors.md#selected-character-standings-source).
+
+![Selected-character standings color source](static/ss/v2.0.1/local-scan-standings-source.jpg)

@@ -1,3 +1,7 @@
+import {StandingsColors} from "../localScan/StandingsColors";
+import type {AutomaticRule} from "../localScan/highlights";
+import {OrganizationColors} from "../localScan/OrganizationColors";
+import type {SaveColor} from "../localScan/highlights";
 import {LayoutRegion} from "../appearance/LayoutRegion";
 import { ReportPrivacyOptions } from "../localScan/ReportPrivacyOptions";
 import { useCallback, useEffect, useState } from "react";
@@ -31,8 +35,7 @@ export function DScanPage({api}: {api: ApiClient}) {
   const [message,setMessage] = useState("");
   useEffect(()=>{let active=true;const sync=()=>{void api<DScanContext>("/d-scans/context").then(c=>{if(active)setContext(c);}).catch(()=>undefined);if(report)void api<typeof report>(`/d-scans/reports/${encodeURIComponent(report.token)}`).then(next=>{if(active)setReport(next);}).catch(()=>undefined);};window.addEventListener("eqm-main-character",sync);return()=>{active=false;window.removeEventListener("eqm-main-character",sync);};},[api,report?.token]);
   const [highlights,setHighlights] = useState<Highlight[]>([]);
-  const [targetName,setTargetName] = useState("");
-  const [targetKind,setTargetKind] = useState("corporation");
+  const [automaticRules,setAutomaticRules]=useState<AutomaticRule[]>([]);
   const [highlightBusy,setHighlightBusy] = useState(false);
   const [history,setHistory] = useState<{reports:DScanMeta[]; total:number}>({reports:[],total:0});
   const [offset,setOffset] = useState(0);
@@ -68,18 +71,16 @@ export function DScanPage({api}: {api: ApiClient}) {
       setReport(result);setOffset(0);await loadHistory();
     } catch(e) {setError(errorText(e));} finally {setBusy(false);}
   }
-  async function addHighlight(e:FormEvent) {
-    e.preventDefault();setHighlightBusy(true);setError("");
-    try {
-      await api("/d-scans/highlights",{method:"POST",body:JSON.stringify({kind:targetKind,name:targetName})});
-      setHighlights(await api<Highlight[]>("/d-scans/highlights"));setTargetName("");
-    } catch(e) {setError(errorText(e));} finally {setHighlightBusy(false);}
-  }
-  async function removeHighlight(id:number) {
+  const saveColor:SaveColor = async (target,color) => {
     setHighlightBusy(true);setError("");
-    try {await api(`/d-scans/highlights/${id}`,{method:"DELETE"});setHighlights(rows=>rows.filter(r=>r.id !== id));}
-    catch(e) {setError(errorText(e));}finally{setHighlightBusy(false);}
-  }
+    try {
+      const existing=highlights.find(h=>h.kind===target.kind&&(target.eve_id?h.eve_id===target.eve_id:h.name.toLocaleLowerCase()===target.name.toLocaleLowerCase()));
+      if(color===null) {if(existing)await api(`/d-scans/highlights/${existing.id}`,{method:"DELETE"});}
+      else if(existing) await api(`/d-scans/highlights/${existing.id}`,{method:"PATCH",body:JSON.stringify({color})});
+      else await api("/d-scans/highlights",{method:"POST",body:JSON.stringify({kind:target.kind,name:target.name,color})});
+      setHighlights(await api<Highlight[]>("/d-scans/highlights"));
+    } catch(e) {setError(errorText(e));throw e;} finally {setHighlightBusy(false);}
+  };
   async function openReport(token:string) {
     setError("");
     try {
@@ -109,7 +110,7 @@ export function DScanPage({api}: {api: ApiClient}) {
     {error && <div className="alert" role="alert">{error}</div>}{message && <div className="notice" role="status">{message}</div>}
     <section key="dscan-1" data-layout-id="dscan-1" data-layout-label="New directional scan" className="panel scan-compose"><h3>New directional scan</h3><p className="muted">Copy d-scan results with Ctrl+A, Ctrl+C and paste them below. Accepts Name / Type / Distance, with an optional leading type ID. Up to {context?.max_objects.toLocaleString() ?? "5,000"} objects.</p><form onSubmit={e=>void generate(e)}>
       <label>Directional scan<textarea aria-label="Directional scan" value={text} onChange={e=>setText(e.target.value)} rows={7} maxLength={500000} required placeholder="17715&#9;Ship name&#9;Gila&#9;28 km" /></label>
-      <details><summary>Link a local pilot list (optional)</summary><label>Local pilot names<textarea aria-label="Linked local pilot names" rows={4} maxLength={150000} value={localText} onChange={e=>setLocalText(e.target.value)} placeholder="One pilot name per line"/></label><p className="muted">Public affiliations and saved red organization highlights are shown below the ship summary. No ship ownership is inferred.</p></details>
+      <details><summary>Link a local pilot list (optional)</summary><label>Local pilot names<textarea aria-label="Linked local pilot names" rows={4} maxLength={150000} value={localText} onChange={e=>setLocalText(e.target.value)} placeholder="One pilot name per line"/></label><p className="muted">Public affiliations and saved organization colors are shown below the ship summary. No ship ownership is inferred.</p></details>
       <div className="scan-compose-options"><label>Keep report<select aria-label="Report retention" value={retention} onChange={e=>setRetention(e.target.value)}>{(context?.retentions ?? Object.keys(retentionLabel)).map(r=><option key={r} value={r}>{retentionLabel[r]}</option>)}</select></label>
         <label>Report corporation<select value={corp} onChange={e=>setCorp(e.target.value)}><option value="">Personal report</option>{context?.corporations.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
         <div className="scan-system-search"><label>System (optional)<input aria-label="Scan system search" value={systemText} onChange={e=>{setSystemText(e.target.value);setSystem(null);}} placeholder="Search solar systems" autoComplete="off"/></label>{systems.length>0 && <ul className="scan-system-options">{systems.map(s=><li key={s.system_id}><button type="button" onClick={()=>{setSystem(s);setSystemText(s.name);setSystems([]);}}>{s.name}</button></li>)}</ul>}</div></div>
@@ -118,11 +119,9 @@ export function DScanPage({api}: {api: ApiClient}) {
       <button type="submit" disabled={busy || !context?.can_generate || Boolean(systemText && !system)}>{busy ? "Analyzing scan…" : isPrivate ? "Generate private d-scan" : "Generate public d-scan"}</button>
       {context && !context.can_generate && <p className="muted">Your role can view saved reports but cannot generate them.</p>}
     </form></section>
-    <details key="dscan-2" data-layout-id="dscan-2" data-layout-label="details" className="panel scan-highlight-editor"><summary>Highlighted organizations <span className="scan-count">{highlights.length}</span></summary><p className="muted">Saved to your account across sessions. Matches update immediately in your current scan view. New reports and PDFs save these markings; existing public links and PDFs keep their original snapshot. D-scan ship names cannot establish ownership; markings apply to linked local pilots.</p>
-      <form className="scan-highlight-form" onSubmit={e=>void addHighlight(e)}><label>Type<select value={targetKind} onChange={e=>setTargetKind(e.target.value)}><option value="corporation">Corporation</option><option value="alliance">Alliance</option></select></label><label>Exact organization name<input value={targetName} onChange={e=>setTargetName(e.target.value)} maxLength={255} required /></label><button type="submit" disabled={highlightBusy || !context?.can_generate}>Add</button></form>
-      <div className="scan-highlight-chips">{highlights.map(h=><span key={h.id} className="scan-highlight-chip"><span>{h.name} <small>({h.kind})</small></span><button type="button" aria-label={`Remove ${h.name}`} disabled={highlightBusy || !context?.can_generate} onClick={()=>void removeHighlight(h.id)}>×</button></span>)}</div>{highlights.length===0 && <p className="muted">No organizations marked yet.</p>}
+    <details key="dscan-2" data-layout-id="dscan-2" data-layout-label="details" className="panel scan-highlight-editor"><summary>Highlighted organizations <span className="scan-count">{highlights.length}</span></summary><StandingsColors api={api} basePath="/d-scans" onRules={setAutomaticRules} disabled={!context?.can_generate}/><OrganizationColors highlights={highlights} onSave={saveColor} busy={highlightBusy} disabled={!context?.can_generate}/>
     </details>
-    {report && <div className="panel"><DScanResults key={report.token} report={report} api={api} highlights={context ? highlights : undefined} editor={<section className="dscan-card"><header><h4>Update this analysis</h4></header><p className="muted">Combat recons below are manual additions, not d-scan detections. Saving creates a new public report; this link keeps its original snapshot.</p><form onSubmit={e=>void generate(e)}><div className="dscan-recon-fields">{(context?.recon_types ?? ["Huginn","Lachesis","Rook","Curse"]).map(name=><label key={name}>Manual {name}<input aria-label={`Manual ${name}`} type="number" min={0} max={1000} step={1} value={recons[name] ?? 0} onChange={e=>setRecons(n=>({...n,[name]:Number(e.target.value)}))}/></label>)}</div><label>Update linked local scan<textarea aria-label="Update linked local scan" value={localText} onChange={e=>setLocalText(e.target.value)} rows={4} maxLength={150000}/></label><button type="submit" disabled={busy || !context?.can_generate || Boolean(systemText && !system)}>{busy?"Saving…":"Save a new report"}</button><small className="muted">Uses the scan text, system and retention selected above. Local affiliations refresh when saved.</small></form></section>}/>
+    {report && <div className="panel"><DScanResults key={report.token} report={report} api={api} highlights={context ? highlights : undefined} automaticRules={automaticRules} onSaveColor={context?.can_generate ? saveColor : undefined} editor={<section className="dscan-card"><header><h4>Update this analysis</h4></header><p className="muted">Combat recons below are manual additions, not d-scan detections. Saving creates a new public report; this link keeps its original snapshot.</p><form onSubmit={e=>void generate(e)}><div className="dscan-recon-fields">{(context?.recon_types ?? ["Huginn","Lachesis","Rook","Curse"]).map(name=><label key={name}>Manual {name}<input aria-label={`Manual ${name}`} type="number" min={0} max={1000} step={1} value={recons[name] ?? 0} onChange={e=>setRecons(n=>({...n,[name]:Number(e.target.value)}))}/></label>)}</div><label>Update linked local scan<textarea aria-label="Update linked local scan" value={localText} onChange={e=>setLocalText(e.target.value)} rows={4} maxLength={150000}/></label><button type="submit" disabled={busy || !context?.can_generate || Boolean(systemText && !system)}>{busy?"Saving…":"Save a new report"}</button><small className="muted">Uses the scan text, system and retention selected above. Local affiliations refresh when saved.</small></form></section>}/>
 </div>}
     <section key="dscan-3" data-layout-id="dscan-3" data-layout-label="Section 3" className="panel scan-history"><div className="scan-report-header"><h3>Saved d-scans</h3><button type="button" onClick={()=>void loadHistory().catch(e=>setError(errorText(e)))}>Refresh reports</button></div><p className="muted">Manage {context?.management_scope ?? "your reports"}. {history.total} active reports. Expired reports are removed automatically.</p>
       {context?.can_generate && <><div className="scan-report-actions"><button type="button" disabled={selected.length===0 || deleting} onClick={()=>setPending({spec:{tokens:selected},message:`Delete ${selected.length} selected report(s) within ${context.management_scope}?`})}>Delete selected ({selected.length})</button><button type="button" disabled={history.total===0 || deleting} onClick={()=>setPending({spec:{all_in_scope:true},message:`Delete ALL reports within ${context.management_scope}? ${history.total} active reports currently match.`})}>Delete all in scope</button></div>

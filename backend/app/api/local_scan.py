@@ -17,6 +17,8 @@ from app.models import User, EveSystem, EveCharacter, EsiToken
 from app.models.local_scan import LocalScanReport, ScanHighlight
 from sqlalchemy.exc import IntegrityError
 from app.services import local_scan as service
+from app.services.scan_colors import ScanColor, mark_snapshot
+from app.services import scan_standings
 from app.services.audit import record_audit_event
 from app.services.permissions import ROLE_RANK, base_role_for, can_view_section, role_rank, quartermaster_read_only
 
@@ -33,7 +35,15 @@ class ScanInput(BaseModel):
     system_id: int | None = Field(default=None, gt=0)
 
 
-class HighlightInput(BaseModel):
+class StandingsSourceInput(BaseModel):
+    token_id: int | None = Field(..., gt=0, strict=True)
+
+
+class HighlightColorInput(BaseModel):
+    color: ScanColor = "red"
+
+
+class HighlightInput(HighlightColorInput):
     kind: Literal["corporation", "alliance"]
     name: str = Field(min_length=1, max_length=255)
 
@@ -111,7 +121,22 @@ def destination_characters(user: User = Depends(get_current_user), db: Session =
 
 
 def highlight_payload(row):
-    return {"id": row.id, "kind": row.kind, "eve_id": row.eve_id, "name": row.name}
+    return {"id": row.id, "kind": row.kind, "eve_id": row.eve_id, "name": row.name, "color": row.color}
+
+
+@router.get("/color-settings")
+def color_settings(user: User = Depends(require_scan), db: Session = Depends(get_db)):
+    return scan_standings.settings_payload(db, user)
+
+
+@router.post("/color-settings")
+async def color_source(payload: StandingsSourceInput, user: User = Depends(require_scan), db: Session = Depends(get_db)):
+    return await scan_standings.set_source(db, user, payload.token_id, "local_scan")
+
+
+@router.get("/color-settings/{token_id}/auth-url")
+def color_consent(token_id: int, user: User = Depends(require_scan), db: Session = Depends(get_db)):
+    return scan_standings.consent_url(db, user, token_id)
 
 
 @router.get("/highlights")
@@ -122,8 +147,6 @@ def highlights(user: User = Depends(require_scan), db: Session = Depends(get_db)
 
 @router.post("/highlights")
 async def add_highlight(payload: HighlightInput, user: User = Depends(require_scan), db: Session = Depends(get_db)):
-    if (db.scalar(select(func.count()).select_from(ScanHighlight).where(ScanHighlight.user_id == user.id)) or 0) >= 200:
-        raise HTTPException(422, "Keep at most 200 highlighted organizations; remove one before adding another")
     source = source_factory()
     try:
         result = await asyncio.wait_for(source.resolve([payload.name.strip()]), timeout=30)
@@ -138,8 +161,12 @@ async def add_highlight(payload: HighlightInput, user: User = Depends(require_sc
     existing = db.scalar(select(ScanHighlight).where(ScanHighlight.user_id == user.id,
         ScanHighlight.kind == payload.kind, ScanHighlight.eve_id == found["id"]))
     if existing:
+        existing.color = payload.color
+        db.commit()
         return highlight_payload(existing)
-    row = ScanHighlight(user_id=user.id, kind=payload.kind, eve_id=found["id"], name=found["name"])
+    if (db.scalar(select(func.count()).select_from(ScanHighlight).where(ScanHighlight.user_id == user.id)) or 0) >= 200:
+        raise HTTPException(422, "Keep at most 200 highlighted organizations; remove one before adding another")
+    row = ScanHighlight(user_id=user.id, kind=payload.kind, eve_id=found["id"], name=found["name"], color=payload.color)
     db.add(row)
     try:
         db.commit()
@@ -149,6 +176,16 @@ async def add_highlight(payload: HighlightInput, user: User = Depends(require_sc
             ScanHighlight.kind == payload.kind, ScanHighlight.eve_id == found["id"]))
         if row is None:
             raise HTTPException(409, "The highlight list changed; reload it and retry")
+    return highlight_payload(row)
+
+
+@router.patch("/highlights/{highlight_id}")
+def update_highlight(highlight_id: int, payload: HighlightColorInput, user: User = Depends(require_scan), db: Session = Depends(get_db)):
+    row = db.scalar(select(ScanHighlight).where(ScanHighlight.id == highlight_id, ScanHighlight.user_id == user.id))
+    if row is None:
+        raise HTTPException(404, "Saved organization not found")
+    row.color = payload.color
+    db.commit()
     return highlight_payload(row)
 
 
@@ -193,11 +230,7 @@ async def generate(payload: ScanInput, request: Request, user: User = Depends(re
         if payload.corporation_id is not None and payload.corporation_id not in {r[0] for r in service.corporations(db, user)}:
             raise HTTPException(403, "The selected corporation is no longer linked to your account")
         at = service.now()
-        targets = {(r.kind, r.eve_id) for r in db.scalars(select(ScanHighlight).where(ScanHighlight.user_id == user.id))}
-        for pilot in snapshot["pilots"]:
-            pilot["alliance_highlighted"] = ("alliance", pilot["alliance_id"]) in targets
-            pilot["highlighted"] = pilot["alliance_highlighted"] or ("corporation", pilot["corporation_id"]) in targets
-        snapshot["highlighted_count"] = sum(p["highlighted"] for p in snapshot["pilots"])
+        mark_snapshot(snapshot, db.scalars(select(ScanHighlight).where(ScanHighlight.user_id == user.id)), scan_standings.automatic_rules(db, user))
         lifetime = service.RETENTIONS[payload.retention]
         from app.services.report_identity import report_identity
         creator, anonymous = report_identity(db, user, payload.anonymous)

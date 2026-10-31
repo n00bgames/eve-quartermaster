@@ -6,6 +6,10 @@ Version sections are written as user-facing release notes first, with implementa
 
 ## [2.0.1] - Unreleased
 
+- Add an optional saved own-character contact source for automatic scan standings colors, explicit minimal read-only SSO consent, refresh status and safe cache failure/revocation handling. Manual rules take priority; utility roles retain identity-only default enrollment and no private asset/skill collection. Included in migration 0101.
+
+- Add account-persistent EVE-style organization colors chosen directly from Local Scan results, with corporation-over-alliance precedence, shared linked-local D-Scan rules and color-aware snapshot/PDF exports. Legacy highlights remain red. Requires migration 0101 after 0100; see [controls and rollout](docs/scan-colors.md).
+
 - Exclude all Pochven systems from jump-planner searches, endpoints, required cynos, automatic/alternate stops and map context. Reject manually entered systems server-side, including same-system requests; ordinary system searches remain available. No migration required.
 - Bump application/API, package/export metadata, outbound service agents and Android wrapper to 2.0.1 (Android versionCode 28).
 

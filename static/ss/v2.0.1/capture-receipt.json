@@ -1,0 +1,62 @@
+{
+  "captured_on": "2026-10-31",
+  "recorded_at_utc": "2026-10-31T18:51:13.744151+00:00",
+  "application_version": "2.0.1",
+  "source_base_commit": "869dd3efa8bbb9844f70a9e67fb95b94bf67bef9",
+  "source_state": "Uncommitted scan-colors follow-up; not a deployed/published build.",
+  "method": "Actual production React build served by a localhost-only FastAPI preview with isolated SQLite and mocked public ESI name/affiliation responses; Codex in-app browser JPEG captures. Standings follow-up uses mocked read-only ESI contact responses and synthetic token grants; no real OAuth consent or private ESI read was performed.",
+  "data": "Synthetic accounts, pilots, memberships and saved organization rules. EVE Image Server logos/portraits are public visual references; no production account data or real game actions.",
+  "validation": "Selected corporation from results, saved green, edited alliance rule with PATCH, reloaded account preferences, generated color snapshot, verified public view has no color-edit controls, checked keyboard focus restoration and mobile document overflow. Selected own character, loaded contact colors, reloaded persisted source, generated colored report and checked responsive source controls; final browser console errors empty.",
+  "limitations": "Manual captures precede the optional standings controls. Standings captures show implemented selected-character contact coloring with synthetic contacts, not live EVE standings. Public snapshots remain immutable; source identity and full contact mappings stay private. No deployed/published build is claimed.",
+  "files": [
+    {
+      "file": "local-scan-colors.jpg",
+      "caption": "Blue alliance, orange corporation override, green independent corporation and expanded pilot rows.",
+      "bytes": 83663,
+      "sha256": "ee33fc7d1ce183da91c70ce83f2f02d8ce7ad1e1d39fd8f0d04248472969762f",
+      "width": 1265,
+      "height": 712
+    },
+    {
+      "file": "local-scan-color-picker.jpg",
+      "caption": "Organization color dialog opened directly from a generated scan, with persistent override removal.",
+      "bytes": 61729,
+      "sha256": "ad587ddafd2f3a119d276226007d9db0017d1c7be8fdbee39bc725363950b54f",
+      "width": 1265,
+      "height": 712
+    },
+    {
+      "file": "local-scan-colors-mobile.jpg",
+      "caption": "Color dialog at the mobile breakpoint; controls wrap without document overflow.",
+      "bytes": 31736,
+      "sha256": "1fa934da835c8bf20cfb1571fc58816e178cbcfc7643faa344ffa53800c45670",
+      "width": 375,
+      "height": 812
+    },
+    {
+      "file": "local-scan-standings-source.jpg",
+      "caption": "Own linked-character selector, refreshed organization contact count/time and manual rules.",
+      "bytes": 105556,
+      "sha256": "2daa7472b219da0de0656bab5035ddd7659c82b3faa0385b117c90cbd3a7b666",
+      "width": 1265,
+      "height": 712
+    },
+    {
+      "file": "local-scan-standings.jpg",
+      "caption": "Saved source colors an otherwise unmarked corporation light blue; manual orange and blue overrides remain in effect.",
+      "bytes": 83841,
+      "sha256": "c94d4d9cfa36f4dd60ff41cf91b8e2453ed70e2693acec2f3d91a408758b6385",
+      "width": 1265,
+      "height": 712
+    },
+    {
+      "file": "local-scan-standings-mobile.jpg",
+      "caption": "Standings source selector and refresh/manual-only controls wrap at the mobile breakpoint without document overflow.",
+      "bytes": 49084,
+      "sha256": "9835a24f0950f44c1831a5f6e520258a84551ec118e34f45173cb8d05547c2e4",
+      "width": 375,
+      "height": 812
+    }
+  ],
+  "updated_at_utc": "2026-10-31T19:43:47.998363+00:00"
+}

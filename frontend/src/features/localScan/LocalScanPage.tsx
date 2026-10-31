@@ -1,3 +1,7 @@
+import {StandingsColors} from "../localScan/StandingsColors";
+import type {AutomaticRule} from "../localScan/highlights";
+import {OrganizationColors} from "../localScan/OrganizationColors";
+import type {SaveColor} from "../localScan/highlights";
 import {LayoutRegion} from "../appearance/LayoutRegion";
 import { ReportPrivacyOptions } from "../localScan/ReportPrivacyOptions";
 import { useCallback, useEffect, useState } from "react";
@@ -27,8 +31,7 @@ export function LocalScanPage({api,allowDscan=false}: {api: ApiClient;allowDscan
   const [message,setMessage] = useState("");
   useEffect(()=>{let active=true;const sync=()=>{void api<ScanContext>("/local-scans/context").then(c=>{if(active)setContext(c);}).catch(()=>undefined);if(report)void api<typeof report>(`/local-scans/reports/${encodeURIComponent(report.token)}`).then(next=>{if(active)setReport(next);}).catch(()=>undefined);};window.addEventListener("eqm-main-character",sync);return()=>{active=false;window.removeEventListener("eqm-main-character",sync);};},[api,report?.token]);
   const [highlights,setHighlights] = useState<Highlight[]>([]);
-  const [targetName,setTargetName] = useState("");
-  const [targetKind,setTargetKind] = useState("corporation");
+  const [automaticRules,setAutomaticRules]=useState<AutomaticRule[]>([]);
   const [highlightBusy,setHighlightBusy] = useState(false);
   const [history,setHistory] = useState<{reports:ReportMeta[]; total:number}>({reports:[],total:0});
   const [offset,setOffset] = useState(0);
@@ -68,18 +71,16 @@ export function LocalScanPage({api,allowDscan=false}: {api: ApiClient;allowDscan
       setReport(result);setOffset(0);await loadHistory();
     } catch(e) {setError(errorText(e));} finally {setBusy(false);}
   }
-  async function addHighlight(e:FormEvent) {
-    e.preventDefault();setHighlightBusy(true);setError("");
-    try {
-      await api("/local-scans/highlights",{method:"POST",body:JSON.stringify({kind:targetKind,name:targetName})});
-      setHighlights(await api<Highlight[]>("/local-scans/highlights"));setTargetName("");
-    } catch(e) {setError(errorText(e));} finally {setHighlightBusy(false);}
-  }
-  async function removeHighlight(id:number) {
+  const saveColor:SaveColor = async (target,color) => {
     setHighlightBusy(true);setError("");
-    try {await api(`/local-scans/highlights/${id}`,{method:"DELETE"});setHighlights(rows=>rows.filter(r=>r.id !== id));}
-    catch(e) {setError(errorText(e));}finally{setHighlightBusy(false);}
-  }
+    try {
+      const existing=highlights.find(h=>h.kind===target.kind&&(target.eve_id?h.eve_id===target.eve_id:h.name.toLocaleLowerCase()===target.name.toLocaleLowerCase()));
+      if(color===null) {if(existing)await api(`/local-scans/highlights/${existing.id}`,{method:"DELETE"});}
+      else if(existing) await api(`/local-scans/highlights/${existing.id}`,{method:"PATCH",body:JSON.stringify({color})});
+      else await api("/local-scans/highlights",{method:"POST",body:JSON.stringify({kind:target.kind,name:target.name,color})});
+      setHighlights(await api<Highlight[]>("/local-scans/highlights"));
+    } catch(e) {setError(errorText(e));throw e;} finally {setHighlightBusy(false);}
+  };
   async function openReport(token:string) {
     setError("");
     try {setReport(await api<ScanReport>(`/local-scans/reports/${encodeURIComponent(token)}`));}
@@ -110,11 +111,9 @@ export function LocalScanPage({api,allowDscan=false}: {api: ApiClient;allowDscan
       <button type="submit" disabled={busy || !context?.can_generate || Boolean(systemText && !system)}>{busy ? "Resolving pilots and affiliations…" : isPrivate ? "Generate private local scan" : "Generate public local scan"}</button>
       {context && !context.can_generate && <p className="muted">Your role can view saved reports but cannot generate them.</p>}
     </form></section>
-    <details key="local-scan-2" data-layout-id="local-scan-2" data-layout-label="details" className="panel scan-highlight-editor"><summary>Highlighted organizations <span className="scan-count">{highlights.length}</span></summary><p className="muted">Saved to your account across sessions. Matches update immediately in your current scan view. New reports and PDFs save these markings; existing public links and PDFs keep their original snapshot.</p>
-      <form className="scan-highlight-form" onSubmit={e=>void addHighlight(e)}><label>Type<select value={targetKind} onChange={e=>setTargetKind(e.target.value)}><option value="corporation">Corporation</option><option value="alliance">Alliance</option></select></label><label>Exact organization name<input value={targetName} onChange={e=>setTargetName(e.target.value)} maxLength={255} required /></label><button type="submit" disabled={highlightBusy || !context?.can_generate}>Add</button></form>
-      <div className="scan-highlight-chips">{highlights.map(h=><span key={h.id} className="scan-highlight-chip"><span>{h.name} <small>({h.kind})</small></span><button type="button" aria-label={`Remove ${h.name}`} disabled={highlightBusy || !context?.can_generate} onClick={()=>void removeHighlight(h.id)}>×</button></span>)}</div>{highlights.length===0 && <p className="muted">No organizations marked yet.</p>}
+    <details key="local-scan-2" data-layout-id="local-scan-2" data-layout-label="details" className="panel scan-highlight-editor"><summary>Highlighted organizations <span className="scan-count">{highlights.length}</span></summary><StandingsColors api={api} basePath="/local-scans" onRules={setAutomaticRules} disabled={!context?.can_generate}/><OrganizationColors highlights={highlights} onSave={saveColor} busy={highlightBusy} disabled={!context?.can_generate}/>
     </details>
-    {report && <div className="panel"><LocalScanResults key={report.token} report={report} api={api} highlights={context ? highlights : undefined}/></div>}
+    {report && <div className="panel"><LocalScanResults key={report.token} report={report} api={api} highlights={context ? highlights : undefined} automaticRules={automaticRules} onSaveColor={context?.can_generate ? saveColor : undefined}/></div>}
     <section key="local-scan-3" data-layout-id="local-scan-3" data-layout-label="Section 3" className="panel scan-history"><div className="scan-report-header"><h3>Saved local scans</h3><button type="button" onClick={()=>void loadHistory().catch(e=>setError(errorText(e)))}>Refresh reports</button></div><p className="muted">Manage {context?.management_scope ?? "your reports"}. {history.total} active reports. Expired reports are removed automatically.</p>
       {context?.can_generate && <><div className="scan-report-actions"><button type="button" disabled={selected.length===0 || deleting} onClick={()=>setPending({spec:{tokens:selected},message:`Delete ${selected.length} selected report(s) within ${context.management_scope}?`})}>Delete selected ({selected.length})</button><button type="button" disabled={history.total===0 || deleting} onClick={()=>setPending({spec:{all_in_scope:true},message:`Delete ALL reports within ${context.management_scope}? ${history.total} active reports currently match.`})}>Delete all in scope</button></div>
       <div className="scan-date-range"><label>Generated from (UTC, inclusive)<input type="datetime-local" value={from} onChange={e=>setFrom(e.target.value)}/></label><label>Generated before (UTC, exclusive)<input type="datetime-local" value={to} onChange={e=>setTo(e.target.value)}/></label><button type="button" disabled={deleting} onClick={()=>void dateDeletion()}>Delete date range</button></div></>}

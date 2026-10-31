@@ -1,5 +1,6 @@
 """Paginated directional-scan report with observed/manual counts and linked local."""
 from io import BytesIO
+from app.services.scan_colors import pilot_color, pdf_color, color_label
 from pathlib import Path
 from xml.sax.saxutils import escape
 import asyncio
@@ -57,7 +58,8 @@ def render_pdf(snapshot, images):
     base = ParagraphStyle("body", fontName="EQM", fontSize=8, leading=11, textColor=colors.HexColor("#263347"))
     title = ParagraphStyle("section", parent=base, fontName="EQMBold", fontSize=11, leading=15, spaceBefore=10, spaceAfter=6, keepWithNext=True)
     note = ParagraphStyle("note", parent=base, fontSize=7, leading=10, spaceAfter=4)
-    red = ParagraphStyle("marked", parent=base, textColor=colors.HexColor("#b32337"))
+    def marked_style(color):
+        return ParagraphStyle("marked", parent=base, textColor=colors.HexColor(pdf_color(color))) if color else base
 
     def p(text, style=base):
         return Paragraph(escape(str(text)), style)
@@ -125,24 +127,24 @@ def render_pdf(snapshot, images):
         orgs = {}
         for pilot in local["pilots"]:
             for kind, eid, name, marked in (
-                ("alliances", pilot["alliance_id"], pilot.get("alliance_name") or ("No alliance" if pilot["affiliation_available"] else "Affiliation unavailable"), pilot.get("alliance_highlighted")),
-                ("corporations", pilot["corporation_id"], pilot["corporation_name"], pilot.get("highlighted"))):
+                ("alliances", pilot["alliance_id"], pilot.get("alliance_name") or ("No alliance" if pilot["affiliation_available"] else "Affiliation unavailable"), pilot_color(pilot, "alliance")),
+                ("corporations", pilot["corporation_id"], pilot["corporation_name"], pilot_color(pilot))):
                 key = (kind, eid, name)
-                entry = orgs.setdefault(key, {"count": 0, "marked": False})
+                entry = orgs.setdefault(key, {"count": 0, "marked": None})
                 entry["count"] += 1
-                entry["marked"] |= bool(marked)
+                entry["marked"] = marked or entry["marked"]
         for (kind, eid, name), summary in sorted(orgs.items(), key=lambda r: (r[0][0], -r[1]["count"], r[0][2])):
             icon = Image(BytesIO(images[(kind, eid)]), width=16, height=16) if (kind, eid) in images else ""
-            style = red if summary["marked"] else base
+            style = marked_style(summary["marked"])
             label = ("Alliance: " if kind == "alliances" else "Corporation: ") + name
-            if summary["marked"]: label += " [marked]"
+            if summary["marked"]: label += f" [marked: {color_label(summary['marked'])}]"
             row = Table([[icon, p(label, style), p(summary["count"], style)]], colWidths=[22, content_width-62, 40])
             row.setStyle(TableStyle([("VALIGN", (0,0), (-1,-1), "TOP")]))
             story.append(row)
         story.append(Spacer(1, 6))
         for pilot in local["pilots"]:
-            style = red if pilot.get("highlighted") else base
-            label = " [marked]" if pilot.get("highlighted") else ""
+            style = marked_style(pilot_color(pilot))
+            label = f" [marked: {color_label(pilot_color(pilot))}]" if pilot_color(pilot) else ""
             orgs = f"{pilot['corporation_name']} / {pilot.get('alliance_name') or ('No alliance' if pilot['affiliation_available'] else 'Affiliation unavailable')}"
             icon_key = ("corporations", pilot["corporation_id"])
             icon = Image(BytesIO(images[icon_key]), width=16, height=16) if icon_key in images else ""

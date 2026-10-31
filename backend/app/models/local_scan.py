@@ -28,9 +28,20 @@ class LocalScanReport(Base):
 class ScanHighlight(Base):
     __tablename__ = "scan_highlights"
     __table_args__ = (UniqueConstraint("user_id", "kind", "eve_id", name="uq_scan_highlight_owner_entity"),
-                     CheckConstraint("kind IN ('corporation','alliance')", name="ck_scan_highlight_kind"))
+                     CheckConstraint("kind IN ('corporation','alliance')", name="ck_scan_highlight_kind"),
+                     CheckConstraint("color IN ('red','orange','blue','light_blue','green','purple','gray')", name="ck_scan_highlight_color"))
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     kind: Mapped[str] = mapped_column(String(16), nullable=False)
     eve_id: Mapped[int] = mapped_column(Integer, nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
+    color: Mapped[str] = mapped_column(String(16), default="red", server_default="red", nullable=False)
+
+
+class ScanColorSettings(Base):
+    __tablename__ = "scan_color_settings"
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    character_id: Mapped[int | None] = mapped_column(ForeignKey("eve_characters.id", ondelete="SET NULL"))
+    contact_colors: Mapped[list] = mapped_column(JSON, default=list, server_default="[]", nullable=False)
+    synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revision: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)

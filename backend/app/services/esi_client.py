@@ -11,7 +11,7 @@ from app.services.esi_transport import get_esi_transport
 
 ESI_BASE_URL = "https://esi.evetech.net/latest"
 ESI_DATASOURCE = "tranquility"
-USER_AGENT = "eve-quartermaster/0.1 local development"
+USER_AGENT = "eve-quartermaster/2.0.1 (+https://github.com/n00bgames/eve-quartermaster)"
 
 
 async def gather_esi(*requests):

@@ -1,6 +1,6 @@
 # EQM screenshot gallery
 
-**Latest:** [v2.0 development previews](#v20-development-previews), captured October 28, 2026.
+**Latest:** [persistent scan colors](#persistent-scan-colors), captured October 31, 2026. Earlier: [v2.0 development previews](#v20-development-previews), captured October 28, 2026.
 
 HyperNet and PLEX previews added **October 3, 2026**, from source commit `4ec0931cda1f800afb1d83560e19862809148ccd`. Atlas previews were added September 19 from `f6131a1be18e808c886f75c380c6ebf646323bfb`; the earlier gallery reconciliation was September 11 against the v1.0 candidate `f894f27ad7fb2ef4956e5bef2e97d3865fe8cfd2`. [README](../README.md) · [v1.0.5 release notes](releases/v1.0.5.md) · [Install](../README.md#install)
 
@@ -572,3 +572,23 @@ Actual built UI with synthetic accounts and owned items; unsent draft calls are 
 ![Optional Overview support card](../static/ss/v2.0/overview-support-card.jpg)
 
 ![Owned blueprint instance link and character picker](../static/ss/v2.0/blueprint-client-link.jpg)
+
+## Persistent scan colors
+
+October 31, 2026, **unreleased 2.0.1 follow-up**. Actual browser captures backed by synthetic accounts, pilots and memberships. Public EVE logos/portraits are visual references, not claims about actual membership. [Feature and rollout](scan-colors.md) · [Receipt](../static/ss/v2.0.1/capture-receipt.json).
+
+![Alliance and corporation colors with an expanded pilot list](../static/ss/v2.0.1/local-scan-colors.jpg)
+
+![Color picker opened directly from scan results](../static/ss/v2.0.1/local-scan-color-picker.jpg)
+
+![Mobile organization color picker](../static/ss/v2.0.1/local-scan-colors-mobile.jpg)
+
+### Selected-character standings colors
+
+October 31, 2026, same unreleased follow-up. The character, token grants and contacts are synthetic; contact fetch/refresh functions are mocked. The actual settings/API/color rendering run against an isolated database. No real SSO consent or private ESI query was performed.
+
+![Persisted own-character standings source and manual overrides](../static/ss/v2.0.1/local-scan-standings-source.jpg)
+
+![Contact-derived light blue alongside manual corporation/alliance colors](../static/ss/v2.0.1/local-scan-standings.jpg)
+
+[Mobile standings source](../static/ss/v2.0.1/local-scan-standings-mobile.jpg) · [Receipt](../static/ss/v2.0.1/capture-receipt.json)

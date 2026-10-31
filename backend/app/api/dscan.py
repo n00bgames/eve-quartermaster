@@ -15,6 +15,8 @@ from app.db.session import get_db
 from app.models import EveSystem, User
 from app.models.local_scan import LocalScanReport, ScanHighlight
 from app.services import dscan, local_scan as lifecycle
+from app.services.scan_colors import mark_snapshot
+from app.services import scan_standings
 from app.services.scan_threat import order_snapshot
 from app.services.audit import record_audit_event
 from app.services.permissions import can_view_section, quartermaster_read_only
@@ -47,6 +49,21 @@ def context(user: User = Depends(require_dscan), db: Session = Depends(get_db)):
     return {**shared.context(user=user, db=db), "max_objects": dscan.MAX_OBJECTS, "recon_types": list(dscan.RECONS)}
 
 
+@router.get("/color-settings")
+def color_settings(user: User = Depends(require_dscan), db: Session = Depends(get_db)):
+    return scan_standings.settings_payload(db, user)
+
+
+@router.post("/color-settings")
+async def color_source(payload: shared.StandingsSourceInput, user: User = Depends(require_dscan), db: Session = Depends(get_db)):
+    return await scan_standings.set_source(db, user, payload.token_id, "dscan")
+
+
+@router.get("/color-settings/{token_id}/auth-url")
+def color_consent(token_id: int, user: User = Depends(require_dscan), db: Session = Depends(get_db)):
+    return scan_standings.consent_url(db, user, token_id, view="dscan")
+
+
 @router.get("/highlights")
 def highlights(user: User = Depends(require_dscan), db: Session = Depends(get_db)):
     return shared.highlights(user=user, db=db)
@@ -55,6 +72,11 @@ def highlights(user: User = Depends(require_dscan), db: Session = Depends(get_db
 @router.post("/highlights")
 async def add_highlight(payload: shared.HighlightInput, user: User = Depends(require_dscan), db: Session = Depends(get_db)):
     return await shared.add_highlight(payload, user=user, db=db)
+
+
+@router.patch("/highlights/{highlight_id}")
+def update_highlight(highlight_id: int, payload: shared.HighlightColorInput, user: User = Depends(require_dscan), db: Session = Depends(get_db)):
+    return shared.update_highlight(highlight_id, payload, user=user, db=db)
 
 
 @router.delete("/highlights/{highlight_id}")
@@ -100,11 +122,7 @@ async def generate(payload: DScanInput, request: Request, user: User = Depends(r
         if payload.corporation_id is not None and payload.corporation_id not in {c[0] for c in lifecycle.corporations(db, user)}:
             raise HTTPException(403, "The selected corporation is no longer linked to your account")
         if local:
-            targets = {(h.kind, h.eve_id) for h in db.scalars(select(ScanHighlight).where(ScanHighlight.user_id == user.id))}
-            for pilot in local["pilots"]:
-                pilot["alliance_highlighted"] = ("alliance", pilot["alliance_id"]) in targets
-                pilot["highlighted"] = pilot["alliance_highlighted"] or ("corporation", pilot["corporation_id"]) in targets
-            local["highlighted_count"] = sum(p["highlighted"] for p in local["pilots"])
+            mark_snapshot(local, db.scalars(select(ScanHighlight).where(ScanHighlight.user_id == user.id)), scan_standings.automatic_rules(db, user))
             local["system"] = system_snapshot
         snapshot.update(local_scan=local, system=system_snapshot, ignored=ignored, input_count=len(objects) + len(ignored))
         if ignored:

@@ -6,6 +6,7 @@ from io import BytesIO
 from pathlib import Path
 from xml.sax.saxutils import escape
 import httpx
+from app.services.scan_colors import pilot_color, pdf_color, color_label
 
 
 async def logo_images(snapshot):
@@ -62,7 +63,6 @@ def render_pdf(snapshot, logos):
     doc = BaseDocTemplate(stream, pagesize=A4, leftMargin=margin, rightMargin=margin,
                           topMargin=140, bottomMargin=36, title="EVE Quartermaster - Local scan",
                           author=snapshot["account_name"])
-    red = colors.HexColor("#a52632")
     style = ParagraphStyle("scan", fontName="EQM", fontSize=8, leading=11, textColor=colors.HexColor("#293243"), alignment=TA_LEFT)
     group_style = ParagraphStyle("group", parent=style, fontName="EQMBold", fontSize=10, leading=13)
     note_style = ParagraphStyle("note", parent=style, fontSize=7, leading=10, textColor=colors.HexColor("#586477"))
@@ -87,7 +87,7 @@ def render_pdf(snapshot, logos):
         canvas.setFont("EQM", 7)
         canvas.drawString(margin, height - 111, f"{snapshot['character_count']:,} resolved / {len(snapshot['unresolved']):,} unresolved names | {snapshot['created_at'][:19].replace('T', ' ')} UTC")
         canvas.setFillColor(colors.HexColor("#586477"))
-        canvas.drawString(margin, 20, "Public ESI snapshot | Red / marked = creator's highlighted organization")
+        canvas.drawString(margin, 20, "Public ESI snapshot | Colored / marked = creator's saved organization color")
         canvas.drawRightString(width - margin, 20, f"Page {document.page}")
 
     frames = [Frame(margin, 36, width - margin * 2, height - 176, id="scan-content", leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0)]
@@ -103,9 +103,9 @@ def render_pdf(snapshot, logos):
 
     def org_row(kind, eid, name, count, marked, bold=False):
         icon = Image(BytesIO(logos[(kind, eid)]), width=16, height=16) if (kind, eid) in logos else ""
-        color = red if marked else colors.HexColor("#293243")
+        color = colors.HexColor(pdf_color(marked)) if marked else colors.HexColor("#293243")
         s = ParagraphStyle("org", parent=group_style if bold else style, textColor=color)
-        row = Table([[icon, Paragraph(escape(name) + (" [marked]" if marked else ""), s), str(count)]], colWidths=[21, column - 48, 27])
+        row = Table([[icon, Paragraph(escape(name) + (f" [marked: {color_label(marked)}]" if marked else ""), s), str(count)]], colWidths=[21, column - 48, 27])
         row.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (-1, -1), 0),
                                 ("RIGHTPADDING", (0, 0), (-1, -1), 3), ("FONTNAME", (2, 0), (2, 0), "EQMBold"),
                                 ("FONTSIZE", (2, 0), (2, 0), 8), ("TEXTCOLOR", (2, 0), (2, 0), color), ("ALIGN", (2, 0), (2, 0), "RIGHT")]))
@@ -114,19 +114,20 @@ def render_pdf(snapshot, logos):
     for aid, pilots in sorted(groups.items(), key=lambda g: (-len(g[1]), str(g[0]))):
         name = "Affiliation unavailable" if aid == "unknown" else pilots[0]["alliance_name"] or "No alliance"
         story.append(Spacer(1, 8))
-        heading = org_row("alliances", aid, name, len(pilots), any(p.get("alliance_highlighted") for p in pilots), True)
+        heading = org_row("alliances", aid, name, len(pilots), pilot_color(pilots[0], "alliance"), True)
         heading.keepWithNext = True
         story.append(heading)
         corps = {}
         for pilot in pilots:
             corps.setdefault(pilot["corporation_id"], []).append(pilot)
         for cid, members in sorted(corps.items(), key=lambda c: (-len(c[1]), c[1][0]["corporation_name"].casefold())):
-            heading = org_row("corporations", cid, members[0]["corporation_name"], len(members), any(p.get("highlighted") for p in members))
+            heading = org_row("corporations", cid, members[0]["corporation_name"], len(members), pilot_color(members[0]))
             heading.keepWithNext = True
             story.append(heading)
-            story.append(Paragraph(escape(members[0]["name"]), style))
+            pilot_style = ParagraphStyle("pilot", parent=style, textColor=colors.HexColor(pdf_color(pilot_color(members[0])))) if pilot_color(members[0]) else style
+            story.append(Paragraph(escape(members[0]["name"]), pilot_style))
             for offset in range(1, len(members), 6):
-                story.append(Paragraph(escape(", ".join(p["name"] for p in members[offset:offset + 6])), style))
+                story.append(Paragraph(escape(", ".join(p["name"] for p in members[offset:offset + 6])), pilot_style))
             story.append(Spacer(1, 5))
     if snapshot["unresolved"]:
         story.append(Paragraph(f"Unresolved names ({len(snapshot['unresolved'])})", group_style))

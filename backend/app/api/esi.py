@@ -270,7 +270,7 @@ async def refresh_access_token(token: EsiToken) -> str:
             headers={
                 "Accept": "application/json",
                 "Content-Type": "application/x-www-form-urlencoded",
-                "User-Agent": "eve-quartermaster/0.1 local development",
+                "User-Agent": "eve-quartermaster/2.0.1 (+https://github.com/n00bgames/eve-quartermaster)",
             },
         )
     if response.status_code >= 400:
@@ -3033,7 +3033,7 @@ async def auth_callback(code: str | None = None, state: str | None = None, db: S
             headers={
                 "Accept": "application/json",
                 "Content-Type": "application/x-www-form-urlencoded",
-                "User-Agent": "eve-quartermaster/0.1 local development",
+                "User-Agent": "eve-quartermaster/2.0.1 (+https://github.com/n00bgames/eve-quartermaster)",
             },
         )
     if response.status_code >= 400:
@@ -3131,6 +3131,10 @@ async def auth_callback(code: str | None = None, state: str | None = None, db: S
             )
         return public_exchange_mail_redirect(settings.frontend_url, public_listing_id, opened=True)
 
+    if state_mode.startswith("scan_contacts_"):
+        from app.services.scan_standings import validate_contacts_consent_character
+        validate_contacts_consent_character(db, state_user_id, state_mode, character_eve_id)
+
     if state_mode.startswith("client_ui_"):
         from app.api.client_links import validate_ui_consent_character
         validate_ui_consent_character(db, state_user_id, state_mode, character_eve_id)
@@ -3226,7 +3230,9 @@ async def auth_callback(code: str | None = None, state: str | None = None, db: S
             "esi_mode": state_mode,
         }
     )
-    if state_mode.startswith("client_ui_"):
+    if state_mode.startswith("scan_contacts_"):
+        destination = "d-scan" if state_mode.startswith("scan_contacts_dscan_") else "local-scan"
+    elif state_mode.startswith("client_ui_"):
         destination = "overview"
     elif state_mode in {"recruitment", "recruiting", "applicant"}:
         destination = "recruiting"

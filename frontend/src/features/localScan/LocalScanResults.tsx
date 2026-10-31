@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ApiClient, Condition, Highlight, Pilot, ScanReport } from "./types";
-import { markPilots } from "./highlights";
+import { markPilots, pilotColor, colorStyle } from "./highlights";
+import type { AutomaticRule, OrganizationTarget, SaveColor } from "./highlights";
+import { OrganizationColorDialog } from "./OrganizationColors";
 import { ScanDestination } from "./ScanDestination";
 import "./localScan.css";
 
@@ -24,16 +26,17 @@ function PilotPortrait({pilot}: {pilot: Pilot}) {
   </a>;
 }
 
-export function LocalScanResults({ report, api, allowCopy = true, embedded = false, highlights }: {report: ScanReport; api: ApiClient; allowCopy?: boolean; embedded?: boolean; highlights?: Highlight[]}) {
+export function LocalScanResults({ report, api, allowCopy = true, embedded = false, highlights, automaticRules, onSaveColor }: {report: ScanReport; api: ApiClient; allowCopy?: boolean; embedded?: boolean; highlights?: Highlight[]; automaticRules?: AutomaticRule[]; onSaveColor?: SaveColor}) {
+  const [colorTarget,setColorTarget]=useState<OrganizationTarget|null>(null);
   const [mode, setMode] = useState("simple");
   const [query, setQuery] = useState("");
   const [conditions, setConditions] = useState<Condition[]>([{field: "name", operator: "contains", value: ""}]);
   const [notice, setNotice] = useState("");
   const [, tick] = useState(0);
   useEffect(() => { const timer = window.setInterval(() => tick(n => n + 1), 60000); return () => window.clearInterval(timer); }, []);
-  const markedPilots = useMemo(() => markPilots(report.pilots, highlights), [report.pilots, highlights]);
+  const markedPilots = useMemo(() => markPilots(report.pilots, highlights, automaticRules), [report.pilots, highlights, automaticRules]);
   const highlightedCount = markedPilots.filter(p => p.highlighted).length;
-  const markingsChanged = markedPilots.some((p, i) => p.highlighted !== report.pilots[i].highlighted || p.alliance_highlighted !== report.pilots[i].alliance_highlighted);
+  const markingsChanged = markedPilots.some((p, i) => p.highlighted !== report.pilots[i].highlighted || p.alliance_highlighted !== report.pilots[i].alliance_highlighted || pilotColor(p) !== pilotColor(report.pilots[i]) || pilotColor(p,true) !== pilotColor(report.pilots[i],true));
   const pilots = useMemo(() => markedPilots.filter(p => mode === "simple"
     ? [p.name, p.corporation_name, p.alliance_name ?? "No alliance"].some(s => s.toLocaleLowerCase().includes(query.toLocaleLowerCase()))
     : conditions.every(c => {
@@ -62,11 +65,26 @@ export function LocalScanResults({ report, api, allowCopy = true, embedded = fal
     <div className="scan-filter-modes"><button type="button" aria-pressed={mode === "simple"} onClick={() => setMode("simple")}>Simple</button><button type="button" aria-pressed={mode === "advanced"} onClick={() => setMode("advanced")}>Advanced</button></div>
     {mode === "simple" ? <label className="scan-filter">Filter results<input aria-label="Filter scan results" value={query} onChange={e => setQuery(e.target.value)} placeholder="Character, corporation, or alliance name" /></label> : <div className="scan-conditions"><p className="muted">Show pilots matching all conditions.</p>{conditions.map((c, i) => <div className="scan-condition" key={i}><select aria-label={`Condition ${i+1} field`} value={c.field} onChange={e => change(i, {field:e.target.value as Condition["field"]})}><option value="name">Character name</option><option value="corporation_name">Corporation name</option><option value="alliance_name">Alliance name</option></select><select aria-label={`Condition ${i+1} operator`} value={c.operator} onChange={e => change(i,{operator:e.target.value as Condition["operator"]})}><option value="contains">contains</option><option value="starts">starts with</option><option value="ends">ends with</option><option value="equals">equals</option></select><input aria-label={`Condition ${i+1} value`} value={c.value} onChange={e => change(i,{value:e.target.value})} /><button type="button" aria-label={`Remove condition ${i+1}`} onClick={() => setConditions(rows => rows.filter((_,index) => index !== i))}>×</button></div>)}<button type="button" disabled={conditions.length >= 20} onClick={() => setConditions(rows => [...rows,{field:"name",operator:"contains",value:""}])}>Add Condition</button></div>}
     {report.warnings.map(w => <p key={w} className="mini-alert">{w}</p>)}
-    <p className="scan-count-note muted">Showing {pilots.length.toLocaleString()} of {report.character_count.toLocaleString()} resolved characters. {highlightedCount > 0 && <span className="scan-marked">● {highlightedCount} highlighted {highlights === undefined ? "in this snapshot" : "with your current preferences"}.</span>} Expand a corporation to see its pilots.</p>
+    <p className="scan-count-note muted">Showing {pilots.length.toLocaleString()} of {report.character_count.toLocaleString()} resolved characters. {highlightedCount > 0 && <span className="scan-colored-summary">● {highlightedCount} colored {highlights === undefined ? "in this snapshot" : "with your current preferences"}.</span>} Expand a corporation to see its pilots.</p>
+    {colorTarget && onSaveColor && <OrganizationColorDialog key={`${colorTarget.kind}:${colorTarget.eve_id}`} target={colorTarget} highlights={highlights??[]} onSave={onSaveColor} onClose={()=>setColorTarget(null)}/>}
     <div className="scan-groups">{groups.map(([key, group]) => {
       const corps = new Map<string, Pilot[]>();
       for (const p of group.pilots) {const cid = String(p.corporation_id ?? "unknown"); if (!corps.has(cid)) corps.set(cid, []); corps.get(cid)!.push(p);}
-      return <section key={key} className="scan-alliance"><div className={`scan-org-row scan-alliance-heading ${group.pilots.some(p => p.alliance_highlighted) ? "scan-marked" : ""}`}><OrgLogo kind="alliances" id={group.id}/><strong title={group.name}>{group.name}</strong><span className="scan-count">{group.pilots.length}</span></div>{[...corps.entries()].sort((a,b) => b[1].length - a[1].length || a[1][0].corporation_name.localeCompare(b[1][0].corporation_name)).map(([cid, members]) => <details key={cid} className={`scan-corporation ${members.some(p => p.highlighted) ? "scan-marked" : ""}`}><summary className="scan-org-row"><OrgLogo kind="corporations" id={members[0].corporation_id}/><span title={members[0].corporation_name}>{members.some(p => p.highlighted) && <span className="scan-mark-indicator" title="Highlighted organization">● </span>}{members[0].corporation_name}</span><span className="scan-count">{members.length}</span></summary><ul className="scan-pilots">{members.map(p => <li key={p.character_id}><PilotPortrait pilot={p}/><span><a href={`https://zkillboard.com/character/${p.character_id}/`} target="_blank" rel="noopener noreferrer">{p.name}</a><span className="muted"> {p.character_id}</span></span></li>)}</ul></details>)}</section>;
+      const allianceColor=pilotColor(group.pilots[0],true);
+      return <section key={key} className="scan-alliance">
+        <div className={`scan-org-row scan-alliance-heading ${onSaveColor&&group.id?"scan-org-editable":""} ${allianceColor?"scan-marked":""}`} style={colorStyle(allianceColor)}>
+          <OrgLogo kind="alliances" id={group.id}/><strong title={group.name}>{group.name}</strong><span className="scan-count">{group.pilots.length}</span>
+          {onSaveColor&&group.id&&<button className="scan-org-color-button" type="button" aria-label={`Color alliance ${group.name}`} onClick={()=>setColorTarget({kind:"alliance",eve_id:group.id!,name:group.name})}>Color</button>}
+        </div>
+        {[...corps.entries()].sort((a,b)=>b[1].length-a[1].length||a[1][0].corporation_name.localeCompare(b[1][0].corporation_name)).map(([cid,members])=>{
+          const first=members[0],color=pilotColor(first);
+          return <details key={cid} className={`scan-corporation ${color?"scan-marked":""}`} style={colorStyle(color)}>
+            <summary className={`scan-org-row ${onSaveColor&&first.corporation_id?"scan-org-editable":""}`}><OrgLogo kind="corporations" id={first.corporation_id}/><span title={first.corporation_name}>{color&&<span className="scan-mark-indicator" aria-label="Colored organization">● </span>}{first.corporation_name}</span><span className="scan-count">{members.length}</span>
+              {onSaveColor&&first.corporation_id&&<button className="scan-org-color-button" type="button" aria-label={`Color corporation ${first.corporation_name}`} onClick={e=>{e.preventDefault();e.stopPropagation();setColorTarget({kind:"corporation",eve_id:first.corporation_id!,name:first.corporation_name});}}>Color</button>}
+            </summary><ul className="scan-pilots">{members.map(p=><li key={p.character_id}><PilotPortrait pilot={p}/><span><a href={`https://zkillboard.com/character/${p.character_id}/`} target="_blank" rel="noopener noreferrer">{p.name}</a><span className="muted"> {p.character_id}</span></span></li>)}</ul>
+          </details>;
+        })}
+      </section>;
     })}</div>
     {pilots.length === 0 && <p className="empty">No characters match these filters.</p>}
     {report.unresolved.length > 0 && <details className="scan-unresolved"><summary>Unresolved names ({report.unresolved.length})</summary><ul>{report.unresolved.map(n => <li key={n}>{n}</li>)}</ul></details>}
