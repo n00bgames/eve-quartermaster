@@ -152,7 +152,7 @@ def report(subject_id: int,from_at: datetime|None=None,to_at: datetime|None=None
     subject=subject_or_404(db,subject_id)
     end=utc(to_at) if to_at else datetime.now(timezone.utc);start=utc(from_at) if from_at else end-timedelta(days=90)
     if start>=end or end-start>timedelta(days=20000):raise HTTPException(422,"Choose a positive report window of at most 20,000 days")
-    return build_report(db,subject,start,end)
+    return build_report(db,subject,start,end,viewer_user_id=user.id)
 
 
 @router.get("/subjects/{subject_id}/affiliations")

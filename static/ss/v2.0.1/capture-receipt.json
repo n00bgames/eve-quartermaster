@@ -56,7 +56,44 @@
       "sha256": "9835a24f0950f44c1831a5f6e520258a84551ec118e34f45173cb8d05547c2e4",
       "width": 375,
       "height": 812
+    },
+    {
+      "file": "local-scan-intel-generation.jpg",
+      "caption": "System-tagged generation explains unknown-hull Intel observations and retention/private visibility.",
+      "bytes": 86006,
+      "sha256": "496d93e37cfac2b0a2d7fce842cb810cb9f1cafd00bd3611863cfc4043abf0be",
+      "width": 1265,
+      "height": 712
+    },
+    {
+      "file": "local-scan-intel-timeline.jpg",
+      "caption": "Jita and Amarr scan sightings in a later-opened character dossier, UTC time, unknown hull, 0/0 and daily totals.",
+      "bytes": 90904,
+      "sha256": "6cf9ec2cd636b7e97c0f72c9c1fcffce7e3e18adadd68f5c3bf5c6e7aeed334f",
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "file": "local-scan-intel-mobile.jpg",
+      "caption": "Responsive, labelled scan sighting cards at a mobile breakpoint.",
+      "bytes": 39943,
+      "sha256": "2a3315eafdb5a82a51b3a384d0e75f20131a242894357723aee8706f055a3dd8",
+      "width": 375,
+      "height": 812
     }
   ],
-  "updated_at_utc": "2026-10-31T19:43:47.998363+00:00"
+  "updated_at_utc": "2026-10-31T19:43:47.998363+00:00",
+  "local_scan_intel_followup": {
+    "recorded_at_utc": "2026-10-31T21:03:40.530006+00:00",
+    "source_base_commit": "45997d7a2b597a7258f71972a08886f06c295aab",
+    "source_state": "Uncommitted Local Scan / Intel history follow-up, application 2.0.1; not deployed or published.",
+    "method": "Actual production React build and real Local Scan / Intel API with isolated SQLite, synthetic account and mocked public ESI pilot resolution. One scan predates dossier creation; another generated through browser form. Normal desktop and mobile-breakpoint browser JPEG screenshots, no pixel editing.",
+    "validation": "94 backend regressions pass; TSC/Vite build passes. Browser verifies generation notice, selected Amarr system, two earlier/new scan timeline rows and 0/0 counts, mobile labelled cards, no document overflow and empty error console.",
+    "limitations": "No live database migration, real SSO, ESI call or game action. Source system is manually selected; positions and hulls are not verified. Desktop shots precede final mobile-only CSS and overview terminology adjustments; their displayed content is unchanged.",
+    "files": [
+      "local-scan-intel-generation.jpg",
+      "local-scan-intel-timeline.jpg",
+      "local-scan-intel-mobile.jpg"
+    ]
+  }
 }

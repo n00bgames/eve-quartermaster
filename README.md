@@ -952,3 +952,12 @@ Pick EVE-style colors directly from generated alliance/corporation rows, save ru
 Optional **Automatic standings colors** uses one of your own linked characters' read-only corporation/alliance contacts, with a saved source and refresh timestamp. Manual rules take priority; utility-role private collection stays disabled. [Standings source and scope details](docs/scan-colors.md#selected-character-standings-source).
 
 ![Selected-character standings color source](static/ss/v2.0.1/local-scan-standings-source.jpg)
+
+
+### Local Scans become Intel history (unreleased follow-up)
+
+Select a system when generating a Local Scan and each resolved pilot gets an **Unknown Ship Type** sighting at the scan's UTC generation time. Intel dossiers opened later can retrieve it. Sightings survive scan-link expiry/deletion, keep private-scan access restricted to the creator, and contribute 0/0 kills/losses. Migration `0102_local_scan_sightings` backfills surviving saved system-tagged scans. [Behavior and rollout](docs/intel-reports.md#local-scans-feed-the-sighting-timeline).
+
+![Local Scan sightings in the Intel timeline](static/ss/v2.0.1/local-scan-intel-timeline.jpg)
+
+Actual unreleased UI with synthetic pilots/systems; no live operational data. [Generation explanation](static/ss/v2.0.1/local-scan-intel-generation.jpg) · [Mobile](static/ss/v2.0.1/local-scan-intel-mobile.jpg).

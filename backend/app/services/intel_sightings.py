@@ -1,10 +1,10 @@
 """Analyst-reported ship sightings, kept separate from canonical combat evidence."""
 from datetime import datetime,timezone
 from fastapi import HTTPException
-from sqlalchemy import func,select
+from sqlalchemy import Boolean, Integer, String, func, literal, or_, select, union_all
 from sqlalchemy.exc import IntegrityError
 from app.models import EveType,EveGroup,EveSystem,EveConstellation,EveRegion,User
-from app.models.intel import IntelSighting
+from app.models.intel import IntelSighting, LocalScanSighting
 from app.domain.intel import utc
 from app.services.audit import record_audit_event
 
@@ -63,33 +63,53 @@ def record(db,subject,payload,user,at=None):
 
 
 def payload(row,observer=None):
-    return {'id':row.id,'system_id':row.system_id,'system_name':row.system_name,'region_name':row.region_name,'ship_type_id':row.ship_type_id,
+    return {'id':f'local-scan:{row.id}' if getattr(row,'source',None)=='local_scan' else row.id,'system_id':row.system_id,'system_name':row.system_name,'region_name':row.region_name,'ship_type_id':row.ship_type_id,
         'ship_type_name':row.ship_type_name,'observed_at':utc(row.observed_at).isoformat(),'recorded_at':utc(row.recorded_at).isoformat(),'manual_time':row.manual_time,'observer':observer,
-        'source':'analyst_sighting','kills':0,'losses':0}
+        'source':getattr(row,'source','analyst_sighting'),'kills':0,'losses':0}
 
 
-def merge(db,subject,summary,from_at,to_at):
-    filters=[IntelSighting.subject_id==subject.id,IntelSighting.observed_at>=from_at,IntelSighting.observed_at<to_at]
-    count=func.count(IntelSighting.id);last=func.max(IntelSighting.observed_at)
+def visible_sightings(subject, from_at, to_at, viewer_user_id):
+    """Apply privacy BEFORE aggregates/limits; no private signal escapes via totals."""
+    manual = select(IntelSighting.id, IntelSighting.system_id, IntelSighting.system_name,
+        IntelSighting.region_id, IntelSighting.region_name, IntelSighting.ship_type_id,
+        IntelSighting.ship_type_name, IntelSighting.observed_at, IntelSighting.recorded_at,
+        IntelSighting.manual_time, User.display_name.label('observer'), literal('analyst_sighting').label('source'))
+    manual = manual.join(User, User.id == IntelSighting.observer_user_id).where(
+        IntelSighting.subject_id == subject.id, IntelSighting.observed_at >= from_at, IntelSighting.observed_at < to_at)
+    scans = select(LocalScanSighting.id, LocalScanSighting.system_id, LocalScanSighting.system_name,
+        LocalScanSighting.region_id, LocalScanSighting.region_name, literal(None, Integer).label('ship_type_id'),
+        literal('Unknown Ship Type').label('ship_type_name'), LocalScanSighting.observed_at, LocalScanSighting.recorded_at,
+        literal(False, Boolean).label('manual_time'), literal(None, String).label('observer'), literal('local_scan').label('source'))
+    visibility = LocalScanSighting.is_private.is_(False)
+    if viewer_user_id is not None:
+        visibility = or_(visibility, LocalScanSighting.created_by_user_id == viewer_user_id)
+    scans = scans.where(visibility, LocalScanSighting.character_eve_id == subject.eve_id,
+        literal(subject.kind) == 'character', LocalScanSighting.observed_at >= from_at, LocalScanSighting.observed_at < to_at)
+    return union_all(manual, scans).subquery()
+
+
+def merge(db,subject,summary,from_at,to_at,viewer_user_id=None):
+    observations=visible_sightings(subject,from_at,to_at,viewer_user_id)
+    c=observations.c
+    count=func.count();last=func.max(c.observed_at)
     ships={r['id']:r for r in summary['ships']};systems={r['id']:r for r in summary['systems']}
     total=0
-    for tid,name,n,at in db.execute(select(IntelSighting.ship_type_id,func.max(IntelSighting.ship_type_name),count,last).where(*filters).group_by(IntelSighting.ship_type_id)):
+    for tid,name,n,at in db.execute(select(c.ship_type_id,func.max(c.ship_type_name),count,last).group_by(c.ship_type_id)):
         row=ships.setdefault(tid,{'id':tid,'name':name,'kills':0,'losses':0,'evidence':[]})
         row['sightings']=n;total+=n;row['last_sighting_at']=utc(at).isoformat()
-    for sid,name,rid,rname,n,at in db.execute(select(IntelSighting.system_id,func.max(IntelSighting.system_name),IntelSighting.region_id,func.max(IntelSighting.region_name),count,last)
-        .where(*filters).group_by(IntelSighting.system_id,IntelSighting.region_id)):
+    for sid,name,rid,rname,n,at in db.execute(select(c.system_id,func.max(c.system_name),c.region_id,func.max(c.region_name),count,last)
+        .group_by(c.system_id,c.region_id)):
         row=systems.setdefault(sid,{'id':sid,'name':name,'region_id':rid,'region_name':rname,'kills':0,'losses':0,'evidence':[]})
         row['sightings']=n;row['last_sighting_at']=utc(at).isoformat()
-    day=func.date(func.timezone('UTC',IntelSighting.observed_at)) if db.get_bind().dialect.name=='postgresql' else func.date(IntelSighting.observed_at)
+    day=func.date(func.timezone('UTC',c.observed_at)) if db.get_bind().dialect.name=='postgresql' else func.date(c.observed_at)
     timeline={r['date']:r for r in summary['timeline']}
-    for at,n in db.execute(select(day,count).where(*filters).group_by(day)):
+    for at,n in db.execute(select(day,count).group_by(day)):
         key=at.isoformat() if hasattr(at,'isoformat') else str(at)
         timeline.setdefault(key,{'date':key,'kills':0,'losses':0})['sightings']=n
     for key,rows in [('ships',ships),('systems',systems)]:
         summary[key]=sorted(rows.values(),key=lambda r:(-(r['kills']+r['losses']),-r.get('sightings',0),r['id'] or 0))
     summary['timeline']=[timeline[key] for key in sorted(timeline)]
     summary['sightings']=total
-    rows=db.execute(select(IntelSighting,User.display_name).join(User,User.id==IntelSighting.observer_user_id).where(*filters)
-        .order_by(IntelSighting.observed_at.desc(),IntelSighting.id.desc()).limit(200)).all()
-    return {'total':total,'limit':200,'rows':[payload(row,name) for row,name in rows],
-        'notice':'Analyst-reported sightings at the entered UTC time, or report-run time when blank; not killmail evidence or verified current locations. Each sighting contributes 0 kills and 0 losses.'}
+    rows=db.execute(select(observations).order_by(c.observed_at.desc(),c.source,c.id.desc()).limit(200)).all()
+    return {'total':total,'limit':200,'rows':[payload(row,row.observer) for row in rows],
+        'notice':'Analyst sightings use the entered UTC time or report-run time. Local Scan sightings use the scan generation time and manually selected system; ship type is unknown. These are reported observations, not killmail evidence or verified current locations. Each contributes 0 kills and 0 losses.'}

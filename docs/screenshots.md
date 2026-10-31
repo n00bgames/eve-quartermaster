@@ -592,3 +592,16 @@ October 31, 2026, same unreleased follow-up. The character, token grants and con
 ![Contact-derived light blue alongside manual corporation/alliance colors](../static/ss/v2.0.1/local-scan-standings.jpg)
 
 [Mobile standings source](../static/ss/v2.0.1/local-scan-standings-mobile.jpg) · [Receipt](../static/ss/v2.0.1/capture-receipt.json)
+
+
+## Local Scan to Intel history
+
+October 31, 2026, **unreleased 2.0.1 follow-up**. Actual built React UI and real scan/report APIs, isolated SQLite and synthetic resolved pilots. A Jita scan precedes dossier creation; a second scan is generated in Amarr through the browser. The timeline shows both with UTC generation times, Unknown Ship Type and 0/0 combat counts. No live account, ESI or database changes.
+
+![System selection explains retained Intel sightings](../static/ss/v2.0.1/local-scan-intel-generation.jpg)
+
+![Both Local Scan observations in the Intel timeline](../static/ss/v2.0.1/local-scan-intel-timeline.jpg)
+
+![Mobile Local Scan sighting cards](../static/ss/v2.0.1/local-scan-intel-mobile.jpg)
+
+[Behavior and rollout](intel-reports.md#local-scans-feed-the-sighting-timeline) · [Receipt](../static/ss/v2.0.1/capture-receipt.json)

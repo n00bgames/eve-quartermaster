@@ -239,6 +239,8 @@ async def generate(payload: ScanInput, request: Request, user: User = Depends(re
             created_at=at, expires_at=at + timedelta(seconds=lifetime) if lifetime is not None else None,
             retention=payload.retention, payload=snapshot)
         db.add(row)
+        from app.services.local_scan_sightings import record as record_sightings
+        record_sightings(db, row)
         record_audit_event(db, event_kind="intel", title="Local scan generated", actor_user=user,
                            body=f"characters={snapshot['character_count']}; retention={payload.retention}")
         db.commit()

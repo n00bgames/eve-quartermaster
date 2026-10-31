@@ -6,6 +6,8 @@ Version sections are written as user-facing release notes first, with implementa
 
 ## [2.0.1] - Unreleased
 
+- Feed system-tagged Local Scans into character Intel timelines as Unknown Ship Type sightings at the original UTC scan time. Keep history after scan expiry/deletion, preserve private/anonymous boundaries and unchanged combat totals. Migration 0102 backfills surviving saved scans. [Details and screenshots](docs/intel-reports.md#local-scans-feed-the-sighting-timeline).
+
 - Add an optional saved own-character contact source for automatic scan standings colors, explicit minimal read-only SSO consent, refresh status and safe cache failure/revocation handling. Manual rules take priority; utility roles retain identity-only default enrollment and no private asset/skill collection. Included in migration 0101.
 
 - Add account-persistent EVE-style organization colors chosen directly from Local Scan results, with corporation-over-alliance precedence, shared linked-local D-Scan rules and color-aware snapshot/PDF exports. Legacy highlights remain red. Requires migration 0101 after 0100; see [controls and rollout](docs/scan-colors.md).

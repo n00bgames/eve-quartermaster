@@ -96,3 +96,28 @@ Character dossier headers show corporation/alliance logos, full names and `[tick
 Apply **0100_unknown_ship_sightings** after 0099 before matching API/frontend rollout. It makes the sighting hull FK nullable and preserves existing rows and request/time indexes. Downgrade refuses to proceed while unknown-hull rows exist, so it cannot silently delete those sightings. No extra ESI scope or live database migration was performed in this development pass.
 
 The placeholder is `static/icons/unknown-ship.png`, generated and edited using the built-in imagegen tool. The adjacent provenance JSON records the exact generation/edit prompts, source base and checksum. It is an original EQM placeholder, not an EVE ship render.
+
+
+## Local Scans feed the sighting timeline
+
+Choose a system from search results when generating a **Local Scan**. Every uniquely resolved pilot gets a **Local Scan** sighting in that system, at the scan's server-side UTC generation time, with **Unknown Ship Type**. Names that ESI cannot resolve are not guessed. Without a system, no sighting is recorded. Ship ownership or hulls are never inferred from names or nearby D-Scan results.
+
+The pilot does not need an existing Intel dossier or an authenticated EQM character. Open their character dossier later and the sightings are available in **Timeline**, the sightings summary, unknown-ship totals, systems/regions and daily counts. Date filters still apply: widen the default 90-day window for older scans. Corporation/alliance dossiers do not acquire individual pilots' sightings.
+
+Each scan contributes one sighting per resolved pilot. A separate new scan is another observation; refreshing a report or revisiting its link creates nothing. Scan and observation writes commit together. Scan entries remain after the source report expires or is deleted, as requested, rather than depending on the lifetime of its share link.
+
+Private-scan sightings are visible **only to the creator**, including after deletion of the scan. Other analysts and staff cannot see them through detail rows, totals, geography or daily counts. Anonymous scans do not expose their creator through Intel: scan-derived entries show the **Local Scan** source without account/character attribution or an original share token. Public-scan observations are shared within the authenticated Intel Reports workspace; this does not make Intel dossiers public.
+
+All scan-derived entries contribute **0 kills / 0 losses**. They leave killmails, combat-hour bars, associations, solo and smartbomb statistics unchanged. They are reported observations using a manually selected system, not verified current locations. No extra ESI scopes, outside-character enrollment or public-history collection jobs are introduced. Actual account erasure still removes owned observation records.
+
+### Rollout and existing scans
+
+Apply **0102_local_scan_sightings** after **0101_scan_highlight_colors**, with matching API/frontend. The migration adds a character/time indexed observation table and backfills surviving saved Local Scans with valid named systems, preserving original timestamps and private visibility. It reads saved snapshots in batches of 100, requires no ESI calls, and does not create thousands of dossiers. Already-purged scans cannot be recovered. D-Scan, Industry and Inventory reports do not become Local Scan sightings. Downgrade removes this new observation table; manual analyst sightings are untouched.
+
+The query applies visibility and date restrictions before totals and the latest-200 detail limit. Regression tests cover scan generation, unresolved names, no-system scans, transaction rollback, duplicate pilots/reindexing, late dossier creation, private access including staff, link expiry/deletion, independent rescans, manual/scan merging, date boundaries, counts above 200, and migration upgrade/backfill/downgrade. Unknown-hull, identity and existing report/scan regressions also pass.
+
+Unreleased development captures below use the actual production UI and APIs against isolated synthetic data; no live migration or ESI request was made.
+
+![Local Scan observations in the Intel timeline](../static/ss/v2.0.1/local-scan-intel-timeline.jpg)
+
+[Generation explanation](../static/ss/v2.0.1/local-scan-intel-generation.jpg) · [Mobile sighting cards](../static/ss/v2.0.1/local-scan-intel-mobile.jpg) · [Capture receipt](../static/ss/v2.0.1/capture-receipt.json)

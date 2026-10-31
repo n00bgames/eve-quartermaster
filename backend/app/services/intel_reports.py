@@ -103,7 +103,7 @@ def evidence_facts(db: Session, subject: IntelSubject, from_at: datetime, to_at:
     return list(facts.values()),types,limited
 
 
-def build_report(db: Session, subject: IntelSubject, from_at: datetime, to_at: datetime):
+def build_report(db: Session, subject: IntelSubject, from_at: datetime, to_at: datetime, viewer_user_id: int | None = None):
     facts,types,limited=evidence_facts(db,subject,from_at,to_at)
     summary=summarize_evidence(subject.kind,subject.eve_id,facts,from_at,to_at)
     for row in summary["ships"]:row["name"]=types.get(row["id"],{}).get("name") or f"Type {row['id']}"
@@ -113,7 +113,7 @@ def build_report(db: Session, subject: IntelSubject, from_at: datetime, to_at: d
         for row in summary["associates"]:
             if row["kind"]==kind:row["name"]=names.get(row["id"],f"{kind.title()} {row['id']}")
     from app.services.intel_sightings import merge
-    sightings=merge(db,subject,summary,from_at,to_at)
+    sightings=merge(db,subject,summary,from_at,to_at,viewer_user_id)
     region_totals={}
     for row in summary["systems"]:
         if row["region_id"] is None:continue
