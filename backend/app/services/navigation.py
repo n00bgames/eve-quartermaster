@@ -10,6 +10,30 @@ from sqlalchemy.orm import Session, selectinload
 from app.models import EveConstellation, EveStargate, EveSystem
 
 
+# CCP ESI region 10000070, verified 2026-10-31. IDs also cover stale SDE
+# constellation assignments from before these systems moved into Pochven.
+POCHVEN_REGION_ID = 10000070
+POCHVEN_SYSTEM_IDS = frozenset({
+    30000021, 30000157, 30000192, 30000206, 30001372, 30001381,
+    30001413, 30001445, 30002079, 30002225, 30002411, 30002652,
+    30002702, 30002737, 30002770, 30002797, 30003046, 30003495,
+    30003504, 30005005, 30005029, 30010141, 30020141, 30031392,
+    30040141, 30045328, 30045329,
+})
+
+
+def is_pochven(system: EveSystem) -> bool:
+    return system.system_id in POCHVEN_SYSTEM_IDS or bool(
+        system.constellation and system.constellation.region_id == POCHVEN_REGION_ID
+    )
+
+
+def outside_pochven():
+    return ~EveSystem.system_id.in_(POCHVEN_SYSTEM_IDS) & ~EveSystem.constellation.has(
+        EveConstellation.region_id == POCHVEN_REGION_ID
+    )
+
+
 def security_band(security_status: float | None) -> str:
     if security_status is None:
         return "unknown"
@@ -42,7 +66,7 @@ def serialize_system(system: EveSystem, jump_index: int | None = None) -> dict[s
     return payload
 
 
-def search_systems(db: Session, query: str, limit: int = 20) -> list[dict[str, Any]]:
+def search_systems(db: Session, query: str, limit: int = 20, *, exclude_pochven: bool = False) -> list[dict[str, Any]]:
     cleaned = query.strip()
     if not cleaned:
         return []
@@ -54,6 +78,7 @@ def search_systems(db: Session, query: str, limit: int = 20) -> list[dict[str, A
         select(EveSystem)
         .options(selectinload(EveSystem.constellation).selectinload(EveConstellation.region))
         .where(or_(*clauses))
+        .where(outside_pochven() if exclude_pochven else True)
         .order_by(func.lower(EveSystem.name))
         .limit(max(1, min(limit, 50)))
     ).all()

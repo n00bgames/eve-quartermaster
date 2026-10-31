@@ -15,14 +15,14 @@ from app.models import EveCharacter, EveConstellation, EveStargate, EveStation, 
 from app.models.enums import LocationKind
 from app.models.navigation import SystemIndustrialKillObservation, SystemJumpObservation, SystemPvpKillObservation
 from app.services.jump_route_engine import evaluate_jump_route_with_engine
-from app.services.navigation import resolve_system, security_band, serialize_system
+from app.services.navigation import is_pochven, outside_pochven, resolve_system, security_band, serialize_system
 
 LIGHT_YEAR_METERS = 9_460_730_472_580_800
 JDC_RANGE_BONUS_PER_LEVEL = 0.2
 JFC_FUEL_REDUCTION_PER_LEVEL = 0.1
 ESI_SYSTEM_JUMPS_URL = "https://esi.evetech.net/latest/universe/system_jumps/?datasource=tranquility"
 ESI_SYSTEM_KILLS_URL = "https://esi.evetech.net/latest/universe/system_kills/?datasource=tranquility"
-USER_AGENT = "EVE-Quartermaster/2.0.0 jump-capable-route-intel"
+USER_AGENT = "EVE-Quartermaster/2.0.1 jump-capable-route-intel"
 
 FUEL_TYPE_NAMES = {
     16274: "Helium Isotopes",
@@ -204,14 +204,14 @@ def distance_ly(a: EveSystem, b: EveSystem) -> float:
 
 
 def cyno_eligible(system: EveSystem) -> bool:
-    return security_band(system.security_status) != "highsec"
+    return not is_pochven(system) and security_band(system.security_status) != "highsec"
 
 
 def _known_space_systems(db: Session) -> list[EveSystem]:
     return db.scalars(
         select(EveSystem)
         .options(selectinload(EveSystem.constellation).selectinload(EveConstellation.region))
-        .where(EveSystem.system_id < 31000000)
+        .where(EveSystem.system_id < 31000000, outside_pochven())
         .where(EveSystem.x.is_not(None), EveSystem.y.is_not(None), EveSystem.z.is_not(None))
     ).all()
 
@@ -387,6 +387,9 @@ def _jump_path(
     ship: JumpFreighterShip | None = None,
     engine_observations: list[dict[str, Any]] | None = None,
 ) -> list[int]:
+    for system in (origin, destination):
+        if is_pochven(system):
+            raise ValueError(f"{system.name} is in Pochven, which is excluded from the jump planner because cynos cannot be lit there.")
     if origin.system_id == destination.system_id:
         return [origin.system_id]
     if not cyno_eligible(destination):
@@ -413,7 +416,7 @@ def _jump_path(
     avoid_system_ids.discard(destination.system_id)
 
     systems = _known_space_systems(db)
-    by_id = {system.system_id: system for system in systems}
+    by_id = {system.system_id: system for system in systems if not is_pochven(system)}
     by_id[origin.system_id] = origin
     by_id[destination.system_id] = destination
     payload = {
@@ -699,7 +702,7 @@ def route_map_context(db: Session, route_systems: list[EveSystem], gate_hops: in
     systems = db.scalars(
         select(EveSystem)
         .options(selectinload(EveSystem.constellation).selectinload(EveConstellation.region))
-        .where(EveSystem.system_id.in_(context_ids))
+        .where(EveSystem.system_id.in_(context_ids), outside_pochven())
         .where(EveSystem.x.is_not(None), EveSystem.y.is_not(None), EveSystem.z.is_not(None))
     ).all()
     systems_by_id = {system.system_id: system for system in systems}
@@ -971,6 +974,9 @@ def plan_jump_freighter_route(
     ship = ship_config(ship_name)
     origin = resolve_system(db, origin_query)
     destination = resolve_system(db, destination_query)
+    for system in (origin, destination):
+        if is_pochven(system):
+            raise ValueError(f"{system.name} is in Pochven, which is excluded from the jump planner.")
     max_range = jump_range_ly(ship, jump_drive_calibration)
     station_safety = station_safety.strip().lower()
     kill_filter = kill_filter.strip().lower()
@@ -994,6 +1000,8 @@ def plan_jump_freighter_route(
         if not cleaned:
             continue
         system = resolve_system(db, cleaned)
+        if is_pochven(system):
+            raise ValueError(f"Required cyno waypoint {system.name} is in Pochven, which is excluded from the jump planner.")
         if system.system_id in manual_ids:
             continue
         manual_waypoints.append(system)

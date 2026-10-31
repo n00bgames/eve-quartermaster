@@ -127,10 +127,11 @@ def navigation_status(_: User = Depends(require_navigation), db: Session = Depen
 def systems(
     q: str = Query(..., min_length=1),
     limit: int = Query(20, ge=1, le=50),
+    exclude_pochven: bool = False,
     _: User = Depends(require_navigation),
     db: Session = Depends(get_db),
 ) -> list[dict[str, Any]]:
-    return search_systems(db, q, limit)
+    return search_systems(db, q, limit, exclude_pochven=exclude_pochven)
 
 
 def resolve_avoid_system_ids(db: Session, avoid_systems: str) -> set[int]:

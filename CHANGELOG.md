@@ -4,6 +4,11 @@ All notable changes to EVE Quartermaster are tracked here.
 
 Version sections are written as user-facing release notes first, with implementation detail included where it helps operators understand deployment or testing impact.
 
+## [2.0.1] - Unreleased
+
+- Exclude all Pochven systems from jump-planner searches, endpoints, required cynos, automatic/alternate stops and map context. Reject manually entered systems server-side, including same-system requests; ordinary system searches remain available. No migration required.
+- Bump application/API, package/export metadata, outbound service agents and Android wrapper to 2.0.1 (Android versionCode 28).
+
 ## [2.0.0] - Unreleased
 
 - Add optional Overview creator support and own-character in-game Show Info drafts throughout typed item displays. Owned blueprint links use authorized instance IDs with synced ME/TE/copy runs; explicit minimal UI consent preserves utility privacy and existing grants. No automatic mail sending or ISK transfer. [Details](docs/in-game-links.md).

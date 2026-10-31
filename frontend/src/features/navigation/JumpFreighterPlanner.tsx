@@ -149,7 +149,7 @@ export function JumpFreighterPlanner({
     try {
       setter(
         await api<NavigationSystem[]>(
-          `/navigation/systems?q=${encodeURIComponent(query)}&limit=12`,
+          `/navigation/systems?q=${encodeURIComponent(query)}&limit=12&exclude_pochven=true`,
         ),
       );
     } catch {
@@ -471,6 +471,7 @@ export function JumpFreighterPlanner({
           </span>
         )}
       </div>
+      <p className="muted">Pochven systems are excluded: cynos cannot be lit there.</p>
       <form
         className="route-form jf-form"
         onSubmit={(event) => void plotRoute(event)}

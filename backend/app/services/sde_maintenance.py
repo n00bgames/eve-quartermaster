@@ -156,7 +156,7 @@ def download(job_id):
     root.mkdir(parents=True,exist_ok=True)
     temporary=root/f".{job_id}.partial"
     try:
-        with httpx.Client(timeout=httpx.Timeout(60,connect=15),follow_redirects=False,headers={"User-Agent":"EVE-Quartermaster/2.0.0 SDE Maintenance"}) as client:
+        with httpx.Client(timeout=httpx.Timeout(60,connect=15),follow_redirects=False,headers={"User-Agent":"EVE-Quartermaster/2.0.1 SDE Maintenance"}) as client:
             build,released=metadata(client)
             url=f"{ARCHIVE_BASE}eve-online-static-data-{build}-yaml.zip"
             target=root/f"eve-online-static-data-{build}-{job_id}-yaml.zip"
