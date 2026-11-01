@@ -11,7 +11,7 @@ export const presets:Record<string,Theme> = {
 export const defaultNavigation:NavGroup[] = [
  {id:"main",name:"",modules:["overview","navigation"]},
  {id:"characters",name:"Character Functions",modules:["characters","skills","fittings","jump_clones","roster","esi"]},
- {id:"intel",name:"Intel",modules:["local_scan","dscan","intel_reports","local_threat"]},
+ {id:"intel",name:"Intel",modules:["local_scan","dscan","matchups","intel_reports","local_threat"]},
  {id:"finance",name:"Finance & Trade",modules:["market","exchange","hypernet","plex","bounty_analytics"]},
  {id:"industry",name:"Inventory & Industry",modules:["notes","ship_reports","inventory_reports","industry_reports","quartermaster","manufacturing","research_projects","mining","planetary_industry","corporations","ownership","assets","industry","contracts","analytics"]},
  {id:"community",name:"Fleet & Community",modules:["fleet_assignments","doctrines","srp","killboard","battle_reports","calendar_events","recruiting"]},

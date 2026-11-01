@@ -970,3 +970,12 @@ Pick the characters you want to track, log observed system visits at a 15-second
 ![Private journey map with visit and context markers](static/ss/v2.0.1/journey-map.jpg)
 
 [Opt-in and sampling controls](static/ss/v2.0.1/journey-controls.jpg) · [System context](static/ss/v2.0.1/journey-system-context.jpg) · [Mobile map](static/ss/v2.0.1/journey-mobile.jpg). Actual unreleased UI, synthetic route/holdings/combat and public CCP coordinates; no live location tracking was performed.
+
+
+### Matchups — PvP Knowledgebase foundation (unreleased follow-up)
+
+Look up a hull or open a D-Scan in **Intel → Matchups**. Read imported base resistances, investigate alternative fit scenarios and switch between pilot/small-gang and fleet-command counter plans. Seven hulls/nine authored scenarios start the catalog; other imported ships show facts without invented tactics. Weapon-family references lay the groundwork for a verified mounted-weapon atlas. [Workflow, coverage, privacy and roadmap](docs/matchups.md).
+
+![Deimos base resistance reference and scan composition](static/ss/v2.0.1/matchups-hull.jpg)
+
+[Fleet counter tools](static/ss/v2.0.1/matchups-counters.jpg) · [Weapon reference framework](static/ss/v2.0.1/matchups-weapons.jpg) · [Mobile resistance map](static/ss/v2.0.1/matchups-mobile.jpg). Actual unreleased UI with synthetic accounts/counts and public CCP hull data. No new ESI scopes, private collection or database migration; matching API/frontend required.

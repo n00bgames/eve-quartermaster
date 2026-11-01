@@ -29,6 +29,7 @@ SECTION_DEFINITIONS: dict[str, dict[str, object]] = {
     "quartermaster": {"label": "Quartermaster", "default_roles": ["quartermaster"]},
     "intel_reports": {"label": "Intel Reports", "default_roles": ["admin", "director", "officer", "intel_analyst"]},
     "local_scan": {"label": "Local Scan", "default_roles": ["admin", "director", "officer", "member", "intel_analyst", "view_only"]},
+    "matchups": {"label": "Matchups", "default_roles": [role for role in BUILT_IN_ROLES if role != "applicant"]},
     "dscan": {"label": "D-Scan", "default_roles": ["admin", "director", "officer", "member", "intel_analyst", "view_only"]},
     "fleet_assignments": {"label": "Fleet Assignments", "default_roles": ["admin", "director", "officer", "member", "view_only"]},
     "overview": {"label": "Overview", "default_roles": ["admin", "director", "officer", "member", "view_only"]},

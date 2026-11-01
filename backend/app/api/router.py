@@ -122,3 +122,6 @@ api_router.include_router(appearance_router)
 
 from app.api.journey import router as journey_router
 api_router.include_router(journey_router)
+
+from app.api.matchups import router as matchups_router
+api_router.include_router(matchups_router)

@@ -618,3 +618,16 @@ October 31, 2026 client-date development session; **unreleased 2.0.1 follow-up**
 ![Character-owned stock and imported combat for a visited system](../static/ss/v2.0.1/journey-system-context.jpg)
 
 ![Viewport-fitted mobile map and gap legend](../static/ss/v2.0.1/journey-mobile.jpg)
+
+
+## Matchups — PvP Knowledgebase foundation
+
+November 1, 2026 development captures; unreleased 2.0.1 follow-up. Actual production React UI and APIs with isolated SQLite, synthetic accounts/counts and public CCP hull/dogma fixtures. No live private data, game action or deployment. [Coverage and limits](matchups.md) · [Receipt](../static/ss/v2.0.1/capture-receipt.json).
+
+![Base hull resistance map, explicit unknown fit and D-Scan counts](../static/ss/v2.0.1/matchups-hull.jpg)
+
+![Selected blaster scenario and conditional fleet counter tools](../static/ss/v2.0.1/matchups-counters.jpg)
+
+![Weapon-family framework with linked mounted-weapon references and atlas limitation](../static/ss/v2.0.1/matchups-weapons.jpg)
+
+![Responsive mobile hull and resistance reference](../static/ss/v2.0.1/matchups-mobile.jpg)

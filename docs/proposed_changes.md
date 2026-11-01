@@ -19,6 +19,22 @@ Continue improving fitting simulation Dogma fidelity as real fittings expose gap
 - [x] Settings controls to download/validate the latest CCP SDE into `/sde/downloads`, optionally import it, and show durable worker progress. Existing manual/agents imports now use the same worker and overlap guard. Requires migration 0097 and a writable worker SDE mount. [Controls and rollout](sde-maintenance.md).
 - [ ] Host-level update/rebuild controls through a narrowly scoped, explicitly installed helper service. [Helper design](sde-maintenance.md#host-updaterebuild-helper-design-not-enabled).
 
+## Journey sharing and animated keepsakes
+
+- [x] Explicit per-linked-character opt-in, account-private history, pause/erase controls and in-browser journey replay. No staff API override, public journey links or ship-in-flight collection. [Current behavior](journey-map.md).
+- [ ] Optional share links with fixed owner-selected UTC date/time bounds, expiration, immediate revocation/deletion and a preview of exactly what recipients can see. Keep private by default; creating a link must not start tracking another character or broaden collection.
+- [ ] Redact selected systems (and optionally regions) from every public representation: map, coordinates, labels, search, visit log, totals, context, tooltips, API data and export metadata. Show an unspecified gap without connecting across hidden stops or exposing hidden counts/timing. Filter on the server, not just in the browser. Share-boundary timestamps must be clipped to the chosen UTC window.
+- [ ] Separate sharing controls for pilot identity, timestamps, killmail context, current stored assets and ship information. Default asset/combat layers off for sharing. Allow hiding all ship types or excluding selected hulls/classes; apply suppression consistently to context, aggregates, icons, metadata and downloads. Current journey sampling does not record the ship being flown; any future ship collection requires separate explicit consent and private storage by default. Do not infer flown hulls from assets or victims' killmail hulls.
+- [ ] Export animated keepsakes, starting with GIF and considering WebM/MP4 for longer journeys. Include range, playback speed, dimensions and optional title/branding controls. Use the same redacted server projection as the share preview so exports cannot reveal hidden systems, identity, ships or context. Offer an explicit private full-history export separately. Explain that a downloaded/shared export cannot be recalled after link revocation.
+- [ ] Tests must exercise raw responses as well as rendering: unauthorized accounts/staff, revoked/expired links, hidden coordinates/IDs and aggregate inference, clipped range boundaries, ship/context exclusions and export parity.
+
+## PvP Knowledgebase / Matchups
+
+- [x] First Matchups framework under Intel: imported SDE resistance facts, seven hull/nine scenario catalog, explicit unknown fits, solo/small-gang vs fleet-command context, conditional counter roles/example hulls, source/date labels, read-only D-Scan analysis/handoff and weapon-family reference links. [Coverage and design](matchups.md).
+- [ ] Expand authored hull coverage and validate complete fitted examples with ammo, skills, boosts, heat, tank/application and range assumptions. Add own/friendly fit/composition and engagement-context inputs before making comparative rankings.
+- [ ] Capture and verify mounted-weapon images/clips by family and size, with provenance and patch reviews; ordinary item icons do not fulfill this requirement.
+- [ ] Add reviewed alliance lessons, correction/revision history and private/alliance/public editorial scopes. No automatic publication or unscoped private fit collection.
+
 ## Local Scan Analysis
 
 - [x] Add a local-chat pilot-list scan and analysis tool, similar to [who.ltns.space](https://who.ltns.space/). Place its navigation link in the **Intel** group (the second named sidebar group).

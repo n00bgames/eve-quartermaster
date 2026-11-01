@@ -112,6 +112,38 @@
       "sha256": "c34b4cafab4461eb09578b33cf721829d353c796cb89aa4c16360eddb1a8490b",
       "width": 375,
       "height": 812
+    },
+    {
+      "file": "matchups-hull.jpg",
+      "caption": "Imported Deimos base resistance layers, unknown fit selection and synthetic private D-Scan roster.",
+      "bytes": 125094,
+      "sha256": "147f754a9cf30a1e7c41b7e03ba7d5b80496854aa691cb49e76018a9b323ccd7",
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "file": "matchups-counters.jpg",
+      "caption": "Selected blaster scenario with fleet-command conditional counter roles and example hulls.",
+      "bytes": 122821,
+      "sha256": "9e510481718aea7e503398b7d5b41b6facaebb1fbb42667b176b35c776a10317",
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "file": "matchups-weapons.jpg",
+      "caption": "Weapon-family reference framework, external references and explicit unimplemented image-atlas notice.",
+      "bytes": 112666,
+      "sha256": "b56bef9a64047145a1c72170e957d73724b258e84572b7efec3c95a07c99d664",
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "file": "matchups-mobile.jpg",
+      "caption": "Responsive mobile stacked hull resistance bars and readable labels.",
+      "bytes": 35497,
+      "sha256": "fb7339b5d612578077d9367ed3682af8dac412531646ac4daf80a56a6bb8d722",
+      "width": 375,
+      "height": 812
     }
   ],
   "updated_at_utc": "2026-10-31T19:43:47.998363+00:00",
@@ -143,6 +175,23 @@
       "journey-map.jpg",
       "journey-system-context.jpg",
       "journey-mobile.jpg"
+    ]
+  },
+  "matchups_followup": {
+    "captured_on_client_date": "2026-11-01",
+    "recorded_at_utc": "2026-11-01T12:13:55.549058+00:00",
+    "application_version": "2.0.1",
+    "source_base_commit": "396601124fe5a339d08f5a2262e2d5511444ccd6",
+    "source_state": "Uncommitted Matchups foundation, not deployed or published.",
+    "method": "Actual production React build and real Matchups/D-Scan APIs in isolated SQLite; in-app browser screenshots without repainting. Normal desktop viewport and mobile responsive breakpoint.",
+    "data": "Synthetic accounts and composition. Public CCP ESI types and dogma attribute records for eight hulls/12 resistance definitions, fetched for the fixture only. No live private ESI tokens, positions, account data or game actions.",
+    "validation": "73 backend tests and production TSC/Vite build pass; browser verified context and fit selection, hull search, unreviewed fallback, paste analysis and private saved D-Scan handoff, mobile labels/overflow, console errors empty.",
+    "limitations": "Seven curated hulls/nine scenarios only. No fit-frequency model or exact fitted comparison. Mounted weapon image atlas not implemented; reference framework screenshot includes this notice. Current fitted tanks, skills, boosts and actual hostile fleet membership are not known.",
+    "files": [
+      "matchups-hull.jpg",
+      "matchups-counters.jpg",
+      "matchups-weapons.jpg",
+      "matchups-mobile.jpg"
     ]
   }
 }

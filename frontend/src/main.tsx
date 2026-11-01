@@ -8,6 +8,7 @@ import {AppearanceSettings} from "./features/appearance/AppearanceSettings";
 import {CustomNavigation} from "./features/appearance/CustomNavigation";
 import {InventoryReportPage} from "./features/industryReports/InventoryReportPage";
 import {IndustryReportPage,PublicIndustryReportPage} from "./features/industryReports/IndustryReportPage";
+import {MatchupsPage} from "./features/matchups/MatchupsPage";
 import { DScanPage } from "./features/dscan/DScanPage";
 import { PublicDScanPage } from "./features/dscan/PublicDScanPage";
 import { QuartermasterPage } from "./features/quartermaster/QuartermasterPage";
@@ -543,6 +544,7 @@ function App() {
     else if (window.location.hash === "#ship-reports") setActiveTab("ship_reports");
     else if (window.location.hash === "#inventory-reports") setActiveTab("inventory_reports");
     else if (window.location.hash === "#industry-reports") setActiveTab("industry_reports");
+    else if (window.location.hash.startsWith("#matchups")) setActiveTab("matchups");
     else if (window.location.hash === "#d-scan") setActiveTab("dscan");
     else if (window.location.hash === "#local-scan") setActiveTab("local_scan");
     else if (window.location.hash === "#local-threat") openThreatAnalyzer();
@@ -610,6 +612,7 @@ function App() {
     else if (locationHash.startsWith("#battle-reports")) setActiveTab("battle_reports");
     else if (locationHash.startsWith("#bounties")) setActiveTab("bounty_analytics");
     else if (locationHash === "#navigation") setActiveTab("navigation");
+    else if (locationHash.startsWith("#matchups")) setActiveTab("matchups");
     else if (locationHash === "#d-scan") setActiveTab("dscan");
     else if (locationHash === "#local-scan") setActiveTab("local_scan");
     else if (locationHash === "#local-threat") openThreatAnalyzer();
@@ -744,6 +747,7 @@ function App() {
           roster: canView("roster") && <button className={activeTab === "roster" ? "active" : ""} onClick={() => setActiveTab("roster")}><Building2 size={18} /> Roster</button>,
           esi: canView("esi") && <button className={activeTab === "esi" ? "active" : ""} onClick={() => setActiveTab("esi")}><KeyRound size={18} /> ESI Sync</button>,
           local_scan: canView("local_scan") && <button className={activeTab === "local_scan" ? "active" : ""} onClick={() => { window.location.hash="local-scan"; setActiveTab("local_scan"); }}><UserRoundCheck size={18} /> Local Scan</button>,
+          matchups: canView("matchups") && <button className={activeTab === "matchups" ? "active" : ""} onClick={() => { window.location.hash="matchups"; setActiveTab("matchups"); }}><Siren size={18} /> Matchups</button>,
           dscan: canView("dscan") && <button className={activeTab === "dscan" ? "active" : ""} onClick={() => { window.location.hash="d-scan"; setActiveTab("dscan"); }}><Siren size={18} /> D-Scan</button>,
           intel_reports: canView("intel_reports") && <button className={activeTab === "intel_reports" ? "active" : ""} onClick={() => { window.location.hash="intel"; setActiveTab("intel_reports"); }}><Siren size={18} /> Intel Reports</button>,
           local_threat: canView("navigation") && <button type="button" className={activeTab === "navigation" && locationHash === "#local-threat" ? "active" : ""} onClick={openThreatAnalyzer}><Siren size={18} /> Local Threat Analyzer</button>,
@@ -857,7 +861,8 @@ function App() {
         {activeTab === "quartermaster" && canView("quartermaster") && <QuartermasterPage api={api} formatDateTime={(value) => formatDateTime(value, preferredTimeZone(user))} />}
 
         {activeTab === "local_scan" && canView("local_scan") && <LocalScanPage api={api} allowDscan={canView("dscan")} />}
-        {activeTab === "dscan" && canView("dscan") && <DScanPage api={api} />}
+        {activeTab === "matchups" && canView("matchups") && <MatchupsPage key={locationHash} api={api} />}
+        {activeTab === "dscan" && canView("dscan") && <DScanPage api={api} allowMatchups={canView("matchups")} />}
         {activeTab === "intel_reports" && canView("intel_reports") && <IntelReportsPage key={locationHash} api={api} />}
 
         {activeTab === "fleet_assignments" && canView("fleet_assignments") && <FleetAssignmentsPage key={locationHash} api={api} />}
@@ -2377,6 +2382,7 @@ function titleFor(tab: string) {
   if(tab==="inventory_reports") return "Inventory Report";
   if(tab==="industry_reports") return "Industry Report";
   if (tab === "quartermaster") return "Quartermaster";
+  if (tab === "matchups") return "Matchups";
   if (tab === "dscan") return "D-Scan";
   if (tab === "local_scan") return "Local Scan";
   if (tab === "intel_reports") return "Intel Reports";
@@ -2394,6 +2400,7 @@ function subtitleFor(tab: string) {
   if(tab==="inventory_reports") return "Private ship, module and full asset totals with owner detail and exports.";
   if(tab==="industry_reports") return "Industry materials, selected stock, blueprints, jobs and PI. Public views hide character identities.";
   if (tab === "quartermaster") return "View blueprint holdings, running industry jobs, and planetary infrastructure across linked owners.";
+  if (tab === "matchups") return "PvP hull facts, fit scenarios and counter tools for pilots and fleet commanders.";
   if (tab === "dscan") return "Analyze directional scans, ship classes and deployables, and share timed intel reports.";
   if (tab === "local_scan") return "Turn local pilot lists into public alliance and corporation reports.";
   if (tab === "intel_reports") return "Investigate public combat evidence and permission-scoped ESI enrichment.";
