@@ -176,6 +176,38 @@
       "sha256": "db311928a90b685b366d542bcf4755d80534f7f8c722c847b773218bb5050d2c",
       "width": 375,
       "height": 812
+    },
+    {
+      "file": "command-desk-overview.jpg",
+      "caption": "Implemented opt-in Overview with synthetic SQLite holdings and real EQM APIs.",
+      "bytes": 310882,
+      "sha256": "01104172fd58a585a9c19bfce48ae124e91ad2147e47e1500296823a4c8ce88b",
+      "width": 1264,
+      "height": 2010
+    },
+    {
+      "file": "command-desk-selector.jpg",
+      "caption": "Appearance header and persistent interface selector; exact crop from actual UI.",
+      "bytes": 52242,
+      "sha256": "5b25716baeb50fab5c620beb714c25f5848657724880fa1633df7183a2da42e2",
+      "width": 945,
+      "height": 291
+    },
+    {
+      "file": "eqm-classic-overview.jpg",
+      "caption": "Classic fallback retains the same account palette and data.",
+      "bytes": 158392,
+      "sha256": "7ee08a4d53c19660795f64391579c1b709b08a4210ff570524f866a1072c9ef0",
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "file": "command-desk-mobile.jpg",
+      "caption": "Implemented mobile navigation and full-page Overview, synthetic holdings.",
+      "bytes": 213456,
+      "sha256": "ee7fa2d5cd9b419b7613beb6fe658a602bcde675610a247f308cc4cefb8d0969",
+      "width": 374,
+      "height": 3448
     }
   ],
   "updated_at_utc": "2026-10-31T19:43:47.998363+00:00",
@@ -241,6 +273,22 @@
       "journey-ships-replay.jpg",
       "journey-ships-timeline.jpg",
       "journey-ships-mobile.jpg"
+    ]
+  },
+  "command_desk_followup": {
+    "captured_on_client_date": "2026-11-01",
+    "application_version": "2.0.1",
+    "source_base_commit": "45cc1cabca3293046ec6186ed2598589f777603b",
+    "source_state": "Uncommitted first production integration, not deployed/released. Prior standalone design studies remain separate.",
+    "method": "Actual production React build, real auth/appearance/quartermaster/event API routes, isolated synthetic SQLite database, no production data or live workers. In-app browser full-page captures at normal desktop viewport and390x844 mobile breakpoint. Selector is a crop retaining the complete Appearance header/interface control and explanation. JPEG conversion only.",
+    "provenance": "Fictional accounts, owners, assets and blueprints, existing bundled EQM banner, original inline SVG yard artwork. No private ESI calls, OAuth, mail, game actions or production preference changes.",
+    "validation": "60 backend appearance/role tests; final TSC/Vite build pass. Browser: old/default and second account Classic, interface persists on reload, palette independent including Daylight, real item search and full filters, nested panel move survives mode switch/reload, mobile nav opens/closes, full-page scrolling. Expanded filters at320px: client/scroll305; at390px no overflow. Existing preview omits unrelated staff SDE/database endpoints, so those settings panels can report Not Found; no such request was added by this feature.",
+    "limitations": "First slice is shell and Overview only. Intel/Industry retain existing content, their visual studies are not integrated. No real deployment or live SSO. Legacy Classic retains its original inner scrolling. Selector and Classic captures precede final nonvisual Command-only320px body min-width correction; visible desktop/Classic content unchanged.",
+    "files": [
+      "command-desk-overview.jpg",
+      "command-desk-selector.jpg",
+      "eqm-classic-overview.jpg",
+      "command-desk-mobile.jpg"
     ]
   }
 }

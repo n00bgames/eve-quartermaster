@@ -988,3 +988,21 @@ Opt a linked character into **Record ship types** with minimal read-only ship co
 ![Journey timeline with sampled hull types and icons](static/ss/v2.0.1/journey-ships-timeline.jpg)
 
 [Opt-in controls](static/ss/v2.0.1/journey-ships-controls.jpg) · [Replay hull badge](static/ss/v2.0.1/journey-ships-replay.jpg) · [Mobile timeline](static/ss/v2.0.1/journey-ships-mobile.jpg). Actual unreleased UI, synthetic accounts/routes/hull observations; no live EVE consent or ship tracking performed.
+
+
+### Visual direction studies — not released interfaces
+
+The [Command Desk prototypes](docs/design/command-desk/README.md) explore three compositions: a tighter Overview, an evidence-led Intel dossier and a numbered Industry manifest. They use fictional data and original vector artwork; they do not change the current application. The three palettes and compact rows are available across the studies.
+
+![Refined Overview study](static/ss/design-studies/command-desk/overview-refined.jpg)
+
+![Intel dossier study](static/ss/design-studies/command-desk/intel-dossier.jpg)
+
+
+### Unreleased: choose your desk
+
+The [first Command Desk integration](docs/command-desk.md) adds an opt-in shell and Overview backed by the existing data/actions. **EQM-Classic** remains the default and can be selected at any time. The interface choice follows your account; colors, branding, navigation and saved panel arrangements stay yours. Intel/Industry studies above remain prototypes, not integrated replacements.
+
+![Implemented interface selector](static/ss/v2.0.1/command-desk-selector.jpg)
+
+![Implemented Command Desk Overview with synthetic holdings](static/ss/v2.0.1/command-desk-overview.jpg)

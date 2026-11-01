@@ -1,0 +1,83 @@
+/* Opt-in interface only. Classic, auth and public report surfaces are untouched. */
+body:has(.app-shell.command-desk-shell){min-width:0}
+.app-shell.command-desk-shell{background:var(--eqm-background);color:var(--eqm-text);grid-template-columns:250px minmax(0,1fr);height:auto;min-height:100dvh;overflow:visible;align-items:start;--command-blue:var(--eqm-muted)}
+.app-shell.command-desk-shell .sidebar{background:var(--eqm-background);border-right:1px solid var(--eqm-border);backdrop-filter:none;padding:24px 18px;height:100dvh;position:sticky;top:0;display:flex;flex-direction:column;overflow:hidden}
+.app-shell.command-desk-shell .brand-logo{width:100%;max-width:210px;height:92px;margin:0 auto 18px}
+.app-shell.command-desk-shell .sidebar>div>h1{font-size:17px;letter-spacing:.02em}
+.app-shell.command-desk-shell .sidebar>div>p{font-size:12px;line-height:1.7}
+.app-shell.command-desk-shell .sidebar .sidebar-tagline{color:var(--eqm-accent);font-size:11px}
+.app-shell.command-desk-shell .sidebar nav{gap:7px;flex:1;min-height:0;overflow:auto;scrollbar-width:thin}
+.command-desk-shell .command-navigation{display:flex;flex-direction:column;flex:1;min-height:0}
+.command-desk-shell .command-navigation-content{display:flex;flex-direction:column;min-height:0;flex:1}
+.command-desk-shell .command-mobile-nav-toggle{display:none}
+.app-shell.command-desk-shell .sidebar .nav-section-label{font:10px/1.7 Consolas,'Courier New',monospace;text-transform:uppercase;letter-spacing:.1em;color:var(--eqm-muted);margin-top:23px}
+.app-shell.command-desk-shell .sidebar nav button{border-radius:0;box-shadow:none;min-height:38px;padding:9px 10px;font-size:12px;background:transparent;border-color:transparent;text-align:left}
+.app-shell.command-desk-shell .sidebar .nav-module>button.active{border-left:2px solid var(--eqm-accent);background:color-mix(in srgb,var(--eqm-accent) 9%,transparent);color:var(--eqm-accent)}
+.app-shell.command-desk-shell .sidebar nav button:hover{background:var(--eqm-panel);color:var(--eqm-accent);box-shadow:none}
+.app-shell.command-desk-shell .sidebar nav button svg{width:15px;height:15px;flex-shrink:0}
+.app-shell.command-desk-shell .content{min-width:0;background:var(--eqm-background);padding:24px 35px 36px;height:auto;overflow:visible}
+.app-shell.command-desk-shell .content>.hero.compact{border:0;border-bottom:1px solid var(--eqm-border);border-radius:0;background:transparent;box-shadow:none;padding:0 0 23px;gap:22px;align-items:start}
+.app-shell.command-desk-shell .content>.hero.compact h2{font-size:27px;letter-spacing:-.035em}
+.app-shell.command-desk-shell .content>.hero.compact p{font-size:12px;line-height:1.8}
+.app-shell.command-desk-shell .content>.hero.compact .eyebrow{font:10px Consolas,'Courier New',monospace;letter-spacing:.12em;color:var(--eqm-accent)}
+.app-shell.command-desk-shell .toolbar{gap:7px}
+.app-shell.command-desk-shell .toolbar>button,.app-shell.command-desk-shell .toolbar>.status-badge{border-radius:2px;box-shadow:none;font-size:11px}
+.app-shell.command-desk-shell .toolbar>button{min-height:32px;padding:7px 9px;background:var(--eqm-panel);color:var(--eqm-text);border-color:var(--eqm-border)}
+.app-shell.command-desk-shell .brand-home-button{box-shadow:none;border-color:transparent}
+.command-desk-shell .command-desk-intro{display:grid;grid-template-columns:1fr .8fr;gap:24px;align-items:center;padding:10px 0 20px;margin-bottom:10px}
+.command-desk-shell .command-kicker{font:9px/1.7 Consolas,'Courier New',monospace;letter-spacing:.1em;color:var(--eqm-accent);margin:0 0 13px}
+.command-desk-shell .command-desk-intro h3{font-size:clamp(29px,2.5vw,37px);line-height:1.03;font-weight:600;letter-spacing:-.045em;margin:0 0 15px}
+.command-desk-shell .command-desk-intro h3 em{font-family:Georgia,serif;color:var(--eqm-accent);font-weight:normal}
+.command-desk-shell .command-desk-intro>div>p:last-child{font-size:12px;color:var(--eqm-muted);line-height:1.7;margin:0}
+.command-desk-shell .command-yard{margin:0;color:var(--eqm-accent);text-align:right}
+.command-desk-shell .command-yard svg{display:block;width:100%;height:125px}
+.command-desk-shell .command-yard figcaption{font:8px Consolas,'Courier New',monospace;color:var(--eqm-muted);letter-spacing:.08em;padding-top:9px}
+.app-shell.command-desk-shell [data-layout-region=overview]>.status-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;border-block:1px solid var(--eqm-border);margin-bottom:28px;padding:16px 0}
+.app-shell.command-desk-shell [data-layout-region=overview]>.status-grid>article{position:relative;min-width:0;border:0;border-left:1px solid var(--eqm-border);border-radius:0;background:transparent;box-shadow:none;padding:9px 20px;display:flex;flex-direction:column;gap:9px}
+.app-shell.command-desk-shell [data-layout-region=overview]>.status-grid>article:nth-of-type(3){border-left:0;padding-left:0}
+/* Connection metadata stays distinct from inventory totals; no fake freshness. */
+.app-shell.command-desk-shell [data-layout-region=overview]>.status-grid>article:nth-of-type(-n+2){grid-row:2;grid-column:span 2;border:0;border-top:1px solid var(--eqm-border);margin-top:15px;padding:15px 0 0;display:flex;flex-direction:row;align-items:center;gap:12px}
+.app-shell.command-desk-shell [data-layout-region=overview]>.status-grid>article>svg{display:none}
+.app-shell.command-desk-shell [data-layout-region=overview]>.status-grid>article>span{font:10px/1.7 Consolas,'Courier New',monospace;letter-spacing:.05em;text-transform:uppercase;color:var(--eqm-muted)}
+.app-shell.command-desk-shell [data-layout-region=overview]>.status-grid>article>strong{font:30px/1.2 Consolas,'Courier New',monospace;letter-spacing:-.05em;overflow-wrap:anywhere;color:var(--eqm-text)}
+.app-shell.command-desk-shell [data-layout-region=overview]>.status-grid>article:nth-of-type(-n+2)>strong{font:11px/1.6 Consolas,'Courier New',monospace;letter-spacing:0}
+.app-shell.command-desk-shell [data-layout-region=overview]>.status-grid>article>.metric-delta{font-size:10px;line-height:1.8;margin:0}
+.app-shell.command-desk-shell [data-layout-region=overview-inventory]{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:28px}
+.app-shell.command-desk-shell [data-layout-region=overview-inventory]>section{border:0;border-radius:0;box-shadow:none;padding:0;background:transparent;min-width:0}
+.app-shell.command-desk-shell [data-layout-region=overview-inventory]>section>h3{font-size:23px;letter-spacing:-.03em;margin:0 0 21px}
+.app-shell.command-desk-shell [data-layout-region=overview-inventory]>[data-layout-id=blueprint-library]{border-top:2px solid var(--eqm-accent);padding:22px;background:var(--eqm-panel)}
+.app-shell.command-desk-shell [data-layout-region=overview-inventory] .table-wrap{border:0;border-radius:0;background:transparent}
+.app-shell.command-desk-shell [data-layout-region=overview-inventory] table{font-size:12px}
+.app-shell.command-desk-shell [data-layout-region=overview-inventory] thead{background:transparent}
+.app-shell.command-desk-shell [data-layout-region=overview-inventory] th{font:10px/1.7 Consolas,'Courier New',monospace;letter-spacing:.04em}
+.app-shell.command-desk-shell [data-layout-region=overview-inventory] :is(th,td){border-color:var(--eqm-border);padding-block:13px}
+.app-shell.command-desk-shell [data-layout-region=overview] .overview-events-widget{margin-top:28px;border:0;border-top:1px solid var(--eqm-border);border-radius:0;box-shadow:none;background:transparent;padding:24px 0}
+.app-shell.command-desk-shell [data-layout-region=overview] .eqm-support-card{margin-top:10px;border:0;border-top:1px solid var(--eqm-border);border-radius:0;box-shadow:none;background:transparent;padding:24px 0}
+.app-shell.command-desk-shell :is(button,a,input,select,textarea):focus-visible{outline:2px solid var(--eqm-accent);outline-offset:3px}
+.app-shell.command-desk-shell .layout-handle{grid-row:auto!important;grid-column:1/-1!important;width:100%}
+.app-shell.command-desk-shell .layout-handle button{border:1px solid var(--eqm-border);background:var(--eqm-panel);color:var(--eqm-text)}
+.command-desk-shell .overview-quick-search{border-bottom:1px solid var(--eqm-border);padding-bottom:14px}
+.command-desk-shell .overview-quick-search label{display:flex;align-items:center;gap:16px;font-size:11px;margin:0}
+.command-desk-shell .overview-quick-search input{flex:1;width:100%;min-width:0;border-radius:0;box-shadow:none;background:transparent}
+.command-desk-shell .overview-filter-disclosure{border-bottom:1px solid var(--eqm-border);padding:12px 0;font-size:12px}
+.command-desk-shell .overview-filter-disclosure>summary{cursor:pointer;color:var(--eqm-accent);padding:5px 0}
+.command-desk-shell .overview-filter-disclosure>summary>span{font-size:11px}
+.command-desk-shell .overview-filter-disclosure>div{padding-top:16px;display:grid;gap:12px}
+.app-shell.command-desk-shell [data-layout-region=overview-inventory] .ledger-actions{background:transparent;border:0;border-radius:0;padding:12px 0;gap:12px}
+.app-shell.command-desk-shell [data-layout-region=overview-inventory] .ledger-actions .muted{font-size:11px}
+.app-shell.command-desk-shell [data-layout-region=overview-inventory] .ledger-actions button{min-height:32px;font-size:11px;border-radius:0}
+.app-shell.command-desk-shell [data-layout-region=overview-inventory] .cell-filter{background:transparent;border:0;box-shadow:none;border-radius:0;font:inherit;text-align:left;padding:0;overflow-wrap:anywhere}
+.app-shell.command-desk-shell [data-layout-region=overview-inventory] .blueprint-preview .status-grid{border:0;border-block:1px solid var(--eqm-border);border-radius:0;background:transparent;gap:0;padding-block:14px;margin-bottom:20px}
+.app-shell.command-desk-shell [data-layout-region=overview-inventory] .blueprint-preview .status-grid>article{border:0;border-radius:0;background:transparent;box-shadow:none;padding:0 12px}
+.app-shell.command-desk-shell [data-layout-region=overview-inventory] .blueprint-preview .mini-list>div{border:0;border-bottom:1px solid var(--eqm-border);border-radius:0;box-shadow:none;background:transparent;padding:14px 0}
+.app-shell.command-desk-shell [data-layout-region=overview-inventory] .blueprint-preview .mini-list strong{font-size:12px;font-weight:550}
+.app-shell.command-desk-shell [data-layout-region=overview-inventory] .blueprint-preview .mini-list span{font-size:11px;line-height:1.8}
+.app-shell.command-desk-shell [data-layout-region=overview-inventory] .table-wrap{max-height:none}
+.app-shell.command-desk-shell [data-layout-region=overview-inventory] :is(thead,th){position:static;top:auto}
+.app-shell.command-desk-shell [data-layout-region=overview-inventory] .blueprint-preview .mini-list{max-height:none;overflow:visible}
+.interface-choice{display:grid;grid-template-columns:1fr minmax(190px,270px);gap:12px 24px;border-bottom:1px solid var(--eqm-border);padding-bottom:17px;margin-bottom:20px}
+.interface-choice>p{grid-column:1/-1;font-size:12px;line-height:1.8;margin:0}.interface-choice select{width:100%;min-height:40px}.interface-choice h4{margin:0 0 10px}.interface-choice>div>p{font-size:13px;line-height:1.8;margin:0}
+@media(max-width:1150px){.app-shell.command-desk-shell{grid-template-columns:225px minmax(0,1fr)}.app-shell.command-desk-shell .content{padding:22px}.app-shell.command-desk-shell [data-layout-region=overview-inventory]{grid-template-columns:1fr}.app-shell.command-desk-shell .content>.hero.compact{flex-direction:column}.app-shell.command-desk-shell .toolbar{justify-content:flex-start}.app-shell.command-desk-shell .command-desk-intro{grid-template-columns:1fr .7fr}.app-shell.command-desk-shell [data-layout-region=overview]>.status-grid>article{padding-inline:13px}.app-shell.command-desk-shell [data-layout-region=overview]>.status-grid>article>strong{font-size:25px}}
+@media(max-width:800px){.app-shell.command-desk-shell{grid-template-columns:1fr}.app-shell.command-desk-shell .sidebar{border:0;border-bottom:1px solid var(--eqm-border);padding:18px;height:auto;position:static;display:block}.app-shell.command-desk-shell .brand-logo{height:60px;margin-bottom:12px}.app-shell.command-desk-shell .sidebar nav{max-height:230px;overflow:auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.app-shell.command-desk-shell .sidebar nav>button,.app-shell.command-desk-shell .sidebar nav>.nav-edit-actions{grid-column:1/-1}.app-shell.command-desk-shell .sidebar .nav-section-label{margin-top:8px;display:block}.app-shell.command-desk-shell .sidebar>div>h1{font-size:15px}.app-shell.command-desk-shell .sidebar>div>p{font-size:11px;margin-bottom:8px}.app-shell.command-desk-shell .content{padding:20px}.app-shell.command-desk-shell .command-yard svg{height:110px}.interface-choice{grid-template-columns:1fr}.interface-choice>p{grid-column:auto}}
+@media(max-width:480px){.app-shell.command-desk-shell .command-desk-intro{grid-template-columns:1fr;padding:18px 0}.app-shell.command-desk-shell .command-yard{display:none}.app-shell.command-desk-shell .command-desk-intro h3{font-size:34px}.app-shell.command-desk-shell [data-layout-region=overview]>.status-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:15px 0}.app-shell.command-desk-shell [data-layout-region=overview]>.status-grid>article:nth-of-type(-n+2){grid-row:3;grid-column:span 1;display:grid;align-content:start;gap:6px;margin-top:0}.app-shell.command-desk-shell [data-layout-region=overview]>.status-grid>article:nth-of-type(5){border-left:0;padding-left:0}.app-shell.command-desk-shell [data-layout-region=overview]>.status-grid>article>strong{font-size:24px}.app-shell.command-desk-shell .toolbar{width:100%}.app-shell.command-desk-shell .toolbar .header-clocks{max-width:100%}.app-shell.command-desk-shell [data-layout-region=overview-inventory]>[data-layout-id=blueprint-library]{padding:18px}}
+@media(max-width:800px){.command-desk-shell .command-navigation{margin-top:15px}.app-shell.command-desk-shell .command-mobile-nav-toggle{display:flex;justify-content:space-between;align-items:center;width:100%;min-height:38px;padding:8px 12px;border:1px solid var(--eqm-border);background:var(--eqm-panel);color:var(--eqm-text);border-radius:0;font-size:12px}.command-desk-shell .command-navigation-content{display:none}.command-desk-shell .command-navigation.is-open .command-navigation-content{display:flex;margin-top:12px}.app-shell.command-desk-shell .brand-logo{max-width:190px;width:100%}}

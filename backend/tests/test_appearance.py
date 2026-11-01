@@ -145,3 +145,41 @@ def test_quicklaunch_links_round_trip_without_granting_permissions(app,role):
     assert app.client.get('/api/appearance/me').json()['preferences']['navigation']==groups
     app.current[0]=app.users['other']
     assert app.client.get('/api/appearance/me').json()['preferences']=={}
+
+@pytest.mark.parametrize('role',['host','member','intel_analyst','quartermaster','applicant'])
+def test_interface_is_personal_and_preserves_palette_navigation_layout_and_permissions(app,role):
+    from app.services.permissions import effective_permissions
+    app.current[0]=app.users[role]
+    user=app.current[0];before=effective_permissions(user,app.db)
+    assert app.client.get('/api/appearance/me').json()['preferences'].get('interface','classic')=='classic'
+    theme={'background':'#111819','panel':'#182425','text':'#eeeade','muted':'#a1afae','accent':'#d6b779','border':'#354342'}
+    keep={'theme':theme,'navigation':[{'id':'quick','name':'Quicklaunch','modules':['navigation','market']}],
+          'layouts':{'overview':['overview-2','overview-1','overview-3'],'overview-inventory':['blueprint-library','recent-assets']}}
+    response=app.client.patch('/api/appearance/me',json={'revision':0,**keep});assert response.status_code==200,response.text
+    response=app.client.put('/api/appearance/me/banner',json={'revision':1,'image':image()});assert response.status_code==200
+    banner=response.json()['banner']
+    for revision,choice in [(2,'command_desk'),(3,'classic'),(4,None)]:
+        response=app.client.patch('/api/appearance/me',json={'revision':revision,'interface':choice});assert response.status_code==200,response.text
+        saved=app.client.get('/api/appearance/me').json()
+        assert saved['preferences']==({**keep,'interface':choice} if choice is not None else keep)
+        assert saved['banner']==banner and saved['revision']==revision+1
+        assert effective_permissions(user,app.db)==before
+    # A stale interface-only patch cannot roll back concurrent palette/layout changes.
+    assert app.client.patch('/api/appearance/me',json={'revision':2,'interface':'command_desk'}).status_code==409
+    app.current[0]=app.users['other']
+    assert app.client.get('/api/appearance/me').json()['preferences']=={}
+
+@pytest.mark.parametrize('choice',['Command Desk','classic-v2','<script>',0,True,{},[]])
+def test_interface_rejects_unknown_values_without_creating_preferences(app,choice):
+    assert app.client.patch('/api/appearance/me',json={'revision':0,'interface':choice}).status_code==422
+    assert app.client.get('/api/appearance/me').json()=={'revision':0,'preferences':{},'banner':None}
+
+def test_quartermaster_interface_switch_does_not_widen_real_auth(app):
+    from app.api.auth import get_current_user
+    from app.core.security import create_access_token
+    user=app.users['quartermaster'];app.app.dependency_overrides.pop(get_current_user)
+    headers={'Authorization':'Bearer '+create_access_token(str(user.id))}
+    saved=app.client.patch('/api/appearance/me',json={'revision':0,'interface':'command_desk'},headers=headers)
+    assert saved.status_code==200 and saved.json()['preferences']['interface']=='command_desk'
+    assert app.client.put('/api/appearance/branding/banner',json={'revision':0,'image':image()},headers=headers).status_code==403
+    assert app.client.post('/api/local-scans',json={'text':'Alpha One','retention':'24h'},headers=headers).status_code==403

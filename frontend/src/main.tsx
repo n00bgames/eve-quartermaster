@@ -1,10 +1,14 @@
-import {EveClientProvider, EveItemName, SupportCard, useClientLinksAccount} from "./features/clientLinks/EveClientLinks";
+import {EveClientProvider, EveItemName, useClientLinksAccount} from "./features/clientLinks/EveClientLinks";
 import {EveSsoButton} from "./features/auth/EveSsoButton";
 import {PasswordRecovery} from "./features/profile/PasswordRecovery";
 import {FullAssetExport} from "./features/quartermaster/FullAssetExport";
+import {AssetFilterDisclosure} from "./features/overview/AssetFilterDisclosure";
+import {OverviewLayout} from "./features/overview/OverviewLayout";
+import "./features/appearance/commandDesk.css";
 import {LayoutRegion} from "./features/appearance/LayoutRegion";
-import {AppearanceProvider,AppearanceStatus,ArrangeButton,BrandImage,useAppearanceAccount} from "./features/appearance/AppearanceProvider";
+import {AppearanceProvider,AppearanceStatus,ArrangeButton,BrandImage,useAppearanceAccount,useInterfaceStyle} from "./features/appearance/AppearanceProvider";
 import {AppearanceSettings} from "./features/appearance/AppearanceSettings";
+import {CommandNavigation} from "./features/appearance/CommandNavigation";
 import {CustomNavigation} from "./features/appearance/CustomNavigation";
 import {InventoryReportPage} from "./features/industryReports/InventoryReportPage";
 import {IndustryReportPage,PublicIndustryReportPage} from "./features/industryReports/IndustryReportPage";
@@ -263,6 +267,7 @@ function syncedTodayLabel(value: number, unit: string) {
 
 
 function App() {
+  const interfaceStyle=useInterfaceStyle();
 
   const [activeTab, setActiveTab] = useState("overview");
   const [shipReportsAvailable,setShipReportsAvailable]=useState(false);
@@ -712,7 +717,7 @@ function App() {
 
   return (
 
-    <main className={`app-shell${["local_scan", "dscan", "industry_reports", "inventory_reports", "ship_reports"].includes(activeTab) ? " scan-report-shell" : ""}`}>
+    <main className={`app-shell${interfaceStyle==="command_desk"?" command-desk-shell":""}${["local_scan", "dscan", "industry_reports", "inventory_reports", "ship_reports"].includes(activeTab) ? " scan-report-shell" : ""}`}>
 
       <aside className="sidebar">
 
@@ -737,7 +742,7 @@ function App() {
 
         </div>
 
-        <CustomNavigation entries={{
+        <CommandNavigation><CustomNavigation entries={{
           overview: canView("overview") && <button className={activeTab === "overview" ? "active" : ""} onClick={() => setActiveTab("overview")}><Database size={18} /> Overview</button>,
           navigation: canView("navigation") && <button className={activeTab === "navigation" ? "active" : ""} onClick={() => setActiveTab("navigation")}><MapIcon size={18} /> Navigation</button>,
           characters: canView("characters") && <button className={activeTab === "characters" ? "active" : ""} onClick={() => setActiveTab("characters")}><UserRoundCheck size={18} /> Characters</button>,
@@ -781,7 +786,7 @@ function App() {
           profile: canView("profile") && <button className={activeTab === "profile" ? "active" : ""} onClick={() => setActiveTab("profile")}><UserRoundCheck size={18} /> Profile</button>,
           settings: canView("settings") && <button className={activeTab === "settings" ? "active" : ""} onClick={() => setActiveTab("settings")}><Settings size={18} /> Settings</button>,
           audit: canView("audit") && <button className={activeTab === "audit" ? "active" : ""} onClick={() => setActiveTab("audit")}><ScrollText size={18} /> Audit</button>,
-        }}/>
+        }}/></CommandNavigation>
 
       </aside>
 
@@ -1169,19 +1174,12 @@ function InviteScreen({ token, onAuth }: { token: string; onAuth: (path: string,
 }
 
 function Overview({ data, api, timeZone, onOpenIndustry, onOpenEvents }: { data: AppData; api: ApiClient; timeZone: string; onOpenIndustry?: () => void; onOpenEvents: (eventId?: number) => void }) {
-
   const summary = data.summary;
-
+  const compactFilters=useInterfaceStyle()==="command_desk";
   const assetUnitsSyncedToday = data.assets.filter((asset) => isToday(asset.last_synced_at)).reduce((total, asset) => total + asset.quantity, 0);
-
   const blueprintsSyncedToday = data.blueprints.filter((blueprint) => isToday(blueprint.last_synced_at)).length;
-
-  return (
-
-    <LayoutRegion region="overview">
-
-      <div key="overview-1" data-layout-id="overview-1" data-layout-label="Overview totals" className="status-grid wide">
-
+  return <OverviewLayout
+    metrics={<>
         <Metric icon={<Activity size={22} />} label="API status" value={data.health?.status ?? "checking"} />
 
         <Metric icon={<Database size={22} />} label="Backend app" value={data.health?.app ?? "pending"} />
@@ -1194,25 +1192,12 @@ function Overview({ data, api, timeZone, onOpenIndustry, onOpenEvents }: { data:
 
         <Metric icon={<Factory size={22} />} label="Recipes" value={summary?.industry_activities ?? 0} />
 
-      </div>
-
-      <LayoutRegion key="overview-2" data-layout-id="overview-2" data-layout-label="Assets and blueprints" region="overview-inventory" className="two-column">
-
-        <section key="recent-assets" data-layout-id="recent-assets" data-layout-label="Recent Assets" className="panel"><h3>Recent Assets</h3><AssetTable assets={data.assets.slice(0, 6)} blueprints={data.blueprints} /></section>
-
-        <section key="blueprint-library" data-layout-id="blueprint-library" data-layout-label="Blueprint Library" className="panel"><h3>Blueprint Library</h3><BlueprintPreview blueprints={data.blueprints} onOpenIndustry={onOpenIndustry} /></section>
-
-      </LayoutRegion>
-
-      <UpcomingEventsWidget key="overview-3" data-layout-id="overview-3" data-layout-label="Upcoming Events Widget" api={api} timeZone={timeZone} onOpen={onOpenEvents} />
-    <SupportCard key="overview-support" />
-
-    </LayoutRegion>
-
-  );
-
+    </>}
+    assets={<AssetTable compactFilters={compactFilters} assets={data.assets.slice(0, 6)} blueprints={data.blueprints} />}
+    blueprints={<BlueprintPreview blueprints={data.blueprints} onOpenIndustry={onOpenIndustry} />}
+    events={<UpcomingEventsWidget api={api} timeZone={timeZone} onOpen={onOpenEvents} />}
+  />;
 }
-
 
 
 function Ownership({ data, submit }: { data: AppData; submit: (path: string, body: Record<string, unknown>, success: string) => Promise<void> }) {
@@ -1337,7 +1322,7 @@ function Metric({ icon, label, value, delta }: { icon: React.ReactNode; label: s
 
 
 
-function AssetTable({ assets, blueprints = [], seed, api, serverMode = false, onOpenFittings, onOpenMarket }: { assets: Asset[]; blueprints?: Blueprint[]; seed?: AssetTableSeed | null; api?: ApiClient; serverMode?: boolean; onOpenFittings?: (itemName: string) => void; onOpenMarket?: (text: string) => void }) {
+function AssetTable({ assets, blueprints = [], compactFilters = false, seed, api, serverMode = false, onOpenFittings, onOpenMarket }: { assets: Asset[]; blueprints?: Blueprint[]; compactFilters?: boolean; seed?: AssetTableSeed | null; api?: ApiClient; serverMode?: boolean; onOpenFittings?: (itemName: string) => void; onOpenMarket?: (text: string) => void }) {
 
   const [sortKey, setSortKey] = useState<AssetSortKey>("item");
 
@@ -1766,6 +1751,8 @@ function AssetTable({ assets, blueprints = [], seed, api, serverMode = false, on
 
     <div className="asset-ledger">
 
+      {compactFilters&&<div className="overview-quick-search">{searchInput("item")}</div>}
+      <AssetFilterDisclosure compact={compactFilters} active={Boolean(filter||ownerKindFilter||categoryFilter!=="all"||subtypeFilter)}>
       <div className="owner-kind-chips"><button type="button" className={ownerKindFilter === "" ? "active" : ""} onClick={() => setOwnerKindFilter("")}>All owners</button><button type="button" className={ownerKindFilter === "character" ? "active" : ""} onClick={() => setOwnerKindFilter("character")}>Characters</button><button type="button" className={ownerKindFilter === "corporation" ? "active" : ""} onClick={() => setOwnerKindFilter("corporation")}>Corporations</button><button type="button" className={ownerKindFilter === "alliance" ? "active" : ""} onClick={() => setOwnerKindFilter("alliance")}>Alliances</button><button type="button" className={ownerKindFilter === "manual_group" ? "active" : ""} onClick={() => setOwnerKindFilter("manual_group")}>Manual</button></div>
 
       <div className="blueprint-filter asset-category-filter">{assetCategoryOptions.map((family) => <button type="button" key={family} className={categoryFilter === family ? "active" : ""} onClick={() => { setCategoryFilter(family); setSubtypeFilter(""); }}>{inventoryFamilyLabels[family]}</button>)}</div>
@@ -1774,11 +1761,12 @@ function AssetTable({ assets, blueprints = [], seed, api, serverMode = false, on
 
       <div className="ledger-filter-grid">{filterSelect("item")}{filterSelect("owner")}{filterSelect("location")}{filterSelect("flag")}</div>
 
-      <div className="ledger-filter-grid search-grid">{searchInput("item")}{searchInput("owner")}{searchInput("location")}{searchInput("flag")}</div>
+      <div className="ledger-filter-grid search-grid">{!compactFilters&&searchInput("item")}{searchInput("owner")}{searchInput("location")}{searchInput("flag")}</div>
+      </AssetFilterDisclosure>
 
       <div className="ledger-actions">
 
-        {filter ? <div className="active-filter"><span>{filter.label} {filter.mode === "contains" ? "contains" : "is"}: {filter.value}</span><button type="button" onClick={clearFilter}>Clear filter</button></div> : <span className="muted">{pagedMode ? "Showing paged assets" : "All records loaded · display remains paged"}</span>}
+        {filter ? <div className="active-filter"><span>{filter.label} {filter.mode === "contains" ? "contains" : "is"}: {filter.value}</span><button type="button" onClick={clearFilter}>Clear filter</button></div> : <span className="muted">{compactFilters?`${assets.length.toLocaleString()} recent records in this view`:pagedMode ? "Showing paged assets" : "All records loaded · display remains paged"}</span>}
 
         <div className="button-row compact"><button type="button" disabled={visibleAssets.length === 0} onClick={exportCsv}>{pagedMode ? "Export This Page CSV" : "Quick CSV"}</button><button type="button" disabled={visibleAssets.length === 0} onClick={() => void copyJaniceList()}>{pagedMode ? "Copy page for Janice" : "Copy for Janice"}</button></div>
 

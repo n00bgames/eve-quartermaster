@@ -1,0 +1,124 @@
+{
+  "captured_on_client_date": "2026-11-01",
+  "source_base_commit": "45cc1cabca3293046ec6186ed2598589f777603b",
+  "application_version": "2.0.1",
+  "status": "Standalone design prototype only; not integrated, released or deployed.",
+  "method": "Full-page screenshots from actual locally rendered HTML/CSS/JS using the in-app browser; JPEG conversion only, no repainting. Normal desktop viewport and temporary 390x844 phone breakpoint.",
+  "provenance": "All holdings, users, events and metrics fabricated. Cargo-yard illustration is original inline SVG, not generated screenshot art. No external assets, account data, API, private ESI, OAuth or game actions.",
+  "validation": "Search narrows to Deimos; detail dialog correct; reset restores six rows; compact toggle works; all three palettes verified; Escape closes native dialog; console errors empty; phone document no horizontal overflow, manifest scroll contained.",
+  "limitations": "Visual exploration, no actual application functionality or persistent settings. Blueprint composition would require a complete permission-scoped production aggregate. Item glyphs are placeholders; existing CCP icons should be used during integration.",
+  "files": [
+    {
+      "file": "overview-brass.jpg",
+      "bytes": 214676,
+      "sha256": "3cc53fcb24b311be651b4d4cbe30c3ea86b2d8941c562f63bd644b21d1da10e6",
+      "width": 1264,
+      "height": 1540
+    },
+    {
+      "file": "overview-daylight.jpg",
+      "bytes": 201942,
+      "sha256": "fcb9985ee067c9b15f296b8da52c48313ab9690fb2a31167649cb71b9553af52",
+      "width": 1264,
+      "height": 1540
+    },
+    {
+      "file": "overview-cold-blue.jpg",
+      "bytes": 212892,
+      "sha256": "8cfea7ada088c21958e87a110172c04100d8cc3fe9c7dc54c65ae4851eae69a5",
+      "width": 1264,
+      "height": 1540
+    },
+    {
+      "file": "overview-mobile.jpg",
+      "bytes": 132179,
+      "sha256": "7e846a62c8086690b60251a345edd032163158f290ee12af780bf929ed275583",
+      "width": 374,
+      "height": 2314
+    },
+    {
+      "file": "overview-refined.jpg",
+      "bytes": 211633,
+      "sha256": "bdeb145556f3784b493d49b1009ea6b046b30fbd83e0f0910fa48bcad919e844",
+      "width": 1424,
+      "height": 1447,
+      "phase": "02-three-compositions"
+    },
+    {
+      "file": "overview-refined-mobile.jpg",
+      "bytes": 129518,
+      "sha256": "f6c11739c7a012a8bfe3cbf520e318e8679b2c09ae89376bd4f13e826fbf5545",
+      "width": 374,
+      "height": 2272,
+      "phase": "02-three-compositions"
+    },
+    {
+      "file": "intel-dossier.jpg",
+      "bytes": 179379,
+      "sha256": "2b30294291dfb8468cdae4e2bb5dded52c3a4477c189c30c1a930d6393afcdc7",
+      "width": 1424,
+      "height": 1344,
+      "phase": "02-three-compositions"
+    },
+    {
+      "file": "intel-field-notes.jpg",
+      "bytes": 175613,
+      "sha256": "d421ee3c0dec2fe1a960ccdb960c2924088c70df7f576df7f5692c54da32a298",
+      "width": 1424,
+      "height": 1294,
+      "phase": "02-three-compositions"
+    },
+    {
+      "file": "intel-dossier-mobile.jpg",
+      "bytes": 108747,
+      "sha256": "4a9b58f3a2d8ecb9c79ca1bba97b4d5375d972e267d04510af2c1b29fdd54412",
+      "width": 374,
+      "height": 2020,
+      "phase": "02-three-compositions"
+    },
+    {
+      "file": "industry-manifest.jpg",
+      "bytes": 337890,
+      "sha256": "afd8784fa911a17e15bfcfd578dd41547d287bd6caeb13d42b4be2ad092c1f68",
+      "width": 1424,
+      "height": 2968,
+      "phase": "02-three-compositions"
+    },
+    {
+      "file": "industry-manifest-mobile.jpg",
+      "bytes": 184767,
+      "sha256": "93b3b4689ad842ac3fca76199d4fc34f069b7c17a58e0a68aed24f623a6f76e6",
+      "width": 374,
+      "height": 3388,
+      "phase": "02-three-compositions"
+    }
+  ],
+  "followup": {
+    "captured_on_client_date": "2026-11-01",
+    "status": "Three standalone visual prototypes, uncommitted; not integrated, released or deployed. Original phase-01 captures retained as history.",
+    "method": "Actual browser full-page screenshots at explicit responsive desktop 1440x1000 and phone 390x844 breakpoints. JPEG conversion only. No repainting or generated screenshots.",
+    "provenance": "All names, affiliations, combat totals, sightings, field notes, industry jobs, holdings and colonies fictional. Original inline SVG helmet, corporation/alliance emblems and report stamp. No third-party assets, private account data or API access.",
+    "validation": "Dossier evidence search; keyboard ArrowRight tab switch; note add/edit/remove in local memory; report numeric runs sort both directions with nulls last; ownership filtered subtotal 2,108,000 versus unchanged overall5,232,000; privacy dialog/Escape; cross-page palette continuity; compact rows; phone no pageoverflow on allthree pages. JS syntax and local links/uniqueIDs checked.",
+    "limitations": "Prototype interactions are simulations. Theme/density stored only in this tab session, notes reset on reload. Production identities, logos, permissions, actions and aggregate queries remain unchanged. Print CSS is exploratory and no PDF export is implemented here. Captures predate a nonvisual focusability attribute added to overflow regions. Trailing blank lines in index/industry HTML were normalized before commit; source hashes reflect that nonvisual cleanup.",
+    "source_sha256": {
+      "index.html": "759cd0b520444c34b6cefb0600f9035e1263d1921ac8d5fe18dd3065ec8d2607",
+      "desk.css": "0bb3cd8ff85d6e50ab6e5e487f50aefecf2f3c0e0e321c7a4065ccc8f39a55b8",
+      "desk.js": "6ab6aaf6c531cec1405f5c2209a5540460c0e41ab3a9fbfa883c9aa3de6ecfe7",
+      "study.js": "a7ba0a3bb81f1a1b467fb981db93edfd592d9d386b4df644d68a193c50f4b058",
+      "studies.css": "802210f9f8d0fd0b01c258544b4c36d0dc793d9eb33a8413ba7ab7891ce9f870",
+      "intel.html": "6febcf485fd6528bd015a8814886e25ac680d692bcf10a5d1ac26bbc66be6a41",
+      "intel.js": "b837bc83d9932852381f9222193182186a60a89b7e3492e9349ed18cd48a65d5",
+      "industry.html": "b9efe3f72a4582a80785148b5244f4c1642ce360b28f6e38c06e54371cf9bd86",
+      "industry.js": "7358d7612b7ac0969e5c1744f7c06210a6d0e17c2ef93df6d92c488eeaf36e6c"
+    },
+    "files": [
+      "overview-refined.jpg",
+      "overview-refined-mobile.jpg",
+      "intel-dossier.jpg",
+      "intel-field-notes.jpg",
+      "intel-dossier-mobile.jpg",
+      "industry-manifest.jpg",
+      "industry-manifest-mobile.jpg"
+    ]
+  }
+}

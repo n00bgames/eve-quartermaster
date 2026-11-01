@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en" data-palette="brass">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>EQM · Command desk design study</title><link rel="stylesheet" href="desk.css"><link rel="stylesheet" href="studies.css"><script defer src="study.js"></script><script defer src="desk.js"></script></head>
+<body class="desk-overview">
+<div class="study"><span><b>EQM / DESIGN STUDY 01</b><span class="study-description"> · Overview · sample data, no account connection</span></span><a href="#design-notes">About this direction ↗</a></div>
+<div class="shell">
+<aside class="sidebar" aria-label="Design study navigation">
+ <a class="brand" href="#overview" aria-label="EVE Quartermaster overview"><span class="brand-mark" aria-hidden="true">Q<span>›</span></span><span>EVE<br><strong>QUARTERMASTER</strong><small>CAPSULEER OPERATIONS</small></span></a>
+ <p class="nav-caption">YOUR WORKSPACE</p>
+ <nav aria-label="Design studies"><a class="selected" href="index.html"><span>01</span> Overview <i>↗</i></a><a class="" href="intel.html"><span>02</span> Intel dossier <i>↗</i></a><a class="" href="industry.html"><span>03</span> Industry report <i>↗</i></a></nav>
+ <div class="nav-next"><p class="nav-caption">THE COMMAND DESK</p><p>One visual language.</p><small>Open ledgers. Field dossiers.<br>Industry manifests.<br>Built around the job at hand.</small></div>
+ <div class="appearance"><label for="palette">DESK FINISH</label><select id="palette"><option value="brass">Weathered brass</option><option value="blue">Cold blue</option><option value="paper">Station daylight</option></select><label class="density"><input id="compact" type="checkbox"> Compact rows</label></div>
+ <div class="sidebar-bottom"><span class="account-seal" aria-hidden="true">S</span><div>Sample Capsuleer<small>LOCAL DESIGN PREVIEW</small></div></div>
+</aside>
+<main id="overview"><a class="skip-link" href="#manifest">Skip to the manifest</a>
+ <header class="utility"><span>WORKSPACE <b>/ OVERVIEW</b></span><button class="text-button" id="data-note">Sample data explained <span>↗</span></button></header>
+ <section class="hero" aria-labelledby="page-title">
+  <div class="hero-copy"><p class="eyebrow"><span></span> YOUR PEOPLE. YOUR STOCK. YOUR NEXT MOVE.</p><h1 id="page-title">A place for<br>all your <em>stuff.</em></h1><p class="intro">From the hangar floor to the next fleet.<br>Your corner of New Eden, accounted for.</p><a class="action" href="#manifest">Open the manifest <span>↗</span></a></div>
+  <figure class="yard" aria-label="Original abstract orbital cargo-yard illustration">
+   <svg viewBox="0 0 600 350" role="img"><title>Orbital cargo yard — original EQM vector study</title><defs><pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="currentColor" stroke-width=".4"/></pattern><linearGradient id="hull" x2="0" y2="1"><stop stop-color="currentColor" stop-opacity=".18"/><stop offset="1" stop-color="currentColor" stop-opacity=".03"/></linearGradient></defs>
+    <g class="yard-grid"><path d="M35 40H560V310H35Z" fill="url(#grid)"/><ellipse cx="320" cy="178" rx="210" ry="104" fill="none" stroke="currentColor" stroke-dasharray="2 7"/><path d="M30 178H570M320 15V335" stroke="currentColor" stroke-width=".7"/></g>
+    <g class="yard-object" transform="translate(65 10)"><path d="M160 117 299 64 455 126 317 187Z" fill="url(#hull)"/><path d="m160 117 157 70v65l-157-70zm157 70 138-61v65l-138 61z" fill="url(#hull)"/>
+     <g fill="none" stroke="currentColor" stroke-width="1.2"><path d="m160 117 139-53 156 62v65l-138 61-157-70zm0 0 157 70 138-61m-138 61v65M299 64v62l-139 56m139-56 156 65"/><path d="m195 104 156 69m-121-82 156 67m-122-80 156 67M195 134v60m35-44v60m35-44v60m91-56v64m35-79v64m35-80v65"/>
+     <path d="m180 139 31 14v21l-31-14zm69 31 31 14v21l-31-14zm88 22 29-13v21l-29 13zm64-29 29-13v21l-29 13z"/><path d="m284 59 15-6 15 6m-167 54-15 6v18m323-24 14 7v18M304 264l13 6 14-6" stroke-width="2.5"/>
+     <path d="M165 200 112 225H55m353-108 45-37h50M320 265v29h95" stroke-width=".7"/></g>
+     <g class="yard-label"><text x="42" y="243">STORED / SORTED / READY</text><text x="428" y="70">EQM · CARGO YARD</text><text x="370" y="310">A LITTLE ORDER IN THE VOID</text></g>
+    </g><g class="yard-registration"><path d="M26 28h20m-20 0v20M574 28h-20m20 0v20M26 322h20m-20 0v-20M574 322h-20m20 0v-20" fill="none" stroke="currentColor"/><text x="35" y="20">ORBITAL STORES / 01</text><text x="447" y="340">ILLUSTRATION · EQM</text></g>
+   </svg><figcaption><span>01 — THE QUARTERMASTER’S DESK</span><span>NEW EDEN / PERSONAL OPERATIONS</span></figcaption>
+  </figure>
+ </section>
+ <section class="totals" aria-label="Sample overview totals"><div><span>OWNERS</span><strong>18</strong><small>Characters & corporations</small></div><div><span>ASSET UNITS</span><strong>47.6<span>M</span></strong><small>Across linked holdings</small></div><div><span>BLUEPRINT RECORDS</span><strong>2,684</strong><small>Originals, copies & formulas</small></div><div><span>RECIPES</span><strong>1,824</strong><small>Imported industry activities</small></div></section>
+ <div class="working-area">
+  <section class="manifest" id="manifest" aria-labelledby="manifest-title"><div class="section-heading"><div><p class="eyebrow">01 / INVENTORY</p><h2 id="manifest-title">The hangar ledger.</h2></div><span class="section-note">RECENTLY SYNCHRONIZED</span></div>
+   <div class="ledger-tools"><label class="search"><span aria-hidden="true">⌕</span><input id="filter" type="search" aria-label="Filter sample assets" placeholder="Find a hull, module or material…"></label><span id="shown" aria-live="polite">6 RECORDS</span></div>
+   <div class="table-scroll" tabindex="0" role="region" aria-label="Sample asset table, scroll horizontally when needed"><table><thead><tr><th scope="col">ITEM / LOCATION</th><th scope="col">OWNER</th><th scope="col" class="quantity">QUANTITY</th><th scope="col"><span class="sr-only">Details</span></th></tr></thead><tbody id="asset-rows"></tbody></table></div><p id="empty" hidden>No matching sample assets. Try another name.</p><div class="ledger-foot"><span>Sample holdings · six records</span><button class="text-button" id="reset">Reset filter ↗</button></div>
+  </section>
+  <section class="blueprints" id="blueprints" aria-labelledby="blueprint-title"><p class="eyebrow">02 / INDUSTRY</p><h2 id="blueprint-title">Ideas.<br>In triplicate.</h2><p class="blueprint-intro">The originals. The copies.<br>The things you meant to build.</p><div class="blueprint-total"><strong>2,684</strong><span>BLUEPRINT RECORDS</span></div><div class="composition" aria-label="Sample library: 1920 originals, 680 copies, 84 reaction formulas"><span class="originals"></span><span class="copies"></span><span class="formulas"></span></div><dl><div><dt><i class="dot originals"></i> Originals</dt><dd>1,920</dd></div><div><dt><i class="dot copies"></i> Copies</dt><dd>680</dd></div><div><dt><i class="dot formulas"></i> Reaction formulas</dt><dd>84</dd></div></dl><button class="blueprint-link" id="library-note">About this breakdown <span>↗</span></button><span class="blueprint-stamp" aria-hidden="true">EQM / INDUSTRY DIVISION</span></section>
+ </div>
+ <section class="agenda" id="agenda"><div><p class="eyebrow">03 / ON THE HORIZON</p><h2>Make time for trouble.</h2><p class="muted">Sample fleet calendar</p></div><div class="event"><span class="event-date"><b>02</b>NOV</span><div><span class="event-type">ROAM / SAMPLE EVENT</span><h3>Small hulls. Questionable decisions.</h3><p>19:00 UTC · Form up in Bei · Bring something you can lose.</p></div><button class="event-arrow" id="event-note" aria-label="View sample fleet event">↗</button></div></section>
+ <footer id="design-notes"><span>EVE QUARTERMASTER <b>/</b> COMMAND DESK</span><p>Less chrome. More New Eden.<br><small>Interactive design study. Sample data; no live actions or account access.</small></p><button class="text-button" id="principles">Design notes ↗</button></footer>
+</main></div>
+<dialog id="detail"><form method="dialog"><button class="close" aria-label="Close details">×</button></form><p class="eyebrow" id="dialog-kicker">DESIGN STUDY</p><h2 id="dialog-title"></h2><div id="dialog-body"></div><button class="action" id="dismiss">Back to the desk ↗</button></dialog>
+</body></html>

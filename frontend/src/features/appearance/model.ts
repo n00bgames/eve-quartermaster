@@ -1,8 +1,12 @@
 export type Theme = {background:string;panel:string;text:string;muted:string;accent:string;border:string};
 export type NavGroup = {id:string;name:string;modules:string[]};
-export type Preferences = {theme?:Theme;navigation?:NavGroup[];layouts?:Record<string,string[]>};
+export type InterfaceStyle = "classic" | "command_desk";
+// Missing/unknown values must remain Classic, including old accounts/clients.
+export function resolveInterface(value:unknown):InterfaceStyle{return value==="command_desk"?"command_desk":"classic";}
+export type Preferences = {interface?:InterfaceStyle;theme?:Theme;navigation?:NavGroup[];layouts?:Record<string,string[]>};
 export const presets:Record<string,Theme> = {
   "EQM dark":{background:"#101215",panel:"#191e25",text:"#f5f7fa",muted:"#aab4c2",accent:"#e8b84d",border:"#3b4654"},
+  "Weathered brass":{background:"#111819",panel:"#182425",text:"#eeeade",muted:"#a1afae",accent:"#d6b779",border:"#354342"},
   "Deep space":{background:"#0b1425",panel:"#15243c",text:"#eff6ff",muted:"#a9bedb",accent:"#72b7ff",border:"#3c577b"},
   "Emerald":{background:"#0b1814",panel:"#142b23",text:"#edf9f2",muted:"#acd2bf",accent:"#75dfb3",border:"#416859"},
   "Amethyst":{background:"#191221",panel:"#2a2036",text:"#f8f0ff",muted:"#c6b2d8",accent:"#c39bff",border:"#635071"},

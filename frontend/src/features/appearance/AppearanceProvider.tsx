@@ -1,13 +1,14 @@
 import React,{createContext,useContext,useEffect,useRef,useState,type ReactNode} from "react";
 import {api} from "../../lib/api";
-import {presets,contrast,type Preferences,type Theme} from "./model";
+import {presets,contrast,resolveInterface,type Preferences,type Theme,type InterfaceStyle} from "./model";
 import "./appearance.css";
 type Personal={revision:number;preferences:Preferences;banner:string|null};
 type Branding={revision:number;banner:string|null;login_background:string|null};
 const empty:Personal={revision:0,preferences:{},banner:null};
-type Context={personal:Personal;branding:Branding;ready:boolean;busy:boolean;error:string;notice:string;editing:boolean;setEditing:(v:boolean)=>void;setAccount:(id:number|null)=>void;reload:()=>Promise<void>;save:(patch:Partial<{theme:Theme|null;navigation:Preferences["navigation"]|null;layouts:Preferences["layouts"]|null}>)=>Promise<void>;upload:(slot:"personal"|"banner"|"login_background",file:File|null)=>Promise<void>;preview:(theme:Theme|null)=>void};
+type Context={personal:Personal;branding:Branding;ready:boolean;busy:boolean;error:string;notice:string;editing:boolean;setEditing:(v:boolean)=>void;setAccount:(id:number|null)=>void;reload:()=>Promise<void>;save:(patch:Partial<{interface:InterfaceStyle|null;theme:Theme|null;navigation:Preferences["navigation"]|null;layouts:Preferences["layouts"]|null}>)=>Promise<void>;upload:(slot:"personal"|"banner"|"login_background",file:File|null)=>Promise<void>;preview:(theme:Theme|null)=>void};
 const context=createContext<Context|null>(null);
 export function useAppearance(){const value=useContext(context);if(!value)throw new Error("Missing appearance provider");return value;}
+export function useInterfaceStyle(){return resolveInterface(useAppearance().personal.preferences.interface);}
 export function useAppearanceAccount(id?:number){const {setAccount}=useAppearance();useEffect(()=>setAccount(id??null),[id,setAccount]);}
 export function AppearanceProvider({children}:{children:ReactNode}){
  const [account,setAccount]=useState<number|null>(null),[personal,setPersonal]=useState<Personal>(empty),[branding,setBranding]=useState<Branding>({revision:0,banner:null,login_background:null});

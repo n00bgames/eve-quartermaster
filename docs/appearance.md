@@ -2,11 +2,15 @@
 
 Available in the unreleased 2.0.0 build. Deploy the matching frontend/API and apply migration **0095_appearance** before use.
 
+## Interface selection (unreleased 2.0.1)
+
+**EQM-Classic** remains the default. Choose **Command Desk** in Appearance to use the new shell and Overview. This saves per account, independently of palette, uploaded images, custom navigation and panel arrangements. Other modules retain their existing content; signed-out/public pages are unaffected. No new migration beyond the existing appearance schema. [Scope, controls and verification](command-desk.md).
+
 ## Personal settings
 
 Open **Appearance** in the page header or **Settings → Appearance & layout**. All signed-in roles can use these presentation controls, including utility-only Intel Analysts and Quartermasters. They do not grant module permissions, enable ESI collection, or expose administrative settings.
 
-- Choose EQM dark, Deep space, Emerald, Amethyst or Daylight, or edit the six color controls. Preview before saving; Cancel preview restores your saved palette. Text contrast is validated on both the client and server. Semantic warning/threat colors remain distinct.
+- Choose EQM dark, Weathered brass, Deep space, Emerald, Amethyst or Daylight, or edit the six color controls. Preview before saving; Cancel preview restores your saved palette. Text contrast is validated on both the client and server. Semantic warning/threat colors remain distinct.
 - **My banner** overrides the application banner for your account. It does not change another person's banner or the public login page.
 - **Customize navigation** opens the sidebar editor. Drag section handles to reorder groups; edit their names; move modules between groups with handles or the group selector. Arrow buttons provide keyboard/touch alternatives. Add an empty section, or remove a section once its modules have been moved. Use each section’s **Add shortcut** dropdown to select any permitted navigation item, grouped by its standard section. This keeps its original link. For a Quicklaunch menu, add a section, name it Quicklaunch, add your frequently used links, and move the section to the top. Items already in that section are omitted from its dropdown. **Remove shortcut** removes only that copy and is available when another copy remains. Moving a link affects only that occurrence; dropping it into a section that already has it leaves one copy there. Press **Save navigation** to persist edits; Cancel discards the draft.
 - **Arrange panels** enables handles on multi-section workspaces. Each move saves immediately. Overview (including the asset/blueprint pair), Navigation, Ownership, Industry, ESI Sync, Profile, Settings, Quartermaster, Local Scan, D-Scan, Industry/Inventory report workspaces, Battle Reports, Events, HyperNet and PLEX support section ordering. Forms, tables and single-panel modules keep their internal structure. Public report section ordering remains the standard report order.

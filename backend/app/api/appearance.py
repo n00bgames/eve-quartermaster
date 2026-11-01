@@ -55,6 +55,7 @@ class NavGroup(Strict):
 
 class PreferencesPatch(Strict):
     revision: int=Field(ge=0)
+    interface: Literal["classic", "command_desk"] | None=None
     theme: Theme | None=None
     navigation: list[NavGroup] | None=Field(default=None,max_length=20)
     layouts: dict[Key,list[Key]] | None=None

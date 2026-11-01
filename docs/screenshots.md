@@ -644,3 +644,37 @@ November 1, 2026 unreleased 2.0.1 follow-up. Real production UI and journey APIs
 ![Timestamped hull changes and small icons in the timeline](../static/ss/v2.0.1/journey-ships-timeline.jpg)
 
 ![Mobile timeline; table scroll stays inside its container](../static/ss/v2.0.1/journey-ships-mobile.jpg)
+
+
+## Design exploration — Command Desk (not integrated or released)
+
+November 1, 2026. Three clickable HTML studies; fictional data, original SVG art and no account connection. [Design notes and local preview](design/command-desk/README.md). Separate from released feature screenshots. Phase-01 images remain in the capture receipt as history; these are the refined second-pass compositions.
+
+![Refined Overview: shorter introduction and open totals.](../static/ss/design-studies/command-desk/overview-refined.jpg)
+
+![Intel: fictional identity, affiliation emblems and source-labelled sightings.](../static/ss/design-studies/command-desk/intel-dossier.jpg)
+
+![Intel: editable sample field notes.](../static/ss/design-studies/command-desk/intel-field-notes.jpg)
+
+![Industry: jobs, blueprints, totals, anonymous ownership and PI in Station daylight.](../static/ss/design-studies/command-desk/industry-manifest.jpg)
+
+![Overview phone layout with theme and compact controls.](../static/ss/design-studies/command-desk/overview-refined-mobile.jpg)
+
+![Intel phone layout.](../static/ss/design-studies/command-desk/intel-dossier-mobile.jpg)
+
+![Industry phone layout with contained table scrolling.](../static/ss/design-studies/command-desk/industry-manifest-mobile.jpg)
+
+[Provenance and checksums](../static/ss/design-studies/command-desk/capture-receipt.json).
+
+
+## Unreleased Command Desk integration — actual application
+
+November 1, 2026. Production UI and real account/inventory APIs with isolated synthetic data. Distinct from the standalone studies above. [Scope and verification](command-desk.md).
+
+![Implemented opt-in Overview with synthetic SQLite holdings and real EQM APIs.](../static/ss/v2.0.1/command-desk-overview.jpg)
+
+![Appearance header and persistent interface selector; exact crop from actual UI.](../static/ss/v2.0.1/command-desk-selector.jpg)
+
+![Classic fallback retains the same account palette and data.](../static/ss/v2.0.1/eqm-classic-overview.jpg)
+
+![Implemented mobile navigation and full-page Overview, synthetic holdings.](../static/ss/v2.0.1/command-desk-mobile.jpg)

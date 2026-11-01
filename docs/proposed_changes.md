@@ -180,3 +180,12 @@ Implementation: [Find a battle by remembered details](battle-report-management.m
 - [x] Quiet optional Overview card, creator Character Info link, own-character draft picker and minimal in-game window consent.
 - [x] Shared item actions across typed displays; owned blueprint instance links with synced ME/TE/runs, permission checks, generic/private-public fallback, and synthetic screenshot documentation.
 - [ ] In-game acceptance check: open a real owned BPO and BPC through the new draft link and verify the client's instance details. Automated checks deliberately use mocked game-window calls. [Implementation](in-game-links.md).
+
+## Command Desk interface and EQM-Classic (planned)
+
+- [x] Retain the current interface as **EQM-Classic**, selectable alongside Command Desk in Appearance > Interface. Persist per account across sessions; keep this choice independent of colors and uploaded branding.
+- [x] Keep existing accounts on Classic until they opt in. Switching preserves data, permission boundaries, custom navigation/shortcuts and saved panel layouts. Share queries/actions between presentations; Classic remains supported, not a frozen fork.
+- [x] Implement the preference and opt-in shared shell/Overview with existing authorized data/actions. [First integration](command-desk.md); no new migration.
+- [ ] Adapt Intel dossiers and Industry Reports without losing existing fields, controls or privacy. Other modules currently retain their existing presentation within the new shell.
+- [ ] Decide anonymous/public-report presentation separately from a signed-in viewer's preferences. Verify both interface modes, persistence, accessibility, responsive layout, branding and saved arrangements before rollout.
+- [ ] Reference the [three standalone visual studies](design/command-desk/README.md); these are not deployed interfaces.
