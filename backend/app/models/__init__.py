@@ -182,3 +182,5 @@ __all__ = [
 ]
 
 from app.models.appearance import UserAppearance, SiteBranding
+
+from app.models.journey import JourneyTracker, JourneyVisit

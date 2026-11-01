@@ -80,6 +80,38 @@
       "sha256": "2a3315eafdb5a82a51b3a384d0e75f20131a242894357723aee8706f055a3dd8",
       "width": 375,
       "height": 812
+    },
+    {
+      "file": "journey-controls.jpg",
+      "caption": "Explicit opt-in for one of two own linked characters, sampling interval and private journey totals.",
+      "bytes": 106817,
+      "sha256": "b6c74e9158969a1f1b4de1b9099f62e175414e7f1d391a10fb1afa271ab8cd2b",
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "file": "journey-map.jpg",
+      "caption": "Observed Jita-area route with revisits, one deliberate collection gap, per-system combat/current-asset markers and legend.",
+      "bytes": 72574,
+      "sha256": "b91e5c5cb05bccf785fded65bc448caf2d73ca532acfa7d0fc26d8cb5b72c554",
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "file": "journey-system-context.jpg",
+      "caption": "Visited-system selection with synthetic imported character killmails and current character-owned stock, explicit UTC timestamps.",
+      "bytes": 98865,
+      "sha256": "8734a411e85f8117d13007ae386cd34be20d94e271b62671f79d5287fca6b056",
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "file": "journey-mobile.jpg",
+      "caption": "Viewport-fitted responsive journey map with readable labels and no document overflow.",
+      "bytes": 34459,
+      "sha256": "c34b4cafab4461eb09578b33cf721829d353c796cb89aa4c16360eddb1a8490b",
+      "width": 375,
+      "height": 812
     }
   ],
   "updated_at_utc": "2026-10-31T19:43:47.998363+00:00",
@@ -94,6 +126,23 @@
       "local-scan-intel-generation.jpg",
       "local-scan-intel-timeline.jpg",
       "local-scan-intel-mobile.jpg"
+    ]
+  },
+  "journey_followup": {
+    "captured_on_client_date": "2026-10-31",
+    "recorded_at_utc": "2026-11-01T01:29:30.222655+00:00",
+    "application_version": "2.0.1",
+    "source_base_commit": "1bb717883186e127d6a09ddcc171eae7c195d393",
+    "source_state": "Uncommitted private journey-map follow-up, not deployed/published.",
+    "method": "Actual production React UI, real journey API/settings/context queries and isolated SQLite. Backend observe function seeds a fabricated series of location samples. Public CCP ESI system names/coordinates are visual references. Screenshots captured via in-app browser without repainting.",
+    "data": "Synthetic linked characters and scopes, observed visits, holdings and killmails. No live character locations, account data, private ESI requests, OAuth consent or game actions.",
+    "validation": "Browser verified distinct character histories, opt-in/pause persistence, playback advancing to the end, scrubbing, map selection loading correct context, UTC times, responsive map sizing and no document overflow; console errors empty. Backend scope/privacy/sampler/context/migration regressions, replay tests and production build pass.",
+    "limitations": "Preview sampler is not running against live ESI; opt-in capture shows waiting state after a synthetic settings write. Real OAuth and live collection were not exercised. Context screenshot predates final map sizing-only polish; its displayed data and controls are unchanged. Asset markers are current stock during replay, not historical inventory.",
+    "files": [
+      "journey-controls.jpg",
+      "journey-map.jpg",
+      "journey-system-context.jpg",
+      "journey-mobile.jpg"
     ]
   }
 }

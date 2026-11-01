@@ -15,7 +15,8 @@
     "test:navigation": "node --test --experimental-strip-types tests/jumpReplot.test.ts tests/systemDistances.test.ts tests/atlas.test.ts",
     "test:planetary": "node --test --experimental-strip-types tests/planetaryExport.test.ts tests/planetaryShortageReport.test.ts tests/productionChain.test.ts tests/planetaryCharacterScope.test.ts",
     "test:sync": "node --test --experimental-strip-types tests/characterSyncPolling.test.ts",
-    "preview": "vite preview --host 0.0.0.0"
+    "preview": "vite preview --host 0.0.0.0",
+    "test:journey": "node --test --experimental-strip-types tests/journeyReplay.test.ts"
   },
   "dependencies": {
     "@tesseract.js-data/eng": "1.0.0",

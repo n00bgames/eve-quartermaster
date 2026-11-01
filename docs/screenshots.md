@@ -605,3 +605,16 @@ October 31, 2026, **unreleased 2.0.1 follow-up**. Actual built React UI and real
 ![Mobile Local Scan sighting cards](../static/ss/v2.0.1/local-scan-intel-mobile.jpg)
 
 [Behavior and rollout](intel-reports.md#local-scans-feed-the-sighting-timeline) · [Receipt](../static/ss/v2.0.1/capture-receipt.json)
+
+
+## My Journey — private character movement history
+
+October 31, 2026 client-date development session; **unreleased 2.0.1 follow-up**. Actual production UI and APIs with isolated synthetic accounts and visits. System coordinates/names are public CCP data, the route and holdings/combat are fabricated. No real OAuth or character location reads. [Workflow and migration](journey-map.md) · [Receipt](../static/ss/v2.0.1/capture-receipt.json).
+
+![Selected-character opt-in, private scope and sampling controls](../static/ss/v2.0.1/journey-controls.jpg)
+
+![Observed route, revisits, gap and current context markers](../static/ss/v2.0.1/journey-map.jpg)
+
+![Character-owned stock and imported combat for a visited system](../static/ss/v2.0.1/journey-system-context.jpg)
+
+![Viewport-fitted mobile map and gap legend](../static/ss/v2.0.1/journey-mobile.jpg)

@@ -6,6 +6,8 @@ Version sections are written as user-facing release notes first, with implementa
 
 ## [2.0.1] - Unreleased
 
+- Add **Navigation → My Journey**: opt-in, account-private selected-character location sampling, observed visit/system totals, interactive map, current-own-character asset/imported combat context and animated timeline replay. Includes pause/erase, gap handling, minimal read-only SSO and lease-based background sampling. Requires migration 0103 after 0102. [Guide and captures](docs/journey-map.md).
+
 - Feed system-tagged Local Scans into character Intel timelines as Unknown Ship Type sightings at the original UTC scan time. Keep history after scan expiry/deletion, preserve private/anonymous boundaries and unchanged combat totals. Migration 0102 backfills surviving saved scans. [Details and screenshots](docs/intel-reports.md#local-scans-feed-the-sighting-timeline).
 
 - Add an optional saved own-character contact source for automatic scan standings colors, explicit minimal read-only SSO consent, refresh status and safe cache failure/revocation handling. Manual rules take priority; utility roles retain identity-only default enrollment and no private asset/skill collection. Included in migration 0101.

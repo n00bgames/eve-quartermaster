@@ -119,3 +119,6 @@ api_router.include_router(intel_router)
 
 from app.api.appearance import router as appearance_router
 api_router.include_router(appearance_router)
+
+from app.api.journey import router as journey_router
+api_router.include_router(journey_router)

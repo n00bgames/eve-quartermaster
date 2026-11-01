@@ -70,6 +70,7 @@ import { UpcomingEventsWidget } from "./features/events/UpcomingEventsWidget";
 import { IndustrialSystemThreatWidget, LocalThreatWidget, PvpIntelWidget } from "./features/navigation/ThreatIntelWidgets";
 import { SystemDistanceCalculator } from "./features/navigation/SystemDistanceCalculator";
 import { RouteChecker } from "./features/navigation/RouteChecker";
+import {JourneyPanel} from "./features/journey/JourneyPanel";
 import { NavigationAtlas } from "./features/navigation/NavigationAtlas";
 import type { RouteRequest } from "./features/navigation/atlasTypes";
 import type { CharacterFocus } from "./types/characters";
@@ -998,6 +999,7 @@ function NavigationPlanner({ currentUser }: { currentUser: UserAccount }) {
   const [atlasRoute, setAtlasRoute] = useState<RouteRequest | null>(null);
   const [mapRoute, setMapRoute] = useState<NavigationRoute | null>(null);
   return <LayoutRegion region="navigation-planner">
+    <JourneyPanel key="navigation-journey" data-layout-id="navigation-journey" data-layout-label="My Journey"/>
     <NavigationAtlas key="navigation-planner-1" data-layout-id="navigation-planner-1" data-layout-label="Navigation Atlas" route={mapRoute} onRoute={(request) => { setAtlasRoute(request); document.getElementById("atlas-route-planner")?.scrollIntoView({behavior:"smooth",block:"start"}); }} />
     <div key="navigation-planner-2" data-layout-id="navigation-planner-2" data-layout-label="Section 2" id="atlas-route-planner">
     <RouteChecker

@@ -3135,6 +3135,10 @@ async def auth_callback(code: str | None = None, state: str | None = None, db: S
         from app.services.scan_standings import validate_contacts_consent_character
         validate_contacts_consent_character(db, state_user_id, state_mode, character_eve_id)
 
+    if state_mode.startswith("journey_"):
+        from app.api.journey import validate_consent_character
+        validate_consent_character(db, state_user_id, state_mode, character_eve_id)
+
     if state_mode.startswith("client_ui_"):
         from app.api.client_links import validate_ui_consent_character
         validate_ui_consent_character(db, state_user_id, state_mode, character_eve_id)
@@ -3232,6 +3236,8 @@ async def auth_callback(code: str | None = None, state: str | None = None, db: S
     )
     if state_mode.startswith("scan_contacts_"):
         destination = "d-scan" if state_mode.startswith("scan_contacts_dscan_") else "local-scan"
+    elif state_mode.startswith("journey_"):
+        destination = "navigation"
     elif state_mode.startswith("client_ui_"):
         destination = "overview"
     elif state_mode in {"recruitment", "recruiting", "applicant"}:

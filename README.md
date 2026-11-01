@@ -961,3 +961,12 @@ Select a system when generating a Local Scan and each resolved pilot gets an **U
 ![Local Scan sightings in the Intel timeline](static/ss/v2.0.1/local-scan-intel-timeline.jpg)
 
 Actual unreleased UI with synthetic pilots/systems; no live operational data. [Generation explanation](static/ss/v2.0.1/local-scan-intel-generation.jpg) · [Mobile](static/ss/v2.0.1/local-scan-intel-mobile.jpg).
+
+
+### My Journey — private New Eden travel map (unreleased follow-up)
+
+Pick the characters you want to track, log observed system visits at a 15-second sampling target, and replay your route on a pan/zoom map. See per-system visit totals, your selected character's imported killmails and current stored assets, and collection gaps. History stays private to your account, with pause/erase controls and explicit minimal EVE SSO consent. [Usage, limits and migration 0103](docs/journey-map.md).
+
+![Private journey map with visit and context markers](static/ss/v2.0.1/journey-map.jpg)
+
+[Opt-in and sampling controls](static/ss/v2.0.1/journey-controls.jpg) · [System context](static/ss/v2.0.1/journey-system-context.jpg) · [Mobile map](static/ss/v2.0.1/journey-mobile.jpg). Actual unreleased UI, synthetic route/holdings/combat and public CCP coordinates; no live location tracking was performed.
