@@ -26,9 +26,9 @@ def trip(env):
     token.scopes='publicData '+' '.join(sorted(worker.SCOPES));env.db.commit()
     env.character=character;env.token=token
     env.factory=lambda:Session(env.db.bind,expire_on_commit=False)
-    worker._access.clear();worker._online.clear()
+    worker._access.clear();worker._online.clear();worker._ships.clear()
     yield env
-    worker._access.clear();worker._online.clear()
+    worker._access.clear();worker._online.clear();worker._ships.clear()
 
 def path(e,suffix=''):
     return f'/api/journey/characters/{e.character.id}'+suffix

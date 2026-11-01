@@ -119,7 +119,7 @@ def test_sighting_migration_roundtrip_and_head():
             module.upgrade();assert 'intel_sightings' in inspect(conn).get_table_names()
             assert any(x['column_names']==['subject_id','observer_user_id','request_id'] for x in inspect(conn).get_unique_constraints('intel_sightings'))
             module.downgrade();assert 'intel_sightings' not in inspect(conn).get_table_names();module.upgrade()
-    config=Config();config.set_main_option('script_location',str(path.parents[1]));assert ScriptDirectory.from_config(config).get_heads()==['0103_journey_history']
+    config=Config();config.set_main_option('script_location',str(path.parents[1]));assert ScriptDirectory.from_config(config).get_heads()==['0104_journey_ship_history']
 
 
 def test_backdated_sighting_preserves_posting_time_and_utc_offset(seen):

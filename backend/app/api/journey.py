@@ -8,7 +8,7 @@ from app.api.auth import get_current_user
 from app.db.session import get_db
 from app.models import EsiToken, EveCharacter, User
 from app.services import journey
-from app.services.journey_worker import SCOPES
+from app.services.journey_worker import SCOPES, SHIP_SCOPE
 from app.services.esi_scope_policy import effective_token_scopes
 from app.services.permissions import can_view_section
 from fastapi import HTTPException
@@ -26,6 +26,7 @@ router=APIRouter(prefix='/journey',tags=['journey'],dependencies=[Depends(access
 
 class SettingsInput(BaseModel):
     model_config=ConfigDict(extra='forbid')
+    track_ship: bool | None=None
     enabled: bool
     interval_seconds: Literal[15,30,60,120,300]=15
 
@@ -44,20 +45,21 @@ def settings(user:User=Depends(get_current_user),db:Session=Depends(get_db)):
 
 
 @router.get('/characters/{character_id}/auth-url')
-def consent(character_id:int,user:User=Depends(get_current_user),db:Session=Depends(get_db)):
+def consent(character_id:int,include_ship:bool=False,user:User=Depends(get_current_user),db:Session=Depends(get_db)):
     from app.api.esi import build_auth_url
     character=journey.own_character(db,user,character_id)
     token=db.scalar(select(EsiToken).where(EsiToken.user_id==user.id,EsiToken.character_id==character_id,EsiToken.revoked_at.is_(None))
         .order_by(EsiToken.created_at.desc(),EsiToken.id.desc()))
     # Eligibility is checked before consent, enrollment stays off until PATCH enabled.
     from app.services.esi_scope_policy import allowed_scopes
-    if not SCOPES <= allowed_scopes(db,user): raise HTTPException(403,'Location access is unavailable for this account')
-    return build_auth_url(sorted((effective_token_scopes(token,db) if token else set())|SCOPES|{'publicData'}),user,f'journey_{character.character_id}')
+    scopes=SCOPES | ({SHIP_SCOPE} if include_ship else set())
+    if not scopes <= allowed_scopes(db,user): raise HTTPException(403,'Location access is unavailable for this account')
+    return build_auth_url(sorted((effective_token_scopes(token,db) if token else set())|scopes|{'publicData'}),user,f'journey_{character.character_id}')
 
 
 @router.patch('/characters/{character_id}')
 def configure(character_id:int,payload:SettingsInput,user:User=Depends(get_current_user),db:Session=Depends(get_db)):
-    return journey.configure(db,user,character_id,payload.enabled,payload.interval_seconds)
+    return journey.configure(db,user,character_id,payload.enabled,payload.interval_seconds,payload.track_ship)
 
 
 @router.delete('/characters/{character_id}')

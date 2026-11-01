@@ -144,6 +144,38 @@
       "sha256": "fb7339b5d612578077d9367ed3682af8dac412531646ac4daf80a56a6bb8d722",
       "width": 375,
       "height": 812
+    },
+    {
+      "file": "journey-ships-controls.jpg",
+      "caption": "Independent opt-in ship recording within private character journey controls.",
+      "bytes": 100760,
+      "sha256": "abd4df5edb48ec283c452bcde991782550f1286a8d9a01c95fc318ad5344f1e2",
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "file": "journey-ships-replay.jpg",
+      "caption": "Gila at the selected replay step after a same-system hull change; system visit total stays ten.",
+      "bytes": 75757,
+      "sha256": "4afeccf49afe36b5577d2e8cb53858b9786ac49b9f6b5b590897ccc3be1e2ca2",
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "file": "journey-ships-timeline.jpg",
+      "caption": "Timestamped Raptor, Deimos and Gila hull segments with small icons, including the same-system swap.",
+      "bytes": 105806,
+      "sha256": "37999618c59d723678f816353a70c1b703b27a8e4232c07c2b0ddd157762d3b4",
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "file": "journey-ships-mobile.jpg",
+      "caption": "Responsive mobile ship timeline; horizontal table scroll is contained.",
+      "bytes": 43192,
+      "sha256": "db311928a90b685b366d542bcf4755d80534f7f8c722c847b773218bb5050d2c",
+      "width": 375,
+      "height": 812
     }
   ],
   "updated_at_utc": "2026-10-31T19:43:47.998363+00:00",
@@ -192,6 +224,23 @@
       "matchups-counters.jpg",
       "matchups-weapons.jpg",
       "matchups-mobile.jpg"
+    ]
+  },
+  "journey_hull_followup": {
+    "captured_on_client_date": "2026-11-01",
+    "recorded_at_utc": "2026-11-01T13:27:58.692949+00:00",
+    "application_version": "2.0.1",
+    "source_base_commit": "e2c69454d6b453a23103a688402745ef1edd7212",
+    "source_state": "Uncommitted optional private journey hull follow-up; not deployed/published. Migration0104 required.",
+    "method": "Actual production React build, real journey APIs and isolated SQLite. Backend observe function seeds synthetic per-visit hull segments; in-app browser screenshots without pixel editing.",
+    "data": "Synthetic linked accounts, scopes, routes, hull changes and earlier unknown hull. Public CCP system coordinates from the earlier journey fixture; public hull icons loaded from CCP image service. No live private ESI, OAuth consent or game action.",
+    "validation": "136 backend regressions +7 subtests passed, then final18 hull-specific tests including three added OAuth/network checks (139 unique tests). Five frontend replay/projection tests and final productionTSC/Vitebuild pass. Browser verified per-character consent isolation and toggle persistence, same-system Deimos/Gila scrub updates with ten visits unchanged, icons, mobile no document overflow and no console errors.",
+    "limitations": "Sampling/cache delays remain; separate location/ship endpoints are not atomic. Old/location-only hulls are not reconstructed. Preview does not run live sampler. Mobile timeline intentionally scrolls horizontally inside its container for remaining columns.",
+    "files": [
+      "journey-ships-controls.jpg",
+      "journey-ships-replay.jpg",
+      "journey-ships-timeline.jpg",
+      "journey-ships-mobile.jpg"
     ]
   }
 }

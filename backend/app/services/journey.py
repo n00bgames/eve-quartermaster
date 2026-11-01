@@ -5,11 +5,12 @@ from sqlalchemy import and_, case, delete, distinct, func, literal, or_, select
 from sqlalchemy.orm import aliased
 from app.domain.intel import utc
 from app.models import Asset, EveCharacter, EveConstellation, EveRegion, EveStation, EveSystem, EveType, EsiToken, Location, OwnershipEntity, Killmail, KillmailAttacker
-from app.models.journey import JourneyTracker, JourneyVisit
+from app.models.journey import JourneyTracker, JourneyVisit, JourneyShipSegment
 from app.services.journey_worker import SCOPES, character_token, now
 from app.services.permissions import can_view_section
 
 LIMIT = 2000
+SHIP_LIMIT = 5000
 
 
 def own_character(db, user, character_id):
@@ -25,7 +26,7 @@ def tracker_for(db, user, character_id):
 
 
 def state_payload(row):
-    return {'enabled': bool(row and row.enabled), 'interval_seconds': row.interval_seconds if row else 15,
+    return {'track_ship': bool(row and row.track_ship), 'enabled': bool(row and row.enabled), 'interval_seconds': row.interval_seconds if row else 15,
         'state': row.state if row else 'paused',
         'checked_at': utc(row.checked_at).isoformat() if row and row.checked_at else None,
         'last_seen_at': utc(row.last_seen_at).isoformat() if row and row.last_seen_at else None}
@@ -35,12 +36,13 @@ def settings(db, user):
     rows = db.scalars(select(EveCharacter).where(EveCharacter.owner_user_id == user.id).order_by(EveCharacter.name)).all()
     trackers = {r.character_id:r for r in db.scalars(select(JourneyTracker).where(JourneyTracker.user_id == user.id))}
     return {'characters': [{'character_id': c.id, 'eve_id': c.character_id, 'name': c.name,
-        'authorized': character_token(db, user.id, c.id) is not None, **state_payload(trackers.get(c.id))} for c in rows],
+        'authorized': character_token(db, user.id, c.id) is not None,
+        'ship_authorized': character_token(db,user.id,c.id,True) is not None, **state_payload(trackers.get(c.id))} for c in rows],
         'privacy': 'Only your account can view this history. Tracking is off until you explicitly enable a character.',
         'intervals': [15,30,60,120,300]}
 
 
-def configure(db, user, character_id, enabled, interval):
+def configure(db, user, character_id, enabled, interval, track_ship=None):
     own_character(db, user, character_id)
     if enabled and character_token(db, user.id, character_id) is None:
         raise HTTPException(409, 'Enable read-only location and online access for this character first')
@@ -50,8 +52,15 @@ def configure(db, user, character_id, enabled, interval):
     if row is None:
         row = JourneyTracker(user_id=user.id, character_id=character_id, revision=0)
         db.add(row)
+    selected = bool(row.track_ship) if track_ship is None else track_ship
+    if selected and (enabled or track_ship is True) and character_token(db,user.id,character_id,True) is None:
+        raise HTTPException(409,'Enable read-only ship access for this character first, or turn off ship recording')
+    if row.track_ship != selected:
+        row.current_ship_segment_id = None
+    row.track_ship = selected
     if row.enabled != enabled:
         row.current_visit_id = None
+        row.current_ship_segment_id = None
     row.enabled = enabled; row.interval_seconds = interval; row.revision += 1
     row.state = 'waiting' if enabled else 'paused'
     row.next_poll_at = now() if enabled else None
@@ -64,9 +73,11 @@ def clear_history(db, user, character_id):
     row = tracker_for(db,user,character_id)
     if row:
         row = db.scalar(select(JourneyTracker).where(JourneyTracker.id == row.id).with_for_update())
-        row.enabled = False; row.state = 'paused'; row.current_visit_id = None
+        row.enabled = False; row.state = 'paused'; row.current_visit_id = None; row.current_ship_segment_id = None
         row.checked_at = None; row.last_seen_at = None; row.next_poll_at = None
         row.lease_token = None; row.lease_until = None; row.revision += 1
+        db.execute(delete(JourneyShipSegment).where(JourneyShipSegment.visit_id.in_(
+            select(JourneyVisit.id).where(JourneyVisit.tracker_id == row.id))))
         db.execute(delete(JourneyVisit).where(JourneyVisit.tracker_id == row.id))
         db.commit()
     return {'deleted': True, 'tracking_paused': True}
@@ -97,8 +108,19 @@ def history(db, user, character_id, start, end):
                 'security':system.security_status, 'x':system.x, 'z':system.z}
     systems = [{**meta.get(sid, {'system_id':sid,'name':f'System {sid}','region':None,'security':None,'x':None,'z':None}),
         'visits':count,'first_seen_at':utc(first).isoformat(),'last_seen_at':utc(last).isoformat()} for sid,count,first,last in stats]
-    return {'character': {'character_id':character.id,'eve_id':character.character_id,'name':character.name},
-        'tracking':state_payload(tracker),'from_at':start.isoformat(),'to_at':end.isoformat(),
+    ship_count = db.scalar(select(func.count()).select_from(JourneyShipSegment).join(JourneyVisit,JourneyVisit.id==JourneyShipSegment.visit_id)
+        .where(*filters)) or 0
+    ship_rows = db.execute(select(JourneyShipSegment,JourneyVisit.system_id,EveType.name)
+        .join(JourneyVisit,JourneyVisit.id==JourneyShipSegment.visit_id)
+        .outerjoin(EveType,EveType.type_id==JourneyShipSegment.ship_type_id)
+        .where(*filters,JourneyVisit.id.in_([v.id for v in visits])).order_by(JourneyShipSegment.first_seen_at,JourneyShipSegment.id).limit(SHIP_LIMIT)).all()
+    return {'ship_segments':[{'id':s.id,'visit_id':s.visit_id,'system_id':sid,'ship_type_id':s.ship_type_id,
+        'ship_name':name or f'Type {s.ship_type_id}','first_seen_at':utc(s.first_seen_at).isoformat(),
+        'last_seen_at':utc(s.last_seen_at).isoformat(),'samples':s.samples,'gap_before':s.gap_before} for s,sid,name in ship_rows],
+        'ship_segment_count':ship_count,'ship_segments_truncated':ship_count>SHIP_LIMIT,'ship_segment_limit':SHIP_LIMIT,
+        'character': {'character_id':character.id,'eve_id':character.character_id,'name':character.name},
+        'tracking':{**state_payload(tracker),'authorized':character_token(db,user.id,character_id) is not None,
+            'ship_authorized':character_token(db,user.id,character_id,True) is not None},'from_at':start.isoformat(),'to_at':end.isoformat(),
         'total_visits':sum(r[1] for r in stats),'unique_systems':len(stats),'window_visits':total,
         'limit':LIMIT,'truncated':total > LIMIT,'systems':systems,
         'visits':[{'id':v.id,'system_id':v.system_id,'first_seen_at':utc(v.first_seen_at).isoformat(),

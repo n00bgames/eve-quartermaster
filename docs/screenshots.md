@@ -631,3 +631,16 @@ November 1, 2026 development captures; unreleased 2.0.1 follow-up. Actual produc
 ![Weapon-family framework with linked mounted-weapon references and atlas limitation](../static/ss/v2.0.1/matchups-weapons.jpg)
 
 ![Responsive mobile hull and resistance reference](../static/ss/v2.0.1/matchups-mobile.jpg)
+
+
+## My Journey — optional private hull history
+
+November 1, 2026 unreleased 2.0.1 follow-up. Real production UI and journey APIs with isolated SQLite and synthetic hull observations. Current replay changes Deimos to Gila inside Jita while the all-time system visit total stays ten. Per-character ship consent/recording controls, legacy unknown hulls and desktop/mobile icons verified; no live private ESI, game action or deployment. [Guide/migration 0104](journey-map.md#optional-ship-types-and-hull-icons) · [Receipt](../static/ss/v2.0.1/capture-receipt.json).
+
+![Explicit optional hull recording beside character controls](../static/ss/v2.0.1/journey-ships-controls.jpg)
+
+![Hull and icon at the selected replay step, unchanged visit totals](../static/ss/v2.0.1/journey-ships-replay.jpg)
+
+![Timestamped hull changes and small icons in the timeline](../static/ss/v2.0.1/journey-ships-timeline.jpg)
+
+![Mobile timeline; table scroll stays inside its container](../static/ss/v2.0.1/journey-ships-mobile.jpg)

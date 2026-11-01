@@ -11,30 +11,32 @@ import httpx
 from sqlalchemy import or_, select, update
 from app.db.session import SessionLocal
 from app.models import EveCharacter, EsiToken, User
-from app.models.journey import JourneyTracker, JourneyVisit
+from app.models.journey import JourneyTracker, JourneyVisit, JourneyShipSegment
 from app.services.esi_client import EsiClient, USER_AGENT
 from app.services.esi_scope_policy import effective_token_scopes
 from app.services.permissions import can_view_section
 from app.domain.intel import utc
 
 SCOPES = {'esi-location.read_location.v1', 'esi-location.read_online.v1'}
+SHIP_SCOPE = 'esi-location.read_ship_type.v1'
 _task = None
 _access = {}  # bounded transient bearer cache, never persisted or included in responses/logs
 _online = {}
+_ships = {}  # type ID and expiry only; never retain ship names or item IDs
 
 
 def now():
     return datetime.now(timezone.utc)
 
 
-def character_token(db, user_id, character_id):
+def character_token(db, user_id, character_id, include_ship=False):
     user = db.get(User, user_id, populate_existing=True)
     character = db.get(EveCharacter, character_id, populate_existing=True)
     if not user or user.deleted_at or not character or character.owner_user_id != user_id or not can_view_section(user, 'navigation', db):
         return None
     tokens = db.scalars(select(EsiToken).where(EsiToken.user_id == user_id, EsiToken.character_id == character_id,
         EsiToken.revoked_at.is_(None)).order_by(EsiToken.created_at.desc(), EsiToken.id.desc())).all()
-    return next((t for t in tokens if SCOPES <= effective_token_scopes(t, db)), None)
+    return next((t for t in tokens if (SCOPES | ({SHIP_SCOPE} if include_ship else set())) <= effective_token_scopes(t, db)), None)
 
 
 def claim(db, tracker_id, lease, at):
@@ -67,7 +69,7 @@ def cache_seconds(headers, default):
     return default
 
 
-async def refresh_access(encrypted):
+async def refresh_access(encrypted, include_ship=False):
     # The standard sync refresher needs an attached ORM session. This minimal,
     # journey-only refresh deliberately runs after our DB session is closed.
     from app.core.config import get_settings
@@ -77,7 +79,7 @@ async def refresh_access(encrypted):
     async with httpx.AsyncClient(timeout=20, follow_redirects=False) as client:
         response = await client.post('https://login.eveonline.com/v2/oauth/token',
             auth=httpx.BasicAuth(settings.eve_sso_client_id, settings.eve_sso_client_secret),
-            data={'grant_type': 'refresh_token', 'refresh_token': secret, 'scope': ' '.join(sorted(SCOPES))},
+            data={'grant_type': 'refresh_token', 'refresh_token': secret, 'scope': ' '.join(sorted(SCOPES | ({SHIP_SCOPE} if include_ship else set())))},
             headers={'User-Agent': USER_AGENT, 'Accept': 'application/json'})
     response.raise_for_status()
     payload = response.json()
@@ -85,7 +87,7 @@ async def refresh_access(encrypted):
     return payload['access_token'], rotated, now() + timedelta(seconds=max(30, int(payload.get('expires_in', 1200)) - 60))
 
 
-async def fetch_sample(access, eve_id, key):
+async def fetch_sample(access, eve_id, key, include_ship=False):
     client = EsiClient(access_token=access)
     try:
         cached = _online.get(key)
@@ -104,12 +106,24 @@ async def fetch_sample(access, eve_id, key):
         if type(sid) is not int or sid <= 0:
             raise ValueError('Malformed location response')
         # Store solar system only, not station/structure IDs or exact coordinates.
-        return sid, cache_seconds(headers, 5)
+        delay = cache_seconds(headers, 5)
+        if not include_ship:
+            return sid, delay
+        cached_ship = _ships.get(key)
+        if not cached_ship or cached_ship[1] <= now():
+            ship, ship_headers = await asyncio.wait_for(client.get_with_headers(f'/characters/{eve_id}/ship/'), 15)
+            tid = ship.get('ship_type_id') if isinstance(ship, dict) else None
+            if type(tid) is not int or not 0 < tid < 2**31:
+                raise ValueError('Malformed ship response')
+            cached_ship = (tid, now() + timedelta(seconds=cache_seconds(ship_headers, 5)))
+            if len(_ships) >= 1000: _ships.clear()
+            _ships[key] = cached_ship
+        return sid, delay, cached_ship[0]
     finally:
         await client.close()
 
 
-def observe(db, tracker, system_id, at):
+def observe(db, tracker, system_id, at, ship_type_id=None):
     if tracker.last_seen_at and at <= utc(tracker.last_seen_at):
         return
     previous = db.get(JourneyVisit, tracker.current_visit_id) if tracker.current_visit_id else None
@@ -125,6 +139,19 @@ def observe(db, tracker, system_id, at):
             samples=1, gap_before=previous is None)
         db.add(visit); db.flush(); tracker.current_visit_id = visit.id
     tracker.last_seen_at = at
+    # A ship change is a separate segment within the visit, never a new visit.
+    if tracker.track_ship and ship_type_id is not None:
+        segment = db.get(JourneyShipSegment,tracker.current_ship_segment_id) if tracker.current_ship_segment_id else None
+        continuous = bool(segment and previous and segment.visit_id == previous.id
+            and (at-utc(segment.last_seen_at)).total_seconds() <= max(90,tracker.interval_seconds*3))
+        if continuous and segment.visit_id == tracker.current_visit_id and segment.ship_type_id == ship_type_id:
+            segment.last_seen_at = at; segment.samples += 1
+        else:
+            segment = JourneyShipSegment(visit_id=tracker.current_visit_id,ship_type_id=ship_type_id,
+                first_seen_at=at,last_seen_at=at,samples=1,gap_before=not continuous)
+            db.add(segment);db.flush();tracker.current_ship_segment_id=segment.id
+    else:
+        tracker.current_ship_segment_id=None
 
 
 async def poll(tracker_id, factory=SessionLocal, fetch=fetch_sample, refresh=refresh_access):
@@ -133,21 +160,22 @@ async def poll(tracker_id, factory=SessionLocal, fetch=fetch_sample, refresh=ref
         if not claim(db, tracker_id, lease, now()):
             return
         tracker = owned(db, tracker_id, lease)
-        token = character_token(db, tracker.user_id, tracker.character_id) if tracker else None
+        token = character_token(db, tracker.user_id, tracker.character_id, tracker.track_ship) if tracker else None
         if not token:
             if tracker:
-                tracker.state = 'authorization_needed'; tracker.enabled = False; tracker.current_visit_id = None
+                tracker.state = 'authorization_needed'; tracker.enabled = False; tracker.current_visit_id = None; tracker.current_ship_segment_id = None
                 tracker.lease_token = None; tracker.lease_until = None
                 db.commit()
             return
+        include_ship = tracker.track_ship
         token_id, encrypted = token.id, token.encrypted_refresh_token
         user_id, character_id = tracker.user_id, tracker.character_id
         eve_id = db.get(EveCharacter, tracker.character_id).character_id
     try:
         fingerprint = sha256(encrypted.encode()).hexdigest()
         cached = _access.get(token_id)
-        if not cached or cached[0] != fingerprint or cached[2] <= now():
-            access, rotated, expires = await asyncio.wait_for(refresh(encrypted), 25)
+        if not cached or cached[0] != fingerprint or cached[2] <= now() or cached[3] != include_ship:
+            access, rotated, expires = await asyncio.wait_for(refresh(encrypted, include_ship=True) if include_ship else refresh(encrypted), 25)
             with factory() as db:
                 # OAuth rotation is credential maintenance even if collection was
                 # paused in flight. Preserve it without reviving a revoked token,
@@ -164,30 +192,33 @@ async def poll(tracker_id, factory=SessionLocal, fetch=fetch_sample, refresh=ref
                 if saved.rowcount != 1:
                     return
                 tracker = owned(db, tracker_id, lease)
-                token = character_token(db, user_id, character_id) if tracker else None
+                token = character_token(db, user_id, character_id, tracker.track_ship) if tracker else None
                 if not tracker or not token or token.id != token_id:
                     return  # Consent/ownership must still permit collecting location.
                 db.commit()
             fingerprint = sha256(rotated.encode()).hexdigest()
             if len(_access) >= 1000:
                 _access.clear()
-            _access[token_id] = (fingerprint, access, expires)
+            _access[token_id] = (fingerprint, access, expires, include_ship)
         else:
             access = cached[1]
         # Existing transport handles error budgets/rate limits; outer timeout also bounds waiting.
-        system_id, delay = await asyncio.wait_for(fetch(access, eve_id, (token_id, fingerprint)), 35)
+        sample = await asyncio.wait_for(fetch(access, eve_id, (token_id, fingerprint), include_ship=True)
+            if include_ship else fetch(access, eve_id, (token_id, fingerprint)), 55 if include_ship else 35)
+        system_id, delay = sample[:2]
+        ship_type_id = sample[2] if include_ship and system_id is not None else None
         at = now()
         with factory() as db:
             tracker = owned(db, tracker_id, lease)
-            token = character_token(db, tracker.user_id, tracker.character_id) if tracker else None
+            token = character_token(db, tracker.user_id, tracker.character_id, tracker.track_ship) if tracker else None
             if not tracker or not token or token.id != token_id or sha256(token.encrypted_refresh_token.encode()).hexdigest() != fingerprint:
                 return
             tracker.checked_at = at; tracker.failures = 0
             tracker.state = 'tracking' if system_id is not None else 'offline'
             if system_id is not None:
-                observe(db, tracker, system_id, at)
+                observe(db, tracker, system_id, at, ship_type_id)
             else:
-                tracker.current_visit_id = None
+                tracker.current_visit_id = None; tracker.current_ship_segment_id = None
             tracker.next_poll_at = at + timedelta(seconds=max(tracker.interval_seconds, min(86400, delay)))
             tracker.lease_token = None; tracker.lease_until = None
             db.commit()
@@ -204,7 +235,7 @@ async def poll(tracker_id, factory=SessionLocal, fetch=fetch_sample, refresh=ref
                 terminal = terminal or getattr(error, 'status_code', None) in {401,403}
                 tracker.failures += 1; tracker.checked_at = now(); tracker.state = 'authorization_needed' if terminal else 'unavailable'
                 if terminal: tracker.enabled = False
-                tracker.current_visit_id = None
+                tracker.current_visit_id = None; tracker.current_ship_segment_id = None
                 tracker.next_poll_at = now() + timedelta(seconds=min(1800, 30 * 2 ** min(tracker.failures, 6)))
                 tracker.lease_token = None; tracker.lease_until = None
                 db.commit()
@@ -243,4 +274,4 @@ async def stop_journey_worker():
         except asyncio.CancelledError:
             pass
         _task = None
-    _access.clear(); _online.clear()
+    _access.clear(); _online.clear(); _ships.clear()

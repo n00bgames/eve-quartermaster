@@ -6,6 +6,8 @@ Version sections are written as user-facing release notes first, with implementa
 
 ## [2.0.1] - Unreleased
 
+- Add optional per-character **Record ship types** to My Journey: minimal read-only ship consent, private timestamped hull changes and icons in the timeline/current replay badge. Same-system hull swaps do not inflate visit totals; old history stays Unknown hull. Migration 0104 keeps existing trackers location-only and adds no backfill. [Controls and privacy](docs/journey-map.md#optional-ship-types-and-hull-icons).
+
 - Add **Intel → Matchups**, the first PvP Knowledgebase module: imported base-hull resistance maps, seven hulls/nine sourced scenario references, pilot/FC context, conditional counter tools, read-only D-Scan handoff/paste analysis and a weapon-family reference framework. No new private ESI scopes or migration. Mounted-weapon screenshot atlas and quantitative fitted examples remain future work. [Guide](docs/matchups.md).
 
 - Add **Navigation → My Journey**: opt-in, account-private selected-character location sampling, observed visit/system totals, interactive map, current-own-character asset/imported combat context and animated timeline replay. Includes pause/erase, gap handling, minimal read-only SSO and lease-based background sampling. Requires migration 0103 after 0102. [Guide and captures](docs/journey-map.md).

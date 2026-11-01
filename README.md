@@ -979,3 +979,12 @@ Look up a hull or open a D-Scan in **Intel → Matchups**. Read imported base re
 ![Deimos base resistance reference and scan composition](static/ss/v2.0.1/matchups-hull.jpg)
 
 [Fleet counter tools](static/ss/v2.0.1/matchups-counters.jpg) · [Weapon reference framework](static/ss/v2.0.1/matchups-weapons.jpg) · [Mobile resistance map](static/ss/v2.0.1/matchups-mobile.jpg). Actual unreleased UI with synthetic accounts/counts and public CCP hull data. No new ESI scopes, private collection or database migration; matching API/frontend required.
+
+
+### My Journey — optional hull history (unreleased follow-up)
+
+Opt a linked character into **Record ship types** with minimal read-only ship consent. See hull icons/names beside recorded timeline entries and the current replay position; same-system hull changes add replay steps without increasing system visits. Earlier/location-only observations remain Unknown hull. Account-private, with the existing pause/erase controls; no ship names or individual ship IDs retained. Requires migration **0104** after 0103 and matching API/frontend. [Controls, limits and privacy](docs/journey-map.md#optional-ship-types-and-hull-icons).
+
+![Journey timeline with sampled hull types and icons](static/ss/v2.0.1/journey-ships-timeline.jpg)
+
+[Opt-in controls](static/ss/v2.0.1/journey-ships-controls.jpg) · [Replay hull badge](static/ss/v2.0.1/journey-ships-replay.jpg) · [Mobile timeline](static/ss/v2.0.1/journey-ships-mobile.jpg). Actual unreleased UI, synthetic accounts/routes/hull observations; no live EVE consent or ship tracking performed.
