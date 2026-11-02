@@ -125,3 +125,6 @@ api_router.include_router(journey_router)
 
 from app.api.matchups import router as matchups_router
 api_router.include_router(matchups_router)
+
+from app.api.intel_membership import router as intel_membership_router
+api_router.include_router(intel_membership_router)

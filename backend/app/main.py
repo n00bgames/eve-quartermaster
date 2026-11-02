@@ -23,9 +23,12 @@ async def lifespan(_: FastAPI):
     start_cleanup()
     from app.services.journey_worker import start_journey_worker, stop_journey_worker
     start_journey_worker()
+    from app.services.intel_membership import start_membership_worker, stop_membership_worker
+    start_membership_worker()
     try:
         yield
     finally:
+        await stop_membership_worker()
         await stop_journey_worker()
         await stop_watchdog()
         await stop_worker()

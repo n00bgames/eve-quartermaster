@@ -6,6 +6,8 @@ Version sections are written as user-facing release notes first, with implementa
 
 ## [2.0.1] - Unreleased
 
+- Add corporation/alliance **Organization strength** to Intel Reports: opt-in daily public member-count monitoring, manual refresh, timestamped 7/30/90-day net changes, history charts and observed alliance corporation movements. Incomplete counts preserve the last complete total; real historical corporation observations supply available baselines. No private roster collection or new ESI scopes. Requires migration 0105 and matching API/frontend.
+
 - Add Windows/Linux **restart-eqm** helpers for existing backend/frontend containers, with optional worker restart, preflight checks and database-backed API/frontend readiness verification. PostgreSQL and Redis stay running; no pull or image rebuild. A failed readiness check returns a nonzero exit code instead of reporting success.
 
 - Add opt-in **Command Desk** shell and Overview with a persistent **EQM-Classic** fallback. Existing accounts remain Classic; colors, branding, custom navigation and panel arrangements are retained. Keep existing inventory/actions, add mobile navigation and collapsible Overview filters. No new migration. [Controls and rollout](docs/command-desk.md).

@@ -23,7 +23,7 @@ def test_unknown_hull_from_missing_or_null_ship_preserves_zero_combat(seen):
     assert retry.status_code==201 and retry.json()['ship_type_id'] is None
     assert retry.json()['ship_type_name']=='Unknown Ship Type'
     assert seen.client.post(path,json={**body,'ship_type_id':100}).status_code==409
-    assert seen.client.post(path,json=fields()).status_code==201
+    assert seen.client.post(path,json=fields(observed_at='2026-10-02T12:30:00Z')).status_code==201
     data=report(seen,sid,'?from_at=2026-10-01T00:00:00Z&to_at=2026-11-01T00:00:00Z')
     assert (data['summary']['kills'],data['summary']['losses'],data['sightings']['total'])==(0,0,2)
     unknown=next(r for r in data['summary']['ships'] if r['id'] is None)

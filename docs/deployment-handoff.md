@@ -131,3 +131,8 @@ Deploy matching backend/frontend after migration 0093; this split needs no addit
 ## Battle Report management (2.0 development)
 
 Apply migration **0094_battle_report_corporation** after 0093 with the matching backend/frontend. Historic snapshots retain null corporation attribution; never infer it from battle participants. Verify own/private isolation, a director's attributed public reports, date-range review and a detailed PDF. [Scope, migration and tests](battle-report-management.md). This source update was prepared locally; it does not indicate a deployment.
+
+
+## Intel organization membership monitoring (2.0.1 development)
+
+Apply **0105_intel_membership** after 0104 and rebuild backend/frontend together. Adds daily shared opt-in corporation/alliance membership monitoring, manual counts, comparison windows, retained observations and alliance corporation-list changes. Existing monitors start absent/off; no network backfill or new ESI scopes. The API lifespan runs the leased public sampler; RQ does not need another queue. Verify manual refresh with monitoring off, explicit daily enable/pause/reload, partial alliance data retaining the last complete total, permissions and baseline timestamps. [Detailed behavior](intel-reports.md#corporation-and-alliance-membership-trends). This implementation has not deployed, migrated or restarted the live server.

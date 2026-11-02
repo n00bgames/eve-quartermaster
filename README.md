@@ -81,6 +81,12 @@ See [CHANGELOG.md](CHANGELOG.md) for version-by-version release notes.
 - Jump Capable Ship Plotter with automatic routing through ordered, required cyno waypoints, JDC/JFC fuel math, mapped alternate jump points, explicit station-risk warnings, nearby operational map context, and kill/activity intel per jump.
 - Sideloadable Android WebView wrapper build script that outputs `EQM.apk`.
 
+## Organization membership intelligence
+
+Intel corporation/alliance dossiers now show **Organization strength**: character counts, observed growth/loss, 7/30/90-day net changes, a historical chart, optional daily monitoring and manual refresh. Alliance views also show observed corporation arrivals/departures. Incomplete upstream counts stay incomplete rather than looking like a sudden member exodus. Requires migration 0105 and matching API/frontend; **unreleased development feature**. [Controls and limits](docs/intel-reports.md#corporation-and-alliance-membership-trends).
+
+![Organization strength — actual UI with fictional corporation history](static/ss/v2.0.1/membership-corporation.jpg)
+
 ## Requirements
 
 - [x] 64-bit Windows 11 with WSL2, or a current 64-bit Linux distribution

@@ -189,3 +189,8 @@ Implementation: [Find a battle by remembered details](battle-report-management.m
 - [ ] Adapt Intel dossiers and Industry Reports without losing existing fields, controls or privacy. Other modules currently retain their existing presentation within the new shell.
 - [ ] Decide anonymous/public-report presentation separately from a signed-in viewer's preferences. Verify both interface modes, persistence, accessibility, responsive layout, branding and saved arrangements before rollout.
 - [ ] Reference the [three standalone visual studies](design/command-desk/README.md); these are not deployed interfaces.
+
+
+## Public organization membership intelligence
+
+- [x] Corporation/alliance Organization strength: public daily opt-in monitoring and manual census, character totals, observed gain/loss, timestamped 7/30/90-day net changes, chart/table and alliance corporation movements. Preserve incomplete/stale coverage, baseline provenance and original legacy profile observations; no private roster enrollment. Migration 0105, matching API/frontend, not deployed by development. [Behavior and limits](intel-reports.md#corporation-and-alliance-membership-trends).

@@ -208,9 +208,41 @@
       "sha256": "ee7fa2d5cd9b419b7613beb6fe658a602bcde675610a247f308cc4cefb8d0969",
       "width": 374,
       "height": 3448
+    },
+    {
+      "file": "membership-corporation.jpg",
+      "caption": "Corporation count, observed growth, dated comparison baselines and persisted monitoring control.",
+      "bytes": 62076,
+      "sha256": "fa425ff60b32f205b55c576d25372605c1789c6f65bbf187b697b5c1de12e3c9",
+      "width": 789,
+      "height": 833
+    },
+    {
+      "file": "membership-alliance.jpg",
+      "caption": "Alliance losses with incomplete current census and preserved last complete total.",
+      "bytes": 88602,
+      "sha256": "9b6113a17adb92e3b104f451c27514b0aae63f12025c31fe4a0f6409f39136c8",
+      "width": 789,
+      "height": 987
+    },
+    {
+      "file": "membership-corporation-movements.jpg",
+      "caption": "Public corporation-list differences: observed arrivals/departures, with exact timing unknown.",
+      "bytes": 18273,
+      "sha256": "01503cfeb0cbeaad9ff44938ae51ec37cc3055c49c2c8f9b92bb48f122ffd828",
+      "width": 752,
+      "height": 187
+    },
+    {
+      "file": "membership-mobile.jpg",
+      "caption": "Mobile organization strength; the report continues by scrolling below the captured view.",
+      "bytes": 275534,
+      "sha256": "43e89383061c39c23b25d41552b169e213445c5aeaaa25a4f637f032adea6ca6",
+      "width": 374,
+      "height": 5747
     }
   ],
-  "updated_at_utc": "2026-10-31T19:43:47.998363+00:00",
+  "updated_at_utc": "2026-11-02T12:58:21.402913+00:00",
   "local_scan_intel_followup": {
     "recorded_at_utc": "2026-10-31T21:03:40.530006+00:00",
     "source_base_commit": "45997d7a2b597a7258f71972a08886f06c295aab",
@@ -290,5 +322,15 @@
       "eqm-classic-overview.jpg",
       "command-desk-mobile.jpg"
     ]
+  },
+  "membership_followup": {
+    "captured_on_client_date": "2026-11-02",
+    "application_version": "2.0.1",
+    "source_base_commit": "842efe4141aaa2643fd6da3cd63e300c8f09d6eb",
+    "source_state": "Uncommitted membership monitoring implementation; not deployed or released.",
+    "method": "Actual built React and real Intel/appearance/auth APIs, isolated synthetic SQLite histories, local fake census adapter. In-app browser JPEG captures at 1440x1050 desktop and390x844 mobile; desktop crops retain complete rendered panels. No repainting.",
+    "provenance": "Fictional Wayfarer Foundry/Example Expedition membership histories and example corporations; bundled EQM branding. No private ESI/live census/player account modifications.",
+    "validation": "Backend counts/permissions/lease/source/baseline/migration regression suites, final TypeScript/Vite build, browser monitoring enable/persistence/pause, one-off refresh with daily off, incomplete alliance totals, corporation changes and responsive layout. No browser console errors.",
+    "limitations": "ESI source verified against official schema, not run against real organizations during development. Desktop crops show the feature rather than a full dossier.390px has no horizontal document overflow. At320px the existing Classic root retains a320px minimum (15px overflow with desktop scrollbars); the new panel has matching client/scroll widths. Unrelated staff-only preview endpoints are omitted. Charts and staged rows are fictional, not operational intelligence."
   }
 }

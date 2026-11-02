@@ -121,3 +121,33 @@ Unreleased development captures below use the actual production UI and APIs agai
 ![Local Scan observations in the Intel timeline](../static/ss/v2.0.1/local-scan-intel-timeline.jpg)
 
 [Generation explanation](../static/ss/v2.0.1/local-scan-intel-generation.jpg) · [Mobile sighting cards](../static/ss/v2.0.1/local-scan-intel-mobile.jpg) · [Capture receipt](../static/ss/v2.0.1/capture-receipt.json)
+
+
+## Corporation and alliance membership trends
+
+Open a corporation/alliance dossier and use **Overview → Organization strength**. This is a public ESI headcount history, separate from combat records and player sightings. It reports characters, including alts and inactive characters, not unique humans, active pilots or a combat-strength estimate.
+
+- **Refresh counts** queues a one-time public census without turning on recurring monitoring. Requests are deduplicated while queued/running; subsequent manual checks have a one-minute cooldown.
+- **Monitor daily** enables a shared monitor for this dossier in the Intel workspace. Any currently authorized Intel analyst can enable/pause it. It runs in the backend while the browser is closed. Disabling invalidates an in-flight lease and keeps all saved observations. Other analysts see the same public count history and monitoring setting.
+- Corporation totals use public `member_count`. Alliance pilot totals sum the public counts of every uniquely listed member corporation. At most four corporation requests run concurrently, with a 1,000-corporation ceiling and 180-second census budget. Oversized/failed fetches are unavailable, never silently truncated totals. No private member-list endpoint, character enrollment, extra ESI scope or pilot roster collection is introduced.
+- An alliance total is recorded only if every corporation count is valid and its independently cached affiliation agrees with the alliance list. A partial observation keeps the known subtotal and resolved/expected corporation counts clearly separate. Previous complete totals remain visible with their original time; missing data never becomes zero or a false membership loss. An actual complete count of zero is valid. ESI caches and non-atomic endpoint responses mean these are observed public counts, not an instantaneous census.
+
+The module keeps one last complete observation per UTC day. A same-day partial attempt cannot overwrite a complete count. Historical corporation profile observations and their original timestamps are reused where valid, including the retained profile's fetched time. Alliance totals begin with a real census; current corporations are never summed backwards to invent old totals. Migration does not automatically enroll any organization into monitoring or perform network requests.
+
+**Gaining / losing / unchanged** compares the latest two complete observed days and shows the actual comparison timestamp. The 7/30/90-day net changes use the latest complete count as their endpoint and an observation at, or up to two days before, each baseline. The comparison's actual timestamp and percentage are exposed; zero baselines have no percentage. Missing or excessively distant baselines display a dash. Net change is not gross recruitment/churn, and does not identify which individual pilots joined or left. A count older than 36 hours is marked stale. An alliance's change can include entire corporations joining/leaving.
+
+The chart and count table follow the report's UTC dates. Comparison baselines may precede that chart window, and summary counts are labelled with their own observed time. Incomplete days and gaps over two days are not connected on the chart. Up to 2,000 daily snapshots and 2,000 legacy profile observations are considered, with a visible limit notice. **Corporation movements** compares the latest 30 daily intervals available for an alliance and names observed added/removed corporations with zKill links. These are differences between observed lists, not exact movement times; narrow report dates to inspect older intervals. Counts stay separate from kills/losses and sightings.
+
+Monitoring has database leases shared across API processes, recovers an interrupted lease after five minutes, retries partial/failing daily monitors with bounded backoff, and rechecks the requesting analyst's Intel access before and after network work. Lost permission/deleted requester pauses the monitor; an eligible analyst can explicitly re-enable it. Database sessions are closed during public HTTP waits, and background DB work runs off the API event loop. Endpoints retain the existing authenticated Intel boundary and `private, no-store` headers. No public share route is added.
+
+Apply **0105_intel_membership** after 0104 with matching API/frontend. It adds only `intel_membership_monitors` and `intel_membership_snapshots`; downgrade removes those observations/settings while retaining dossiers, combat evidence and profile observations. No live deployment/migration was performed for this pass.
+
+API: `GET /intel/subjects/{id}/membership` accepts the existing report UTC bounds; `POST .../membership/refresh` queues a one-time census; `PUT .../membership/monitoring` accepts a strict Boolean `enabled`. The ordinary report JSON also includes `membership` for corporations/alliances (null for characters), making these counts a reusable Intel data point. Monitoring mutations are audited without private payloads. Counts are not automatically inferred from scanned pilots or killmail participation.
+
+Verified against [CCP's current OpenAPI schema](https://esi.evetech.net/meta/openapi.json): `/corporations/{corporation_id}` supplies the count and `/alliances/{alliance_id}/corporations` supplies public corporation IDs. Automated coverage includes valid/invalid/zero counts, complete/partial alliance sums, affiliation disagreement, concurrency limits, queue/lease recovery, pause/revocation fencing, no held DB connection during HTTP waits, baseline dates, legacy observations, zero-combat parity, permission/header/input checks and migration round-trip. Browser verification uses actual built UI/APIs with fictional histories and a synthetic census adapter; no live ESI counts or player locations were collected.
+
+![Corporation membership growth — synthetic development capture](../static/ss/v2.0.1/membership-corporation.jpg)
+
+![Alliance net losses with incomplete census coverage disclosed](../static/ss/v2.0.1/membership-alliance.jpg)
+
+![Observed corporation arrivals and departures](../static/ss/v2.0.1/membership-corporation-movements.jpg)

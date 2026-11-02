@@ -678,3 +678,18 @@ November 1, 2026. Production UI and real account/inventory APIs with isolated sy
 ![Classic fallback retains the same account palette and data.](../static/ss/v2.0.1/eqm-classic-overview.jpg)
 
 ![Implemented mobile navigation and full-page Overview, synthetic holdings.](../static/ss/v2.0.1/command-desk-mobile.jpg)
+
+
+## Organization membership trends — unreleased 2.0.1
+
+Captured November 2, 2026 from the actual production React build and Intel APIs against an isolated synthetic SQLite database. Fictional corporation/alliance histories demonstrate growth, losses, incomplete census coverage, monitoring controls and observed corporation movements. A local synthetic census adapter handles preview refreshes; no real ESI authorization, private data or production account changes. Desktop captures crop to complete rendered panels; mobile retains normal scrolling context.
+
+![Corporation member-count growth and comparison baselines](../static/ss/v2.0.1/membership-corporation.jpg)
+
+![Alliance member losses and incomplete coverage](../static/ss/v2.0.1/membership-alliance.jpg)
+
+![Observed corporation arrivals and departures](../static/ss/v2.0.1/membership-corporation-movements.jpg)
+
+![Mobile organization strength](../static/ss/v2.0.1/membership-mobile.jpg)
+
+[Behavior, privacy and rollout](intel-reports.md#corporation-and-alliance-membership-trends) · [Capture receipt](../static/ss/v2.0.1/capture-receipt.json). Migration 0105; no deployment or release publication is implied.
