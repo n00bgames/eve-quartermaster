@@ -1,0 +1,18 @@
+.alliance-corporations{min-width:0;max-width:100%;}
+.alliance-corp-heading,.alliance-corp-actions,.alliance-corp-pagination{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.alliance-corp-heading h3{margin:0;}.alliance-corp-heading p{margin:6px 0 0;}
+.alliance-corporations button,.alliance-corp-actions a{display:inline-flex;align-items:center;gap:6px;}
+.alliance-corp-controls{display:grid;grid-template-columns:minmax(0,1fr) minmax(140px,220px);gap:12px;}
+.alliance-corp-controls label{display:grid;gap:6px;min-width:0;}.alliance-corp-controls input,.alliance-corp-controls select{width:100%;min-width:0;box-sizing:border-box;}
+.alliance-corp-row{border-top:1px solid var(--eqm-border);min-width:0;}
+.alliance-corporations .alliance-corp-summary{width:100%;display:flex;text-align:left;align-items:center;gap:14px;border:0;border-radius:0;background:transparent;color:var(--eqm-text);padding:16px 4px;white-space:normal;}
+.alliance-corporations .alliance-corp-summary:hover,.alliance-corporations .alliance-corp-summary[aria-expanded=true]{background:color-mix(in srgb,var(--eqm-accent) 7%,transparent);}
+.alliance-corp-logo{flex:none;object-fit:contain;}.alliance-corp-synopsis{display:grid;gap:5px;flex:1;min-width:0;overflow-wrap:anywhere;}.alliance-corp-synopsis>strong{font-size:1rem;}
+.alliance-corp-synopsis>.muted{font-size:.85rem;}.alliance-corp-ceo{display:flex;align-items:center;gap:6px;font-size:.85rem;}.alliance-corp-ceo img{border-radius:50%;}
+.alliance-corp-count{display:grid;grid-template-columns:auto auto;gap:4px 7px;align-items:center;flex:none;}.alliance-corp-count>.muted{grid-column:1/-1;font-size:.75rem;text-align:center;}
+.alliance-corp-summary>svg{flex:none;}.alliance-corp-details{border-left:2px solid var(--eqm-accent);padding:14px 18px;min-width:0;}
+.alliance-corp-actions{justify-content:flex-start;padding-bottom:14px;}.alliance-corp-detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:24px;}
+.alliance-corp-details h4{margin:8px 0;}.alliance-corp-details .muted{font-size:.82rem;}.alliance-corp-details dl{display:grid;grid-template-columns:minmax(80px,.7fr) minmax(0,1.5fr);gap:10px;align-items:start;}
+.alliance-corp-details dt{color:var(--eqm-muted);}.alliance-corp-details dd{margin:0;overflow-wrap:anywhere;}.alliance-corp-person{display:inline-flex;align-items:center;gap:7px;}.alliance-corp-person img{border-radius:50%;}.alliance-corp-description{white-space:pre-wrap;overflow-wrap:anywhere;}.alliance-corp-stat{display:contents;}.alliance-corp-history{max-height:260px;overflow:auto;}
+.alliance-corp-pagination{padding:12px 0;}
+@media(max-width:720px){.alliance-corp-controls,.alliance-corp-detail-grid{grid-template-columns:minmax(0,1fr);}.alliance-corporations .alliance-corp-summary{gap:8px;}.alliance-corp-logo{width:34px;height:34px;}.alliance-corp-details{padding:12px 10px;}.alliance-corp-synopsis>strong{font-size:.9rem;}.alliance-corp-count{font-size:.85rem;}.alliance-corp-details dl{grid-template-columns:minmax(70px,.7fr) minmax(0,1.3fr);}}

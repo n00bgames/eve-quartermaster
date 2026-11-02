@@ -1024,3 +1024,19 @@ The [first Command Desk integration](docs/command-desk.md) adds an opt-in shell 
 ![Implemented interface selector](static/ss/v2.0.1/command-desk-selector.jpg)
 
 ![Implemented Command Desk Overview with synthetic holdings](static/ss/v2.0.1/command-desk-overview.jpg)
+
+### Alliance member corporations — unreleased follow-up
+
+Alliance collection now checks every listed corporation's public ESI member count and saves the census for monitoring. Expand **Alliance member corporations** for logos, CEO portraits/names, counts and a short synopsis, followed by the full public profile and latest cached zKill counters. Search by name/ticker/CEO, sort by size/name, and open a full corporation Intel dossier. Daily monitoring refreshes the same roster; missing counts remain unknown.
+
+![Expandable alliance corporation intelligence — synthetic development capture](static/ss/v2.0.1/alliance-corporation-expanded.jpg)
+
+[Corporation list](static/ss/v2.0.1/alliance-corporations.jpg) · [Mobile](static/ss/v2.0.1/alliance-corporations-mobile.jpg) · [Behavior and rollout](docs/intel-reports.md#alliance-member-corporations). Uses migration 0105 already required for membership monitoring; no additional migration or ESI scopes. Actual unreleased UI with fictional data; not a deployment.
+
+### Market-run Receipts — unreleased follow-up
+
+Paste market purchase transactions and produce an itemized receipt with full/partial quantity exclusions, a separate credit, hauling fee, actual fuel charges and a route. Plan gate legs from EQM's imported map or enter JF/cyno stops manually. Save private by default, optionally share an expiring anonymous/character-attributed link, and export branded PDF/CSV. Market access is sufficient; no wallet scopes or new migration.
+
+![Market-run receipt — actual UI with fictional purchases](static/ss/v2.0.1/receipt-public.jpg)
+
+[Guide and limits](docs/receipts.md) · [Cost controls](static/ss/v2.0.1/receipt-cost-controls.jpg) · [Sample PDF](docs/examples/receipt-demo.pdf) · [Mobile](static/ss/v2.0.1/receipt-mobile.jpg). Unreleased working-tree feature; matching backend/frontend required.

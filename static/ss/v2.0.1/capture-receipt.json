@@ -240,6 +240,62 @@
       "sha256": "43e89383061c39c23b25d41552b169e213445c5aeaaa25a4f637f032adea6ca6",
       "width": 374,
       "height": 5747
+    },
+    {
+      "file": "alliance-corporations.jpg",
+      "caption": "Alliance member corporations: logos, CEO portraits, counts, synopsis, search and sort. Actual UI with fictional data.",
+      "bytes": 50192,
+      "sha256": "aa9941926c7d18940f0529956bfd31e03d23ebafefcf54092fd3c9cc9262890c",
+      "width": 629,
+      "height": 694
+    },
+    {
+      "file": "alliance-corporation-expanded.jpg",
+      "caption": "Expanded public corporation profile, resolved public names, cached zKill counters and full Intel report action. Actual UI with fictional data.",
+      "bytes": 78056,
+      "sha256": "ec871f2e936b979fa2c95d54a6e5ac2e1c9d98b9de0e4034fe5679c1b4589291",
+      "width": 752,
+      "height": 800
+    },
+    {
+      "file": "alliance-corporations-mobile.jpg",
+      "caption": "Full mobile alliance dossier with the searchable corporation census. Actual UI with fictional data.",
+      "bytes": 300881,
+      "sha256": "20e378ff325754d5203fb5c61cb7dcd8dd4b647cba58f79a051355cdea0a9b3d",
+      "width": 374,
+      "height": 6380
+    },
+    {
+      "file": "receipt-public.jpg",
+      "caption": "Actual public receipt: exact purchase reconciliation, grouped items, fuel and route; fictional development data.",
+      "bytes": 173418,
+      "sha256": "2972c76f5bf99614ac4265e059a2018fe0a52f4f8c1f0f9ac93cd8e39f9cca35",
+      "width": 1264,
+      "height": 1637
+    },
+    {
+      "file": "receipt-cost-controls.jpg",
+      "caption": "Actual receipt builder: separate exclusions/credit, hauling fee and fuel charges; fictional development data.",
+      "bytes": 51073,
+      "sha256": "c2705c7c9e0eff177f04f8b8615dbe701585f1fa5e422adf95765c0834fb7111",
+      "width": 896,
+      "height": 380
+    },
+    {
+      "file": "receipt-mobile.jpg",
+      "caption": "Actual mobile public receipt with contained horizontal tables and page scrolling; fictional development data.",
+      "bytes": 134352,
+      "sha256": "fea1eacf7043021554d30fe12431a6d38a07da4f94a888e851d7e16c9effaf69",
+      "width": 374,
+      "height": 2743
+    },
+    {
+      "file": "receipt-pdf-page1.png",
+      "caption": "Rendered first page of the actual two-page PDF export, with branding, totals, itemization, fuel and route; fictional development data.",
+      "bytes": 129806,
+      "sha256": "d2bb3921e7bc5bf0a5dbe76d88594ca0ebab30a678c22a265556e7375e12a241",
+      "width": 990,
+      "height": 1400
     }
   ],
   "updated_at_utc": "2026-11-02T12:58:21.402913+00:00",
@@ -332,5 +388,33 @@
     "provenance": "Fictional Wayfarer Foundry/Example Expedition membership histories and example corporations; bundled EQM branding. No private ESI/live census/player account modifications.",
     "validation": "Backend counts/permissions/lease/source/baseline/migration regression suites, final TypeScript/Vite build, browser monitoring enable/persistence/pause, one-off refresh with daily off, incomplete alliance totals, corporation changes and responsive layout. No browser console errors.",
     "limitations": "ESI source verified against official schema, not run against real organizations during development. Desktop crops show the feature rather than a full dossier.390px has no horizontal document overflow. At320px the existing Classic root retains a320px minimum (15px overflow with desktop scrollbars); the new panel has matching client/scroll widths. Unrelated staff-only preview endpoints are omitted. Charts and staged rows are fictional, not operational intelligence."
+  },
+  "alliance_corporations_followup": {
+    "captured_on_client_date": "2026-11-02",
+    "recorded_at_utc": "2026-11-02T13:58:28.942140+00:00",
+    "application_version": "2.0.1",
+    "source_base_commit": "f007cd0d2e3a9f530093c9d544f98e5e117bcf41",
+    "source_state": "Uncommitted alliance census/expandable member corporations follow-up. Not deployed or released.",
+    "method": "Actual built production React and real Intel/auth/appearance API routes, localhost-only FastAPI and isolated synthetic SQLite fixtures. Fake public ESI/zKill adapters. In-app browser JPEGs; list crop at normal 1280x720, expanded detail crop during 1440x900 responsive test, full-page 390x844 mobile capture. No repainting or compositing.",
+    "provenance": "Fictional Example Expedition, Wayfarer Foundry, Example Vanguard, Sample Logistics, character names, counts and combat statistics. Public EVE Image Server corporation logos/portraits are visual references, not claims about those organizations or people. No private ESI/SSO, live counts, game actions or production edits.",
+    "validation": "88 affected backend tests pass; final census-summary adjustment passed 33 focused census/membership tests. TypeScript/Vite build. Browser search by ticker, alphabetic/largest sort, expand public fields and resolved names, open full corporation dossier, narrow/wide desktop stacking, mobile controls and no panel horizontal overflow at 320/390. Final console errors empty.",
+    "limitations": "zKill summaries use current upstream aggregate counters, independent of the dossier date filter; source caches and ESI affiliation disagreement are explicitly disclosed. Existing saved dossiers need a census refresh for the new list. Mobile image is a full-page scroll capture. Collapsed captures precede the final expanded-only station/faction name labels and CEO fallback guard; those do not alter the captured collapsed content. Screenshot does not demonstrate real ESI or production deployment."
+  },
+  "receipts_followup": {
+    "captured_on_client_date": "2026-11-02",
+    "recorded_at_utc": "2026-11-02T16:03:55.899153+00:00",
+    "application_version": "2.0.1",
+    "source_base_commit": "f007cd0d2e3a9f530093c9d544f98e5e117bcf41",
+    "source_state": "Uncommitted Receipts feature layered over the pending alliance member-corporations feature. Not deployed, pushed or released.",
+    "method": "Actual production React build and real receipt/auth/appearance/navigation API routes, isolated localhost SQLite with a three-system synthetic gate graph. In-app browser JPEGs at the default 1280x720 desktop and 390x844 mobile breakpoint. Cost controls are an exact complete fieldset crop. PDF image is a Poppler render of the actual exported PDF, not a UI mockup. No repainting/compositing.",
+    "provenance": "Fictional Example Expedition/Demo Logistics purchases, counterparties, prices, exclusions, credit, fuel and route. Public EVE Image Server artwork for known mineral types and bundled EQM logo. The user\u2019s real 88-line purchase paste was verified separately in a private scratch check; no real transaction list, seller names or route was used in public screenshots or fixtures.",
+    "validation": "138 receipt/appearance/account-role/Quartermaster tests, final TypeScript/Vite build. Browser: parse, partial/full quantity exclusion, separate credit, fee/fuel entry, local gate planning, exact preview 392825000.00, private save, anonymous public save/link, reload history and reuse private draft, real PDF download/export. Public and private mobile panels contained at 320/390; wide tables scroll horizontally without internal vertical table limits. Console errors empty. Both PDF pages rendered and visually checked; final heading moves with its transaction table. CSV/PDF omit counterparties and private source.",
+    "limitations": "English seven-column EVE purchase TSV only. Receipts are issuer-provided records, not independently verified wallet or travel evidence. Gate route uses imported SDE; JF/cyno stops and actual fuel quantity/cost are manual. No live prices/ESI sync or production edits. Matching backend/frontend required; no additional migration. Captures demonstrate fictional values, not operational logistics.",
+    "example_pdf": {
+      "file": "docs/examples/receipt-demo.pdf",
+      "bytes": 29283,
+      "sha256": "10f04e900a9846b74147cfe554142de99f193b61a2936540d488cc34d34776d6",
+      "pages": 2
+    }
   }
 }

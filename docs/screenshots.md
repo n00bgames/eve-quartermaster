@@ -693,3 +693,29 @@ Captured November 2, 2026 from the actual production React build and Intel APIs 
 ![Mobile organization strength](../static/ss/v2.0.1/membership-mobile.jpg)
 
 [Behavior, privacy and rollout](intel-reports.md#corporation-and-alliance-membership-trends) · [Capture receipt](../static/ss/v2.0.1/capture-receipt.json). Migration 0105; no deployment or release publication is implied.
+
+## Alliance corporation census and expanded profiles — unreleased 2.0.1
+
+November 2, 2026. Actual production UI and real API routes with isolated fictional alliance/corporation data and synthetic public ESI/zKill adapters. Public EVE Image Server artwork supplies visual references. These captures do not represent live intelligence or deployed code.
+
+![Searchable alliance member corporations, logos, CEOs and counts](../static/ss/v2.0.1/alliance-corporations.jpg)
+
+![Expanded public corporation metadata and latest zKill summary](../static/ss/v2.0.1/alliance-corporation-expanded.jpg)
+
+![Mobile alliance dossier and corporation census](../static/ss/v2.0.1/alliance-corporations-mobile.jpg)
+
+[Feature guide](intel-reports.md#alliance-member-corporations) · [Source provenance and checksums](../static/ss/v2.0.1/capture-receipt.json). Desktop crops retain the complete relevant list/detail; mobile is a full-page scrolling capture.
+
+## Market-run Receipts — unreleased 2.0.1
+
+November 2, 2026. Actual React/receipt/navigation/auth APIs and isolated synthetic purchase records, a tiny fictional gate graph, manual fuel/costs and public EVE mineral artwork. No operational purchase data or real seller names were used. PDF rendering is the actual export, not a mockup.
+
+![Complete public receipt with reconciliation, grouped purchases, fuel and route](../static/ss/v2.0.1/receipt-public.jpg)
+
+![Exclusion credit, hauling fee and actual fuel entry](../static/ss/v2.0.1/receipt-cost-controls.jpg)
+
+![Full mobile receipt with horizontal tables contained within the page](../static/ss/v2.0.1/receipt-mobile.jpg)
+
+![First page of the branded PDF export](../static/ss/v2.0.1/receipt-pdf-page1.png)
+
+[Two-page PDF example](examples/receipt-demo.pdf) · [Controls, privacy and rollout](receipts.md) · [Capture receipt](../static/ss/v2.0.1/capture-receipt.json). Source/build/provenance recorded; not a deployment or published release.

@@ -6,6 +6,10 @@ Version sections are written as user-facing release notes first, with implementa
 
 ## [2.0.1] - Unreleased
 
+- Add **Finance & Trade → Receipts**: paste actual market purchases, group items, exclude full/partial quantities, add credits, hauling/fuel costs and routes, save private or explicitly share expiring links, and export branded PDF/CSV. Exact decimal reconciliation, main-character/anonymous attribution, owner-only source drafts and revocable shares. Uses existing Market/Navigation permissions and saved-report storage; no new migration or ESI scope.
+
+- Extend alliance Intel collection with a public corporation census and expandable **Alliance member corporations**: logos, CEOs, counts, synopsis, full public profile, latest cached zKill statistics and full-dossier navigation. Add server-side search/sort/paging; reuse manual/daily monitoring counts, retain incomplete-data boundaries and release DB transactions during public HTTP waits. No extra migration beyond 0105 or new ESI scopes.
+
 - Add corporation/alliance **Organization strength** to Intel Reports: opt-in daily public member-count monitoring, manual refresh, timestamped 7/30/90-day net changes, history charts and observed alliance corporation movements. Incomplete counts preserve the last complete total; real historical corporation observations supply available baselines. No private roster collection or new ESI scopes. Requires migration 0105 and matching API/frontend.
 
 - Add Windows/Linux **restart-eqm** helpers for existing backend/frontend containers, with optional worker restart, preflight checks and database-backed API/frontend readiness verification. PostgreSQL and Redis stay running; no pull or image rebuild. A failed readiness check returns a nonzero exit code instead of reporting success.

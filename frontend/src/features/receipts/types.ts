@@ -1,0 +1,13 @@
+export type ApiClient=<T>(path:string,options?:RequestInit)=>Promise<T>;
+export type Purchase={id:number;source_line:number;purchased_at:string;item:string;quantity:number;unit_price:string;paid:string;station:string;duplicate_of:number|null;billable_quantity?:number;excluded_quantity?:number;charged?:string;excluded?:string};
+export type Parsed={lines:Purchase[];purchase_total:string;transaction_count:number;duplicate_count:number;warnings:string[]};
+export type Route={mode:"gate"|"jump_freighter"|"mixed";origin:string;destination:string;systems:string[];jump_count:number|null;source:"manual"|"planned"};
+export type Fuel={item:string;quantity:number;unit_price:string};
+export type Draft={text:string;title:string;recipient:string;note:string;billable_quantities:Record<string,number>;credit:string;credit_reason:string;hauling_fee:string;fuel:Fuel[];route:Route;is_private:boolean;anonymous:boolean;retention:string};
+export const emptyDraft=():Draft=>({text:"",title:"Market run receipt",recipient:"",note:"",billable_quantities:{},credit:"0.00",credit_reason:"",hauling_fee:"0.00",fuel:[],route:{mode:"gate",origin:"",destination:"",systems:[],jump_count:null,source:"manual"},is_private:true,anonymous:false,retention:"30days"});
+export type Group={item:string;type_id:number|null;purchased_quantity:number;quantity:number;excluded_quantity:number;paid:string;charged:string;excluded:string;average_unit_price:string|null;transactions:number};
+export type Receipt={title:string;recipient:string;note:string;groups:Group[];lines:Purchase[];warnings:string[];transaction_count:number;item_type_count:number;purchase_total:string;excluded_total:string;included_total:string;credit:string;credit_reason:string;hauling_fee:string;fuel:(Fuel&{total:string})[];fuel_total:string;grand_total:string;route:Route;creator_name:string;application_version:string;created_at:string;purchase_from:string;purchase_to:string;token?:string;share_url?:string|null;is_private?:boolean;anonymous?:boolean;expires_at?:string|null;retention?:string;draft?:Draft};
+export type Saved={token:string;title:string;recipient:string;created_at:string;grand_total:string;is_private:boolean;expires_at:string|null};
+const formatter=new Intl.NumberFormat(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+export const isk=(value:string|number|null|undefined)=>value==null?"—":`${formatter.format(Number(value))} ISK`;
+export const utc=(stamp:string)=>stamp.slice(0,19).replace("T"," ")+" UTC";

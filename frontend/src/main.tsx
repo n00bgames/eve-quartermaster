@@ -37,6 +37,8 @@ import { BlueprintHoverCard, blueprintHoverDetails } from "./components/Blueprin
 import { WardecBadge } from "./components/WardecBadge";
 import { HeaderClocks } from "./components/HeaderClocks";
 import { MarketAppraisalPage } from "./features/market/MarketAppraisalPage";
+import {ReceiptsPage} from "./features/receipts/ReceiptsPage";
+import {PublicReceiptPage} from "./features/receipts/ReceiptResults";
 import { CorporateExchangePage } from "./features/exchange/CorporateExchangePage";
 import { PublicExchangeListingPage } from "./features/exchange/PublicExchangeListingPage";
 import { HyperNetTrackerPage } from "./features/hypernet/HyperNetTrackerPage";
@@ -425,7 +427,7 @@ function App() {
 
     if (role === "quartermaster" || quartermasterOnly.current) {
       setData(emptyData);
-      if (!["#navigation", "#local-threat", "#industry-reports"].includes(window.location.hash)) setActiveTab("quartermaster");
+      if (!["#navigation", "#local-threat", "#industry-reports", "#receipts"].includes(window.location.hash)) setActiveTab("quartermaster");
       return;
     }
 
@@ -543,9 +545,10 @@ function App() {
         : ["waypoint", "destination", "structures", "navigation"].includes(esiMode ?? "") ? "navigation" : "esi";
 
     const esiError = params.get("esi_error");
-    if (window.location.hash.startsWith("#local-scan/") || window.location.hash.startsWith("#d-scan/") || window.location.hash.startsWith("#industry-report/")) { setAuthReady(true); return; }
+    if (window.location.hash.startsWith("#receipt/") || window.location.hash.startsWith("#local-scan/") || window.location.hash.startsWith("#d-scan/") || window.location.hash.startsWith("#industry-report/")) { setAuthReady(true); return; }
 
     if (window.location.hash === "#navigation") setActiveTab("navigation");
+    else if (window.location.hash === "#receipts") setActiveTab("receipts");
     else if (window.location.hash === "#ship-reports") setActiveTab("ship_reports");
     else if (window.location.hash === "#inventory-reports") setActiveTab("inventory_reports");
     else if (window.location.hash === "#industry-reports") setActiveTab("industry_reports");
@@ -617,6 +620,7 @@ function App() {
     else if (locationHash.startsWith("#battle-reports")) setActiveTab("battle_reports");
     else if (locationHash.startsWith("#bounties")) setActiveTab("bounty_analytics");
     else if (locationHash === "#navigation") setActiveTab("navigation");
+    else if (locationHash === "#receipts") setActiveTab("receipts");
     else if (locationHash.startsWith("#matchups")) setActiveTab("matchups");
     else if (locationHash === "#d-scan") setActiveTab("dscan");
     else if (locationHash === "#local-scan") setActiveTab("local_scan");
@@ -688,6 +692,7 @@ function App() {
 
   const publicRecruiting = locationHash === "#recruiting" || locationHash === "#apply";
   const publicExchangeId = locationHash.startsWith("#exchange/") ? locationHash.slice("#exchange/".length) : null;
+  const publicReceiptToken = locationHash.startsWith("#receipt/") ? locationHash.slice("#receipt/".length) : null;
   const publicIndustryReportToken = locationHash.startsWith("#industry-report/") ? locationHash.slice("#industry-report/".length) : null;
   const publicDScanToken = locationHash.startsWith("#d-scan/") ? locationHash.slice("#d-scan/".length) : null;
   const publicLocalScanToken = locationHash.startsWith("#local-scan/") ? locationHash.slice("#local-scan/".length) : null;
@@ -696,6 +701,8 @@ function App() {
   if (!authReady) return <main className="auth-shell"><section className="panel"><BrandImage className="auth-logo"/><p className="muted">Checking account session...</p></section></main>;
 
   if (locationHash === "#forgot-password" || locationHash.startsWith("#reset-password")) return <PasswordRecovery key={locationHash} token={locationHash.startsWith("#reset-password/") ? locationHash.slice("#reset-password/".length) : undefined}/>;
+
+  if (publicReceiptToken) return <PublicReceiptPage api={api} token={publicReceiptToken} onBack={()=>{window.location.hash="";window.location.reload();}}/>;
 
   if (publicIndustryReportToken) return <PublicIndustryReportPage api={api} token={publicIndustryReportToken} onBack={()=>{window.location.hash="";window.location.reload();}}/>;
 
@@ -717,7 +724,7 @@ function App() {
 
   return (
 
-    <main className={`app-shell${interfaceStyle==="command_desk"?" command-desk-shell":""}${["local_scan", "dscan", "industry_reports", "inventory_reports", "ship_reports"].includes(activeTab) ? " scan-report-shell" : ""}`}>
+    <main className={`app-shell${interfaceStyle==="command_desk"?" command-desk-shell":""}${["local_scan", "dscan", "industry_reports", "inventory_reports", "ship_reports", "receipts"].includes(activeTab) ? " scan-report-shell" : ""}`}>
 
       <aside className="sidebar">
 
@@ -756,6 +763,7 @@ function App() {
           dscan: canView("dscan") && <button className={activeTab === "dscan" ? "active" : ""} onClick={() => { window.location.hash="d-scan"; setActiveTab("dscan"); }}><Siren size={18} /> D-Scan</button>,
           intel_reports: canView("intel_reports") && <button className={activeTab === "intel_reports" ? "active" : ""} onClick={() => { window.location.hash="intel"; setActiveTab("intel_reports"); }}><Siren size={18} /> Intel Reports</button>,
           local_threat: canView("navigation") && <button type="button" className={activeTab === "navigation" && locationHash === "#local-threat" ? "active" : ""} onClick={openThreatAnalyzer}><Siren size={18} /> Local Threat Analyzer</button>,
+          receipts: canView("market") && <button className={activeTab === "receipts" ? "active" : ""} onClick={()=>{window.location.hash="receipts";setActiveTab("receipts");}}><ClipboardList size={18}/> Receipts</button>,
           market: canView("market") && <button className={activeTab === "market" ? "active" : ""} onClick={() => setActiveTab("market")}><ShoppingCart size={18} /> Market</button>,
           exchange: canView("exchange") && <button className={activeTab === "exchange" ? "active" : ""} onClick={() => { window.location.hash = "exchange"; setActiveTab("exchange"); }}><Store size={18} /> Corporate Exchange</button>,
           hypernet: canView("hypernet") && <button className={activeTab === "hypernet" ? "active" : ""} onClick={() => { window.location.hash = "hypernet"; setActiveTab("hypernet"); }}><Coins size={18} /> HyperNet Tracker</button>,
@@ -854,6 +862,7 @@ function App() {
 
         {activeTab === "navigation" && canView("navigation") && <NavigationPlanner currentUser={user} />}
 
+        {activeTab === "receipts" && canView("market") && <ReceiptsPage api={api}/>}
         {activeTab === "market" && canView("market") && <MarketAppraisalPage currentUser={user} seed={marketSeed} assets={data.assets} onOpenAssets={(itemName) => { setAssetSeed({ key: "item", value: itemName, mode: "exact", nonce: Date.now() }); setActiveTab("assets"); }} onOpenFittings={(itemName) => { setFittingSeed({ text: itemName, nonce: Date.now() }); setActiveTab("fittings"); }} api={api} sendDestinationToEve={sendDestinationToEve} ItemContextPanel={ItemContextPanel} numberFormatter={numberFormatter} />}
 
         {activeTab === "exchange" && canView("exchange") && <CorporateExchangePage api={api} currentUserId={user.id} />}
@@ -2377,7 +2386,7 @@ function titleFor(tab: string) {
   if (tab === "fleet_assignments") return "Fleet Assignments";
   if (tab === "plex") return "PLEX Tracker";
 
-  return ({ overview: "Quartermaster Overview", ownership: "Ownership and Locations", characters: "Characters", roster: "Alliance Roster", navigation: "Navigation", market: "Market Appraisal", exchange: "Corporate Exchange", hypernet: "HyperNet Tracker", bounty_analytics: "Bounty Analytics", calendar_events: "Calendar & Events", doctrines: "Doctrine Management", srp: "SRP Requests", killboard: "Killboard", battle_reports: "Battle Reports", notes: "Notes & Lists", manufacturing: "Manufacturing", research_projects: "Research Projects", mining: "Mining Ledger", planetary_industry: "Planetary Industry", contracts: "Contracts", analytics: "Analytics Platform", recruiting: "Recruiting", skills: "Character Skills & Plans", fittings: "Fittings", jump_clones: "Jump Clones", settings: "Settings", corporations: "Corporations", assets: "Asset Ledger", industry: "Blueprints and Recipes", esi: "ESI Sync", profile: "Profile", users: "User Administration", audit: "Audit Log" } as Record<string, string>)[tab];
+  return ({ overview: "Quartermaster Overview", ownership: "Ownership and Locations", characters: "Characters", roster: "Alliance Roster", navigation: "Navigation", market: "Market Appraisal", receipts: "Receipts", exchange: "Corporate Exchange", hypernet: "HyperNet Tracker", bounty_analytics: "Bounty Analytics", calendar_events: "Calendar & Events", doctrines: "Doctrine Management", srp: "SRP Requests", killboard: "Killboard", battle_reports: "Battle Reports", notes: "Notes & Lists", manufacturing: "Manufacturing", research_projects: "Research Projects", mining: "Mining Ledger", planetary_industry: "Planetary Industry", contracts: "Contracts", analytics: "Analytics Platform", recruiting: "Recruiting", skills: "Character Skills & Plans", fittings: "Fittings", jump_clones: "Jump Clones", settings: "Settings", corporations: "Corporations", assets: "Asset Ledger", industry: "Blueprints and Recipes", esi: "ESI Sync", profile: "Profile", users: "User Administration", audit: "Audit Log" } as Record<string, string>)[tab];
 
 }
 
@@ -2395,7 +2404,7 @@ function subtitleFor(tab: string) {
   if (tab === "fleet_assignments") return "Plan fleet compositions, assign fittings, and view your own ship assignments.";
   if (tab === "plex") return "Track private PLEX holdings, global market prices, and fee-adjusted trade scenarios.";
 
-  return ({ overview: "Live status and the first useful totals from the database.", ownership: "Define the characters, corporations, manual buckets, and places assets can belong to.", characters: "Assign EVE characters to Quartermaster accounts and control public asset visibility.", roster: "A corporation-grouped character roster suitable for diplomats and prospective members.", navigation: "Plan gate routes from imported SDE map data before layering on kill checks and local threat analysis.", market: "Paste item lists and compare buy, sell, and split prices across trade hubs.", hypernet: "Plan, monitor, and reconcile HyperNet offers with seller-seeded nodes kept separate from organic participation.", bounty_analytics: "Track retained NPC bounty ticks, pilot performance, gross income, and authoritative corporation tax.", calendar_events: "Plan fleets, register pilots, record attendance, and measure participation.", doctrines: "Build canonical operational doctrines with configurable priorities, fittings, and readiness plans.", srp: "Submit and review timezone-safe ship replacement requests against EQM characters and fittings.", killboard: "Discover through zKillboard, retain canonical ESI killmails, and analyze the violence over time.", battle_reports: "Reconstruct a selected pilot's latest connected engagement from retained canonical killmails.", notes: "Keep private working notes and destination-aware resupply lists with live asset context.", manufacturing: "Track manufacturing jobs, costs, required inputs, hub prices, and production history.", research_projects: "Monitor ESI manufacturing, research, copying, and invention queues while retaining project history for analytics.", mining: "Track persistent per-character mining yield, residue efficiency, and named fleet operations.", planetary_industry: "Monitor synchronized colonies, extractor cycles, routed production, storage, and factory health.", contracts: "Sync and review current character and corporation contracts.", analytics: "Snapshot history, metric widgets, exports, and the foundation for custom dashboards.", recruiting: "Configure public recruiting, review applicants, and coordinate interviews without exposing internal notes.", skills: "Review trained skills and maintain manual or fitting-generated skill plans.", fittings: "Sync saved EVE fittings, review modules, experiment in a scratchpad, and copy EFT-style text.", jump_clones: "Sync jump clones, inspect implants, and build custom implant sets for fitting experiments.", settings: "Control character visibility and sync privacy.", corporations: "Review enrolled corporations and sync corporation asset ledgers through authorized CEO or director tokens.", assets: "Track item stacks by owner, type, location, and EVE-style location flag.", industry: "Store blueprints, recipe activities, and material inputs before wiring in SDE imports.", esi: "Review dataset freshness, durable jobs, missing scopes, privacy-disabled collection, and linked-character authorization.", profile: "Manage your account and private messages.", users: "Manage Quartermaster accounts and role levels.", audit: "Review sync peeks, system events, and administrative activity." } as Record<string, string>)[tab];
+  return ({ overview: "Live status and the first useful totals from the database.", ownership: "Define the characters, corporations, manual buckets, and places assets can belong to.", characters: "Assign EVE characters to Quartermaster accounts and control public asset visibility.", roster: "A corporation-grouped character roster suitable for diplomats and prospective members.", navigation: "Plan gate routes from imported SDE map data before layering on kill checks and local threat analysis.", market: "Paste item lists and compare buy, sell, and split prices across trade hubs.", receipts: "Itemize market-run purchases, exclusions, hauling, fuel and routes into saved receipts.", hypernet: "Plan, monitor, and reconcile HyperNet offers with seller-seeded nodes kept separate from organic participation.", bounty_analytics: "Track retained NPC bounty ticks, pilot performance, gross income, and authoritative corporation tax.", calendar_events: "Plan fleets, register pilots, record attendance, and measure participation.", doctrines: "Build canonical operational doctrines with configurable priorities, fittings, and readiness plans.", srp: "Submit and review timezone-safe ship replacement requests against EQM characters and fittings.", killboard: "Discover through zKillboard, retain canonical ESI killmails, and analyze the violence over time.", battle_reports: "Reconstruct a selected pilot's latest connected engagement from retained canonical killmails.", notes: "Keep private working notes and destination-aware resupply lists with live asset context.", manufacturing: "Track manufacturing jobs, costs, required inputs, hub prices, and production history.", research_projects: "Monitor ESI manufacturing, research, copying, and invention queues while retaining project history for analytics.", mining: "Track persistent per-character mining yield, residue efficiency, and named fleet operations.", planetary_industry: "Monitor synchronized colonies, extractor cycles, routed production, storage, and factory health.", contracts: "Sync and review current character and corporation contracts.", analytics: "Snapshot history, metric widgets, exports, and the foundation for custom dashboards.", recruiting: "Configure public recruiting, review applicants, and coordinate interviews without exposing internal notes.", skills: "Review trained skills and maintain manual or fitting-generated skill plans.", fittings: "Sync saved EVE fittings, review modules, experiment in a scratchpad, and copy EFT-style text.", jump_clones: "Sync jump clones, inspect implants, and build custom implant sets for fitting experiments.", settings: "Control character visibility and sync privacy.", corporations: "Review enrolled corporations and sync corporation asset ledgers through authorized CEO or director tokens.", assets: "Track item stacks by owner, type, location, and EVE-style location flag.", industry: "Store blueprints, recipe activities, and material inputs before wiring in SDE imports.", esi: "Review dataset freshness, durable jobs, missing scopes, privacy-disabled collection, and linked-character authorization.", profile: "Manage your account and private messages.", users: "Manage Quartermaster accounts and role levels.", audit: "Review sync peeks, system events, and administrative activity." } as Record<string, string>)[tab];
 
 }
 

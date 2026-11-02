@@ -35,6 +35,7 @@ class FakeSource:
     async def resolve(self,names):
         return {"characters":[{"id":9001,"name":"Outside Pilot"},{"id":9002,"name":"Shared Name"}],"corporations":[{"id":8001,"name":"Shared Name"},{"id":8002,"name":"Outside Corp"}],"alliances":[{"id":7001,"name":"Outside Alliance"}]}
     async def profile(self,kind,eve_id):return {"name":{"character":"Outside Pilot","corporation":"Outside Corp","alliance":"Outside Alliance"}[kind],"corporation_id":8002,"history":[{"corporation_id":8002,"start_date":"2020-01-01T00:00:00Z"}],"source_errors":[]}
+    async def membership(self,kind,eve_id):return {"member_count":5,"corporation_count":1,"known_member_count":5,"resolved_corporations":1,"corporations":[{"eve_id":8002,"name":"Outside Corp","member_count":5}]}
     async def stats(self,kind,eve_id):return trim_stats({"activityTags":{"logi":9,"blops":3},"cyno":{"count":2},"shipsDestroyed":100})
     async def page(self,kind,eve_id,feed,page):
         self.pages.append((kind,eve_id,feed,page))

@@ -120,6 +120,25 @@ def claim(factory, sid, token):
         return identity
 
 
+def write_census(db, sid, payload, at):
+    from app.services.intel_alliance_cache import census_cache
+    # Serialize a manual collection and daily monitor writing the same UTC day.
+    db.scalar(select(IntelSubject).where(IntelSubject.id == sid).with_for_update())
+    census_cache(db, sid, payload, at)
+    day = at.date().isoformat()
+    snapshot = db.scalar(select(IntelMembershipSnapshot).where(
+        IntelMembershipSnapshot.subject_id == sid, IntelMembershipSnapshot.utc_day == day))
+    if snapshot is None:
+        snapshot = IntelMembershipSnapshot(subject_id=sid, utc_day=day)
+        db.add(snapshot)
+    if snapshot.member_count is None or payload["member_count"] is not None:
+        for key in ("member_count", "corporation_count", "resolved_corporations", "known_member_count"):
+            setattr(snapshot, key, payload[key])
+        # Daily history stays compact; full profiles are cached once per corporation.
+        snapshot.corporations = [{key: row.get(key) for key in ("eve_id", "name", "member_count")} for row in payload["corporations"]]
+        snapshot.observed_at = at
+
+
 def persist(factory, sid, token, payload, error=False):
     with factory() as db:
         row = db.scalar(select(IntelMembershipMonitor).where(
@@ -134,17 +153,7 @@ def persist(factory, sid, token, payload, error=False):
         at = now()
         complete = payload is not None and payload["member_count"] is not None
         if payload is not None:
-            day = at.date().isoformat()
-            snapshot = db.scalar(select(IntelMembershipSnapshot).where(
-                IntelMembershipSnapshot.subject_id == sid, IntelMembershipSnapshot.utc_day == day))
-            if snapshot is None:
-                snapshot = IntelMembershipSnapshot(subject_id=sid, utc_day=day)
-                db.add(snapshot)
-            # Do not replace a complete same-day observation with a partial one.
-            if snapshot.member_count is None or complete:
-                for key in ("member_count", "corporation_count", "resolved_corporations", "known_member_count", "corporations"):
-                    setattr(snapshot, key, payload[key])
-                snapshot.observed_at = at
+            write_census(db, sid, payload, at)
         if complete:
             row.last_success_at = at
             row.failures = 0

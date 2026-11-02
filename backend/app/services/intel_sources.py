@@ -66,7 +66,7 @@ class PublicSource:
         path = {"character":"characters", "corporation":"corporations", "alliance":"alliances"}[kind]
         payload = await self.esi.get(f"/{path}/{eve_id}/")
         if not isinstance(payload,dict) or not payload.get("name"): raise IntelSourceError("ESI entity was not found")
-        allowed = {"name","birthday","security_status","corporation_id","alliance_id","ticker","member_count","ceo_id","creator_id","date_founded","executor_corporation_id","faction_id","home_station_id","tax_rate"}
+        allowed = {"name","birthday","security_status","corporation_id","alliance_id","ticker","member_count","ceo_id","creator_id","date_founded","executor_corporation_id","faction_id","home_station_id","tax_rate","shares","url","war_eligible"}
         result = {key: value for key,value in payload.items() if key in allowed}
         result["description"] = plain(payload.get("description"))
         errors = []
@@ -89,6 +89,10 @@ class PublicSource:
             errors.append("Public membership history is currently unavailable")
         result["source_errors"] = errors
         return result
+
+    async def membership(self, kind: str, eve_id: int) -> dict:
+        from app.services.intel_membership_source import MembershipSource
+        return await MembershipSource(client=self.esi).census(kind, eve_id)
 
     async def organization(self, kind: str, eve_id: int) -> dict:
         if kind not in {'corporation','alliance'}:raise ValueError('Unsupported organization kind')

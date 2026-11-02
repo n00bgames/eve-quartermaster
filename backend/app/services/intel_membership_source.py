@@ -1,6 +1,8 @@
 """Bounded public ESI census. Incomplete alliances never become a smaller total."""
 import asyncio
 from app.services.esi_client import EsiClient
+from app.services.intel_corporation_data import public_profile
+from app.services.intel_sources import plain
 
 MAX_CORPORATIONS = 1000
 
@@ -12,11 +14,13 @@ def count(value):
 
 
 class MembershipSource:
-    def __init__(self):
-        self.client = EsiClient()  # No bearer token or private endpoints.
+    def __init__(self, client=None):
+        self.client = client or EsiClient()  # No bearer token or private endpoints.
+        self.owns_client = client is None
 
     async def close(self):
-        await self.client.close()
+        if self.owns_client:
+            await self.client.close()
 
     async def census(self, kind, eve_id):
         if kind == "corporation":
@@ -36,17 +40,32 @@ class MembershipSource:
             async with gate:
                 try:
                     data = await self.client.get(f"/corporations/{cid}/")
-                    # Independently cached lists/profiles can disagree during a move.
-                    if data.get("alliance_id") != eve_id:
-                        raise ValueError("Corporation affiliation changed")
+                    profile = public_profile(data)
                     members = count(data.get("member_count"))
-                    return {"eve_id": cid, "name": str(data.get("name") or f"Corporation {cid}")[:255], "member_count": members}
+                    agrees = data.get("alliance_id") == eve_id
+                    return {"eve_id": cid, "name": plain(data.get("name") or f"Corporation {cid}", 255),
+                            "member_count": members if agrees else None,
+                            "state": "available" if agrees else "affiliation_changed", "profile": profile}
                 except asyncio.CancelledError:
                     raise
                 except Exception:
-                    return {"eve_id": cid, "name": f"Corporation {cid}", "member_count": None}
+                    return {"eve_id": cid, "name": f"Corporation {cid}", "member_count": None, "state": "unavailable"}
 
         rows = await asyncio.gather(*(corporation(cid) for cid in ids))
+        names = {}
+        people = sorted({p[key] for row in rows if (p := row.get("profile"))
+                         for key in ("ceo_id", "creator_id") if type(p.get(key)) is int and p[key] > 0})
+        for offset in range(0, len(people), 1000):
+            try:
+                values = await self.client.post("/universe/names/", people[offset:offset+1000])
+                names.update({item["id"]: plain(item["name"], 255) for item in values if item.get("category") == "character"})
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                pass  # Missing display names never invalidate real membership counts.
+        for row in rows:
+            profile = row.get("profile") or {}
+            row.update(ceo_name=names.get(profile.get("ceo_id")), creator_name=names.get(profile.get("creator_id")))
         known = [row["member_count"] for row in rows if row["member_count"] is not None]
         subtotal = sum(known) if known or not ids else None
         total = count(subtotal) if len(known) == len(ids) else None

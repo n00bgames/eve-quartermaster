@@ -159,7 +159,7 @@ def get_current_user(
         or re.fullmatch(r"/navigation/systems/\d+/objects/(?:sync|structures/\d+)", utility_path) is not None
     )
     quartermaster_utility = quartermaster_utility or (request.method == "PUT" and utility_path == "/auth/me/main-character")
-    quartermaster_utility = quartermaster_utility or (request.method == "POST" and utility_path in {"/industry-reports", "/industry-reports/reports/delete"})
+    quartermaster_utility = quartermaster_utility or (request.method == "POST" and utility_path in {"/industry-reports", "/industry-reports/reports/delete", "/receipts", "/receipts/parse", "/receipts/preview", "/receipts/route", "/receipts/reports/delete"})
     quartermaster_utility = quartermaster_utility or (request.method == "PATCH" and utility_path == "/appearance/me") or (request.method == "PUT" and utility_path == "/appearance/me/banner")
     quartermaster_utility = quartermaster_utility or (request.method == "PATCH" and utility_path == "/auth/me")
     quartermaster_utility = quartermaster_utility or (request.method in {"PATCH", "DELETE"} and re.fullmatch(r"/journey/characters/\d+", utility_path) is not None)

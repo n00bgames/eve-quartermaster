@@ -93,7 +93,29 @@ async def profile_stage(job_id: str,token: str,source,factory):
                 observe(db,subject,source_name,stable)
         subject.public_data=data
         if data.get("esi",{}).get("data",{}).get("name"):subject.name=data["esi"]["data"]["name"]
-        row.stage="kills";row.page=1;row.retry_count=0;db.commit()
+        row.stage="membership" if subject.kind=="alliance" else "kills";row.page=1;row.retry_count=0;db.commit()
+
+
+async def membership_stage(job_id: str,token: str,source,factory):
+    from app.services.intel_membership import write_census
+    with factory() as db:
+        row=owned_job(db,job_id,token)
+        if row is None:return
+        subject=db.get(IntelSubject,row.subject_id);kind,eve_id=subject.kind,subject.eve_id
+        db.commit()
+    try:
+        payload=await asyncio.wait_for(source.membership(kind,eve_id),timeout=180)
+    except asyncio.CancelledError:raise
+    except Exception:payload=None
+    with factory() as db:
+        row=owned_job(db,job_id,token)
+        if row is None:return
+        coverage=deepcopy(row.coverage)
+        coverage["membership"]={"status":"unavailable" if payload is None else "available" if payload["member_count"] is not None else "partial", "checked_at":now().isoformat()}
+        if payload is not None:
+            write_census(db,row.subject_id,payload,now())
+            coverage["membership"].update(corporations=payload["corporation_count"],resolved=payload["resolved_corporations"])
+        row.coverage=coverage;row.stage="kills";row.page=1;row.retry_count=0;db.commit()
 
 
 async def page_stage(job_id: str,token: str,source,factory):
@@ -229,7 +251,7 @@ async def metadata_stage(job_id: str,token: str,source,factory):
         data["metadata"]={"errors":metadata_errors,"type_cap_reached":len(missing_types)>150,"system_cap_reached":len(missing_systems)>50,"name_cap_reached":len(names)>=900,"analysis_limited":limited}
         row.coverage=data
         capped=any(data.get(feed,{}).get("status")=="page_cap" for feed in ("kills","losses"))
-        row.status="partial" if capped else "completed";row.stage="finished";row.finished_at=now();row.lease_token=None;row.lease_until=None
+        row.status="partial" if capped or data.get("membership",{}).get("status") in {"partial","unavailable"} else "completed";row.stage="finished";row.finished_at=now();row.lease_token=None;row.lease_until=None
         db.execute(delete(IntelSourceCache).where(IntelSourceCache.key.like("page:%"),IntelSourceCache.expires_at<now()-timedelta(days=1)))
         db.commit()
 
@@ -246,6 +268,7 @@ async def run_collection(job_id: str,source=None,factory=SessionLocal):
                 if row is None:return
                 stage=row.stage;db.commit()
             if stage=="profile":await profile_stage(job_id,token,source,factory)
+            elif stage=="membership":await membership_stage(job_id,token,source,factory)
             elif stage in {"kills","losses"}:await page_stage(job_id,token,source,factory)
             elif stage=="metadata":await metadata_stage(job_id,token,source,factory)
             else:raise IntelSourceError("Unknown collection stage")
