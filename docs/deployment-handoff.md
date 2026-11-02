@@ -10,6 +10,16 @@ The verified remote Git checkout and active Compose working directory are **`/ho
 
 The verified EQM services are `backend`, `frontend`, `postgres`, `redis`, and `worker`. Other applications share the host; scope operations to this checkout and Compose project.
 
+## Restart existing services
+
+From the installed checkout on the Docker host, run `sh ./restart-eqm.sh` (Linux) or `.\restart-eqm.bat` (Windows). The default restarts only **backend and frontend**, with a 30-second stop grace period. `--worker` includes the queue worker and can interrupt its current job. In-flight API requests and API-managed background tasks may also be interrupted by a backend restart. PostgreSQL, Redis and other Compose projects remain running.
+
+Both helpers work from their own directory, require an existing container for every selected service before restarting anything, and support the Docker Compose plugin or legacy `docker-compose`. They do not pull Git, rebuild images, recreate containers, alter `.env`, or remove data. Use the updater/rebuilder when new source or configuration must be applied. Existing container startup behavior still applies.
+
+After restarting, the helper pipes `scripts/check-eqm-ready.py` from the host checkout into Python inside the backend container; no host Python installation or rebuilt image is needed. The read-only probe waits up to 90 seconds for backend liveness, database-backed login/bootstrap and branding, the frontend HTML page, and login/bootstrap through the frontend API proxy. It checks the response shape as well as HTTP status. A healthy `/api/health` alone is insufficient. Internal checks do not verify the outer HTTPS proxy, public DNS, authenticated data modules or the root cause of an earlier freeze.
+
+Restart errors or readiness failures return exit code 1; invalid arguments return 2. On failure inspect `docker compose ps --all` and `docker compose logs --tail=100 backend frontend` (add `worker` if selected). The scripts are manual recovery helpers, not automatic restart loops or a fix for transaction contention. Creating them does not restart or update a live installation.
+
 ## Update workflow
 
 After the user requests deployment to the intended environment, connect and inspect the checkout:

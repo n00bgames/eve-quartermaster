@@ -193,6 +193,18 @@ To update from the current GitHub branch and rebuild containers:
 
 The update scripts use a fast-forward-only pull so they stop instead of trampling local edits.
 
+To restart the existing web services without pulling or rebuilding:
+
+```powershell
+.\restart-eqm.bat
+```
+
+```bash
+sh ./restart-eqm.sh
+```
+
+These restart **backend and frontend**, leaving PostgreSQL, Redis and the queue worker running. Add `--worker` to include the worker; that can interrupt its current job. The helpers check database-backed login/branding, the frontend page and the frontend API proxy for up to 90 seconds, returning a failure exit code if readiness is not confirmed. Run them on the machine hosting that Docker stack. [Restart behavior and troubleshooting](docs/deployment-handoff.md#restart-existing-services).
+
 ### First Run
 
 From PowerShell in the repository root:
