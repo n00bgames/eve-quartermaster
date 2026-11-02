@@ -1,5 +1,5 @@
 export type ApiClient=<T>(path:string,options?:RequestInit)=>Promise<T>;
-export type Purchase={id:number;source_line:number;purchased_at:string;item:string;quantity:number;unit_price:string;paid:string;station:string;duplicate_of:number|null;billable_quantity?:number;excluded_quantity?:number;charged?:string;excluded?:string};
+export type Purchase={id:number;source_line:number;purchased_at:string;item:string;quantity:number;unit_price:string;displayed_unit_price?:string;unit_price_rounded?:boolean;paid:string;station:string;duplicate_of:number|null;billable_quantity?:number;excluded_quantity?:number;charged?:string;excluded?:string};
 export type Parsed={lines:Purchase[];purchase_total:string;transaction_count:number;duplicate_count:number;warnings:string[]};
 export type Route={mode:"gate"|"jump_freighter"|"mixed";origin:string;destination:string;systems:string[];jump_count:number|null;source:"manual"|"planned"};
 export type Fuel={item:string;quantity:number;unit_price:string};

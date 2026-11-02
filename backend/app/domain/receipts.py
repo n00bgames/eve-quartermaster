@@ -1,7 +1,7 @@
 """Portable English EVE market-purchase parser and exact receipt arithmetic."""
 from collections import OrderedDict
 from datetime import datetime
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, ROUND_HALF_UP, ROUND_HALF_EVEN
 import hashlib
 import re
 
@@ -28,6 +28,22 @@ def amount(text, debit=False):
     return money(match[2].replace(",", "") + ("." + match[3] if match[3] else ""))
 
 
+def effective_unit_price(displayed, paid, quantity):
+    if displayed * quantity == paid:
+        return displayed, False
+    # EVE can copy a whole-ISK/one-decimal display while keeping the exact
+    # transaction debit. Only recover cent-exact prices consistent with that
+    # displayed precision. Explicit two-decimal mismatches still fail.
+    exponent = displayed.as_tuple().exponent
+    unit_cents, remainder = divmod(int(paid * 100), quantity)
+    effective = Decimal(unit_cents) * CENT
+    if exponent > -2 and remainder == 0:
+        quantum = Decimal(1).scaleb(exponent)
+        if any(effective.quantize(quantum, rounding=mode) == displayed for mode in (ROUND_HALF_UP, ROUND_HALF_EVEN)):
+            return effective, True
+    raise ValueError("Quantity × unit price does not match the paid amount, and cannot be explained by displayed-price rounding")
+
+
 def parse(text):
     if len(text) > 1_000_000: raise ValueError("Paste at most 1,000,000 characters")
     rows, seen, duplicates = [], {}, 0
@@ -43,14 +59,15 @@ def parse(text):
             qty = int(quantity.replace(",", ""))
             if not 1 <= qty <= 2147483647: raise ValueError("Quantity must be between 1 and 2,147,483,647")
             if not item or len(item) > 255 or len(station) > 500: raise ValueError("Item name or station is missing/too long")
-            unit, paid = amount(price), amount(total, debit=True)
-            if unit * qty != paid: raise ValueError("Quantity × unit price does not match the paid amount")
+            displayed, paid = amount(price), amount(total, debit=True)
+            unit, rounded = effective_unit_price(displayed, paid, qty)
             signature = hashlib.sha256(raw.strip().encode()).hexdigest()
             duplicate_of = seen.get(signature)
             if duplicate_of: duplicates += 1
             else: seen[signature] = len(rows)+1
             rows.append({"id":len(rows)+1,"source_line":source_line,"purchased_at":at.isoformat()+"Z", "item":item,
-                         "quantity":qty,"unit_price":isk(unit),"paid":isk(paid),"station":station,"duplicate_of":duplicate_of})
+                         "quantity":qty,"unit_price":isk(unit),"displayed_unit_price":isk(displayed),"unit_price_rounded":rounded,
+                         "paid":isk(paid),"station":station,"duplicate_of":duplicate_of})
             if len(rows) > MAX_LINES: raise ValueError(f"Paste at most {MAX_LINES:,} purchase lines")
         except (ValueError, ArithmeticError) as error:
             raise ValueError(f"Line {source_line}: {error}") from error
@@ -58,8 +75,11 @@ def parse(text):
     total = sum((Decimal(row["paid"]) for row in rows), Decimal(0))
     money(total)
     if len({row["item"].casefold() for row in rows}) > 1000: raise ValueError("Keep at most 1,000 different item types per receipt")
-    return {"lines":rows,"purchase_total":isk(total),"transaction_count":len(rows),"duplicate_count":duplicates,
-            "warnings":[f"{duplicates} identical transaction line(s) retained. They may be separate purchases; review and exclude repeated paste lines if needed."] if duplicates else []}
+    warnings = [f"{duplicates} identical transaction line(s) retained. They may be separate purchases; review and exclude repeated paste lines if needed."] if duplicates else []
+    rounded = sum(row["unit_price_rounded"] for row in rows)
+    if rounded:
+        warnings.append(f"{rounded} purchase line(s) have a rounded displayed unit price. Exact paid totals were retained and cent-exact unit prices recovered for exclusions.")
+    return {"lines":rows,"purchase_total":isk(total),"transaction_count":len(rows),"duplicate_count":duplicates,"warnings":warnings}
 
 
 def build(payload):
@@ -72,7 +92,11 @@ def build(payload):
         row = dict(source)
         billable = overrides.get(row["id"], row["quantity"])
         if type(billable) is not int or not 0 <= billable <= row["quantity"]: raise ValueError(f"Line {row['source_line']}: billable quantity must be between zero and the purchased quantity")
-        charged = Decimal(row["unit_price"])*billable
+        # Allocate paid cents proportionally and round half-up, then derive the
+        # exclusion as the remainder so charged + excluded always equals paid.
+        numerator = int(Decimal(row["paid"])*100)*billable
+        cents, remainder = divmod(numerator, row["quantity"])
+        charged = Decimal(cents + (remainder*2 >= row["quantity"]))*CENT
         removed = Decimal(row["paid"])-charged
         included += charged; excluded += removed
         row.update(billable_quantity=billable,excluded_quantity=row["quantity"]-billable,charged=isk(charged),excluded=isk(removed))

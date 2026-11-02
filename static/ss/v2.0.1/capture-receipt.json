@@ -296,6 +296,14 @@
       "sha256": "d2bb3921e7bc5bf0a5dbe76d88594ca0ebab30a678c22a265556e7375e12a241",
       "width": 990,
       "height": 1400
+    },
+    {
+      "file": "receipt-rounded-price.jpg",
+      "caption": "Actual public receipt showing recovered/displayed prices and exact partial exclusions; fictional purchases.",
+      "bytes": 115745,
+      "sha256": "72529016253dcacdafd6219620bae78dfd152a06f04f8fbc17ebefa442ec3498",
+      "width": 1264,
+      "height": 1106
     }
   ],
   "updated_at_utc": "2026-11-02T12:58:21.402913+00:00",
@@ -416,5 +424,15 @@
       "sha256": "10f04e900a9846b74147cfe554142de99f193b61a2936540d488cc34d34776d6",
       "pages": 2
     }
+  },
+  "receipt_rounding_followup": {
+    "recorded_at_utc": "2026-11-02T16:55:12.038391+00:00",
+    "application_version": "2.0.1",
+    "source_base_commit": "5977b891c1ab0dfac1d7a1da66a96ee5c82dbc6e",
+    "source_state": "Uncommitted receipt rounding fix; not deployed or released.",
+    "method": "Actual production React build and receipt API on isolated localhost SQLite. Complete in-app browser public receipt capture, original purchase details expanded. No compositing.",
+    "provenance": "Fictional Demo Module II purchase: 40 units, pasted price 12 ISK, actual paid 492 ISK, 17 units charged. No real user transaction data or counterparties published.",
+    "validation": "57 receipt tests; TypeScript/Vite checks; actual browser parse, partial exclusion, preview, save, public view, expanded original prices and empty error console. Actual PDF/CSV endpoints checked; single-page PDF rendered with Poppler and visually inspected. Both real user examples verified privately.",
+    "limitations": "Only cent-exact recovered prices consistent with whole/one-decimal pasted rounding are accepted. Explicit two-decimal mismatches and unexplained discrepancies still fail. Existing immutable snapshots unchanged."
   }
 }

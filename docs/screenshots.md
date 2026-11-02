@@ -719,3 +719,11 @@ November 2, 2026. Actual React/receipt/navigation/auth APIs and isolated synthet
 ![First page of the branded PDF export](../static/ss/v2.0.1/receipt-pdf-page1.png)
 
 [Two-page PDF example](examples/receipt-demo.pdf) · [Controls, privacy and rollout](receipts.md) · [Capture receipt](../static/ss/v2.0.1/capture-receipt.json). Source/build/provenance recorded; not a deployment or published release.
+
+### Receipts: rounded unit-price follow-up (unreleased)
+
+Actual public receipt with fictional purchases, showing pasted/effective prices and exact partial exclusion totals. No operational transaction data.
+
+![Rounded clipboard price recovery](../static/ss/v2.0.1/receipt-rounded-price.jpg)
+
+Source, validation and SHA-256 recorded in the [capture receipt](../static/ss/v2.0.1/capture-receipt.json).

@@ -6,6 +6,8 @@ Version sections are written as user-facing release notes first, with implementa
 
 ## [2.0.1] - Unreleased
 
+- Fix Receipts rejecting rounded clipboard unit prices: preserve exact paid totals, recover consistent cent-exact prices for exclusions, and show both pasted/effective prices in reports and PDF/CSV. Unexplained mismatches still fail.
+
 - Add **Finance & Trade → Receipts**: paste actual market purchases, group items, exclude full/partial quantities, add credits, hauling/fuel costs and routes, save private or explicitly share expiring links, and export branded PDF/CSV. Exact decimal reconciliation, main-character/anonymous attribution, owner-only source drafts and revocable shares. Uses existing Market/Navigation permissions and saved-report storage; no new migration or ESI scope.
 
 - Extend alliance Intel collection with a public corporation census and expandable **Alliance member corporations**: logos, CEOs, counts, synopsis, full public profile, latest cached zKill statistics and full-dossier navigation. Add server-side search/sort/paging; reuse manual/daily monitoring counts, retain incomplete-data boundaries and release DB transactions during public HTTP waits. No extra migration beyond 0105 or new ESI scopes.

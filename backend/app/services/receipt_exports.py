@@ -23,8 +23,8 @@ def rows(data):
     yield ["Route systems"," -> ".join(route.get("systems",[]))]
     yield ["Notes",data["note"]]
     yield []
-    yield ["Purchase UTC","Item","Quantity","Unit ISK","Paid ISK","Charged quantity","Charged ISK","Excluded ISK","Station"]
-    for row in data["lines"]:yield [row["purchased_at"],row["item"],row["quantity"],row["unit_price"],row["paid"],row["billable_quantity"],row["charged"],row["excluded"],row["station"]]
+    yield ["Purchase UTC","Item","Quantity","Effective unit ISK","Displayed unit ISK","Displayed price rounded","Paid ISK","Charged quantity","Charged ISK","Excluded ISK","Station"]
+    for row in data["lines"]:yield [row["purchased_at"],row["item"],row["quantity"],row["unit_price"],row.get("displayed_unit_price",row["unit_price"]),bool(row.get("unit_price_rounded")),row["paid"],row["billable_quantity"],row["charged"],row["excluded"],row["station"]]
 
 
 def csv_content(data):
@@ -80,6 +80,6 @@ def pdf_content(data):
     for warning in data["warnings"]:story.append(p(warning))
     story.append(CondPageBreak(100))
     story.append(p("Original purchase transactions (UTC)",styles["Heading2"]))
-    story.append(table(["Purchased UTC / station","Item","Qty","Unit ISK","Paid ISK","Charged ISK"],[[r["purchased_at"][:16].replace("T"," ")+"\n"+r["station"],r["item"],str(r["quantity"]),isk(r["unit_price"]),isk(r["paid"]),isk(r["charged"])] for r in data["lines"]],[width*.25,width*.25,width*.07,width*.13,width*.15,width*.15]))
+    story.append(table(["Purchased UTC / station","Item","Qty","Unit ISK","Paid ISK","Charged ISK"],[[r["purchased_at"][:16].replace("T"," ")+"\n"+r["station"],r["item"],str(r["quantity"]),isk(r["unit_price"])+(f"\nPasted {isk(r['displayed_unit_price'])} (rounded)" if r.get("unit_price_rounded") else ""),isk(r["paid"]),isk(r["charged"])] for r in data["lines"]],[width*.25,width*.25,width*.07,width*.13,width*.15,width*.15]))
     SimpleDocTemplate(stream,pagesize=A4,leftMargin=32,rightMargin=32,topMargin=102,bottomMargin=34,title=data["title"],author=f"EVE Quartermaster / {data['creator_name']}",creator="EVE Quartermaster").build(story,onFirstPage=header,onLaterPages=header)
     return stream.getvalue()

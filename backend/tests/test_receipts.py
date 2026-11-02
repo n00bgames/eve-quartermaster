@@ -52,6 +52,38 @@ def test_average_rounding_never_reprices_charged_total():
     assert data['groups'][0]['average_unit_price']=='0.01' and data['grand_total']=='0.04'
 
 
+@pytest.mark.parametrize('displayed,effective', [('12','12.30'),('12.3','12.34'),('12','11.50'),('12','12.50'),('13','12.50')])
+def test_clipboard_display_rounding_recovers_exact_cent_price(displayed,effective):
+    raw=purchase(40,price=effective).replace(f'\t{effective} ISK\t',f'\t{displayed} ISK\t')
+    parsed=domain.parse(raw);row=parsed['lines'][0]
+    assert row['unit_price']==effective and row['displayed_unit_price']==f'{Decimal(displayed):.2f}' and row['unit_price_rounded']
+    assert parsed['purchase_total']==f'{Decimal(effective)*40:.2f}' and parsed['warnings']
+    data=domain.build({'text':raw,'billable_quantities':{'1':17}})
+    assert data['grand_total']==f'{Decimal(effective)*17:.2f}'
+    assert Decimal(data['included_total'])+Decimal(data['excluded_total'])==Decimal(parsed['purchase_total'])
+
+
+@pytest.mark.parametrize('displayed,total', [('12','500.40'),('12.00','492.00'),('12.3','494.00'),('12','492.01')])
+def test_unexplained_or_explicitly_precise_mismatches_still_fail(displayed,total):
+    raw=purchase(40,price='12.00').replace('12.00 ISK',displayed+' ISK').replace('-480.00 ISK','-'+total+' ISK')
+    with pytest.raises(ValueError,match='cannot be explained'):domain.parse(raw)
+
+
+def test_exact_price_has_no_rounding_warning():
+    parsed=domain.parse(purchase())
+    assert not parsed['lines'][0]['unit_price_rounded'] and not parsed['warnings']
+
+
+def test_rounded_price_survives_save_public_view_and_csv(app):
+    raw=purchase(40,price='12.30').replace('\t12.30 ISK\t','\t12 ISK\t')
+    report=save(app,text=raw,is_private=False,billable_quantities={'1':17})
+    assert report['purchase_total']=='492.00' and report['grand_total']=='209.10' and report['excluded_total']=='282.90'
+    public=app.client.get('/api/receipts/public/'+report['token']).json()
+    assert public['lines'][0]['unit_price']=='12.30' and public['lines'][0]['displayed_unit_price']=='12.00'
+    exported=app.client.get('/api/receipts/public/'+report['token']+'/export/csv').text
+    assert 'Displayed unit ISK' in exported and '12.30,12.00,True' in exported
+
+
 def test_credit_can_cover_items_and_hauling_but_total_cannot_be_negative():
     data=domain.build({'text':purchase(),'hauling_fee':'10','credit':'40.75','credit_reason':'Prepaid in full'})
     assert data['grand_total']=='0.00'

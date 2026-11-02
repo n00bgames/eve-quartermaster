@@ -1040,3 +1040,5 @@ Paste market purchase transactions and produce an itemized receipt with full/par
 ![Market-run receipt — actual UI with fictional purchases](static/ss/v2.0.1/receipt-public.jpg)
 
 [Guide and limits](docs/receipts.md) · [Cost controls](static/ss/v2.0.1/receipt-cost-controls.jpg) · [Sample PDF](docs/examples/receipt-demo.pdf) · [Mobile](static/ss/v2.0.1/receipt-mobile.jpg). Unreleased working-tree feature; matching backend/frontend required.
+
+Rounded clipboard unit prices now retain their exact paid totals and show both pasted/effective prices. [Actual synthetic receipt capture](static/ss/v2.0.1/receipt-rounded-price.jpg). Unreleased fix.
