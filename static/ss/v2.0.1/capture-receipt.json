@@ -312,6 +312,14 @@
       "sha256": "fff9b74002d9881261c8e66c772e41641cfebc531e0112812cdc89ce02e431ba",
       "width": 1280,
       "height": 720
+    },
+    {
+      "file": "local-scan-9999.png",
+      "caption": "9,999 fictional pilots resolved in the actual saved public Local Scan UI.",
+      "bytes": 55919,
+      "sha256": "56b9e866fceb3342b9d3841bd3f8a3b6c7089035383b1d08131174f12be7751e",
+      "width": 1280,
+      "height": 720
     }
   ],
   "updated_at_utc": "2026-11-02T12:58:21.402913+00:00",
@@ -452,5 +460,15 @@
     "validation": "58 Local Scan/capacity/D-Scan tests passed. TypeScript and Vite production build passed. 4,999-pilot API save/private reopen/public reopen and 5,000-pilot rejection verified; browser result shows all 4,999.",
     "limitations": "No live ESI load benchmark. Existing 90-second enrichment deadline and 250-pilot batches retained. Preview branding asset missing; no production change or private data used.",
     "file": "local-scan-4999.png"
+  },
+  "local_scan_capacity_9999_followup": {
+    "captured_on": "2026-11-02",
+    "recorded_at_utc": "2026-11-02T19:53:11.515206+00:00",
+    "source_base_commit": "360ec21e49540fd565b4a8ce2b8d768d6fb4481e",
+    "source_state": "Uncommitted 9,999-pilot capacity change; not deployed.",
+    "method": "Actual React production build, localhost FastAPI, isolated SQLite, fictional pilot names and mocked public ESI. Submitted 9,999 pilots through browser UI; public result captured with cua_repl.",
+    "validation": "59 Local Scan/capacity/D-Scan tests passed. TypeScript and Vite build passed. 9,999 longest-allowed names with CRLF exceed the previous 600,000-character field and pass both schemas. API save/private and public reopen retain every pilot; 10,000 rejected before upstream. UI reports 9,999/9,999.",
+    "limitations": "No live ESI load benchmark. Existing 90-second enrichment deadline and 250-pilot batches retained. No real account data or game actions.",
+    "file": "local-scan-9999.png"
   }
 }

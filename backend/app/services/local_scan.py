@@ -14,8 +14,8 @@ from app.services.permissions import ROLE_RANK, role_rank
 RETENTIONS = {"30m": 1800, "1h": 3600, "2h": 7200, "12h": 43200,
               "24h": 86400, "3days": 259200, "7days": 604800,
               "30days": 2592000, "permanent": None}
-MAX_PILOTS = 4999
-MAX_TEXT_LENGTH = 600000
+MAX_PILOTS = 9999
+MAX_TEXT_LENGTH = 1200000
 
 
 def now():

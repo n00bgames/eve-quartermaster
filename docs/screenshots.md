@@ -734,3 +734,10 @@ Source, validation and SHA-256 recorded in the [capture receipt](../static/ss/v2
 Actual built UI and isolated SQLite API with **4,999 fictional pilots** and mocked public ESI responses. All 4,999 resolve and remain present in the saved public report. Existing batching and lookup deadlines remain in place. The preview has no live account/game data; its missing local branding image is unrelated to scan capacity.
 
 ![Local Scan: all 4,999 synthetic pilots resolved](../static/ss/v2.0.1/local-scan-4999.png)
+
+
+## Local Scan capacity — 9,999-pilot unreleased follow-up
+
+Actual built UI with isolated SQLite and mocked public ESI resolves and saves **9,999 fictional pilots**. The API also reopens all pilots intact and rejects 10,000 unique names before making upstream requests. Local Scan and D-Scan linked lists accept 1,200,000 characters; ESI batches and deadlines remain unchanged. No live ESI load benchmark or deployed build is claimed. The preceding 4,999-pilot capture remains a historical verification.
+
+![Local Scan: all 9,999 synthetic pilots resolved](../static/ss/v2.0.1/local-scan-9999.png)

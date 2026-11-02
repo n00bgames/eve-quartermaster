@@ -81,7 +81,7 @@ def test_parse_clipboard_dedup_and_fleet():
     assert service.parse_local('\ufeffAlpha One\r\nalpha one\nBeta Two\tVenture\tJita')==['Alpha One','Beta Two']
     for text in ['', '<script>alert(1)</script>', '32880\tMy Venture\tVenture\t28 km', 'https://private.invalid/a']:
         with pytest.raises(ValueError):service.parse_local(text)
-    with pytest.raises(ValueError):service.parse_local('\n'.join(f'Pilot {i}' for i in range(5000)))
+    with pytest.raises(ValueError):service.parse_local('\n'.join(f'Pilot {i}' for i in range(10000)))
 
 
 def test_generate_public_snapshot_system_and_no_private_data(env):

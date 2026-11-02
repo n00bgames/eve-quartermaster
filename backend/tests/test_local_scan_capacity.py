@@ -14,7 +14,7 @@ def pilot_names(count):
     return ["X" * 94 + f"{i:06d}" for i in range(count)]
 
 
-@pytest.mark.parametrize("count", [2001, 4999])
+@pytest.mark.parametrize("count", [2001, 4999, 9999])
 def test_accepts_large_local_lists_and_deduplicates(count):
     names = pilot_names(count)
     text = "\r\n".join([*names, names[0].lower()])
@@ -23,9 +23,9 @@ def test_accepts_large_local_lists_and_deduplicates(count):
     assert DScanInput(text="dscan", local_text=text).local_text == text
 
 
-def test_rejects_5000_unique_pilots_with_updated_error():
-    with pytest.raises(ValueError, match="at most 4,999 unique pilots"):
-        service.parse_local("\n".join(pilot_names(5000)))
+def test_rejects_10000_unique_pilots_with_updated_error():
+    with pytest.raises(ValueError, match="at most 9,999 unique pilots"):
+        service.parse_local("\n".join(pilot_names(10000)))
 
 
 @pytest.mark.parametrize("model,fields", [
@@ -35,10 +35,10 @@ def test_rejects_5000_unique_pilots_with_updated_error():
 def test_retains_a_bounded_local_text_size(model, fields):
     field = "local_text" if fields else "text"
     with pytest.raises(ValidationError):
-        model(**fields, **{field: "X" * 600001})
+        model(**fields, **{field: "X" * 1200001})
 
 
-def test_api_generates_and_reopens_4999_pilots_without_truncation(env):
+def test_api_generates_and_reopens_9999_pilots_without_truncation(env):
     class LargeSource:
         def __init__(self):
             self.calls = []
@@ -58,16 +58,16 @@ def test_api_generates_and_reopens_4999_pilots_without_truncation(env):
         async def close(self):
             pass
 
-    names = pilot_names(4999)
+    names = pilot_names(9999)
     text = "\r\n".join(names)
-    assert len(text) > 150000
-    assert env.client.get("/api/local-scans/context").json()["max_pilots"] == 4999
+    assert len(text) > 600000
+    assert env.client.get("/api/local-scans/context").json()["max_pilots"] == 9999
     source = LargeSource()
     with patch.object(local_scan, "source_factory", return_value=source) as factory:
         response = env.client.post("/api/local-scans", json={"text": text})
         assert response.status_code == 201, response.text
         report = response.json()
-        assert report["input_count"] == report["character_count"] == 4999
+        assert report["input_count"] == report["character_count"] == 9999
         assert {p["name"] for p in report["pilots"]} == set(names)
         assert report["unresolved"] == [] and report["warnings"] == []
         saved = env.client.get("/api/local-scans/reports/" + report["token"])
@@ -77,9 +77,9 @@ def test_api_generates_and_reopens_4999_pilots_without_truncation(env):
         assert public.status_code == 200
         assert public.json()["pilots"] == report["pilots"]
         assert max(size for _, size in source.calls) == 250
-        assert sum(kind == "resolve" for kind, _ in source.calls) == 20
-        assert sum(kind == "affiliations" for kind, _ in source.calls) == 20
+        assert sum(kind == "resolve" for kind, _ in source.calls) == 40
+        assert sum(kind == "affiliations" for kind, _ in source.calls) == 40
         rejected = env.client.post("/api/local-scans", json={"text": text + "\nOne More Pilot"})
         assert rejected.status_code == 422
-        assert rejected.json()["detail"] == "A local scan supports at most 4,999 unique pilots."
+        assert rejected.json()["detail"] == "A local scan supports at most 9,999 unique pilots."
         assert factory.call_count == 1

@@ -6,7 +6,7 @@ Version sections are written as user-facing release notes first, with implementa
 
 ## [2.0.1] - Unreleased
 
-- Raise Local Scan and D-Scan linked-local capacity to **4,999 unique pilots**. Expand local-list paste fields to 600,000 characters while retaining 250-pilot ESI batches and the existing lookup deadline.
+- Raise Local Scan and D-Scan linked-local capacity to **9,999 unique pilots**. Expand local-list paste fields to 1,200,000 characters while retaining 250-pilot ESI batches and the existing lookup deadline.
 
 - Fix Receipts rejecting rounded clipboard unit prices: preserve exact paid totals, recover consistent cent-exact prices for exclusions, and show both pasted/effective prices in reports and PDF/CSV. Unexplained mismatches still fail.
 

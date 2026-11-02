@@ -1046,6 +1046,6 @@ Rounded clipboard unit prices now retain their exact paid totals and show both p
 
 ### Local Scan capacity (unreleased follow-up)
 
-Local Scan and D-Scan linked local lists support **4,999 unique pilots**, with expanded paste fields and existing batched ESI lookups. Matching backend/frontend deployment is required; no new migration.
+Local Scan and D-Scan linked local lists support **9,999 unique pilots**, with expanded paste fields and existing batched ESI lookups. Matching backend/frontend deployment is required; no new migration.
 
-![Local Scan with 4,999 synthetic resolved pilots](static/ss/v2.0.1/local-scan-4999.png)
+![Local Scan with 9,999 synthetic resolved pilots](static/ss/v2.0.1/local-scan-9999.png)
