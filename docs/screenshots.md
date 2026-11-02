@@ -741,3 +741,14 @@ Actual built UI and isolated SQLite API with **4,999 fictional pilots** and mock
 Actual built UI with isolated SQLite and mocked public ESI resolves and saves **9,999 fictional pilots**. The API also reopens all pilots intact and rejects 10,000 unique names before making upstream requests. Local Scan and D-Scan linked lists accept 1,200,000 characters; ESI batches and deadlines remain unchanged. No live ESI load benchmark or deployed build is claimed. The preceding 4,999-pilot capture remains a historical verification.
 
 ![Local Scan: all 9,999 synthetic pilots resolved](../static/ss/v2.0.1/local-scan-9999.png)
+
+
+## Full-battle discovery — unreleased 2.0.1 follow-up
+
+Actual built interface and isolated API with fictional participants/public-API mocks. Two cached kills expand to eight, including independent groups; classifications and coverage survive private/public saving. Desktop collection controls, expanded saved result and mobile totals/coverage are shown. [Workflow and limits](battle-discovery.md).
+
+![Battle discovery editor and completed collection](../static/ss/v2.0.1/battle-discovery-editor.png)
+
+![Full system/window report with eight synthetic kills](../static/ss/v2.0.1/battle-discovery-report.png)
+
+![Mobile saved report](../static/ss/v2.0.1/battle-discovery-mobile.png)

@@ -124,6 +124,9 @@ export type BattleReportPayload = {
     discovery_source: string;
     grouping_rule?: string;
     generated_at_utc?: string;
+    search_window?: BattleWindow;
+    scope?: "system_window" | "pilot_connected";
+    discovery?: {status:string;imported_count:number;cached_count:number;failed_count:number;message:string|null;checked_at:string|null};
   };
   engine_requested?: string;
   engine_used?: string;
@@ -160,4 +163,12 @@ export type PublicBattleReportPayload = BattleReportPayload & {
     created_at?: string | null;
     view_count: number;
   };
+};
+
+
+export type BattleWindow = {start_time:string;end_time:string;system_ids:number[]};
+export type BattleDiscoveryJob = {
+  job_id:string;status:string;character_id:number;seed_killmail_id:number;gap_minutes:number;window:BattleWindow;
+  page:number;target_index:number;target_count:number;discovered_count:number;imported_count:number;cached_count:number;
+  failed_count:number;message:string|null;can_resume:boolean;checked_at:string|null;
 };

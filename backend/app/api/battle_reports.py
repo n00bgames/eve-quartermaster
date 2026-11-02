@@ -12,8 +12,10 @@ from sqlalchemy.orm import Session
 from app.api.auth import get_current_user
 from app.core.config import get_settings
 from app.db.session import get_db
-from app.models import BattleReportShare, User
+from app.models import BattleReportShare, KillboardSyncRun, EveSystem, User
 from app.services.battle_reports import available_report_pilots, battle_report_history, build_latest_battle_report
+from app.services.battle_report_scope import BattleWindow
+from app.services import battle_report_discovery as discovery
 from app.services import battle_report_management as management
 from app.services import battle_report_search as search_service
 from app.services.killboard_entities import refresh_killboard_entity_names
@@ -40,7 +42,9 @@ class ReportRequest(BaseModel):
     is_private: bool = False
     retention: Literal["30m","1h","2h","12h","24h","3days","7days","30days","permanent"] = "24h"
     character_id: int
-    gap_minutes: int = 15
+    gap_minutes: int = Field(default=15, ge=5, le=60)
+    battle_window: BattleWindow | None = None
+    discovery_job_id: str | None = Field(default=None, max_length=40)
     seed_killmail_id: int | None = None
     side_overrides: list[PilotSideOverride] = Field(default_factory=list)
     organization_overrides: list[OrganizationSideOverride] = Field(default_factory=list)
@@ -84,10 +88,79 @@ def share_payload(row: BattleReportShare) -> dict[str, Any]:
     }
 
 
-def require_view(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> User:
+def require_view(current_user: User = Depends(get_current_user), db: Session = Depends(get_db), response: Response = None) -> User:
     if not can_view_section(current_user, "battle_reports", db):
         raise HTTPException(status_code=403, detail="Battle Reports permission is required")
+    if response is not None:
+        response.headers["Cache-Control"] = "private, no-store"
     return current_user
+
+
+
+def attach_discovery(result, db, user, request):
+    if request.discovery_job_id:
+        if request.battle_window is None:
+            raise ValueError('Choose the collection battle window before using its coverage.')
+        status = discovery.report_coverage(db,user,request.discovery_job_id,
+            character_id=request.character_id,window=request.battle_window.model_dump(mode='json'))
+        result['coverage']['discovery'] = status
+        result['coverage']['warning'] += f" Collection status: {status['status']}; {status['imported_count']} imported; {status['failed_count']} import issues. zKillboard caches responses and withholds very recent kills."
+
+
+@router.get('/systems')
+def battle_systems(q: str = Query(..., min_length=2,max_length=100),
+    current_user: User = Depends(require_view), db: Session = Depends(get_db)):
+    term=q.replace('\\','\\\\').replace('%','\\%').replace('_','\\_')
+    return [{'system_id':sid,'system_name':name} for sid,name in db.execute(select(EveSystem.system_id,EveSystem.name)
+        .where(EveSystem.name.ilike('%'+term+'%',escape='\\')).order_by(EveSystem.name).limit(12))]
+
+
+@router.get('/discovery/latest')
+def latest_discovery(character_id: int = Query(...,gt=0), seed_killmail_id: int = Query(...,gt=0),
+    current_user: User = Depends(require_view), db: Session = Depends(get_db)):
+    from app.services.battle_reports import _require_report_pilot
+    try:_require_report_pilot(db,current_user,character_id)
+    except (LookupError,PermissionError) as exc:raise HTTPException(404,'Tracked pilot unavailable') from exc
+    rows=db.scalars(select(KillboardSyncRun).where(KillboardSyncRun.feed=='battle',
+        KillboardSyncRun.initiated_by_user_id==current_user.id).order_by(KillboardSyncRun.created_at.desc()).limit(50))
+    for row in rows:
+        meta=row.targets_json[0]['battle']
+        if meta['character_id']==character_id and meta['seed_killmail_id']==seed_killmail_id:return discovery.payload(row)
+    return None
+
+
+@router.post('/discovery',status_code=202)
+async def discover_battle(request: ReportRequest, current_user: User = Depends(require_view), db: Session = Depends(get_db)):
+    try:
+        run=discovery.create_job(db,current_user,character_id=request.character_id,gap_minutes=request.gap_minutes,
+            seed_killmail_id=request.seed_killmail_id,battle_window=request.battle_window.model_dump(mode='json') if request.battle_window else None)
+        db.commit();db.refresh(run)
+        result=discovery.payload(run)
+        discovery.start(run.id)
+        return result
+    except PermissionError as exc:raise HTTPException(403,str(exc)) from exc
+    except LookupError as exc:raise HTTPException(404,str(exc)) from exc
+    except ValueError as exc:raise HTTPException(409,str(exc)) from exc
+
+
+@router.get('/discovery/{job_id}')
+def get_discovery(job_id: str, current_user: User = Depends(require_view), db: Session = Depends(get_db)):
+    try:return discovery.payload(discovery.require_job(db,current_user,job_id))
+    except (LookupError,PermissionError) as exc:raise HTTPException(404,'Battle collection was not found') from exc
+
+
+@router.post('/discovery/{job_id}/{action}')
+async def control_discovery(job_id: str, action: Literal['resume','cancel'],
+    current_user: User = Depends(require_view), db: Session = Depends(get_db)):
+    try:run=discovery.require_job(db,current_user,job_id)
+    except (LookupError,PermissionError) as exc:raise HTTPException(404,'Battle collection was not found') from exc
+    if run.status in discovery.TERMINAL:raise HTTPException(409,'This collection is finished; start a new refresh.')
+    if action=='cancel':
+        run.status='cancelled';run.message='Collection cancelled; previously imported canonical records are retained.';run.updated_at=discovery.now()
+        db.commit()
+    elif not killboard_settings(db)['enabled']:raise HTTPException(409,'The Killboard data source is disabled')
+    else:discovery.start(run.id)
+    return discovery.payload(run)
 
 
 @router.get("/context")
@@ -99,7 +172,7 @@ def context(current_user: User = Depends(require_view), db: Session = Depends(ge
         "pilots": available_report_pilots(db, current_user),
         "can_sync": can_view_section(current_user, "killboard", db),
         "default_gap_minutes": 15,
-        "coverage_notice": "Battle reports use EQM's local canonical ESI killmails. zKillboard discovery is best-effort and may not contain every loss.",
+        "coverage_notice": "Select a pilot to locate a battle, then Find all battle kills to collect zKillboard losses across its systems and UTC window. Delayed or unreported kills may be absent.",
     }
 
 
@@ -152,7 +225,7 @@ async def render(
         raise HTTPException(status_code=409, detail="The Killboard data source is disabled")
     try:
         await refresh_killboard_entity_names(db, limit=5_000)
-        return build_latest_battle_report(
+        result = build_latest_battle_report(
             db,
             current_user,
             character_id=payload.character_id,
@@ -160,7 +233,10 @@ async def render(
             seed_killmail_id=payload.seed_killmail_id,
             side_overrides=side_override_map(payload),
             organization_overrides=organization_override_map(payload),
+            battle_window=payload.battle_window.model_dump(mode='json') if payload.battle_window else None,
         )
+        attach_discovery(result, db, current_user, payload)
+        return result
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
     except LookupError as exc:
@@ -252,11 +328,20 @@ def create_share(
             seed_killmail_id=payload.seed_killmail_id,
             side_overrides=side_override_map(payload),
             organization_overrides=organization_override_map(payload),
+            battle_window=payload.battle_window.model_dump(mode='json') if payload.battle_window else None,
         )
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    try:
+        attach_discovery(snapshot, db, current_user, payload)
+    except (LookupError, PermissionError) as exc:
+        raise HTTPException(404, 'Battle collection was not found') from exc
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
     if snapshot["report"] is None:
         raise HTTPException(status_code=409, detail="No cached battle is available to share for this pilot")
     from app.services.report_identity import report_identity

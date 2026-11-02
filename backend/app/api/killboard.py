@@ -50,12 +50,13 @@ def latest_run(db: Session, user: User) -> KillboardSyncRun | None:
     # The personal page must not auto-resume another user's discovery job.
     query = select(KillboardSyncRun).where(
         KillboardSyncRun.initiated_by_user_id == user.id,
+        KillboardSyncRun.feed != "battle",
     ).order_by(KillboardSyncRun.created_at.desc()).limit(1)
     return db.scalar(query)
 
 
 def can_access_run(db: Session, user: User, run: KillboardSyncRun) -> bool:
-    return run.initiated_by_user_id == user.id or role_rank(user, db) >= ROLE_RANK["admin"]
+    return run.feed != "battle" and (run.initiated_by_user_id == user.id or role_rank(user, db) >= ROLE_RANK["admin"])
 
 
 @router.get("/context")

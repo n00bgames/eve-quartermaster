@@ -14,6 +14,8 @@ pub struct BattleReportInput {
     pub seed_killmail_id: i64,
     pub gap_minutes: i64,
     #[serde(default)]
+    pub include_all_killmails: bool,
+    #[serde(default)]
     pub side_overrides: Vec<SideOverride>,
     #[serde(default)]
     pub organization_overrides: Vec<OrganizationOverride>,
@@ -424,7 +426,7 @@ pub fn evaluate_battle_report(input: BattleReportInput) -> Result<Value, String>
         .find(|row| row.killmail_id == input.seed_killmail_id)
         .ok_or_else(|| "Battle Report seed is not present in candidates".to_string())?;
     let selected = selected_affiliation(seed, input.selected_character_id);
-    let rows = connected_rows(&input.rows, seed, selected.as_deref());
+    let rows = if input.include_all_killmails { input.rows.iter().collect() } else { connected_rows(&input.rows, seed, selected.as_deref()) };
     let sides = side_map(&rows, selected.as_deref());
     let manual_sides = input
         .side_overrides

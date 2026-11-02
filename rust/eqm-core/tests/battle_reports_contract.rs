@@ -72,3 +72,19 @@ fn rejects_unknown_contract_schema() {
     input.schema_version = "future".to_string();
     assert!(evaluate_battle_report(input).is_err());
 }
+
+
+#[test]
+fn explicit_system_window_keeps_disconnected_kills() {
+    let mut input = payload("\"side_overrides\":[],");
+    input.rows[1].victim.character_id = Some(4);
+    input.rows[1].victim.corporation_id = Some(30);
+    input.rows[1].attackers[0].identity.character_id = Some(5);
+    input.rows[1].attackers[0].identity.corporation_id = Some(40);
+    let connected = evaluate_battle_report(input.clone()).unwrap();
+    assert_eq!(connected["report"]["killmail_count"], 1);
+    input.include_all_killmails = true;
+    let expanded = evaluate_battle_report(input).unwrap();
+    assert_eq!(expanded["report"]["killmail_count"], 2);
+    assert_eq!(expanded["report"]["timeline"].as_array().unwrap().len(), 2);
+}

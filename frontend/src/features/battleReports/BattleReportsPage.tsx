@@ -1,12 +1,14 @@
+import {BattleDiscoveryPanel} from "./BattleDiscoveryPanel";
 import {EveItemName} from "../clientLinks/EveClientLinks";
 import {LayoutRegion} from "../appearance/LayoutRegion";
 import {APP_VERSION} from "../../version";
 import {BattleReportManager} from "./BattleReportManager";
 import { AlertTriangle, ChevronLeft, ChevronRight, ExternalLink, Pencil, RefreshCw, RotateCcw, Share2, Swords, UsersRound } from "lucide-react";
-import { useEffect, useMemo, useState, type DragEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 
 import type {
   BattleReport,
+  BattleWindow,
   BattleReportComposition,
   BattleReportContext,
   BattleReportHistoryEntry,
@@ -172,6 +174,10 @@ export function BattleReportsPage({ api }: { api: ApiClient }) {
   const [gapMinutes, setGapMinutes] = useState(15);
   const [history, setHistory] = useState<BattleReportHistoryPayload | null>(null);
   const [selectedSeedId, setSelectedSeedId] = useState<number | null>(null);
+  const [activeWindow,setActiveWindow]=useState<BattleWindow|null>(null);
+  const [discoveryJobId,setDiscoveryJobId]=useState<string|null>(null);
+  const reportRevision=useRef(0);
+  const historyRevision=useRef(0);
   const [payload, setPayload] = useState<BattleReportPayload | null>(null);
   const [tab, setTab] = useState<ReportTab>("involved");
   const [sourceSync, setSourceSync] = useState<BattleSourceSync | null>(null);
@@ -203,35 +209,43 @@ export function BattleReportsPage({ api }: { api: ApiClient }) {
 
   useEffect(()=>{let active=true;const sync=()=>{void api<typeof context>("/battle-reports/context").then(c=>{if(active)setContext(c);}).catch(()=>undefined);};window.addEventListener("eqm-main-character",sync);return()=>{active=false;window.removeEventListener("eqm-main-character",sync);};},[api]);
 
-  async function loadReport(selectedPilot = pilotId, selectedGap = gapMinutes, seedId = selectedSeedId, overrides: SideOverrides = sideOverrides, orgOverrides: OrganizationOverrides = organizationOverrides) {
+  async function loadReport(selectedPilot = pilotId, selectedGap = gapMinutes, seedId = selectedSeedId, overrides: SideOverrides = sideOverrides, orgOverrides: OrganizationOverrides = organizationOverrides, window:BattleWindow|null=activeWindow, jobId:string|null=discoveryJobId) {
     if (!selectedPilot) return;
+    const revision=++reportRevision.current;
     setLoading(true); setError(null);
     try {
-      setPayload(await api<BattleReportPayload>("/battle-reports/render", { method: "POST", body: JSON.stringify({
-        character_id: selectedPilot,
+      const next=await api<BattleReportPayload>("/battle-reports/render", { method: "POST", body: JSON.stringify({
+        character_id: selectedPilot, battle_window:window, discovery_job_id:jobId,
         gap_minutes: selectedGap,
         seed_killmail_id: seedId,
         side_overrides: Object.entries(overrides).map(([characterId, side]) => ({ character_id: Number(characterId), side })),
         organization_overrides: Object.values(orgOverrides),
-      }) }));
+      }) });
+      if(revision===reportRevision.current){setPayload(next);return true;}
+      return false;
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Could not build the latest battle report");
-    } finally { setLoading(false); }
+      if(revision===reportRevision.current)setError(reason instanceof Error ? reason.message : "Could not build the latest battle report");
+      return false;
+    } finally { if(revision===reportRevision.current)setLoading(false); }
   }
 
   async function loadHistory(selectedPilot = pilotId, selectedGap = gapMinutes, preferredSeed: number | null = selectedSeedId) {
     if (!selectedPilot) return;
+    const revision=++historyRevision.current;
+    ++reportRevision.current;setPayload(null);
     setLoading(true); setError(null);
     try {
       const query = new URLSearchParams({ character_id: String(selectedPilot), gap_minutes: String(selectedGap), limit: "250" });
       const next = await api<BattleReportHistoryPayload>(`/battle-reports/history?${query}`);
+      if(revision!==historyRevision.current)return;
       setHistory(next);
       const seed = preferredSeed && next.reports.some((row) => row.seed_killmail_id === preferredSeed) ? preferredSeed : next.reports[0]?.seed_killmail_id ?? null;
       setSelectedSeedId(seed);
       setSideOverrides({});
       setOrganizationOverrides({});
       setEditingTeams(false);
-      await loadReport(selectedPilot, selectedGap, seed, {}, {});
+      setActiveWindow(null);setDiscoveryJobId(null);
+      await loadReport(selectedPilot, selectedGap, seed, {}, {},null,null);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not load battle report history");
       setLoading(false);
@@ -245,7 +259,7 @@ export function BattleReportsPage({ api }: { api: ApiClient }) {
     const timer = window.setInterval(() => {
       void api<BattleSourceSync>(`/killboard/sync/${sourceSync.job_id}`).then((next) => {
         setSourceSync(next);
-        if (!activeSyncStatuses.has(next.status)) void loadHistory();
+        if (!activeSyncStatuses.has(next.status)) {if(activeWindow)void loadReport();else void loadHistory();}
       }).catch(() => undefined);
     }, 2500);
     return () => window.clearInterval(timer);
@@ -262,7 +276,7 @@ export function BattleReportsPage({ api }: { api: ApiClient }) {
     if (!pilotId || !report) return;
     setShareBusy(true); setError(null); setShareNotice(null);
     try {
-      const created = await api<BattleReportShare>("/battle-reports/shares", { method: "POST", body: JSON.stringify({ corporation_id:!privateReport&&reportCorporation?Number(reportCorporation):null, anonymous, is_private:privateReport, retention:reportRetention, character_id: pilotId, gap_minutes: gapMinutes, seed_killmail_id: selectedSeedId, side_overrides: Object.entries(sideOverrides).map(([characterId, side]) => ({ character_id: Number(characterId), side })), organization_overrides: Object.values(organizationOverrides) }) });
+      const created = await api<BattleReportShare>("/battle-reports/shares", { method: "POST", body: JSON.stringify({ corporation_id:!privateReport&&reportCorporation?Number(reportCorporation):null, anonymous, is_private:privateReport, retention:reportRetention, battle_window:activeWindow, discovery_job_id:discoveryJobId, character_id: pilotId, gap_minutes: gapMinutes, seed_killmail_id: selectedSeedId, side_overrides: Object.entries(sideOverrides).map(([characterId, side]) => ({ character_id: Number(characterId), side })), organization_overrides: Object.values(organizationOverrides) }) });
       setSavedRevision(n=>n+1);
       if(created.share_url)await navigator.clipboard.writeText(created.share_url);
       setShareNotice(created.is_private?"Private snapshot saved. No public link was created.":"Public snapshot created and copied; it remains accessible until expiry or revocation.");
@@ -287,7 +301,8 @@ export function BattleReportsPage({ api }: { api: ApiClient }) {
     setSideOverrides({});
     setOrganizationOverrides({});
     setEditingTeams(false);
-    void loadReport(pilotId, gapMinutes, seedId, {}, {});
+    setActiveWindow(null);setDiscoveryJobId(null);
+    void loadReport(pilotId, gapMinutes, seedId, {}, {},null,null);
   }
 
   function classifyPilot(characterId: number, side: BattleSide) {
@@ -314,7 +329,7 @@ export function BattleReportsPage({ api }: { api: ApiClient }) {
 
   return <LayoutRegion region="battle-reports" className="battle-page">
     <section key="battle-reports-1" data-layout-id="battle-reports-1" data-layout-label="Section 1" className="panel battle-command">
-      <div><span className="eyebrow">Dynamic reports from retained killmails</span><h2><Swords size={25} /> Battle Reports</h2><p>Select a tracked pilot, then browse their latest and prior connected engagements.</p></div>
+      <div><span className="eyebrow">System-wide battle reports</span><h2><Swords size={25} /> Battle Reports</h2><p>Select a pilot to locate the fight, then find all battle kills across its systems and time window.</p></div>
       <div className="battle-controls">
         <label>Pilot<select value={pilotId ?? ""} onChange={(event) => setPilotId(Number(event.target.value))}>{context.pilots.map((pilot) => <option key={pilot.character_id} value={pilot.character_id}>{pilot.name}</option>)}</select></label>
         <label>Grouping gap<select value={gapMinutes} onChange={(event) => setGapMinutes(Number(event.target.value))}>{[5, 10, 15, 30, 60].map((value) => <option key={value} value={value}>{value} minutes</option>)}</select></label>
@@ -323,13 +338,16 @@ export function BattleReportsPage({ api }: { api: ApiClient }) {
         <button type="button" onClick={() => newerBattle && selectBattle(newerBattle.seed_killmail_id)} disabled={!newerBattle || loading}>Newer battle <ChevronRight size={17} /></button>
         <button type="button" onClick={() => void loadHistory()} disabled={!pilotId || loading}><RefreshCw size={17} className={loading ? "spin" : ""} /> Rebuild history</button>
         <button type="button" onClick={() => { setEditingTeams((current) => !current); setTab("involved"); }} disabled={!report}><Pencil size={17} /> {editingTeams ? "Done editing" : "Edit teams"}</button>
-        <button type="button" onClick={() => void createShare()} disabled={!report || shareBusy}><Share2 size={17} /> {privateReport?"Save private report":"Share report"}</button>
+        <button type="button" onClick={() => void createShare()} disabled={!report || shareBusy || loading}><Share2 size={17} /> {privateReport?"Save private report":"Share report"}</button>
         {context.can_sync && <button type="button" className="secondary-action" onClick={() => void syncSource()} disabled={Boolean(sourceSync && activeSyncStatuses.has(sourceSync.status))}><RefreshCw size={17} className={sourceSync && activeSyncStatuses.has(sourceSync.status) ? "spin" : ""} /> Sync source</button>}
       </div>
     </section>
 
     <div key="battle-reports-2" data-layout-id="battle-reports-2" data-layout-label="Section 2" className="battle-placard"><AlertTriangle size={18} /><span>{context.coverage_notice} The grouping gap is the maximum quiet period between the selected pilot’s consecutive killmails.</span></div>
     {error && <div className="alert">{error}</div>}
+    {payload?.report&&pilotId&&selectedSeedId&&<BattleDiscoveryPanel key={`discovery:${pilotId}:${selectedSeedId}:${gapMinutes}`} api={api} pilotId={pilotId} seedId={selectedSeedId} gapMinutes={gapMinutes} payload={payload}
+      onApply={async(window,jobId)=>{const applied=await loadReport(pilotId,gapMinutes,selectedSeedId,sideOverrides,organizationOverrides,window,jobId);if(applied){setActiveWindow(window);setDiscoveryJobId(jobId);}}}/>}
+    {payload?.coverage.scope==="system_window"&&<div className="battle-placard"><Swords size={18}/><span>Full system/time report: includes kills without your pilot. {payload.coverage.discovery?`Collection ${payload.coverage.discovery.status}: ${payload.coverage.discovery.imported_count} imported, ${payload.coverage.discovery.failed_count} import issues.`:"Uses retained canonical kills in this window."} Review third parties before sharing.</span></div>}
     <section key="battle-reports-3" data-layout-id="battle-reports-3" data-layout-label="Report privacy" className="panel"><h3>Report privacy</h3><p>Generated by EVE Quartermaster v{APP_VERSION} by {anonymous?"Anonymous":context.creator_name??"Anonymous"}</p><label className="check"><input type="checkbox" checked={anonymous} onChange={e=>setAnonymous(e.target.checked)}/>Anonymous report (hide creator attribution)</label><label className="check"><input type="checkbox" checked={privateReport} onChange={e=>setPrivateReport(e.target.checked)}/>Private report (only you; no public link)</label><label>Corporation attribution<select value={reportCorporation} disabled={privateReport} onChange={e=>setReportCorporation(e.target.value)}><option value="">Personal / unattributed</option>{context.corporations?.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label><p className="muted">Public reports attributed to a corporation can be managed by its EQM directors. Private reports are always yours alone.</p><label>Keep saved report<select value={reportRetention} onChange={e=>setReportRetention(e.target.value)}>{["30m","1h","2h","12h","24h","3days","7days","30days","permanent"].map(x=><option key={x}>{x}</option>)}</select></label><p className="muted">Named reports use your main character. Without one, attribution is Anonymous. Battle participants are still shown.</p></section>
     <BattleReportManager key="battle-reports-4" data-layout-id="battle-reports-4" data-layout-label="Battle Report Manager" api={api} context={context} revision={savedRevision}/>
     {shareNotice && <div className="battle-share-notice">{shareNotice}</div>}

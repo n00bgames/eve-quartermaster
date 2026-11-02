@@ -1049,3 +1049,10 @@ Rounded clipboard unit prices now retain their exact paid totals and show both p
 Local Scan and D-Scan linked local lists support **9,999 unique pilots**, with expanded paste fields and existing batched ESI lookups. Matching backend/frontend deployment is required; no new migration.
 
 ![Local Scan with 9,999 synthetic resolved pilots](static/ss/v2.0.1/local-scan-9999.png)
+
+
+### Full-battle kill discovery (unreleased follow-up)
+
+Use a tracked pilot to locate a fight, then **Find all battle kills** across its systems and editable UTC window. Collect canonical ESI records discovered through zKillboard, see progress/resume/cancel, include kills without the selected pilot, and preserve the expanded scope in team edits and saved public/private reports. Source gaps remain explicit. [Workflow, limits and rollout](docs/battle-discovery.md).
+
+![Full-battle collection with completed progress — synthetic development preview](static/ss/v2.0.1/battle-discovery-editor.png)

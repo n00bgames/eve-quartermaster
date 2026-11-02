@@ -42,6 +42,11 @@ def _run_rust(binary: str, timeout: float, payload: dict[str, Any]) -> dict[str,
     if result.get("schema_version") != OUTPUT_SCHEMA or not isinstance(result.get("report"), dict):
         raise RuntimeError("eqm-core returned an unsupported Battle Report result")
     report = result["report"]
+    if payload.get("include_all_killmails"):
+        expected = {row["killmail_id"] for row in payload.get("rows", [])}
+        actual = {row.get("killmail_id") for row in report.get("timeline", [])}
+        if actual != expected:
+            raise RuntimeError("Native engine did not preserve the full system/time scope; rebuild eqm-core")
     report["side_overrides"] = {int(key): value for key, value in report.get("side_overrides", {}).items()}
     return report
 

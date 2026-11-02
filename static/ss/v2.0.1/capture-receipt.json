@@ -320,6 +320,30 @@
       "sha256": "56b9e866fceb3342b9d3841bd3f8a3b6c7089035383b1d08131174f12be7751e",
       "width": 1280,
       "height": 720
+    },
+    {
+      "file": "battle-discovery-editor.png",
+      "caption": "UTC/system boundaries and completed background collection.",
+      "bytes": 91245,
+      "sha256": "f463e01c998de3de3d65efa82e7ad3fb69994555cc04b75b55783ead2a6c9a0c",
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "file": "battle-discovery-report.png",
+      "caption": "Eight-kill expanded snapshot, including separate groups and preserved classification.",
+      "bytes": 181624,
+      "sha256": "10a32a6037de6675338d46e155b8bab1333ec9a86bcb592802293cd84b0b70a2",
+      "width": 1264,
+      "height": 1252
+    },
+    {
+      "file": "battle-discovery-mobile.png",
+      "caption": "Saved expanded report totals and coverage at 390-pixel viewport.",
+      "bytes": 56691,
+      "sha256": "0b6b60a5033ca34f021ef8ed96272c6f80b8fcade956c0ec746bac93a73c0d75",
+      "width": 375,
+      "height": 812
     }
   ],
   "updated_at_utc": "2026-11-02T12:58:21.402913+00:00",
@@ -470,5 +494,19 @@
     "validation": "59 Local Scan/capacity/D-Scan tests passed. TypeScript and Vite build passed. 9,999 longest-allowed names with CRLF exceed the previous 600,000-character field and pass both schemas. API save/private and public reopen retain every pilot; 10,000 rejected before upstream. UI reports 9,999/9,999.",
     "limitations": "No live ESI load benchmark. Existing 90-second enrichment deadline and 250-pilot batches retained. No real account data or game actions.",
     "file": "local-scan-9999.png"
+  },
+  "battle_discovery_followup": {
+    "captured_on": "2026-11-02",
+    "recorded_at_utc": "2026-11-02T23:20:43.970934+00:00",
+    "source_base_commit": "9d87ba203ce50a8c425674b00539c7b9a34b7ed5",
+    "source_state": "Uncommitted full-battle collection; not deployed.",
+    "method": "Actual React production build and localhost FastAPI with isolated SQLite, fictional characters, mocked zKillboard pages and ESI killmails. Browser submitted collection, changed a team, saved private and public snapshots; captures via cua_repl.",
+    "validation": "83 backend tests and five subtests passed with one unavailable native-binary test excluded. Final 14 discovery cases rerun after coverage refinements. TypeScript/Vite passed. Browser: two cached kills to eight; all kills survived classification, private save/reopen and public share; mobile editor contained at 390px.",
+    "limitations": "No live zKillboard/ESI battle import or production mutation. Native Rust compiler/Linux test binary unavailable; source contract test added and old-native omission fallback tested. Existing preview shell showed a Not Found notice for an unrelated mocked-endpoint gap, outside feature captures. No live completeness/load benchmark.",
+    "files": [
+      "battle-discovery-editor.png",
+      "battle-discovery-report.png",
+      "battle-discovery-mobile.png"
+    ]
   }
 }

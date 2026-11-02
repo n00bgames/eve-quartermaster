@@ -297,6 +297,41 @@ def battle_report_history(
     }
 
 
+
+def resolve_battle_window(db, user, *, character_id, gap_minutes=15, seed_killmail_id=None, battle_window=None, max_duration_hours=6):
+    from app.services.battle_report_scope import BattleWindow, utc
+    pilot = _require_report_pilot(db, user, character_id)
+    pilot_rows = _pilot_killmails(db, character_id)
+    if not pilot_rows:
+        return pilot, None, None
+    gap = timedelta(minutes=max(5, min(60, int(gap_minutes))))
+    clusters = _pilot_activity_clusters(pilot_rows, gap=gap, maximum_span=timedelta(hours=max(1,min(12,int(max_duration_hours)))))
+    cluster = clusters[0] if seed_killmail_id is None else next(
+        (rows for rows in clusters if any(r.killmail_id == seed_killmail_id for r in rows)), None)
+    if cluster is None:
+        raise LookupError("The selected battle is not available in this pilot's retained report history")
+    seed = cluster[0] if seed_killmail_id is None else next(r for r in cluster if r.killmail_id == seed_killmail_id)
+    if battle_window is None:
+        window = {'start_time':(utc(cluster[-1].killmail_time)-gap).isoformat(),
+            'end_time':(utc(cluster[0].killmail_time)+gap).isoformat(),
+            'system_ids':sorted({r.solar_system_id for r in cluster})}
+    else:
+        window = BattleWindow.model_validate(battle_window)
+        if seed.solar_system_id not in window.system_ids or not window.start_time <= utc(seed.killmail_time) <= window.end_time:
+            raise ValueError('The battle window must contain the selected pilot event and its system.')
+        known = set(db.scalars(select(EveSystem.system_id).where(EveSystem.system_id.in_(window.system_ids))))
+        if known != set(window.system_ids):
+            raise ValueError('Choose imported solar systems for the battle window.')
+    return pilot, seed, window.model_dump(mode='json') if isinstance(window,BattleWindow) else window
+
+
+def scope_candidates(db, window):
+    return list(db.scalars(select(Killmail).where(Killmail.solar_system_id.in_(window['system_ids']),
+        Killmail.killmail_time >= datetime.fromisoformat(window['start_time']), Killmail.killmail_time <= datetime.fromisoformat(window['end_time']))
+        .options(selectinload(Killmail.attackers), selectinload(Killmail.enrichment))
+        .order_by(Killmail.killmail_time.asc(), Killmail.killmail_id.asc())))
+
+
 def _build_latest_battle_report_python(
     db: Session,
     user: User,
@@ -307,6 +342,7 @@ def _build_latest_battle_report_python(
     seed_killmail_id: int | None = None,
     side_overrides: dict[int, int] | None = None,
     organization_overrides: dict[tuple[str, int], int] | None = None,
+    battle_window: dict | None = None,
 ) -> dict[str, Any]:
     pilot = _require_report_pilot(db, user, character_id)
     gap_minutes = max(5, min(60, int(gap_minutes)))
@@ -323,32 +359,11 @@ def _build_latest_battle_report_python(
             },
         }
 
-    gap = timedelta(minutes=gap_minutes)
-    maximum_span = timedelta(hours=max_duration_hours)
-    clusters = _pilot_activity_clusters(pilot_rows, gap=gap, maximum_span=maximum_span)
-    if seed_killmail_id is None:
-        pilot_cluster = clusters[0]
-    else:
-        pilot_cluster = next((cluster for cluster in clusters if cluster[0].killmail_id == seed_killmail_id), None)
-        if pilot_cluster is None:
-            raise LookupError("The selected battle is not available in this pilot's retained report history")
-    seed = pilot_cluster[0]
-
-    system_ids = {row.solar_system_id for row in pilot_cluster}
-    window_start = pilot_cluster[-1].killmail_time - gap
-    window_end = seed.killmail_time + gap
-    candidates = db.scalars(
-        select(Killmail)
-        .where(
-            Killmail.solar_system_id.in_(system_ids),
-            Killmail.killmail_time >= window_start,
-            Killmail.killmail_time <= window_end,
-        )
-        .options(selectinload(Killmail.attackers), selectinload(Killmail.enrichment))
-        .order_by(Killmail.killmail_time.asc())
-    ).all()
+    _pilot, seed, window = resolve_battle_window(db, user, character_id=character_id,
+        gap_minutes=gap_minutes, seed_killmail_id=seed_killmail_id, battle_window=battle_window, max_duration_hours=max_duration_hours)
+    candidates = scope_candidates(db, window)
     selected_affiliation = _pilot_affiliation(seed, character_id)
-    rows = _connected_killmails(list(candidates), seed, selected_affiliation)
+    rows = list(candidates) if battle_window is not None else _connected_killmails(list(candidates), seed, selected_affiliation)
     rows.sort(key=lambda item: item.killmail_time)
     sides = _side_map(rows, selected_affiliation)
     manual_sides = {
@@ -624,6 +639,7 @@ def _battle_report_contract(
     seed_killmail_id: int | None,
     side_overrides: dict[int, int] | None,
     organization_overrides: dict[tuple[str, int], int] | None,
+    battle_window: dict | None = None,
 ) -> tuple[EveCharacter, dict[str, Any] | None]:
     pilot = _require_report_pilot(db, user, character_id)
     gap_minutes = max(5, min(60, int(gap_minutes)))
@@ -631,27 +647,9 @@ def _battle_report_contract(
     pilot_rows = _pilot_killmails(db, character_id)
     if not pilot_rows:
         return pilot, None
-    gap = timedelta(minutes=gap_minutes)
-    maximum_span = timedelta(hours=max_duration_hours)
-    clusters = _pilot_activity_clusters(pilot_rows, gap=gap, maximum_span=maximum_span)
-    if seed_killmail_id is None:
-        pilot_cluster = clusters[0]
-    else:
-        pilot_cluster = next((cluster for cluster in clusters if cluster[0].killmail_id == seed_killmail_id), None)
-        if pilot_cluster is None:
-            raise LookupError("The selected battle is not available in this pilot's retained report history")
-    seed = pilot_cluster[0]
-    system_ids = {row.solar_system_id for row in pilot_cluster}
-    candidates = list(db.scalars(
-        select(Killmail)
-        .where(
-            Killmail.solar_system_id.in_(system_ids),
-            Killmail.killmail_time >= pilot_cluster[-1].killmail_time - gap,
-            Killmail.killmail_time <= seed.killmail_time + gap,
-        )
-        .options(selectinload(Killmail.attackers), selectinload(Killmail.enrichment))
-        .order_by(Killmail.killmail_time.asc())
-    ).all())
+    _pilot, seed, window = resolve_battle_window(db, user, character_id=character_id,
+        gap_minutes=gap_minutes, seed_killmail_id=seed_killmail_id, battle_window=battle_window, max_duration_hours=max_duration_hours)
+    candidates = scope_candidates(db, window)
     names = _names(db, candidates)
     type_ids = {row.victim_ship_type_id for row in candidates if row.victim_ship_type_id}
     type_ids.update(attacker.ship_type_id for row in candidates for attacker in row.attackers if attacker.ship_type_id)
@@ -735,6 +733,7 @@ def _battle_report_contract(
     }
     return pilot, {
         "schema_version": "eqm.battle-report-input.v1",
+        "include_all_killmails": battle_window is not None,
         "selected_character_id": character_id,
         "seed_killmail_id": seed.killmail_id,
         "gap_minutes": gap_minutes,
@@ -747,7 +746,7 @@ def _battle_report_contract(
     }
 
 
-def build_latest_battle_report(
+def _build_report_with_engine(
     db: Session,
     user: User,
     *,
@@ -757,24 +756,25 @@ def build_latest_battle_report(
     seed_killmail_id: int | None = None,
     side_overrides: dict[int, int] | None = None,
     organization_overrides: dict[tuple[str, int], int] | None = None,
+    battle_window: dict | None = None,
 ) -> dict[str, Any]:
     engine = configured_battle_report_engine()
     if engine == "python":
         return _build_latest_battle_report_python(
             db, user, character_id=character_id, gap_minutes=gap_minutes,
             max_duration_hours=max_duration_hours, seed_killmail_id=seed_killmail_id,
-            side_overrides=side_overrides, organization_overrides=organization_overrides,
+            side_overrides=side_overrides, organization_overrides=organization_overrides, battle_window=battle_window,
         )
     pilot, contract = _battle_report_contract(
         db, user, character_id=character_id, gap_minutes=gap_minutes,
         max_duration_hours=max_duration_hours, seed_killmail_id=seed_killmail_id,
-        side_overrides=side_overrides, organization_overrides=organization_overrides,
+        side_overrides=side_overrides, organization_overrides=organization_overrides, battle_window=battle_window,
     )
     if contract is None:
         result = _build_latest_battle_report_python(
             db, user, character_id=character_id, gap_minutes=gap_minutes,
             max_duration_hours=max_duration_hours, seed_killmail_id=seed_killmail_id,
-            side_overrides=side_overrides, organization_overrides=organization_overrides,
+            side_overrides=side_overrides, organization_overrides=organization_overrides, battle_window=battle_window,
         )
         result.update(engine_requested=engine, engine_used="python-empty")
         return result
@@ -783,7 +783,7 @@ def build_latest_battle_report(
         python_result=lambda: _build_latest_battle_report_python(
             db, user, character_id=character_id, gap_minutes=gap_minutes,
             max_duration_hours=max_duration_hours, seed_killmail_id=seed_killmail_id,
-            side_overrides=side_overrides, organization_overrides=organization_overrides,
+            side_overrides=side_overrides, organization_overrides=organization_overrides, battle_window=battle_window,
         ),
         engine=engine,
     )
@@ -804,3 +804,19 @@ def build_latest_battle_report(
         "engine_shadow_match": evaluated.get("engine_shadow_match"),
         "engine_fallback_reason": evaluated.get("engine_fallback_reason"),
     }
+
+
+def build_latest_battle_report(db, user, *, character_id, gap_minutes=15, max_duration_hours=6,
+    seed_killmail_id=None, side_overrides=None, organization_overrides=None, battle_window=None):
+    result = _build_report_with_engine(db, user, character_id=character_id, gap_minutes=gap_minutes,
+        max_duration_hours=max_duration_hours, seed_killmail_id=seed_killmail_id,
+        side_overrides=side_overrides, organization_overrides=organization_overrides, battle_window=battle_window)
+    if result.get('report'):
+        _, _, window = resolve_battle_window(db, user, character_id=character_id,
+            gap_minutes=gap_minutes, seed_killmail_id=seed_killmail_id, battle_window=battle_window, max_duration_hours=max_duration_hours)
+        result['coverage']['search_window'] = window
+        result['coverage']['scope'] = 'system_window' if battle_window is not None else 'pilot_connected'
+        if battle_window is not None:
+            names = list(db.scalars(select(EveSystem.name).where(EveSystem.system_id.in_(window['system_ids'])).order_by(EveSystem.name)))
+            result['coverage']['grouping_rule'] = f"All retained canonical killmails in {', '.join(names)} from {window['start_time']} through {window['end_time']} (UTC), including kills without the selected pilot. Review third parties and teams."
+    return result
