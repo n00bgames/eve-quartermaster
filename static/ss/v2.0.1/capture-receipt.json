@@ -304,6 +304,14 @@
       "sha256": "72529016253dcacdafd6219620bae78dfd152a06f04f8fbc17ebefa442ec3498",
       "width": 1264,
       "height": 1106
+    },
+    {
+      "file": "local-scan-4999.png",
+      "caption": "4,999 fictional pilots resolved in the actual saved public Local Scan UI.",
+      "bytes": 56497,
+      "sha256": "fff9b74002d9881261c8e66c772e41641cfebc531e0112812cdc89ce02e431ba",
+      "width": 1280,
+      "height": 720
     }
   ],
   "updated_at_utc": "2026-11-02T12:58:21.402913+00:00",
@@ -434,5 +442,15 @@
     "provenance": "Fictional Demo Module II purchase: 40 units, pasted price 12 ISK, actual paid 492 ISK, 17 units charged. No real user transaction data or counterparties published.",
     "validation": "57 receipt tests; TypeScript/Vite checks; actual browser parse, partial exclusion, preview, save, public view, expanded original prices and empty error console. Actual PDF/CSV endpoints checked; single-page PDF rendered with Poppler and visually inspected. Both real user examples verified privately.",
     "limitations": "Only cent-exact recovered prices consistent with whole/one-decimal pasted rounding are accepted. Explicit two-decimal mismatches and unexplained discrepancies still fail. Existing immutable snapshots unchanged."
+  },
+  "local_scan_capacity_followup": {
+    "captured_on": "2026-11-02",
+    "recorded_at_utc": "2026-11-02T19:13:34.383696+00:00",
+    "source_base_commit": "5ffa9f777abab1ea707d53e69e44c1f60fa9590a",
+    "source_state": "Uncommitted 4,999-pilot capacity change; not deployed.",
+    "method": "Actual React production build, localhost FastAPI preview, isolated SQLite, synthetic names and mocked ESI responses. Browser UI submitted and saved 4,999 pilots, public report captured with cua_repl.",
+    "validation": "58 Local Scan/capacity/D-Scan tests passed. TypeScript and Vite production build passed. 4,999-pilot API save/private reopen/public reopen and 5,000-pilot rejection verified; browser result shows all 4,999.",
+    "limitations": "No live ESI load benchmark. Existing 90-second enrichment deadline and 250-pilot batches retained. Preview branding asset missing; no production change or private data used.",
+    "file": "local-scan-4999.png"
   }
 }

@@ -26,7 +26,7 @@ router = APIRouter(prefix="/d-scans", tags=["d-scans"])
 
 class DScanInput(shared.ScanInput):
     text: str = Field(min_length=1, max_length=500000)
-    local_text: str = Field(default="", max_length=150000)
+    local_text: str = Field(default="", max_length=lifecycle.MAX_TEXT_LENGTH)
     manual_recons: dict[str, Annotated[int, Field(ge=0, le=1000, strict=True)]] = Field(default_factory=dict)
 
     @field_validator("manual_recons")

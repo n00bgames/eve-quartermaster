@@ -1042,3 +1042,10 @@ Paste market purchase transactions and produce an itemized receipt with full/par
 [Guide and limits](docs/receipts.md) · [Cost controls](static/ss/v2.0.1/receipt-cost-controls.jpg) · [Sample PDF](docs/examples/receipt-demo.pdf) · [Mobile](static/ss/v2.0.1/receipt-mobile.jpg). Unreleased working-tree feature; matching backend/frontend required.
 
 Rounded clipboard unit prices now retain their exact paid totals and show both pasted/effective prices. [Actual synthetic receipt capture](static/ss/v2.0.1/receipt-rounded-price.jpg). Unreleased fix.
+
+
+### Local Scan capacity (unreleased follow-up)
+
+Local Scan and D-Scan linked local lists support **4,999 unique pilots**, with expanded paste fields and existing batched ESI lookups. Matching backend/frontend deployment is required; no new migration.
+
+![Local Scan with 4,999 synthetic resolved pilots](static/ss/v2.0.1/local-scan-4999.png)

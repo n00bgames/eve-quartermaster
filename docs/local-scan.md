@@ -1,6 +1,6 @@
 # Local Scan, utility accounts, and account roles
 
-Local Scan is in **Intel** at `#local-scan`. Paste one pilot name per line or fleet clipboard rows with the pilot name first. Names are deduplicated case-insensitively. Reports support up to 2,000 unique names and use public ESI name resolution and batched current-affiliation lookups. No private character token is used to analyze the pasted pilots. Unresolved names and unavailable affiliations are explicit; unavailable membership is never classified as “No alliance.”
+Local Scan is in **Intel** at `#local-scan`. Paste one pilot name per line or fleet clipboard rows with the pilot name first. Names are deduplicated case-insensitively. Reports support up to 4,999 unique names and use public ESI name resolution and batched current-affiliation lookups. No private character token is used to analyze the pasted pilots. Unresolved names and unavailable affiliations are explicit; unavailable membership is never classified as “No alliance.”
 
 Results group alliances and their corporations into responsive columns, with organization logos, character counts, expandable pilot lists, and character zKillboard links. Simple result search and Advanced character/corporation/alliance name conditions support contains, starts with, ends with, and equals. Advanced conditions are combined with AND and filter the current snapshot; the PDF exports the full report.
 

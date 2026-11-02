@@ -29,7 +29,7 @@ _generating: set[int] = set()
 class ScanInput(BaseModel):
     anonymous: bool = False
     is_private: bool = False
-    text: str = Field(min_length=1, max_length=150000)
+    text: str = Field(min_length=1, max_length=service.MAX_TEXT_LENGTH)
     retention: Literal["30m", "1h", "2h", "12h", "24h", "3days", "7days", "30days", "permanent"] = "24h"
     corporation_id: int | None = Field(default=None, gt=0)
     system_id: int | None = Field(default=None, gt=0)

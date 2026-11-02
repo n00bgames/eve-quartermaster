@@ -727,3 +727,10 @@ Actual public receipt with fictional purchases, showing pasted/effective prices 
 ![Rounded clipboard price recovery](../static/ss/v2.0.1/receipt-rounded-price.jpg)
 
 Source, validation and SHA-256 recorded in the [capture receipt](../static/ss/v2.0.1/capture-receipt.json).
+
+
+## Local Scan capacity — unreleased 2.0.1 follow-up
+
+Actual built UI and isolated SQLite API with **4,999 fictional pilots** and mocked public ESI responses. All 4,999 resolve and remain present in the saved public report. Existing batching and lookup deadlines remain in place. The preview has no live account/game data; its missing local branding image is unrelated to scan capacity.
+
+![Local Scan: all 4,999 synthetic pilots resolved](../static/ss/v2.0.1/local-scan-4999.png)
