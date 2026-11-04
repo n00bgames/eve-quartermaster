@@ -752,3 +752,13 @@ Actual built interface and isolated API with fictional participants/public-API m
 ![Full system/window report with eight synthetic kills](../static/ss/v2.0.1/battle-discovery-report.png)
 
 ![Mobile saved report](../static/ss/v2.0.1/battle-discovery-mobile.png)
+
+## My Journey map controls — unreleased v2.1 follow-up
+
+Actual JourneyPanel/JourneyMap React UI with the existing EQM styles and synthetic loopback HTTP responses. Demo account, observations and coordinates are fabricated for interaction testing, not a live character journey or accurate SDE map. Desktop and 390px mobile captures retain the full toolbar, viewport and legend.
+
+![Desktop: zoom readout, fit and selected-system focus](../static/ss/v2.1/journey-map-controls-desktop.png)
+
+![Mobile: responsive controls, one-finger pan and two-finger pinch](../static/ss/v2.1/journey-map-controls-mobile.png)
+
+Nine journey tests and eight actual-browser checks pass; browser console errors and mobile document overflow are absent. No backend contract, migration, new consent scope or production deployment. [Controls](journey-map.md#map-controls) · [Source hashes, capture method and checksums](../static/ss/v2.1/capture-receipt.json).

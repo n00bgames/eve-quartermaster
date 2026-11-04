@@ -1,0 +1,49 @@
+{
+  "captured_on": "2026-11-04",
+  "recorded_at_utc": "2026-11-04T20:07:36.225898+00:00",
+  "application_version": "2.1.0",
+  "source_base_commit": "f782c23db1e953d074bcc803e0be4b368e0d7312",
+  "source_state": "Uncommitted My Journey zoom/pan follow-up; not deployed or published.",
+  "method": "Actual JourneyPanel and JourneyMap React components with existing EQM styles, rendered in an isolated loopback Vite preview. Headless Edge/Playwright interactions; screenshots crop the complete map toolbar, viewport and legend.",
+  "data": "Synthetic Demo Cartographer account, eight visits and six systems. System names, observations and X/Z layout are illustrative synthetic fixtures; these are not actual SDE positions, live flight logs, or a verified gate route. Local mock HTTP endpoints only; no live OAuth, ESI, user data or game actions.",
+  "validation": {
+    "passed": 8,
+    "checks": [
+      "Wheel zoom anchors the cursor and prevents page scrolling",
+      "Background dragging pans accurately and stops after release",
+      "Dragging from a star pans without selecting; the next click selects normally",
+      "Focus selected centers the system, markers retain size, and keyboard controls work",
+      "Timeline scrubbing and returning to latest preserve the chosen viewport",
+      "Pointer capture supports dragging outside the map and clears on release",
+      "Mobile pinch zoom and one-finger pan work without document overflow",
+      "Cancelled touch gestures clear capture state and allow the next drag"
+    ],
+    "consoleErrors": [],
+    "synthetic": true
+  },
+  "limitations": "Browser checks use the real frontend with synthetic HTTP responses, not a production deployment or backend integration test. Existing read-only journey API and replay data contract are unchanged.",
+  "source_sha256": {
+    "frontend/src/features/journey/JourneyMap.tsx": "747ae6674a14e60b7a85dadeb7e9617d5751caffd09921d64f2ccb8abe9dfcce",
+    "frontend/src/features/journey/useJourneyMapView.ts": "4604cd6f5ca1831e6ba7dacfa786f43c66f84f89d77148a5e9af9a7aad2f6770",
+    "frontend/src/features/journey/mapView.ts": "17f1ee00d61b38efb80f2a028f7cde9cff7b16ce5a964c877550d1ee69a0b683",
+    "frontend/src/features/journey/journey.css": "aa8744a166004a924bd5acb2f00ba75165eaba6303e1ba732d58fd13fde0bfb2",
+    "frontend/tests/journeyMapView.test.ts": "a1c3b7dec5de7a0635a16258525c32c70ce2665ce411a58e4a8781a07145c15d",
+    "frontend/package.json": "c2330676c14fac7b67b84078a4dff4776eddf6490a135546c31f16ba7df0feb5"
+  },
+  "files": [
+    {
+      "file": "journey-map-controls-desktop.png",
+      "bytes": 264879,
+      "sha256": "060f17752e860cb2247b50e6f6f304da103fd8abf162321e0604adb9b39757a4",
+      "width": 1330,
+      "height": 591
+    },
+    {
+      "file": "journey-map-controls-mobile.png",
+      "bytes": 84887,
+      "sha256": "194b72350ed3b8fb22c2af69f2e04af265eb2f059c4086bf0ae58c3cd9269267",
+      "width": 332,
+      "height": 592
+    }
+  ]
+}

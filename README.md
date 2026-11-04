@@ -1056,3 +1056,11 @@ Local Scan and D-Scan linked local lists support **9,999 unique pilots**, with e
 Use a tracked pilot to locate a fight, then **Find all battle kills** across its systems and editable UTC window. Collect canonical ESI records discovered through zKillboard, see progress/resume/cancel, include kills without the selected pilot, and preserve the expanded scope in team edits and saved public/private reports. Source gaps remain explicit. [Workflow, limits and rollout](docs/battle-discovery.md).
 
 ![Full-battle collection with completed progress — synthetic development preview](static/ss/v2.0.1/battle-discovery-editor.png)
+
+### My Journey map controls (unreleased v2.1 follow-up)
+
+Zoom around the pointer with the mouse wheel, drag to pan from any part of the map, or use one-finger drag/two-finger pinch on touch devices. A zoom readout, Fit journey, Focus selected and keyboard controls support navigation. Marker sizes remain readable, and replay keeps the chosen viewport. No backend, database migration or ESI scope changes.
+
+![My Journey map controls — actual UI, synthetic route and coordinates](static/ss/v2.1/journey-map-controls-desktop.png)
+
+[Controls and verification](docs/journey-map.md#map-controls) · [Mobile](static/ss/v2.1/journey-map-controls-mobile.png) · [Capture provenance](static/ss/v2.1/capture-receipt.json). Source follow-up only; no deployment is implied.

@@ -38,6 +38,24 @@ The map uses imported SDE X/Z positions. Lines join observed system changes; the
 
 The response includes at most the first **2,000 visits** in the selected window, with a visible truncation warning. Narrow the dates for a complete replay. All-time system totals remain complete. Timeline pages show 50 entries; the replay uses the loaded visits and hull segments. At most 5,000 hull segments are returned within loaded visits, with an explicit warning when truncated; narrow the date window for a complete replay. Unavailable hull rows stay unknown. History is retained until the account erases it; ordinary app restarts preserve it.
 
+## Map controls
+
+The unreleased v2.1 follow-up matches the Atlas interaction style:
+
+- **Scroll the mouse wheel/trackpad** over the map to zoom around the pointer, or use **+ / −**. The readout shows the current zoom (50%–8,000%).
+- **Drag** the background, a route line, or a star to pan. A click/tap selects a system; dragging does not select it. Releasing outside the map or cancelling a touch gesture ends the drag.
+- On touch devices, **drag with one finger** or **pinch with two fingers**. Scroll the page outside the map to move the page.
+- **Fit journey** restores the full projected view. **Focus selected** centers the selected system at 8× zoom.
+- Focus the map with the keyboard: **arrow keys** pan, **+ / −** zoom, and **Home / 0** fit. Visited stars retain **Enter / Space** selection and the searchable visited-system list remains available.
+
+Markers and labels stay at a consistent screen size as the route scales. Replay/scrubbing and context selection preserve your chosen zoom/pan; resizing the map or switching character/date range fits the new view. Wheel gestures over the map are consumed by the map, not the page.
+
+![Desktop zoom and pan controls — synthetic journey](../static/ss/v2.1/journey-map-controls-desktop.png)
+
+![Touch-sized toolbar and journey — synthetic layout](../static/ss/v2.1/journey-map-controls-mobile.png)
+
+Verification: nine journey math/replay/hull tests and eight actual-browser checks cover anchored wheel zoom, bounded zoom, panning, star selection, focus, keyboard input, replay retention, outside release, touch pinch/pan and cancellation recovery. Desktop/mobile captures use the actual JourneyPanel with synthetic local HTTP responses and illustrative coordinates; no production API or real character data was used. [Capture provenance and checksums](../static/ss/v2.1/capture-receipt.json).
+
 ## Combat and asset context
 
 Select a star or a system in the visited list. Map markers and the detail panel use **existing EQM data for that character only**:

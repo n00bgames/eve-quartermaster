@@ -8,6 +8,12 @@ Version sections are written as user-facing release notes first, with implementa
 
 Release title: **EQM - v2.1 - "Different Skin, Same Great Taste!" Release**
 
+### Unreleased follow-up
+
+- Improve **My Journey** map controls to match the Atlas: cursor-centered wheel zoom, mouse/touch drag panning, two-finger pinch zoom, a zoom readout, Fit journey, Focus selected and keyboard controls. Clear released/cancelled drags, preserve selection and replay, and keep markers/labels at a readable screen size. Frontend-only; no migration or new ESI scope. [Guide and synthetic captures](docs/journey-map.md#map-controls).
+
+### Release preparation
+
 Prepared from the published **V2.0** baseline through the current source. The user will create **v2.1** separately; this source version bump does not publish a tag, release, APK, or deployment. [Copy-ready release blurb](docs/releases/v2.1.md).
 
 - Add the optional **Command Desk** interface and Overview with persistent **EQM-Classic** fallback.
