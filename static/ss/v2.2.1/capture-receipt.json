@@ -1,0 +1,65 @@
+{
+  "captured_on": "2026-11-04",
+  "recorded_at_utc": "2026-11-04T21:59:09.255139+00:00",
+  "application_version": "2.2.1",
+  "source_base_commit": "a3527b07ebf71646ce9b4da8934df3ea617df90d",
+  "source_state": "Uncommitted reliability follow-up; no deployment, version bump, APK build or release publication.",
+  "method": "Actual CharactersPage and shared API client in isolated Vite/headless Edge; complete controls/notice crops. Synthetic supporting components and minimal dossier fixture; no live SSO or collection.",
+  "data": "Fabricated Demo Cartographer and demo account. Synthetic 504 HTML for start and status-read scenarios; one existing mock job, one start POST and two status reads in the recovery case.",
+  "validation": {
+    "checks": [
+      "Actual Characters Sync All shows readable gateway message without raw nginx HTML or retrying POST",
+      "A 504 status poll recovers the same job to completion with one POST and two status reads",
+      "Readable timeout notice fits a 390px mobile layout"
+    ],
+    "errors": [],
+    "synthetic": true
+  },
+  "backend_validation": {
+    "broad_passed": 187,
+    "optional_pg_skipped_locally": 3,
+    "final_focused_passed": 12,
+    "isolated_postgres_passed": 3
+  },
+  "frontend_validation": {
+    "tests_passed": 8,
+    "production_build": "passed"
+  },
+  "limitations": "Actual UI with fake HTTP responses, not live account activity. Backend behavior independently verified with real PostgreSQL in disposable containers. No production services restarted, sessions canceled or data changed.",
+  "source_sha256": {
+    "backend/app/api/esi.py": "b2525b4f5bd0df1fdd9cd73442bb7cb179ad8d9b88bb8c6fe3e1fbd406c6145b",
+    "backend/app/services/esi_refresh.py": "b687cf59f5dbed6c7628d3b38d57f7e68f20f32f1e51602b5beb1658db47384c",
+    "backend/tests/test_esi_refresh.py": "abfbce811a88a5d62244fd75fbed19094c5d352d30b9833269d51bcfa10ac286",
+    "backend/tests/test_esi_refresh_postgres.py": "1fcf64990e1c4029259e8682c97fa6df2bb47aca7d41d324ee256cd636fb6ea2",
+    "backend/tests/test_local_scan.py": "06b06302d4711bad61920c6afffb472d38da05136784116e7e71211092341dc7",
+    "frontend/package.json": "db0fb0b1deb288d91c70a8410eed904c9f8e5fbe622b5fd0ef962db420831b9a",
+    "frontend/src/lib/api.ts": "e6f6c2de70ae73341973d8eae597164c665b89f27027c0feb4905ea4e0d07843",
+    "frontend/src/lib/apiErrors.ts": "a9ab1890d2fe6804a956bb4f258e4f7af9f9c5a5d91b138db261f81aea53e396",
+    "frontend/src/lib/characterSyncPolling.ts": "f335586a1af56f3375db1758e2e9cc10f5978960dd676fbd7132331cecd9f0e9",
+    "frontend/tests/apiErrors.test.ts": "e997f77310cc49f2c777f6dca009c721c38b3b60a87774fd80f1e93ba05d9c63",
+    "frontend/tests/characterSyncPolling.test.ts": "75c6d4b54ea4edd2931ab074271662d9e99dca4b1cc45aa56eaaee03fc781d2b"
+  },
+  "files": [
+    {
+      "file": "sync-gateway-message.png",
+      "bytes": 20493,
+      "sha256": "a17310248188f59d368fbe5d8346102cbe5991900483b705aa7e2a92f2b5182f",
+      "width": 1200,
+      "height": 174
+    },
+    {
+      "file": "sync-gateway-recovered.png",
+      "bytes": 30232,
+      "sha256": "df5f758f7c35406ee8b88041ce70e686ee66fab86ea66e665a5632d29dd15263",
+      "width": 1200,
+      "height": 253
+    },
+    {
+      "file": "sync-gateway-mobile.png",
+      "bytes": 22044,
+      "sha256": "29ae91c2a7adb82cff1ef54b73990ac274ac78bdfb0a9b8dc151ae87c349dab2",
+      "width": 390,
+      "height": 258
+    }
+  ]
+}

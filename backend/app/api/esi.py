@@ -17,7 +17,7 @@ from fastapi import Request, APIRouter, Depends, HTTPException, Query, Response
 from fastapi.responses import RedirectResponse
 from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
-from sqlalchemy.orm import Session, selectinload, object_session
+from sqlalchemy.orm import Session, selectinload
 
 from app.core.config import get_settings
 from app.core.security import create_sso_state, decode_sso_state_payload, decrypt_secret, encrypt_secret
@@ -244,42 +244,8 @@ def standing_sync_scopes() -> list[str]:
     return auth_scopes_for_group("contacts")
 
 async def refresh_access_token(token: EsiToken) -> str:
-    settings = get_settings()
-    try:
-        refresh_token = decrypt_secret(token.encrypted_refresh_token, settings.token_encryption_key)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "message": "This character's stored ESI authorization can no longer be decrypted. Re-link the character through EVE SSO, then try syncing again.",
-                "code": "esi_token_reauthorization_required",
-            },
-        ) from exc
-    policy_db = object_session(token)
-    if policy_db is None:
-        raise HTTPException(409, "Load the character authorization before refreshing it")
-    allowed = effective_token_scopes(token, policy_db)
-    if not allowed:
-        raise HTTPException(403, "This account's role does not permit the stored ESI scopes. Re-link with utility scopes.")
-    # CCP supports requesting a subset of the original scopes on token refresh.
-    async with httpx.AsyncClient(timeout=30.0, follow_redirects=False) as client:
-        response = await client.post(
-            "https://login.eveonline.com/v2/oauth/token",
-            auth=httpx.BasicAuth(settings.eve_sso_client_id, settings.eve_sso_client_secret),
-            data={"grant_type": "refresh_token", "refresh_token": refresh_token, "scope": " ".join(sorted(allowed))},
-            headers={
-                "Accept": "application/json",
-                "Content-Type": "application/x-www-form-urlencoded",
-                "User-Agent": "eve-quartermaster/2.2.1 (+https://github.com/n00bgames/eve-quartermaster)",
-            },
-        )
-    if response.status_code >= 400:
-        raise HTTPException(status_code=response.status_code, detail={"message": "EVE SSO refresh failed", "eve_response": response.text[:1000]})
-    payload = response.json()
-    if payload.get("refresh_token"):
-        token.encrypted_refresh_token = encrypt_secret(payload["refresh_token"], settings.token_encryption_key)
-    token.access_token_expires_at = datetime.now(timezone.utc) + timedelta(seconds=int(payload.get("expires_in", 1200)))
-    return payload["access_token"]
+    from app.services.esi_refresh import refresh_access_token as refresh
+    return await refresh(token)
 
 
 def chunked(values: list[int], size: int = 1000) -> list[list[int]]:

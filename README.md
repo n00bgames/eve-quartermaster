@@ -1072,3 +1072,11 @@ Create a **1080p GIF or MP4** from selected character visits: start with the who
 ![My Journey export — actual UI and generated synthetic combat preview](static/ss/v2.1/journey-export-desktop.png)
 
 [Timing, combat matching, limits and browser support](docs/journey-map.md#gif-and-mp4-exports) · [1080p engagement frame](static/ss/v2.1/journey-export-engagement.png) · [Mobile controls](static/ss/v2.1/journey-export-mobile.png) · [Capture provenance](static/ss/v2.1/capture-receipt.json). Source follow-up only; matching API/frontend rollout is required. Android WebView saving is not included.
+
+### Sync All reliability (unreleased 2.2.1 follow-up)
+
+Keep token-rotation writes out of long sync transactions to prevent the captured API lock stall. Gateway errors now use readable notices, and temporary failures when checking an existing Sync All job retry with bounded backoff without starting a duplicate sync.
+
+![Actual Characters page: the existing synthetic sync recovered after a 504 status response](static/ss/v2.2.1/sync-gateway-recovered.png)
+
+[Root cause, validation and rollout](docs/sync-reliability.md) · [Readable gateway notice](static/ss/v2.2.1/sync-gateway-message.png). Source follow-up only; matching backend/frontend rebuilds are required.

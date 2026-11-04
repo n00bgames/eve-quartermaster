@@ -1,3 +1,4 @@
+import {ApiError,httpErrorMessage} from './apiErrors';
 const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
 
 function formatApiError(detail: unknown): string {
@@ -13,6 +14,7 @@ function formatApiError(detail: unknown): string {
 }
 
 function requestTimeoutMs(path: string): number {
+  if (/^\/esi\/sync\/(?:characters\/all|character-skills\/all)\/[^/?]+/.test(path)) return 15000;
   if (path.startsWith("/quartermaster/assets-page?") && new URLSearchParams(path.split("?")[1]).get("all_records") === "true") return 120000;
   if (path.startsWith("/industry-reports") || path.startsWith("/inventory-reports")) return 120000;
   if (path === "/local-scans/color-settings" || path === "/d-scans/color-settings") return 120000;
@@ -53,14 +55,8 @@ export async function api<T>(path: string, options?: RequestInit): Promise<T> {
     });
     const contentType = response.headers.get("content-type") ?? "";
     const payload = contentType.includes("application/json") ? await response.json() : await response.text();
-    if (!response.ok) {
-      if (typeof payload === "string") {
-        const detail = payload.trim() || response.statusText || "Request failed";
-        throw new Error(`${response.status} ${detail}`);
-      }
-      throw new Error(formatApiError(payload.detail ?? payload.message ?? "Request failed"));
-    }
-    if (typeof payload === "string") throw new Error(`Unexpected non-JSON response from ${path}: ${payload.slice(0, 120)}`);
+    if (!response.ok) throw new ApiError(response.status,httpErrorMessage(response.status,typeof payload==='string'?payload:payload?.detail??payload?.message??response.statusText));
+    if (typeof payload === "string") throw new Error(`Unexpected non-JSON response from ${path}. Please retry shortly.`);
     return payload;
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") throw new Error(`Request timed out while calling ${path}.`);

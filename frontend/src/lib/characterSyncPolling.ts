@@ -86,6 +86,7 @@ export async function pollCharacterSyncJob<T extends PollableSyncJob>({
 }: CharacterSyncPollingOptions<T>): Promise<T> {
   const startedAt = now();
   let job = initialJob;
+  let failures = 0;
 
   while (isActive(job)) {
     if (signal?.aborted) throw new CharacterSyncPollingAborted();
@@ -93,12 +94,24 @@ export async function pollCharacterSyncJob<T extends PollableSyncJob>({
     if (remainingMs <= 0) {
       throw new Error("Character sync is still running after 30 minutes, so polling was stopped. Refresh the page to check its latest status.");
     }
-    await wait(Math.min(intervalMs, remainingMs));
+    await wait(Math.min(failures ? Math.min(10000, intervalMs * 2 ** Math.min(failures, 4)) : intervalMs, remainingMs));
     if (signal?.aborted) throw new CharacterSyncPollingAborted();
     if (now() - startedAt >= timeoutMs) {
       throw new Error("Character sync is still running after 30 minutes, so polling was stopped. Refresh the page to check its latest status.");
     }
-    job = await fetchLatest(job);
+    try {
+      job = await fetchLatest(job);
+      failures = 0;
+    } catch (reason) {
+      if (signal?.aborted) throw new CharacterSyncPollingAborted();
+      const status = (reason as {status?:number} | null)?.status;
+      const message = reason instanceof Error ? reason.message : String(reason);
+      // Retry reads of this existing job only; never retry the POST that starts it.
+      if (![502,503,504].includes(status ?? 0) && !/Request timed out|Failed to fetch|Load failed|NetworkError/i.test(message)) throw reason;
+      failures += 1;
+      continue;
+    }
+    if (signal?.aborted) throw new CharacterSyncPollingAborted();
     onUpdate?.(job);
   }
   return job;

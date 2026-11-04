@@ -284,7 +284,7 @@ def test_refresh_downscopes_legacy_utility_token(env):
     response=httpx.Response(200,json={'access_token':'synthetic-access','expires_in':1200})
     client=SimpleNamespace(post=AsyncMock(return_value=response))
     context=AsyncMock();context.__aenter__.return_value=client
-    with patch.object(esi,'decrypt_secret',return_value='not-a-live-refresh'),patch.object(esi.httpx,'AsyncClient',return_value=context):
+    with patch('app.services.esi_refresh.decrypt_secret',return_value='not-a-live-refresh'),patch.object(esi.httpx,'AsyncClient',return_value=context):
         assert asyncio.run(esi.refresh_access_token(token))=='synthetic-access'
     data=client.post.call_args.kwargs['data']
     assert set(data['scope'].split())=={'esi-ui.write_waypoint.v1','esi-universe.read_structures.v1'}

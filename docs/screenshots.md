@@ -774,3 +774,15 @@ Actual JourneyPanel/JourneyExport React components with existing EQM styles, pro
 ![390px mobile export controls — desktop saving recommended](../static/ss/v2.1/journey-export-mobile.png)
 
 Both synthetic GIF and MP4 outputs were probed as 1920×1080, 17.5 seconds. Nine browser cases cover encoding/downloads, cancellation, date changes, invalid ranges, truncation, unavailable combat, missing MP4 encoder and mobile overflow. [Guide](journey-map.md#gif-and-mp4-exports) · [Receipt and SHA-256 checksums](../static/ss/v2.1/capture-receipt.json).
+
+## Sync All reliability — unreleased 2.2.1 follow-up
+
+Actual CharactersPage and shared API/polling client, rendered with existing EQM styles and synthetic loopback HTTP responses. A fabricated pilot and minimal supporting/dossier fixtures; no live account or actual EVE sync. Crops retain the full Characters heading, sync/refresh controls and error or completion notice. No screenshot painting or replacement UI.
+
+![Readable gateway notice without nginx HTML](../static/ss/v2.2.1/sync-gateway-message.png)
+
+![The same job completed after a temporary 504 status response](../static/ss/v2.2.1/sync-gateway-recovered.png)
+
+![390px mobile gateway notice](../static/ss/v2.2.1/sync-gateway-mobile.png)
+
+[Reliability behavior and PostgreSQL regression](sync-reliability.md) · [Capture provenance and checksums](../static/ss/v2.2.1/capture-receipt.json). Not a deployment or live sync capture.
