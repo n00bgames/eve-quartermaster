@@ -1,12 +1,13 @@
 import {useEffect,useRef,useState} from 'react';
 import {Download,Film} from 'lucide-react';
+import {JourneyExportBatch} from './JourneyExportBatch';
 import {api} from '../../lib/api';
 import {APP_VERSION} from '../../version';
 import type {JourneyHistory} from './types';
 import {makeExportPlan,MAX_EXPORT_VISITS,type ExportCombat,type ExportMessage} from './exportModel';
 
 type Result={url:string;format:'gif'|'mp4';name:string;duration:number;size:number};
-export function JourneyExport({history,query}:{history:JourneyHistory;query:string}){
+function SingleJourneyExport({history,query}:{history:JourneyHistory;query:string}){
  const [first,setFirst]=useState(1),[last,setLast]=useState(Math.min(history.visits.length,MAX_EXPORT_VISITS)),[format,setFormat]=useState<'gif'|'mp4'>('mp4');
  const [busy,setBusy]=useState(false),[progress,setProgress]=useState(0),[error,setError]=useState(''),[notice,setNotice]=useState(''),[result,setResult]=useState<Result|null>(null);
  const active=useRef<{worker?:Worker;abort:AbortController}|null>(null),url=useRef<string|null>(null);
@@ -56,4 +57,10 @@ export function JourneyExport({history,query}:{history:JourneyHistory;query:stri
  {busy&&<progress aria-label="Journey export progress" max={1} value={progress}/>}{notice&&<p role="status">{notice}</p>}{error&&<p role="alert" className="mini-alert">{error}</p>}
  {result&&<div className="journey-export-result">{result.format==='mp4'?<video aria-label="Journey export preview" src={result.url} controls preload="metadata"/>:<img src={result.url} alt="Animated journey export preview"/>}<a className="button" href={result.url} download={result.name}><Download size={16}/> Download {result.format.toUpperCase()} · {(result.size/1024/1024).toFixed(1)} MiB</a><small>{result.duration.toFixed(1)} seconds · 1920 × 1080 · includes private route and combat history</small></div>}
  </section>;
+}
+
+export function JourneyExport({history,query}:{history:JourneyHistory;query:string}){
+ const [scope,setScope]=useState<'single'|'range'|'all'>('single');
+ return <div className="journey-export-scope"><label>Journey export scope<select aria-label="Journey export scope" value={scope} onChange={e=>setScope(e.target.value as 'single'|'range'|'all')}><option value="single">Single clip · selected visits</option><option value="range">Segment selected dates · every visit</option><option value="all">Entire recorded journey · all dates</option></select></label>
+ {scope==='single'?<SingleJourneyExport history={history} query={query}/>:<JourneyExportBatch key={scope} characterId={history.character.character_id} query={query} scope={scope}/>}</div>;
 }

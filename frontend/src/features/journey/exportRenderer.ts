@@ -11,12 +11,12 @@ export function renderExportFrame(c:Ctx,plan:ExportPlan,time:number,logo:ImageBi
  const {phase,progress,camera}=exportFrame(plan,time),index=phase.index,visit=plan.visits[index],system=plan.history.systems.find(s=>s.system_id===visit.system_id);
  const overview=phase.kind==='overview'||phase.kind==='end';
  const rows=plan.engagements[index],page=phase.page??0,pageRows=rows.slice(page*ENGAGEMENT_PAGE_SIZE,(page+1)*ENGAGEMENT_PAGE_SIZE);
- const stamp=phase.kind==='engagement'?pageRows[0].time:new Date(Date.parse(visit.first_seen_at)+(Date.parse(visit.last_seen_at)-Date.parse(visit.first_seen_at))*(phase.kind==='visit'?progress:phase.kind==='zoom'||phase.kind==='overview'?0:1)).toISOString();
+ const stamp=phase.kind==='engagement'?pageRows[0].time:phase.kind==='overview'||phase.kind==='zoom'?plan.clipStartAt??visit.first_seen_at:phase.kind==='end'||phase.kind==='outro'?plan.clipEndAt??visit.last_seen_at:new Date(Date.parse(visit.first_seen_at)+(Date.parse(visit.last_seen_at)-Date.parse(visit.first_seen_at))*progress).toISOString();
  const hull=hullAt(plan,index,stamp);
  c.fillStyle='#060e18';c.fillRect(0,0,W,H);
  // The supplied EQM banner is rendered intact; no remote images can taint the canvas.
  c.drawImage(logo,45,18,300,150);
- text(c,'MY JOURNEY',385,72,38);text(c,plan.history.character.name,385,112,25,muted,1000);
+ text(c,plan.partNumber?`MY JOURNEY · PART ${plan.partNumber}`:'MY JOURNEY',385,72,38);text(c,plan.history.character.name,385,112,25,muted,900);
  text(c,`EXPORTED ${utcStamp(plan.exportedAt)}`,1335,68,21,muted,540);
  text(c,`EVE QUARTERMASTER v${version}`,1335,107,19,muted);
  panel(c,MX,MY,MW,MH);
@@ -46,7 +46,7 @@ export function renderExportFrame(c:Ctx,plan:ExportPlan,time:number,logo:ImageBi
  panel(c,1310,MY,560,MH);
  text(c,overview?'JOURNEY OVERVIEW':phase.kind==='engagement'?'IMPORTED ENGAGEMENT':'SYSTEM VISIT',1340,249,20,cyan);
  text(c,system?.name??`System ${visit.system_id}`,1340,299,36,ink,500);
- text(c,`Visit ${index+1} of ${plan.visits.length}`,1340,340,22,muted);
+ text(c,plan.partNumber?`Journey visit ${plan.visitNumbers?.[index]}${plan.continued&&index===0?' · continued':''}`:`Visit ${index+1} of ${plan.visits.length}`,1340,340,22,muted);
  text(c,utcStamp(stamp),1340,385,22);
  text(c,'RECORDED SHIP TYPE',1340,428,17,muted);
  text(c,hull?.ship_name??'Unknown hull',1340,465,29,ink,500);
@@ -64,7 +64,7 @@ export function renderExportFrame(c:Ctx,plan:ExportPlan,time:number,logo:ImageBi
  }
  text(c,'Imported records only · selected pilot involvement',1340,848,17,muted,500);
  c.fillStyle='#21394a';c.fillRect(50,964,1820,5);c.fillStyle=cyan;c.fillRect(50,964,1820*Math.min(1,time/plan.duration),5);
- text(c,`${utcStamp(plan.visits[0].first_seen_at)}  →  ${utcStamp(plan.visits[plan.visits.length-1].last_seen_at)}`,50,1010,21,muted,1400);
+ text(c,`${utcStamp(plan.clipStartAt??plan.visits[0].first_seen_at)}  →  ${utcStamp(plan.clipEndAt??plan.visits[plan.visits.length-1].last_seen_at)}`,50,1010,21,muted,1400);
  text(c,`${Math.min(plan.duration,time).toFixed(1)} / ${plan.duration.toFixed(1)} s`,1630,1010,21,muted,240);
  const note=!plan.combatAvailable?'Combat layer unavailable with current permissions.':plan.unmatched?`${plan.unmatched} imported records outside confirmed / continuous visits are not assigned.`:'Combat pauses show existing imports; missing records do not establish no engagement.';
  text(c,note,50,1045,18,muted);

@@ -60,6 +60,364 @@
       "sha256": "29ae91c2a7adb82cff1ef54b73990ac274ac78bdfb0a9b8dc151ae87c349dab2",
       "width": 390,
       "height": 258
+    },
+    {
+      "file": "journey-segments-complete.png",
+      "bytes": 74900,
+      "sha256": "c6283a3d96cd711985dbde974031d8a50ebb33fb3029fcadf29c084983a8e97d",
+      "width": 1330,
+      "height": 369
+    },
+    {
+      "file": "journey-segments-download.png",
+      "bytes": 177843,
+      "sha256": "e57177125850810dae0b503d8d5ca781f70fde830f452c640ff8c4bc12ca23e1",
+      "width": 1330,
+      "height": 1076
+    },
+    {
+      "file": "journey-segments-mobile.png",
+      "bytes": 65277,
+      "sha256": "72ba7a52c07e53a3d0d02b40c1b93fa7100236c5f1a21cdeba2e64333378be9a",
+      "width": 332,
+      "height": 678
+    },
+    {
+      "file": "journey-segments-continuation.png",
+      "bytes": 305314,
+      "sha256": "36c4d20cb25807bd7a37c076c3864b94550b68ddfcf1052d7068fb55e11c974b",
+      "width": 1920,
+      "height": 1080
     }
-  ]
+  ],
+  "journey_segments": {
+    "recorded_at_utc": "2026-11-04T23:13:48.081249+00:00",
+    "application_version": "2.2.1",
+    "source_base_commit": "bbdc53a3c55f465d9ba2efac633020dff51c32dc",
+    "source_state": "Uncommitted segmented export follow-up; no deployment/version bump/release/APK.",
+    "method": "Actual JourneyPanel/export components with synthetic local HTTP, production Vite worker, headless Edge. Real origin-private file handles replace only native folder selection. Screenshots plus a frame extracted from actual MP4; no repainting.",
+    "data": "Demo Cartographer and illustrative coordinates. Small paged trip; 501-visit trip; two visits with 1,200 synthetic combat records to cross ten minutes. Byte-limit test lowers only the worker threshold to 6 MiB. No real account or user-folder data.",
+    "validation": {
+      "checks": [
+        "Automatic folder export writes three real MP4s and a complete index across paged history",
+        "500 real encoded visits fit 504.5 seconds; the next clip begins exactly at visit 501",
+        "A real ten-minute boundary resumes on engagement page 199, with no duplicated visit event",
+        "Real GIF byte-limit overflow (test threshold 6 MiB) recursively splits and saves all timeline events in order",
+        "Download fallback requires saving each numbered clip before continuing, without retaining prior preview blobs",
+        "Cancellation releases the waiting preview and stops the remaining queue",
+        "Segmented export controls fit a 390px mobile layout"
+      ],
+      "errors": [],
+      "indices": {
+        "small": {
+          "application_version": "2.2.1",
+          "exported_at": "2026-11-04T23:04:19.200Z",
+          "snapshot_at": "2026-11-02T15:46:40.000Z",
+          "character_id": 1,
+          "scope": "all",
+          "format": "mp4",
+          "status": "complete",
+          "total_visits": 6,
+          "completed_visit_events": 6,
+          "clips": [
+            {
+              "part": 1,
+              "filename": "EQM-My-Journey-Demo-Cartographer-2026-11-04T23-04-19-200Z-6b28eb41-part-0001.mp4",
+              "bytes": 1419067,
+              "seconds": 12.5,
+              "first_visit": 1,
+              "last_visit": 2,
+              "starts_with": "1:visit",
+              "ends_with": "2:visit",
+              "events": 4
+            },
+            {
+              "part": 2,
+              "filename": "EQM-My-Journey-Demo-Cartographer-2026-11-04T23-04-19-200Z-6b28eb41-part-0002.mp4",
+              "bytes": 822468,
+              "seconds": 6.5,
+              "first_visit": 3,
+              "last_visit": 4,
+              "starts_with": "3:visit",
+              "ends_with": "4:visit",
+              "events": 2
+            },
+            {
+              "part": 3,
+              "filename": "EQM-My-Journey-Demo-Cartographer-2026-11-04T23-04-19-200Z-6b28eb41-part-0003.mp4",
+              "bytes": 853567,
+              "seconds": 6.5,
+              "first_visit": 5,
+              "last_visit": 6,
+              "starts_with": "5:visit",
+              "ends_with": "6:visit",
+              "events": 2
+            }
+          ]
+        },
+        "long": {
+          "application_version": "2.2.1",
+          "exported_at": "2026-11-04T23:04:23.574Z",
+          "snapshot_at": "2026-11-02T15:46:40.000Z",
+          "character_id": 1,
+          "scope": "all",
+          "format": "mp4",
+          "status": "complete",
+          "total_visits": 501,
+          "completed_visit_events": 501,
+          "clips": [
+            {
+              "part": 1,
+              "filename": "EQM-My-Journey-Demo-Cartographer-2026-11-04T23-04-23-574Z-22e00969-part-0001.mp4",
+              "bytes": 78723306,
+              "seconds": 504.5,
+              "first_visit": 1,
+              "last_visit": 500,
+              "starts_with": "1:visit",
+              "ends_with": "500:visit",
+              "events": 500
+            },
+            {
+              "part": 2,
+              "filename": "EQM-My-Journey-Demo-Cartographer-2026-11-04T23-04-23-574Z-22e00969-part-0002.mp4",
+              "bytes": 534853,
+              "seconds": 5.5,
+              "first_visit": 501,
+              "last_visit": 501,
+              "starts_with": "501:visit",
+              "ends_with": "501:visit",
+              "events": 1
+            }
+          ]
+        },
+        "engagement": {
+          "application_version": "2.2.1",
+          "exported_at": "2026-11-04T23:05:16.863Z",
+          "snapshot_at": "2026-11-02T15:46:40.000Z",
+          "character_id": 1,
+          "scope": "all",
+          "format": "mp4",
+          "status": "complete",
+          "total_visits": 2,
+          "completed_visit_events": 2,
+          "clips": [
+            {
+              "part": 1,
+              "filename": "EQM-My-Journey-Demo-Cartographer-2026-11-04T23-05-16-863Z-4ab09ea5-part-0001.mp4",
+              "bytes": 49767393,
+              "seconds": 599.5,
+              "first_visit": 1,
+              "last_visit": 1,
+              "starts_with": "1:visit",
+              "ends_with": "1:engagement:198",
+              "events": 199
+            },
+            {
+              "part": 2,
+              "filename": "EQM-My-Journey-Demo-Cartographer-2026-11-04T23-05-16-863Z-4ab09ea5-part-0002.mp4",
+              "bytes": 1266823,
+              "seconds": 11.5,
+              "first_visit": 1,
+              "last_visit": 2,
+              "starts_with": "1:engagement:199",
+              "ends_with": "2:visit",
+              "events": 3
+            }
+          ]
+        },
+        "cap": {
+          "application_version": "2.2.1",
+          "exported_at": "2026-11-04T23:06:14.986Z",
+          "snapshot_at": "2026-11-02T15:46:40.000Z",
+          "character_id": 1,
+          "scope": "all",
+          "format": "gif",
+          "status": "complete",
+          "total_visits": 15,
+          "completed_visit_events": 15,
+          "clips": [
+            {
+              "part": 1,
+              "filename": "EQM-My-Journey-Demo-Cartographer-2026-11-04T23-06-14-986Z-32774623-part-0001.gif",
+              "bytes": 5245863,
+              "seconds": 11.5,
+              "first_visit": 1,
+              "last_visit": 1,
+              "starts_with": "1:visit",
+              "ends_with": "1:engagement:2",
+              "events": 3
+            },
+            {
+              "part": 2,
+              "filename": "EQM-My-Journey-Demo-Cartographer-2026-11-04T23-06-14-986Z-32774623-part-0002.gif",
+              "bytes": 3787228,
+              "seconds": 8.5,
+              "first_visit": 2,
+              "last_visit": 5,
+              "starts_with": "2:visit",
+              "ends_with": "5:visit",
+              "events": 4
+            },
+            {
+              "part": 3,
+              "filename": "EQM-My-Journey-Demo-Cartographer-2026-11-04T23-06-14-986Z-32774623-part-0003.gif",
+              "bytes": 4259923,
+              "seconds": 9.5,
+              "first_visit": 6,
+              "last_visit": 10,
+              "starts_with": "6:visit",
+              "ends_with": "10:visit",
+              "events": 5
+            },
+            {
+              "part": 4,
+              "filename": "EQM-My-Journey-Demo-Cartographer-2026-11-04T23-06-14-986Z-32774623-part-0004.gif",
+              "bytes": 4223242,
+              "seconds": 9.5,
+              "first_visit": 11,
+              "last_visit": 15,
+              "starts_with": "11:visit",
+              "ends_with": "15:visit",
+              "events": 5
+            }
+          ]
+        }
+      },
+      "synthetic": true,
+      "nativePickerUI": "test uses real origin-private FileSystemDirectoryHandle instead of selecting a user folder"
+    },
+    "final_browser_refinements": {
+      "checks": [
+        "Automatic folder export writes three real MP4s and a complete index across paged history",
+        "Download fallback requires saving each numbered clip before continuing, without retaining prior preview blobs",
+        "Cancellation preserves saved clips and a partial index, releases the preview and stops the queue",
+        "Segmented export controls fit a 390px mobile layout"
+      ],
+      "errors": [],
+      "indices": {
+        "small": {
+          "application_version": "2.2.1",
+          "exported_at": "2026-11-04T23:10:20.795Z",
+          "snapshot_at": "2026-11-02T15:46:40.000Z",
+          "character_id": 1,
+          "scope": "all",
+          "format": "mp4",
+          "status": "complete",
+          "total_visits": 6,
+          "completed_visit_events": 6,
+          "combat_unavailable": false,
+          "unmatched_combat_records": 0,
+          "clips": [
+            {
+              "part": 1,
+              "filename": "EQM-My-Journey-Demo-Cartographer-2026-11-04T23-10-20-795Z-08e150a5-part-0001.mp4",
+              "bytes": 1419300,
+              "seconds": 12.5,
+              "first_visit": 1,
+              "last_visit": 2,
+              "starts_with": "1:visit",
+              "ends_with": "2:visit",
+              "events": 4
+            },
+            {
+              "part": 2,
+              "filename": "EQM-My-Journey-Demo-Cartographer-2026-11-04T23-10-20-795Z-08e150a5-part-0002.mp4",
+              "bytes": 822355,
+              "seconds": 6.5,
+              "first_visit": 3,
+              "last_visit": 4,
+              "starts_with": "3:visit",
+              "ends_with": "4:visit",
+              "events": 2
+            },
+            {
+              "part": 3,
+              "filename": "EQM-My-Journey-Demo-Cartographer-2026-11-04T23-10-20-795Z-08e150a5-part-0003.mp4",
+              "bytes": 853446,
+              "seconds": 6.5,
+              "first_visit": 5,
+              "last_visit": 6,
+              "starts_with": "5:visit",
+              "ends_with": "6:visit",
+              "events": 2
+            }
+          ]
+        }
+      },
+      "synthetic": true,
+      "nativePickerUI": "test uses real origin-private FileSystemDirectoryHandle instead of selecting a user folder"
+    },
+    "tests": {
+      "frontend_journey": 25,
+      "backend_journey_unique": 51,
+      "backend_final_pagination": 5,
+      "production_build": "passed"
+    },
+    "media": {
+      "width": 1920,
+      "height": 1080,
+      "mp4_500_visits": {
+        "duration": 504.5,
+        "fps": 30,
+        "frames": 15135,
+        "bytes": 78723306
+      },
+      "continuation_mp4": {
+        "duration": 11.5,
+        "fps": 30,
+        "frames": 345
+      },
+      "sample_gif": {
+        "duration": 11.5,
+        "fps": 10,
+        "frames": 115,
+        "bytes": 5245863
+      }
+    },
+    "limitations": "Synthetic browser HTTP; backend cursor/ownership/paging tested independently with SQLite. Native user-folder dialog and Android downloads were not tested/supported. No production changes. Final post-media refinements only affect cancellation/index notices and zero-span rounding; ordinary-frame output unchanged.",
+    "source_sha256": {
+      "backend/app/api/journey.py": "fdee43fafa0cf6e2c1b333fc071d83a37b849320e5023542b64768bb8ec5e2f5",
+      "backend/app/services/journey_exports.py": "52bd075c647ae524b296568725bb6f136906b1b894da70eeee99ff37dd3602b7",
+      "backend/tests/test_journey_paged_export.py": "7565480cb0f4c141659b7cedf1a15512e3db4ce1921e57b04deb07ca052ec056",
+      "frontend/package.json": "aa0625639721baf3a44cba9419d0ed4553810b21f8b9ec907f84cc92066d09b5",
+      "frontend/src/features/journey/JourneyExport.tsx": "17efd3ac1cd5e54e383b1317f88da3aa7fd75779ca97b553559c9c0ace3e27e5",
+      "frontend/src/features/journey/JourneyExportBatch.tsx": "0d53e2d119d7183bcd2018f7a981b31de0629f7911bcedf485168c6ba860aefe",
+      "frontend/src/features/journey/exportHistory.ts": "11d600578d85f00fed395e127b1215510c9f55cbc96cb6086d7385c2dbe7212f",
+      "frontend/src/features/journey/exportModel.ts": "35eaee916ecefaac40373c001ebdfc798a2b20f3931ff9ca7d4eb5404ac60e80",
+      "frontend/src/features/journey/export.worker.ts": "a950ae65e690a7b23cebf833e6cbe58ab21837241b8d9af7b9f93a4d639f7e27",
+      "frontend/src/features/journey/exportRenderer.ts": "5d83f7c3851daec7ab6823700836044a7b3e9f9cab9b6982f4ee881ea3b88b69",
+      "frontend/src/features/journey/journey.css": "fa460b70d49f8d2f69e8c9fc20d6ee1e201ccd0d115fdea5c88a272efc7ea5bd",
+      "frontend/tests/journeySegments.test.ts": "1b2df88a31150d9fc63dbe4acf294cd8f97f677ef7a7f84d44c2ffff4077ca5c"
+    },
+    "files": [
+      {
+        "file": "journey-segments-complete.png",
+        "bytes": 74900,
+        "sha256": "c6283a3d96cd711985dbde974031d8a50ebb33fb3029fcadf29c084983a8e97d",
+        "width": 1330,
+        "height": 369
+      },
+      {
+        "file": "journey-segments-download.png",
+        "bytes": 177843,
+        "sha256": "e57177125850810dae0b503d8d5ca781f70fde830f452c640ff8c4bc12ca23e1",
+        "width": 1330,
+        "height": 1076
+      },
+      {
+        "file": "journey-segments-mobile.png",
+        "bytes": 65277,
+        "sha256": "72ba7a52c07e53a3d0d02b40c1b93fa7100236c5f1a21cdeba2e64333378be9a",
+        "width": 332,
+        "height": 678
+      },
+      {
+        "file": "journey-segments-continuation.png",
+        "bytes": 305314,
+        "sha256": "36c4d20cb25807bd7a37c076c3864b94550b68ddfcf1052d7068fb55e11c974b",
+        "width": 1920,
+        "height": 1080
+      }
+    ]
+  }
 }

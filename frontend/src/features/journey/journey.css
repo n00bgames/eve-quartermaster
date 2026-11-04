@@ -25,3 +25,9 @@
 .journey-export-result a{display:inline-flex;gap:8px;align-items:center}
 .journey-export p,.journey-export small{overflow-wrap:anywhere}
 @media(max-width:600px){.journey-export{padding:12px}.journey-export-controls{align-items:stretch}.journey-export-controls label{flex:1 1 110px}.journey-export-controls select{max-width:100%}}
+
+.journey-export-scope{display:grid;gap:12px}
+.journey-export-scope>label{display:grid;gap:5px;max-width:500px}
+.journey-export-scope select{max-width:100%}
+
+@media(max-width:600px){.journey-export-scope .journey-export-controls label:has(select){flex-basis:100%}}

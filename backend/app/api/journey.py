@@ -80,3 +80,10 @@ def context(character_id:int,from_at:datetime|None=None,to_at:datetime|None=None
 @router.get('/characters/{character_id}/export-combat')
 def export_combat(character_id:int,from_at:datetime|None=None,to_at:datetime|None=None,user:User=Depends(get_current_user),db:Session=Depends(get_db)):
     return journey.export_combat(db,user,character_id,*journey.window(from_at,to_at))
+
+
+@router.get('/characters/{character_id}/export-history')
+def export_history(character_id:int,scope:Literal['all','range']='range',from_at:datetime|None=None,to_at:datetime|None=None,cursor:str|None=None,user:User=Depends(get_current_user),db:Session=Depends(get_db)):
+    from app.services.journey_exports import export_page
+    if cursor and len(cursor)>4096:raise HTTPException(400,'Invalid journey export cursor')
+    return export_page(db,user,character_id,scope,from_at,to_at,cursor)

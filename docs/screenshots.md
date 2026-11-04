@@ -786,3 +786,17 @@ Actual CharactersPage and shared API/polling client, rendered with existing EQM 
 ![390px mobile gateway notice](../static/ss/v2.2.1/sync-gateway-mobile.png)
 
 [Reliability behavior and PostgreSQL regression](sync-reliability.md) · [Capture provenance and checksums](../static/ss/v2.2.1/capture-receipt.json). Not a deployment or live sync capture.
+
+## My Journey segmented exports — unreleased 2.2.1 follow-up
+
+Actual JourneyPanel, scope selector and segmented export components with existing EQM styles, a production-bundled media worker and synthetic loopback API responses. Fabricated pilot, history, coordinates and combat; no real account, SSO, ESI collection or user folder. Folder tests use real browser origin-private file handles in an isolated Edge profile. The native directory picker itself was not automated. Individual download files were saved and checked with FFprobe.
+
+![501 real encoded synthetic visits saved as two clips](../static/ss/v2.2.1/journey-segments-complete.png)
+
+![Numbered download preview and explicit save-before-continuing controls](../static/ss/v2.2.1/journey-segments-download.png)
+
+![Actual frame extracted from the continuation MP4: part 2, visit 1 continued, page 199](../static/ss/v2.2.1/journey-segments-continuation.png)
+
+![390px mobile scope and format controls](../static/ss/v2.2.1/journey-segments-mobile.png)
+
+[Behavior and verification](journey-map.md#segmented-and-entire-journey-exports) · [Receipt and checksums](../static/ss/v2.2.1/capture-receipt.json). Captures are development evidence, not a deployment or a live journey.

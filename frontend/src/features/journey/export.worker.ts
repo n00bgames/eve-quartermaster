@@ -1,7 +1,8 @@
-import {EXPORT_WIDTH,EXPORT_HEIGHT,type ExportRequest,type ExportMessage} from './exportModel';
+import {EXPORT_WIDTH,EXPORT_HEIGHT,MAX_EXPORT_BYTES,type ExportRequest,type ExportMessage} from './exportModel';
 import {renderExportFrame} from './exportRenderer';
 
-const MAX_BYTES=128*1024*1024;
+const MAX_BYTES=MAX_EXPORT_BYTES;
+class SizeLimitError extends Error {}
 const send=(message:ExportMessage,transfer:Transferable[]=[])=>postMessage(message,{transfer});
 const palette:number[][]=[];
 for(let r=0;r<6;r++)for(let g=0;g<6;g++)for(let b=0;b<6;b++)palette.push([r*51,g*51,b*51]);
@@ -18,7 +19,7 @@ onmessage=async(event:MessageEvent<ExportRequest>)=>{
   let add:(i:number)=>Promise<void>,finish:()=>Promise<ArrayBuffer>;
   if(format==='gif'){
    const {GIFEncoder,applyPalette}=await import('gifenc'),encoder=GIFEncoder();
-   add=async i=>{const rgba=ctx.getImageData(0,0,EXPORT_WIDTH,EXPORT_HEIGHT).data;encoder.writeFrame(applyPalette(rgba,palette,'rgb444'),EXPORT_WIDTH,EXPORT_HEIGHT,{palette,delay:100,repeat:0});if(encoder.bytesView().byteLength>MAX_BYTES)throw new Error('GIF exceeds 128 MiB. Choose a shorter visit range.');};
+   add=async i=>{const rgba=ctx.getImageData(0,0,EXPORT_WIDTH,EXPORT_HEIGHT).data;encoder.writeFrame(applyPalette(rgba,palette,'rgb444'),EXPORT_WIDTH,EXPORT_HEIGHT,{palette,delay:100,repeat:0});if(encoder.bytesView().byteLength>MAX_BYTES)throw new SizeLimitError('GIF exceeds 128 MiB. Choose a shorter visit range.');};
    finish=async()=>{encoder.finish();return encoder.bytesView().slice().buffer as ArrayBuffer;};
   }else{
    const {Output,Mp4OutputFormat,BufferTarget,CanvasSource,Quality,canEncodeVideo}=await import('mediabunny');
@@ -26,7 +27,7 @@ onmessage=async(event:MessageEvent<ExportRequest>)=>{
    if(!await canEncodeVideo('avc',{width:EXPORT_WIDTH,height:EXPORT_HEIGHT,quality,frameRate:fps}))throw new Error('1080p H.264 encoding is unavailable. Try current desktop Chrome or Edge, or export GIF.');
    const target=new BufferTarget(),output=new Output({format:new Mp4OutputFormat({fastStart:false}),target});
    cancel=()=>output.cancel();
-   target.on('write',({end})=>{if(end>MAX_BYTES)throw new Error('MP4 exceeds 128 MiB. Choose a shorter visit range.');});
+   target.on('write',({end})=>{if(end>MAX_BYTES)throw new SizeLimitError('MP4 exceeds 128 MiB. Choose a shorter visit range.');});
    const source=new CanvasSource(canvas,{codec:'avc',quality});output.addVideoTrack(source,{frameRate:fps});
    output.setMetadataTags({title:`My Journey · ${plan.history.character.name}`,artist:`EVE Quartermaster ${version}`,date:new Date(plan.exportedAt)});
    await output.start();
@@ -37,8 +38,8 @@ onmessage=async(event:MessageEvent<ExportRequest>)=>{
    renderExportFrame(ctx,plan,i/fps,logo,version);await add(i);
    if(i%fps===0)send({type:'progress',progress:i/frames});
   }
-  const buffer=await finish();if(buffer.byteLength>MAX_BYTES)throw new Error('Export exceeds 128 MiB. Choose a shorter visit range.');
+  const buffer=await finish();if(buffer.byteLength>MAX_BYTES)throw new SizeLimitError('Export exceeds 128 MiB. Choose a shorter visit range.');
   send({type:'done',buffer,mime:format==='gif'?'image/gif':'video/mp4'},[buffer]);
- }catch(error){try{await cancel?.();}catch{}send({type:'error',message:error instanceof Error?error.message:String(error)});}
+ }catch(error){try{await cancel?.();}catch{}send({type:'error',message:error instanceof Error?error.message:String(error),code:error instanceof SizeLimitError?'size_limit':undefined});}
  finally{logo.close();}
 };

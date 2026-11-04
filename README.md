@@ -1080,3 +1080,11 @@ Keep token-rotation writes out of long sync transactions to prevent the captured
 ![Actual Characters page: the existing synthetic sync recovered after a 504 status response](static/ss/v2.2.1/sync-gateway-recovered.png)
 
 [Root cause, validation and rollout](docs/sync-reliability.md) · [Readable gateway notice](static/ss/v2.2.1/sync-gateway-message.png). Source follow-up only; matching backend/frontend rebuilds are required.
+
+### My Journey segmented exports (unreleased 2.2.1 follow-up)
+
+Export the selected UTC dates or a character’s **entire recorded journey** as numbered 1080p GIF/MP4 clips. Each part continues at the next visit or engagement page, up to **500 visits / ten minutes / 128 MiB** per file. Long engagements continue without replaying the visit; oversized files split automatically. Save to a desktop folder or download one clip at a time, with a JSON export index and preserved partial results.
+
+![Entire journey: 501 synthetic visits saved in two consecutive parts](static/ss/v2.2.1/journey-segments-complete.png)
+
+[Scopes, continuation and browser support](docs/journey-map.md#segmented-and-entire-journey-exports) · [Engagement continuation](static/ss/v2.2.1/journey-segments-continuation.png) · [Download preview](static/ss/v2.2.1/journey-segments-download.png). Owner-only paged loading includes visits beyond the replay cap. Source follow-up only; matching API/frontend builds are required.
