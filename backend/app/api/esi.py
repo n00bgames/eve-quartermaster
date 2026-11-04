@@ -270,7 +270,7 @@ async def refresh_access_token(token: EsiToken) -> str:
             headers={
                 "Accept": "application/json",
                 "Content-Type": "application/x-www-form-urlencoded",
-                "User-Agent": "eve-quartermaster/2.0.1 (+https://github.com/n00bgames/eve-quartermaster)",
+                "User-Agent": "eve-quartermaster/2.1.0 (+https://github.com/n00bgames/eve-quartermaster)",
             },
         )
     if response.status_code >= 400:
@@ -3033,7 +3033,7 @@ async def auth_callback(code: str | None = None, state: str | None = None, db: S
             headers={
                 "Accept": "application/json",
                 "Content-Type": "application/x-www-form-urlencoded",
-                "User-Agent": "eve-quartermaster/2.0.1 (+https://github.com/n00bgames/eve-quartermaster)",
+                "User-Agent": "eve-quartermaster/2.1.0 (+https://github.com/n00bgames/eve-quartermaster)",
             },
         )
     if response.status_code >= 400:

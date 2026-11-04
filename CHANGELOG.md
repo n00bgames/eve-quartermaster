@@ -4,7 +4,24 @@ All notable changes to EVE Quartermaster are tracked here.
 
 Version sections are written as user-facing release notes first, with implementation detail included where it helps operators understand deployment or testing impact.
 
-## [2.0.1] - Unreleased
+## [2.1.0] - Unreleased
+
+Release title: **EQM - v2.1 - "Different Skin, Same Great Taste!" Release**
+
+Prepared from the published **V2.0** baseline through the current source. The user will create **v2.1** separately; this source version bump does not publish a tag, release, APK, or deployment. [Copy-ready release blurb](docs/releases/v2.1.md).
+
+- Add the optional **Command Desk** interface and Overview with persistent **EQM-Classic** fallback.
+- Expand **Local Scan** and D-Scan linked local lists to **9,999 unique pilots**, save organization colors and optional contact-based standings sources, and retain system-tagged scan sightings in Intel history.
+- Add account-private, opt-in **My Journey** location history and map replay, with optional hull observations and timeline icons.
+- Add the **Matchups** PvP Knowledgebase foundation with base-hull resistance references, sourced scenarios, counter tools and D-Scan handoff.
+- Add public corporation/alliance **Organization strength** monitoring, membership trends, observed corporation movements and expandable alliance corporation profiles.
+- Add **Receipts** for actual market purchases, exclusions, credits, hauling/fuel and routes, with private saves, expiring shares and branded PDF/CSV; reconcile consistent rounded clipboard unit prices without changing paid totals.
+- Add **Find all battle kills** across selected UTC/system boundaries, including kills beyond the selected pilot's participation, with progress, resume/cancel, ESI verification and explicit partial coverage.
+- Exclude Pochven from jump-planner endpoints, routes, required cynos and alternates; add Windows/Linux restart helpers with readiness checks.
+- Bump current frontend, package/lockfile, API, report/export defaults, service user agents and version documentation to **2.1.0**; advance Android versionCode to **29** and versionName to **2.1.0**. Rust core crate version and historical migrations/fixtures/captures retain their independent versions.
+- Upgrading from v2.0 includes migrations **0101–0105** and requires matching backend, worker and frontend. The version bump itself adds no new migration or consent scope.
+
+## [2.0.1] - Unreleased development snapshot (included in 2.1.0)
 
 - Expand Battle Reports with **Find all battle kills**: collect public zKillboard kills across editable UTC/system boundaries, verify through ESI, show background progress and resume/cancel, and preserve all-window scope through team edits, saving and sharing. Include kills the selected pilot never appeared on; explicitly label partial/source-limited coverage. No new migration or OAuth scope. [Guide](docs/battle-discovery.md).
 
