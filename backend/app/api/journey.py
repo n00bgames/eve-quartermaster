@@ -75,3 +75,8 @@ def history(character_id:int,from_at:datetime|None=None,to_at:datetime|None=None
 @router.get('/characters/{character_id}/context')
 def context(character_id:int,from_at:datetime|None=None,to_at:datetime|None=None,system_id:int|None=None,user:User=Depends(get_current_user),db:Session=Depends(get_db)):
     return journey.context(db,user,character_id,*journey.window(from_at,to_at),system_id)
+
+
+@router.get('/characters/{character_id}/export-combat')
+def export_combat(character_id:int,from_at:datetime|None=None,to_at:datetime|None=None,user:User=Depends(get_current_user),db:Session=Depends(get_db)):
+    return journey.export_combat(db,user,character_id,*journey.window(from_at,to_at))

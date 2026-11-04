@@ -1064,3 +1064,11 @@ Zoom around the pointer with the mouse wheel, drag to pan from any part of the m
 ![My Journey map controls — actual UI, synthetic route and coordinates](static/ss/v2.1/journey-map-controls-desktop.png)
 
 [Controls and verification](docs/journey-map.md#map-controls) · [Mobile](static/ss/v2.1/journey-map-controls-mobile.png) · [Capture provenance](static/ss/v2.1/capture-receipt.json). Source follow-up only; no deployment is implied.
+
+### My Journey movie exports (unreleased v2.1 follow-up)
+
+Create a **1080p GIF or MP4** from selected character visits: start with the whole journey, zoom in and follow the route at one visit per second, pause to list imported kills/losses, then zoom back out. Observed ship types, UTC dates/times, EQM branding and the export date stay in the film. Generate locally with progress/cancel, preview and desktop-browser download.
+
+![My Journey export — actual UI and generated synthetic combat preview](static/ss/v2.1/journey-export-desktop.png)
+
+[Timing, combat matching, limits and browser support](docs/journey-map.md#gif-and-mp4-exports) · [1080p engagement frame](static/ss/v2.1/journey-export-engagement.png) · [Mobile controls](static/ss/v2.1/journey-export-mobile.png) · [Capture provenance](static/ss/v2.1/capture-receipt.json). Source follow-up only; matching API/frontend rollout is required. Android WebView saving is not included.

@@ -2,6 +2,7 @@ import {useEffect,useMemo,useState} from 'react';
 import {MapPinned,Pause,Play,RefreshCw,ShieldCheck} from 'lucide-react';
 import {api} from '../../lib/api';
 import {EveItemName} from '../clientLinks/EveClientLinks';
+import {JourneyExport} from './JourneyExport';
 import {JourneyMap} from './JourneyMap';
 import {JourneyHull} from './JourneyHull';
 import {journeySteps} from './shipTimeline';
@@ -51,6 +52,7 @@ export function JourneyPanel(){
  <label className="journey-scrubber">Journey timeline<input type="range" aria-label="Journey timeline" min={0} max={Math.max(0,steps.length-1)} disabled={!visits.length} value={cursor??Math.max(0,steps.length-1)} onChange={e=>{setPlaying(false);setCursor(Number(e.target.value));}}/></label>
  <div className="journey-current-hull"><span>{cursor===null?'Hull at latest recorded sample':'Hull at replay step'}</span><JourneyHull key={step?.ship?.ship_type_id??'unknown'} typeId={step?.ship?.ship_type_id} name={step?.ship?.ship_name}/><small>{history.systems.find(s=>s.system_id===current?.system_id)?.name??'No system observed'}</small></div>
  {history.ship_segments_truncated&&<p role="alert" className="mini-alert">Hull timeline is limited to {history.ship_segment_limit} segments within loaded visits. Narrow the dates; missing hull observations are shown as unknown.</p>}
+ <JourneyExport key={`export:${character}:${query}`} history={history} query={query}/>
  <JourneyMap key={`${character}:${query}`} systems={windowSystems} visits={frame} context={context} selected={selected} onSelect={setSelected}/>
  {!!windowSystems.filter(s=>s.x===null||s.z===null).length&&<p className="muted">Some systems have no imported SDE coordinates. Their visits remain in the log.</p>}
  <p className="muted">Replay advances through observed visits and hull changes in order, not real-time flight speed. A hull change within a system does not add a system visit. Repeated locations after an offline period, pause or data gap start a new observed visit; they do not prove you left and returned.</p>

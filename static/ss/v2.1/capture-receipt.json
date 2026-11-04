@@ -44,6 +44,109 @@
       "sha256": "194b72350ed3b8fb22c2af69f2e04af265eb2f059c4086bf0ae58c3cd9269267",
       "width": 332,
       "height": 592
+    },
+    {
+      "file": "journey-export-desktop.png",
+      "bytes": 168245,
+      "sha256": "d961ea99b509b2ef6a0359c157ac8bbe392480a1ecd07abd4a884a35e29dc188",
+      "width": 1330,
+      "height": 933
+    },
+    {
+      "file": "journey-export-mobile.png",
+      "bytes": 55930,
+      "sha256": "90c79be668ca197adfb0889acee451647feba71d9bedb55ccc749b0c286538aa",
+      "width": 332,
+      "height": 586
+    },
+    {
+      "file": "journey-export-engagement.png",
+      "bytes": 286307,
+      "sha256": "88bd89c3ff8caa7254cc080f73bb58f73efa05257ab425ca463a3b09a53e269c",
+      "width": 1920,
+      "height": 1080
     }
-  ]
+  ],
+  "journey_exports": {
+    "recorded_at_utc": "2026-11-04T21:13:35.158723+00:00",
+    "application_version": "2.1.0",
+    "source_base_commit": "c4b6580912607f59d8621a62eedc99b314b63eea",
+    "source_state": "Uncommitted export/engagement follow-up; no deployment, APK, release or tag.",
+    "method": "Actual React JourneyPanel, production Vite-bundled worker, isolated synthetic API and headless Edge/Playwright. UI screenshots plus a frame extracted by FFmpeg from the generated MP4; no repainting.",
+    "data": "Fabricated Demo Cartographer, four visits and three illustrative system coordinates. Seven imported engagement rows at one stop, one loss on a revisit, one gap record explicitly unmatched. No real pilot/account, OAuth, ESI or live zKillboard calls.",
+    "validation": {
+      "checks": [
+        "MP4 encoded and downloaded at full timing, including three engagement pages",
+        "GIF encoded and downloaded at full timing, including three engagement pages",
+        "Cancel stops generation and removes old download",
+        "Truncated combat data blocks incomplete export",
+        "Unavailable combat permits an explicitly marked travel-only export",
+        "Invalid ranges cannot export",
+        "Missing WebCodecs reports a clear MP4 fallback instead of an invalid file",
+        "Changing dates cancels the job and clears private media",
+        "390px mobile layout has no horizontal overflow"
+      ],
+      "errors": [],
+      "synthetic": true,
+      "expectedDuration": 17.5
+    },
+    "media": {
+      "width": 1920,
+      "height": 1080,
+      "duration_seconds": 17.5,
+      "mp4_codec": "h264",
+      "mp4_frames": 525,
+      "mp4_fps": 30,
+      "gif_frames": 175,
+      "gif_fps": 10
+    },
+    "tests": {
+      "frontend_journey": 17,
+      "backend_journey_ship_export": 46,
+      "typescript_build": "passed"
+    },
+    "limitations": "Synthetic browser API responses; backend ownership/completeness checked separately with SQLite tests. Android wrapper downloads unsupported. GIF is palette-limited. No live journey or full-universe geometry validation.",
+    "source_sha256": {
+      "frontend/package.json": "b6f792996a9a3cbed2145520609006e076fb7c890cba9cf77a5633f6f8e1aea2",
+      "frontend/tsconfig.json": "0d38f714634514c8c9e239665b6829ea268d9318a0786a23da6776b728c4de43",
+      "static/licenses/gifenc.txt": "1610b01533a777ff952669a7d4fcb1e03b0d088c3409fd606d130f2d97cb017f",
+      "static/licenses/mediabunny.txt": "3f3d9e0024b1921b067d6f7f88deb4a60cbe7a78e76c64e3f1d7fc3b779b9d04",
+      "frontend/tests/journeyExport.test.ts": "5a0d07b682225afc664e982deab70ce9454d04526cb53b15da1e2ac310a7c332",
+      "frontend/src/features/journey/export.worker.ts": "0961218143b509f0ff418a7d60498443a7031630376ae01cbca322ad8165ee0b",
+      "frontend/src/features/journey/exportModel.ts": "26e5ed4da459fc09c86af8a3324d8af0b702e5b63ae7462eaf0d97813215561a",
+      "frontend/src/features/journey/exportRenderer.ts": "248bcaa5a52edbe26b18fe0dee8d72347141445316dc0943f8a7327c2161b8ac",
+      "frontend/src/features/journey/gifenc.d.ts": "dbca7f27410b8c25e001355994add257b3bff390dd022e9c73756e24f3c4b387",
+      "frontend/src/features/journey/journey.css": "f54285743442820ff67d43502837b49ccbccca63a9df7ced148dfa4263556f0b",
+      "frontend/src/features/journey/JourneyExport.tsx": "88b636dec0b38455aee2b71118deb2d0c196e0b0c6c8ead18946b1ba94615a78",
+      "frontend/src/features/journey/JourneyPanel.tsx": "c783bf195e93f5d18da93a7dc6e3ee71b1095da1d95a7b94cd768ac9bdba4a77",
+      "backend/tests/test_journey_export.py": "3169abebba82dcbe6e6d3a0a6f60a5bf4e7312cf93e73daa7b9385b45921caa7",
+      "backend/app/api/journey.py": "96f62cf14e1e16955927c76d4b05b4d9000b2b7f0047057e339f8c2481c3d0e9",
+      "backend/app/services/journey.py": "4950a80069694c787054ba5e920124633ac974552f54ccff0190ab2ebbdd3647",
+      "frontend/package-lock.json": "9162ef2a8a0656b75673a2e5a815990ad98bf5cd9230f9e8f989a742ead0a647",
+      "frontend/src/version.ts": "7640d1df626be141b544c94f48d7094ee8695b33db1f3dc0c4a66425faa79c30"
+    },
+    "files": [
+      {
+        "file": "journey-export-desktop.png",
+        "bytes": 168245,
+        "sha256": "d961ea99b509b2ef6a0359c157ac8bbe392480a1ecd07abd4a884a35e29dc188",
+        "width": 1330,
+        "height": 933
+      },
+      {
+        "file": "journey-export-mobile.png",
+        "bytes": 55930,
+        "sha256": "90c79be668ca197adfb0889acee451647feba71d9bedb55ccc749b0c286538aa",
+        "width": 332,
+        "height": 586
+      },
+      {
+        "file": "journey-export-engagement.png",
+        "bytes": 286307,
+        "sha256": "88bd89c3ff8caa7254cc080f73bb58f73efa05257ab425ca463a3b09a53e269c",
+        "width": 1920,
+        "height": 1080
+      }
+    ]
+  }
 }

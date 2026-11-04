@@ -94,3 +94,27 @@ The actual browser preview verified per-character consent isolation, setting per
 ![Mobile hull timeline with contained table scrolling](../static/ss/v2.0.1/journey-ships-mobile.jpg)
 
 [All captures and checksums](../static/ss/v2.0.1/capture-receipt.json)
+
+## GIF and MP4 exports
+
+**Unreleased v2.1 follow-up, verified locally; not deployed or published.** Open **Export your journey** for the selected character and UTC dates. Choose the first and last loaded visit, then GIF or MP4. Create the file, review the preview and use **Download**. Clips are generated on your device; private flight history is not uploaded to a media service. A later date/character change or leaving the panel cancels active encoding and releases preview data. Automatic history refresh does not change a clip already being generated.
+
+Both formats are **1920 × 1080**. MP4 is silent H.264 at 30 fps; GIF is a looping 10 fps animation with a limited color palette. Current desktop Chrome/Edge with OffscreenCanvas workers and H.264 WebCodecs encoding is recommended. An unavailable MP4 encoder gives an explicit GIF/browser fallback. The Android wrapper currently has no download handler for these generated files; use a desktop browser to save them. No APK change is included.
+
+The film opens with one second at **100%**, spends one second zooming toward the first system, then advances at **one second per recorded visit**, including revisits. The camera pans between systems at a readable close-up scale. Hull changes remain inside that second; missing hull observations remain **Unknown hull**. It zooms back out over 1.5 seconds and holds the whole selected journey at 100% for one second. EQM branding stays in the upper left; the export date, visit times and combat times are UTC. First/last observations spanning the selected dates are clipped to those dates. This is a map of loaded journey systems, not a full universe atlas.
+
+At visits with imported kills or losses, the camera pauses for **three additional seconds per page of six records**. Cards list total kills/losses for that visit, each destroyed hull and its UTC date/time. A record is attached once by pilot, system and time, so revisits get separate results. A continuous visit extends up to the next observation (exclusive); before an offline/pause/data gap it stops at the last confirmed sample (inclusive). Unmatched imports are counted and excluded rather than assigned to a guessed visit. Killmail victim hulls never backfill the pilot's recorded ship history. Existing imports can be incomplete; an empty card does not prove no combat took place. Without combat-section access, a clearly marked travel-only clip remains available.
+
+Example: four visits plus three engagement pages produce **17.5 seconds** (4 seconds travel + 9 seconds combat + 4.5 seconds opening/closing). Each page adds time rather than speeding up travel.
+
+Limits are **300 loaded visits, ten minutes including pauses, and 128 MiB per file**. Select smaller clips for GIF, which can be much larger than MP4. History/hull truncation is warned; narrow the dates for complete data. Missing coordinates retain the visit and display a notice while the camera holds its previous mapped position. Gaps remain dashed; straight lines do not assert a verified gate route. If the dedicated combat request exceeds 5,000 records in the selected dates, export stops and asks for narrower dates instead of silently omitting engagements.
+
+The new private/no-store `GET /journey/characters/{character_id}/export-combat` endpoint reuses Navigation, current account ownership and Killboard/Battle Reports/Intel Reports checks. It returns only existing imported killmails involving the selected pilot in visited systems and the requested UTC range. It does not initiate zKillboard/ESI collection, expose other characters' private inventories, or need a migration or new consent scope. Rollout requires matching API and frontend. The regular system detail still has its 100-record cap.
+
+Encoders are pinned to gifenc 1.0.3 (MIT) and mediabunny 1.65.2 (MPL-2.0), loaded in a worker when exporting. [Encoder attribution and corresponding-source links](../static/licenses/journey-exports.txt), [gifenc license](../static/licenses/gifenc.txt), [mediabunny license](../static/licenses/mediabunny.txt).
+
+![Actual export UI with a synthetic engagement preview](../static/ss/v2.1/journey-export-desktop.png)
+
+![Frame from a generated 1080p MP4 showing imported kills and losses](../static/ss/v2.1/journey-export-engagement.png)
+
+Verification: 17 frontend journey tests; 46 backend journey/ship/export tests; TypeScript and full production build; nine real-browser export cases using the production-bundled worker. Generated H.264 MP4 (525 frames at 30 fps) and GIF (175 frames at 10 fps) are both 1920×1080 and 17.5 seconds. Opening, engagement and closing frames were extracted from the actual generated media and visually checked. Synthetic fixtures only; this is not a live-character or Android download test. [Capture provenance](../static/ss/v2.1/capture-receipt.json).

@@ -762,3 +762,15 @@ Actual JourneyPanel/JourneyMap React UI with the existing EQM styles and synthet
 ![Mobile: responsive controls, one-finger pan and two-finger pinch](../static/ss/v2.1/journey-map-controls-mobile.png)
 
 Nine journey tests and eight actual-browser checks pass; browser console errors and mobile document overflow are absent. No backend contract, migration, new consent scope or production deployment. [Controls](journey-map.md#map-controls) · [Source hashes, capture method and checksums](../static/ss/v2.1/capture-receipt.json).
+
+## My Journey exports — unreleased v2.1 follow-up
+
+Actual JourneyPanel/JourneyExport React components with existing EQM styles, production-bundled media worker and isolated synthetic HTTP responses in headless Edge. Four fabricated visits, illustrative system coordinates, observed demo hulls, seven combat records on one stop, one loss on a revisit and one unassigned gap record. No live account, OAuth, ESI or killboard collection. Generated files and captures remain a source follow-up, not a production deployment.
+
+![Desktop export controls, generated MP4 preview and download](../static/ss/v2.1/journey-export-desktop.png)
+
+![1080p frame extracted from the actual generated MP4 — engagement page](../static/ss/v2.1/journey-export-engagement.png)
+
+![390px mobile export controls — desktop saving recommended](../static/ss/v2.1/journey-export-mobile.png)
+
+Both synthetic GIF and MP4 outputs were probed as 1920×1080, 17.5 seconds. Nine browser cases cover encoding/downloads, cancellation, date changes, invalid ranges, truncation, unavailable combat, missing MP4 encoder and mobile overflow. [Guide](journey-map.md#gif-and-mp4-exports) · [Receipt and SHA-256 checksums](../static/ss/v2.1/capture-receipt.json).

@@ -156,9 +156,9 @@ def asset_context(db,user,character_id,system_ids,detail=False):
         'rows':[{**dict(r),'synced_at':utc(r['synced_at']).isoformat() if r['synced_at'] else None} for r in rows],'limit':100}
 
 
-def killmail_context(db,user,eve_id,system_ids,start,end,detail=False):
+def killmail_context(db,user,eve_id,system_ids,start,end,detail=False,limit=100):
     if not any(can_view_section(user,s,db) for s in ['killboard','battle_reports','intel_reports']):
-        return {'available':False,'notice':'Combat report permission is required.','systems':{},'rows':[]}
+        return {'available':False,'notice':'Combat report permission is required.','systems':{},'rows':[],'total':0,'truncated':False,'limit':limit}
     attacker = select(KillmailAttacker.id).where(KillmailAttacker.killmail_id==Killmail.killmail_id,KillmailAttacker.character_id==eve_id).exists()
     query = select(Killmail.killmail_id.label('id'),Killmail.solar_system_id.label('system_id'),Killmail.killmail_time.label('time'),
         Killmail.victim_ship_type_id.label('ship_type_id'),case((Killmail.victim_character_id==eve_id,'loss'),else_='kill').label('side'))\
@@ -166,9 +166,9 @@ def killmail_context(db,user,eve_id,system_ids,start,end,detail=False):
             or_(Killmail.victim_character_id==eve_id,attacker)).subquery()
     grouped = db.execute(select(query.c.system_id,func.sum(case((query.c.side=='kill',1),else_=0)),func.sum(case((query.c.side=='loss',1),else_=0))).group_by(query.c.system_id)).all()
     rows = db.execute(select(query,EveType.name.label('ship')).outerjoin(EveType,EveType.type_id==query.c.ship_type_id)
-        .order_by(query.c.time.desc(),query.c.id.desc()).limit(100)).mappings().all() if detail else []
+        .order_by(query.c.time.desc(),query.c.id.desc()).limit(limit)).mappings().all() if detail else []
     return {'available':True,'notice':'Imported killmails involving this character in the selected UTC range. Coverage depends on existing killboard/Intel imports; tracking never fetches killmails.',
-        'systems':{str(sid):{'kills':int(kills),'losses':int(losses)} for sid,kills,losses in grouped},'rows':[{**dict(r),'time':utc(r['time']).isoformat()} for r in rows],'limit':100}
+        'systems':{str(sid):{'kills':int(kills),'losses':int(losses)} for sid,kills,losses in grouped},'rows':[{**dict(r),'time':utc(r['time']).isoformat()} for r in rows],'limit':limit,'total':sum(int(k)+int(l) for _,k,l in grouped),'truncated':sum(int(k)+int(l) for _,k,l in grouped)>limit}
 
 
 def context(db,user,character_id,start,end,system_id=None):
@@ -182,3 +182,13 @@ def context(db,user,character_id,start,end,system_id=None):
         return {'assets':{'available':True,'systems':{},'rows':[]},'combat':{'available':True,'systems':{},'rows':[]}}
     return {'assets':asset_context(db,user,character_id,ids,system_id is not None),
         'combat':killmail_context(db,user,character.character_id,ids,start,end,system_id is not None)}
+
+
+def export_combat(db,user,character_id,start,end):
+    character = own_character(db,user,character_id)
+    tracker = tracker_for(db,user,character_id)
+    ids = set(db.scalars(select(distinct(JourneyVisit.system_id)).where(JourneyVisit.tracker_id==(tracker.id if tracker else -1),
+        JourneyVisit.first_seen_at<end,JourneyVisit.last_seen_at>=start)))
+    # Separate bounded detail request: map context deliberately returns no rows,
+    # and the normal system detail limit (100) must not silently trim exports.
+    return killmail_context(db,user,character.character_id,ids,start,end,True,5000)

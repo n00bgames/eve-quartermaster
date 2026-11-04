@@ -13,3 +13,15 @@
 .journey-ship-option{display:grid;gap:6px;flex:1 1 260px;max-width:380px}.journey-controls .journey-ship-option label{display:flex;align-items:center;gap:8px;font-weight:650}.journey-ship-option input[type=checkbox]{width:auto;flex:0 0 auto}.journey-ship-option small{font-size:11px;line-height:1.5}.journey-hull{display:inline-flex;align-items:center;gap:8px;white-space:nowrap;font-size:12px}.journey-hull img,.journey-hull-unknown{width:28px;height:28px;border:1px solid var(--eqm-border,#8994a0);border-radius:4px;flex-shrink:0}.journey-hull-unknown{display:grid;place-items:center;color:#efc76b;background:var(--eqm-background,#11171e);font-weight:bold}.journey-current-hull{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:10px 14px;border:1px solid var(--eqm-border,#34404a);border-radius:8px;margin:10px 0}.journey-current-hull>span:first-child,.journey-current-hull small{color:var(--eqm-muted,#aab4c2);font-size:11px}.journey-table-wrap table{min-width:880px}
 
 .journey-map.is-dragging{cursor:grabbing}.journey-map:focus-visible{outline:2px solid #89d7df;outline-offset:-3px}.journey-map-tools>div{flex-wrap:wrap;align-items:center}.journey-map-zoom{min-width:42px;text-align:center;font-variant-numeric:tabular-nums;letter-spacing:0}
+
+.journey-export{border:1px solid var(--border,#294359);border-radius:12px;padding:18px;background:rgba(10,24,38,.7)}
+.journey-export h4{display:flex;align-items:center;gap:8px;margin-top:0}
+.journey-export-controls{display:flex;align-items:end;gap:12px;flex-wrap:wrap}
+.journey-export-controls label{display:grid;gap:5px;min-width:0}
+.journey-export-controls input{width:110px;max-width:100%}
+.journey-export progress{width:100%;height:18px}
+.journey-export-result{display:grid;gap:12px;justify-items:start}
+.journey-export-result video,.journey-export-result img{width:100%;max-width:960px;aspect-ratio:16/9;background:#060e18;object-fit:contain;border-radius:8px}
+.journey-export-result a{display:inline-flex;gap:8px;align-items:center}
+.journey-export p,.journey-export small{overflow-wrap:anywhere}
+@media(max-width:600px){.journey-export{padding:12px}.journey-export-controls{align-items:stretch}.journey-export-controls label{flex:1 1 110px}.journey-export-controls select{max-width:100%}}

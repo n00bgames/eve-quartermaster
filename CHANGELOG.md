@@ -10,6 +10,8 @@ Release title: **EQM - v2.1 - "Different Skin, Same Great Taste!" Release**
 
 ### Unreleased follow-up
 
+- Add **My Journey** 1080p GIF and H.264 MP4 exports: full-journey opening/closing views, close-up camera travel, one second per recorded visit, observed hulls and UTC timestamps, EQM branding/export date, and extra three-second engagement pages listing imported kills/losses. Private client-side encoding includes progress, cancel, preview and download; a bounded owner-only combat endpoint reports truncation explicitly. Desktop browser saving; Android WebView downloads remain unsupported. No migration or new ESI scope. [Export guide](docs/journey-map.md#gif-and-mp4-exports).
+
 - Improve **My Journey** map controls to match the Atlas: cursor-centered wheel zoom, mouse/touch drag panning, two-finger pinch zoom, a zoom readout, Fit journey, Focus selected and keyboard controls. Clear released/cancelled drags, preserve selection and replay, and keep markers/labels at a readable screen size. Frontend-only; no migration or new ESI scope. [Guide and synthetic captures](docs/journey-map.md#map-controls).
 
 ### Release preparation
