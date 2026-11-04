@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/n00bgames/eve-quartermaster"><img alt="Project" src="https://img.shields.io/badge/project-eve--quartermaster-e8b84d?style=for-the-badge"></a>
-  <img alt="Version" src="https://img.shields.io/badge/version-2.1.0-4fb3c7?style=for-the-badge">
+  <img alt="Version" src="https://img.shields.io/badge/version-2.2.1-4fb3c7?style=for-the-badge">
   <img alt="License" src="https://img.shields.io/badge/license-AGPL--3.0--or--later-70c894?style=for-the-badge">
 </p>
 
@@ -23,7 +23,7 @@
 
 EVE Quartermaster is a containerized, database-first EVE Online quartermaster and alliance operations tool. It tracks characters, corporations, assets, blueprints, recipes, skills, standings/contact sync, wallet snapshots, permissions, audit events, and long-term analytics from EVE ESI plus imported SDE data.
 
-The current application/package version is `2.1.0` (**v2.1**). **Different Skin, Same Great Taste!** builds on v2.0 with the optional Command Desk interface, persistent scan colors and Intel history, private journey replay, organization membership intelligence, market-run Receipts, and full-battle kill discovery. See the [v2.1 release blurb](docs/releases/v2.1.md) and [changelog](CHANGELOG.md). Release/tag creation and deployment are separate from this source version bump. Earlier notes: [v1.0](docs/releases/v1.0.md), [v1.0.3](docs/releases/v1.0.3.md), and [v2.0](docs/releases/v2.0.md).
+The current application/package version is `2.2.1` (**v2.2.1**). This release adds My Journey zoom/pan controls and branded 1080p GIF/MP4 exports with visit-matched engagement pauses, building on the Command Desk interface, scan and membership intelligence, Receipts, and full-battle discovery in v2.1. See the [v2.2.1 release draft](docs/releases/v2.2.1.md) and [changelog](CHANGELOG.md). Release/tag creation, APK builds and deployment are separate from this source version bump. Earlier notes: [v1.0](docs/releases/v1.0.md), [v1.0.3](docs/releases/v1.0.3.md), [v2.0](docs/releases/v2.0.md), and [v2.1](docs/releases/v2.1.md).
 
 > **Fitting Manager / Simulator: Non-Authoritative. For Informational Use Only.** Still in development and not PYFA-complete. Full feature and calculation parity with PYFA is not claimed; verify consequential fitting decisions against PYFA and the EVE client.
 
@@ -1057,7 +1057,7 @@ Use a tracked pilot to locate a fight, then **Find all battle kills** across its
 
 ![Full-battle collection with completed progress — synthetic development preview](static/ss/v2.0.1/battle-discovery-editor.png)
 
-### My Journey map controls (unreleased v2.1 follow-up)
+### My Journey map controls (unreleased v2.2.1)
 
 Zoom around the pointer with the mouse wheel, drag to pan from any part of the map, or use one-finger drag/two-finger pinch on touch devices. A zoom readout, Fit journey, Focus selected and keyboard controls support navigation. Marker sizes remain readable, and replay keeps the chosen viewport. No backend, database migration or ESI scope changes.
 
@@ -1065,7 +1065,7 @@ Zoom around the pointer with the mouse wheel, drag to pan from any part of the m
 
 [Controls and verification](docs/journey-map.md#map-controls) · [Mobile](static/ss/v2.1/journey-map-controls-mobile.png) · [Capture provenance](static/ss/v2.1/capture-receipt.json). Source follow-up only; no deployment is implied.
 
-### My Journey movie exports (unreleased v2.1 follow-up)
+### My Journey movie exports (unreleased v2.2.1)
 
 Create a **1080p GIF or MP4** from selected character visits: start with the whole journey, zoom in and follow the route at one visit per second, pause to list imported kills/losses, then zoom back out. Observed ship types, UTC dates/times, EQM branding and the export date stay in the film. Generate locally with progress/cancel, preview and desktop-browser download.
 

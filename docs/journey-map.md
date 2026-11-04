@@ -40,7 +40,7 @@ The response includes at most the first **2,000 visits** in the selected window,
 
 ## Map controls
 
-The unreleased v2.1 follow-up matches the Atlas interaction style:
+The unreleased v2.2.1 release includes Atlas-style controls:
 
 - **Scroll the mouse wheel/trackpad** over the map to zoom around the pointer, or use **+ / −**. The readout shows the current zoom (50%–8,000%).
 - **Drag** the background, a route line, or a star to pan. A click/tap selects a system; dragging does not select it. Releasing outside the map or cancelling a touch gesture ends the drag.
@@ -97,7 +97,7 @@ The actual browser preview verified per-character consent isolation, setting per
 
 ## GIF and MP4 exports
 
-**Unreleased v2.1 follow-up, verified locally; not deployed or published.** Open **Export your journey** for the selected character and UTC dates. Choose the first and last loaded visit, then GIF or MP4. Create the file, review the preview and use **Download**. Clips are generated on your device; private flight history is not uploaded to a media service. A later date/character change or leaving the panel cancels active encoding and releases preview data. Automatic history refresh does not change a clip already being generated.
+**Unreleased v2.2.1, verified locally; not deployed or published.** Open **Export your journey** for the selected character and UTC dates. Choose the first and last loaded visit, then GIF or MP4. Create the file, review the preview and use **Download**. Clips are generated on your device; private flight history is not uploaded to a media service. A later date/character change or leaving the panel cancels active encoding and releases preview data. Automatic history refresh does not change a clip already being generated.
 
 Both formats are **1920 × 1080**. MP4 is silent H.264 at 30 fps; GIF is a looping 10 fps animation with a limited color palette. Current desktop Chrome/Edge with OffscreenCanvas workers and H.264 WebCodecs encoding is recommended. An unavailable MP4 encoder gives an explicit GIF/browser fallback. The Android wrapper currently has no download handler for these generated files; use a desktop browser to save them. No APK change is included.
 
@@ -118,3 +118,5 @@ Encoders are pinned to gifenc 1.0.3 (MIT) and mediabunny 1.65.2 (MPL-2.0), loade
 ![Frame from a generated 1080p MP4 showing imported kills and losses](../static/ss/v2.1/journey-export-engagement.png)
 
 Verification: 17 frontend journey tests; 46 backend journey/ship/export tests; TypeScript and full production build; nine real-browser export cases using the production-bundled worker. Generated H.264 MP4 (525 frames at 30 fps) and GIF (175 frames at 10 fps) are both 1920×1080 and 17.5 seconds. Opening, engagement and closing frames were extracted from the actual generated media and visually checked. Synthetic fixtures only; this is not a live-character or Android download test. [Capture provenance](../static/ss/v2.1/capture-receipt.json).
+
+Version note: the map/export captures and generated-media verification above were recorded against 2.1.0 development source before the 2.2.1 bump. Their original labels, paths and checksum receipts are preserved.
