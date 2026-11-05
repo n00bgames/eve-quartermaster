@@ -221,12 +221,12 @@ export function MarketAppraisalPage({
           onRemove={(hubKey) => void removeCustomHub(hubKey)}
           onSetDestination={(destinationId, destinationName) => void sendDestinationToEve(destinationId, destinationName)}
         />
-        <p className="muted">C-N4OD and custom system hubs use imported SDE system data to locate their market region.</p>
+        <p className="muted">Custom system hubs use imported SDE system data to locate their market region.</p>
         {isMarketAdmin && <div className="market-custom-hub-form">
           <strong>Custom market hubs</strong>
           <div className="inline-fields">
             <label>Label<input value={customHubLabel} onChange={(event) => setCustomHubLabel(event.target.value)} placeholder="Alliance staging" /></label>
-            <label>Solar system<input value={customHubSystem} onChange={(event) => setCustomHubSystem(event.target.value)} placeholder="C-N4OD" /></label>
+            <label>Solar system<input value={customHubSystem} onChange={(event) => setCustomHubSystem(event.target.value)} placeholder="Solar system name" /></label>
             <button type="button" onClick={() => void addCustomHub()}>Add hub</button>
           </div>
           {customHubMessage && <span className="market-custom-message">{customHubMessage}</span>}

@@ -35,7 +35,6 @@ TRADE_HUBS: dict[str, MarketHub] = {
     "hek": MarketHub("hek", "Hek", region_id=10000042, location_id=60005686),
     "dodixie": MarketHub("dodixie", "Dodixie", region_id=10000032, location_id=60011866),
     "rens": MarketHub("rens", "Rens", region_id=10000030, location_id=60004588),
-    "c-n4od": MarketHub("c-n4od", "C-N4OD", system_name="C-N4OD"),
     "npc": MarketHub("npc", "NPC", npc_group=True),
 }
 DEFAULT_HUB_KEYS = ["jita", "amarr", "hek", "dodixie", "rens"]
