@@ -103,7 +103,6 @@ def configure_linux(args: list[str], online: bool) -> None:
 Description=EVE Quartermaster update helper
 
 [Service]
-WorkingDirectory={quote(str(ROOT))}
 Environment={quote("PATH=" + os.environ.get("PATH", os.defpath))}
 ExecStart={command}
 Restart=on-failure
@@ -115,7 +114,14 @@ WantedBy=default.target
     run("systemctl", "--user", "daemon-reload")
     run("systemctl", "--user", "enable", unit.name)
     if not online:
-        run("systemctl", "--user", "start", unit.name)
+        try:
+            run("systemctl", "--user", "start", unit.name)
+        except subprocess.CalledProcessError as exc:
+            detail = (exc.stderr or "").strip()
+            raise SetupError(
+                f"Could not start the update helper. {detail}\n"
+                f"View the service log with journalctl --user -u {unit.name} -n 30 --no-pager."
+            ) from exc
     try:
         run("loginctl", "enable-linger", str(os.getuid()), timeout=10)
     except (OSError, subprocess.SubprocessError):
