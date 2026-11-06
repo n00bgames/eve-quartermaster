@@ -19,6 +19,20 @@ from urllib.parse import urlsplit
 JOB_ID = re.compile(rb"[a-f0-9]{32}")
 REVISION = re.compile(r"[a-f0-9]{40}")
 ACTIVE = {"queued", "checking", "installing", "starting"}
+HIDDEN_WINDOW = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
+
+
+def is_local_frontend(value: str) -> bool:
+    try:
+        url = urlsplit(value)
+        port = url.port
+    except ValueError:
+        return False
+    return (
+        url.scheme == "http" and url.hostname in {"127.0.0.1", "::1", "localhost"}
+        and url.path in {"", "/"} and not (url.username or url.password or url.query or url.fragment)
+        and (port is None or port > 0)
+    )
 
 
 def atomic_write(path: Path, content: str) -> None:
@@ -109,6 +123,7 @@ class Agent:
         return subprocess.run(
             args, cwd=self.root, env=self.env, capture_output=True, text=True,
             encoding="utf-8", errors="replace", check=True, timeout=timeout,
+            creationflags=HIDDEN_WINDOW,
         ).stdout.strip()
 
     def compose_command(self) -> list[str]:
@@ -154,7 +169,8 @@ class Agent:
             with subprocess.Popen(
                 args, cwd=directory, env={
                     **self.env, "EQM_UPDATE_ROOT": str(self.root), "EQM_UPDATE_TARGET": revision,
-                }, stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, **options,
+                }, stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
+                creationflags=HIDDEN_WINDOW, **options,
             ) as process:
                 while process.poll() is None:
                     time.sleep(2)
@@ -226,8 +242,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--frontend-url", default="http://127.0.0.1:5173")
     args = parser.parse_args()
-    url = urlsplit(args.frontend_url)
-    if url.scheme != "http" or url.hostname not in {"127.0.0.1", "::1", "localhost"} or url.path not in {"", "/"} or url.username or url.query or url.fragment:
+    if not is_local_frontend(args.frontend_url):
         parser.error("Use the loopback HTTP origin of EQM's Compose frontend.")
     agent = Agent(Path(__file__).resolve().parents[1], args.frontend_url)
     with lock_runner(agent.data / "agent.lock") as lock:

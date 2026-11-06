@@ -199,7 +199,7 @@ To update from the current GitHub branch and rebuild containers:
 
 The update scripts use a fast-forward-only pull so they stop instead of trampling local edits.
 
-For one-click updates, enable the optional host helper and use **Settings → Application Update** above **SDE Maintenance**. EQM checks the configured `origin/main`, reports progress through the restart and refreshes the initiating tab when the new revision is ready. [Host setup](docs/application-updates.md).
+For one-click updates, run `install-update-helper.bat` on Windows or `sh ./install-update-helper.sh` on Linux or macOS from the checkout on the Docker host. Then use **Settings → Application Update** above **SDE Maintenance**. EQM checks the configured `origin/main`, reports progress through the restart and refreshes the initiating tab when the new revision is ready. [Host setup](docs/application-updates.md).
 
 ![Application Update installing a synthetic revision above SDE Maintenance](static/ss/v2.2.1/app-update-installing.jpg)
 
