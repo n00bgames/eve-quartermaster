@@ -7,6 +7,7 @@ from sqlalchemy import func, select
 from app.models import EveType,EveGroup,EveCategory,EveTypeDogmaAttribute,EveDogmaAttribute
 from app.services import dscan
 from app.services.matchup_knowledge import HULLS,COUNTERS,SOURCES,REVIEWED,WEAPONS
+from app.services.matchup_weapons import hull_weapons
 
 DAMAGE=('em','thermal','kinetic','explosive')
 SUFFIX=('Em','Thermal','Kinetic','Explosive')
@@ -24,8 +25,16 @@ def search(db,q):
 
 def catalog(db):
     names=list(HULLS)
-    starters=[identity(item,group) for item,group in db.execute(ships().where(func.lower(EveType.name).in_(names)).order_by(EveType.name))]
-    return {'reviewed_at':REVIEWED,'sources':SOURCES,'weapons':WEAPONS,'starters':starters,
+    # Select only the fields needed for browsing, not descriptions or Dogma.
+    rows = ships().with_only_columns(
+        EveType.type_id, EveType.name, EveGroup.name.label('class_name'),
+    ).order_by(func.lower(EveGroup.name), func.lower(EveType.name), EveType.type_id)
+    hulls = [
+        {'type_id': type_id, 'name': name, 'class_name': group, 'curated': name.casefold() in HULLS}
+        for type_id, name, group in db.execute(rows)
+    ]
+    starters = sorted((hull for hull in hulls if hull['name'].casefold() in names), key=lambda hull: hull['name'].casefold())
+    return {'reviewed_at':REVIEWED,'sources':SOURCES,'weapons':WEAPONS,'starters':starters,'hulls':hulls,
         'curated_hulls':len(HULLS),'contexts':['small_gang','fleet'],
         'limits':'Reference scenarios, not detected fits or win probabilities. Missing profiles stay unknown. No private ESI access or scan storage.'}
 
@@ -51,6 +60,7 @@ def card(db,type_id,context):
         profile['source']=SOURCES[item.name.casefold()]
         profile['reviewed_at']=REVIEWED
     return {**identity(item,group),'layers':layers,'variants':profiles,'context':context,
+        'weapon_profile': hull_weapons(db, type_id, attributes),
         'fact_source':SOURCES['sde'],'resist_note':'Imported base hull resistances only: no fitted modules, skills, heat, links or local effects. The lowest base resist is a starting hypothesis, not a fitted ammo recommendation.'}
 
 def analyze(db,text):

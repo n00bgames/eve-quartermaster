@@ -800,3 +800,13 @@ Actual JourneyPanel, scope selector and segmented export components with existin
 ![390px mobile scope and format controls](../static/ss/v2.2.1/journey-segments-mobile.png)
 
 [Behavior and verification](journey-map.md#segmented-and-entire-journey-exports) · [Receipt and checksums](../static/ss/v2.2.1/capture-receipt.json). Captures are development evidence, not a deployment or a live journey.
+
+## Matchups ship catalog and public loss fits
+
+November 6, 2026 captures from the production UI with an isolated SQLite import of CCP SDE build 3670638 and synthetic loss records. The sample module types reflect public loss equipment. [Workflow and assumptions](matchups.md#ship-catalog-and-example-fits) · [Capture receipt](../static/ss/v2.2.1/capture-receipt.json).
+
+![Onyx and the alphabetized Heavy Interdiction Cruiser class](../static/ss/v2.2.1/matchups-ship-catalog.jpg)
+
+![Rail Deimos estimate and counter suggestions](../static/ss/v2.2.1/matchups-loss-fit.jpg)
+
+![Assault Frigate subclass on a 390-pixel viewport](../static/ss/v2.2.1/matchups-catalog-mobile.jpg)

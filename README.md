@@ -990,13 +990,13 @@ Pick the characters you want to track, log observed system visits at a 15-second
 [Opt-in and sampling controls](static/ss/v2.0.1/journey-controls.jpg) · [System context](static/ss/v2.0.1/journey-system-context.jpg) · [Mobile map](static/ss/v2.0.1/journey-mobile.jpg). Actual unreleased UI, synthetic route/holdings/combat and public CCP coordinates; no live location tracking was performed.
 
 
-### Matchups — PvP Knowledgebase foundation (unreleased follow-up)
+### Matchups — PvP Knowledgebase
 
-Look up a hull or open a D-Scan in **Intel → Matchups**. Read imported base resistances, investigate alternative fit scenarios and switch between pilot/small-gang and fleet-command counter plans. Seven hulls/nine authored scenarios start the catalog; other imported ships show facts without invented tactics. Weapon-family references lay the groundwork for a verified mounted-weapon atlas. [Workflow, coverage, privacy and roadmap](docs/matchups.md).
+Open **Intel → Matchups** to browse published ships by CCP subclass and name or start from a D-Scan. Hull cards show weapon bonuses and base shield, armor and hull resistances. Research public zKillboard loss fits to see fitted modules and charges, estimated stats and possible counter hulls with suggested equipment. [Matchups guide](docs/matchups.md).
 
-![Deimos base resistance reference and scan composition](static/ss/v2.0.1/matchups-hull.jpg)
+![Onyx base resistances and the sorted heavy interdictor subclass](static/ss/v2.2.1/matchups-ship-catalog.jpg)
 
-[Fleet counter tools](static/ss/v2.0.1/matchups-counters.jpg) · [Weapon reference framework](static/ss/v2.0.1/matchups-weapons.jpg) · [Mobile resistance map](static/ss/v2.0.1/matchups-mobile.jpg). Actual unreleased UI with synthetic accounts/counts and public CCP hull data. No new ESI scopes, private collection or database migration; matching API/frontend required.
+[Example fit and counters](static/ss/v2.2.1/matchups-loss-fit.jpg) · [Mobile catalog](static/ss/v2.2.1/matchups-catalog-mobile.jpg).
 
 
 ### My Journey — optional hull history (unreleased follow-up)

@@ -4,6 +4,8 @@ import type {ApiClient} from '../localScan/types';
 import {EveItemName} from '../clientLinks/EveClientLinks';
 import type {Card,Catalog,Composition,Hull} from './types';
 import {LayoutRegion} from '../appearance/LayoutRegion';
+import {HullCatalog} from './HullCatalog';
+import {FitExamples} from './FitExamples';
 import './matchups.css';
 
 function HullIcon({id}:{id:number}){
@@ -24,6 +26,11 @@ export function MatchupsPage({api}:{api:ApiClient}){
  useEffect(()=>{setCard(null);setCardError('');if(!id)return;let stop=false;const abort=new AbortController();void api<Card>(`/matchups/ships/${id}?context=${context}`,{signal:abort.signal}).then(v=>{if(!stop)setCard(v);}).catch(e=>{if(!stop)setCardError(String(e));});return()=>{stop=true;abort.abort();};},[id,context,api]);
  useEffect(()=>{if(!scan)return;let stop=false;void api<Composition>(`/matchups/scans/${encodeURIComponent(scan)}`).then(v=>{if(!stop){setComposition(v);setId(v.ships.find(s=>s.type_id)?.type_id??0);}}).catch(e=>{if(!stop)setError(String(e));});return()=>{stop=true;};},[scan,api]);
  function choose(typeId:number){setId(typeId);setVariant('unknown');setQuery('');setAtlas(false);}
+ function chooseCounter(name:string){
+  const hull=catalog?.hulls.find(entry=>entry.name===name);
+  if(hull)choose(hull.type_id);
+  else setQuery(name);
+ }
  async function analyze(){setBusy(true);setError('');try{const v=await api<Composition>('/matchups/analyze',{method:'POST',body:JSON.stringify({text})});setComposition(v);setText('');choose(v.ships.find(s=>s.type_id)?.type_id??0);}catch(e){setError(String(e));}finally{setBusy(false);}}
  const profiles=card?.variants.filter(v=>variant==='unknown'||variant===v.key)??[];
  return <LayoutRegion region="matchups" className="matchups-page stacked">
@@ -40,7 +47,8 @@ export function MatchupsPage({api}:{api:ApiClient}){
    {searchError&&<p role="alert">{searchError}</p>}{searching&&<p role="status">Searching hulls…</p>}
    <div className="matchup-search-results">{results.map(h=><button type="button" key={h.type_id} onClick={()=>choose(h.type_id)}><HullIcon id={h.type_id}/><span><strong>{h.name}</strong><small>{h.class_name} · {h.curated?'Reference variants':'Base facts only'}</small></span></button>)}</div>
    {query.trim().length>=2&&!searching&&!results.length&&!searchError&&<p className="muted">No matching published hull. Check the name and SDE import.</p>}
-   {!query&&<><h4>Starter references</h4><div className="matchup-starters">{catalog?.starters.map(h=><button type="button" aria-pressed={id===h.type_id} key={h.type_id} onClick={()=>choose(h.type_id)}>{h.name}</button>)}</div><p className="muted">{catalog?.curated_hulls??0} authored hull references. Any published SDE ship can be looked up; unreviewed hulls get no invented tactics.</p></>}
+   {!query&&catalog&&<><HullCatalog hulls={catalog.hulls??catalog.starters} selected={id} choose={choose}/>
+    <h4>Written matchup guides</h4><div className="matchup-starters">{catalog.starters.map(h=><button type="button" aria-pressed={id===h.type_id} key={h.type_id} onClick={()=>choose(h.type_id)}>{h.name}</button>)}</div></>}
    <details className="matchup-paste"><summary>Analyze a pasted d-scan</summary><p className="muted">Read-only analysis; no report link, sightings, pilot lookup or stored scan is created. Counts need not all be hostile.</p><label>D-scan text<textarea aria-label="Matchups d-scan" rows={6} maxLength={500000} value={text} onChange={e=>setText(e.target.value)} placeholder="Copy d-scan rows with Ctrl+A, Ctrl+C"/></label><button type="button" disabled={busy||!text.trim()} onClick={()=>void analyze()}>{busy?'Analyzing…':'Build threat list'}</button></details>
    {composition&&<section className="matchup-composition"><h4>{composition.total.toLocaleString()} ships in input</h4><p className="muted">{composition.covered.toLocaleString()} have reference variants · {composition.unresolved} unresolved objects · {composition.ignored.length} skipped rows</p><div className="matchup-roster">{composition.ships.map(r=><button type="button" key={r.type_id??r.type_name} disabled={!r.type_id} aria-pressed={id===r.type_id} onClick={()=>choose(r.type_id!)}><span>{r.type_name}<small>{r.observed} observed{r.manual?` + ${r.manual} manual`:''}</small></span><strong>{r.count}</strong></button>)}</div><h4>Possible roles · overlapping</h4><div className="matchup-tags">{composition.possible_roles.map(r=><span key={r.name}>{r.name}: {r.count}</span>)}</div><p className="muted">{composition.note}</p></section>}
   </aside><div className="matchup-detail">
@@ -48,16 +56,24 @@ export function MatchupsPage({api}:{api:ApiClient}){
    {!card&&!cardError&&<section className="panel matchup-empty"><Crosshair size={44}/><h3>{id?'Loading hull reference…':'What just landed on your gate?'}</h3><p>Search a hull, pick a starter reference, or bring a D-Scan into Matchups.</p><p className="muted">Start with range control, tackle and support. A low base resistance cannot tell you what is actually fitted.</p></section>}
    {card&&<>
     <section className="panel matchup-facts"><header><HullIcon key={card.type_id} id={card.type_id}/><div><span className="matchup-eyebrow">IMPORTED HULL FACTS</span><h2><EveItemName name={card.name} typeId={card.type_id}/></h2><p className="muted">{card.class_name} · {card.curated?'Reference variants available':'Tactical profile not yet reviewed'}</p></div></header>
+     {card.weapon_profile&&<div className="matchup-hull-weapons">
+       <h3>Weapon systems</h3>
+       {card.weapon_profile.bonused.length > 0
+        ? <><p className="muted">Weapon families supported by hull bonuses</p><div className="matchup-tags">{card.weapon_profile.bonused.map(weapon=><span key={weapon}>{weapon}</span>)}</div></>
+        : <p className="muted">{card.weapon_profile.effects_loaded?'No weapon bonus identified in imported effects.':'Weapon bonus data unavailable in this SDE import.'}</p>}
+       {card.weapon_profile.mounts.length > 0 && <p className="muted">{card.weapon_profile.mounts.join(' · ')}</p>}
+       {card.class_name==='Strategic Cruiser'&&<p className="muted">Offensive subsystems change weapon bonuses and hardpoints.</p>}
+     </div>}
      <h3><Shield size={18}/> Base resistance map</h3><div className="matchup-resist-grid">{card.layers.map(layer=><article key={layer.name}><h4>{layer.name}</h4>{Object.entries(layer.resists).map(([damage,value])=><div key={damage} className={`matchup-resist ${damage}`}><span>{damage==='em'?'EM':damage}</span><div className="matchup-resist-track"><i style={{width:`${value??0}%`}}/></div><strong>{value===null?'Unknown':`${value}%`}</strong></div>)}<p className="muted">{layer.weakest.length?`Lowest base: ${layer.weakest.join(' / ').toUpperCase()}`:'Incomplete SDE values; no hole inferred.'}</p></article>)}</div><p className="muted">{card.resist_note} <a href={card.fact_source.url} target="_blank" rel="noopener noreferrer">CCP data ↗</a></p>
     </section>
-    <section className="panel matchup-variants"><header><div><span className="matchup-eyebrow">FIT-DEPENDENT / EDITORIAL SCENARIOS</span><h3>What might it be fitted for?</h3></div><label>Observed fit clue<select aria-label="Observed fit clue" value={variant} onChange={e=>setVariant(e.target.value)}><option value="unknown">Unknown · show all alternatives</option>{card.variants.map(v=><option key={v.key} value={v.key}>{v.name}</option>)}</select></label></header>
-     {!card.variants.length&&<p>No authored matchup yet. Base facts are available above; this hull has no assumed range, weapon fit or counter ranking. It belongs in the next knowledgebase expansion.</p>}
+    <FitExamples key={card.type_id} hull={card} context={context} api={api} chooseCounter={chooseCounter}/>
+    {card.variants.length>0&&<section className="panel matchup-variants"><header><div><span className="matchup-eyebrow">FIT-DEPENDENT / EDITORIAL SCENARIOS</span><h3>What might it be fitted for?</h3></div><label>Observed fit clue<select aria-label="Observed fit clue" value={variant} onChange={e=>setVariant(e.target.value)}><option value="unknown">Unknown · show all alternatives</option>{card.variants.map(v=><option key={v.key} value={v.key}>{v.name}</option>)}</select></label></header>
      {variant==='unknown'&&card.variants.length>0&&<p className="muted">These are alternatives to investigate. None was detected by the scan. Choosing a clue narrows the guidance; it does not verify the fit.</p>}
      {profiles.map(v=><article className="matchup-variant" key={v.key}><h3>{v.name}</h3><div className="matchup-tags">{v.tags.map(t=><span key={t}>{t}</span>)}</div><dl><dt>Range / control envelope</dt><dd>{v.range_note}</dd><dt>Tank hypothesis</dt><dd>{v.tank}</dd><dt>Incoming damage</dt><dd>{v.damage}</dd><dt>Look for</dt><dd>{v.confirm.join(' · ')}</dd></dl><p className="matchup-plan"><strong>{context==='fleet'?'FC focus':'Pilot focus'}:</strong> {v.plan}</p><h4>Counter tools & example hulls</h4><div className="matchup-counter-grid">{v.counter_tools.map(c=><section key={c.name}><h4>{c.name}</h4><strong>{c.examples.join(' / ')}</strong><p>{c.plan}</p><small className="muted">{c.condition}</small></section>)}</div><footer><a href={v.source.url} target="_blank" rel="noopener noreferrer">{v.source.title} ↗</a><span>Source checked {v.reviewed_at} · counter plans are EQM judgments, not statistical win rates</span></footer></article>)}
-    </section>
+    </section>}
    </>}
   </div></div>
   </>}</div>
-  <section data-layout-id="matchups-foundation" data-layout-label="Knowledgebase coverage" className="panel matchup-foundation"><h3>The knowledgebase grows from here</h3><p>First pass: hull facts, alternative fit scenarios, conditional counters, D-Scan composition and weapon-family references. Next: verified fitted examples with ammo/skill assumptions, mounted-weapon screenshots by size, and alliance-reviewed lessons.</p><p className="muted">No new ESI scopes, character tracking or live enemy fitting lookup. Base facts follow your local SDE; source checks do not certify the current combat meta.</p></section>
+  <section data-layout-id="matchups-foundation" data-layout-label="Knowledgebase coverage" className="panel matchup-foundation"><h3>Sources and coverage</h3><p>Hull classes, bonuses and base resistances follow your imported CCP data. Public loss examples show fittings observed at the time of loss. Counter fits are conditional suggestions based on those modules and your engagement context.</p></section>
  </LayoutRegion>;
 }

@@ -137,3 +137,84 @@ def test_catalog_references_are_complete_and_no_private_data_tables_added(matchu
     # Saved/custom navigation accepts the module without using layouts as permission grants.
     from app.api.appearance import PreferencesPatch
     assert PreferencesPatch(revision=0,navigation=[{'id':'quick','name':'Quicklaunch','modules':['matchups']}]).navigation
+
+
+def test_full_catalog_uses_subclass_and_name_order(matchup):
+    e = matchup
+    e.db.add(EveGroup(group_id=894, category_id=6, name='Heavy Interdiction Cruiser'))
+    e.db.flush()
+    e.db.add(EveType(type_id=11995, name='Onyx', group_id=894))
+    e.db.commit()
+    rows = e.client.get('/api/matchups/catalog').json()['hulls']
+    assert [(row['class_name'], row['name']) for row in rows] == [
+        ('Cruiser', 'Caracal'), ('Cruiser', 'Deimos'), ('Cruiser', 'Unknown Cruiser'),
+        ('Heavy Interdiction Cruiser', 'Onyx'),
+    ]
+
+
+def test_loss_examples_keep_slot_charges_and_release_db_during_fetch(matchup, monkeypatch):
+    from app.models import AppSetting
+    from app.services import matchup_examples
+
+    e = matchup
+    e.db.add_all([
+        AppSetting(key='killboard_enabled', value='true'),
+        EveCategory(category_id=8, name='Charge'),
+        EveGroup(group_id=74, category_id=7, name='Hybrid Weapon'),
+    ])
+    e.db.flush()
+    e.db.add(EveGroup(group_id=374, category_id=8, name='Advanced Railgun Charge'))
+    e.db.flush()
+    e.db.add_all([
+        EveType(type_id=3082, name='250mm Railgun II', group_id=74),
+        EveType(type_id=12801, name='Javelin M', group_id=374),
+    ])
+    e.db.commit()
+    row = {
+        'killmail_id': 1, 'killmail_time': '2026-11-06T12:00:00Z',
+        'victim': {'ship_type_id': 12023, 'character_id': 98765, 'items': [
+            {'flag': 27, 'item_type_id': 3082, 'quantity_dropped': 1},
+            {'flag': 27, 'item_type_id': 12801, 'quantity_destroyed': 18},
+            {'flag': 5, 'item_type_id': 987654, 'quantity_destroyed': 999},
+        ]},
+        'zkb': {'npc': False, 'hash': 'fixture-secret'},
+    }
+    samples = matchup_examples.samples_from_page([
+        row, row, {**row, 'killmail_id': 2, 'victim': {'ship_type_id': 621}},
+        {**row, 'killmail_id': 3, 'zkb': {'npc': True}},
+    ], 12023)
+    assert len(samples) == 1
+
+    async def sample(type_id, _delay):
+        assert type_id == 12023
+        assert not e.db.in_transaction()
+        return {'checked_at': row['killmail_time'], 'scanned_count': 4, 'samples': samples}
+
+    monkeypatch.setattr(matchup_examples.source, 'sample', sample)
+    response = e.client.get('/api/matchups/ships/12023/examples')
+    assert response.status_code == 200, response.text
+    assert response.headers['cache-control'] == 'private, no-store'
+    example = response.json()['examples'][0]
+    assert example['modules'] == [{'slot': 'HiSlot0', 'name': '250mm Railgun II', 'quantity': 1, 'charge': 'Javelin M'}]
+    assert example['counter_fits'][0]['hull'] == 'Arbitrator'
+    assert example['stats'] is None
+    assert all(secret not in response.text for secret in ('fixture-secret', '98765', 'character_id'))
+    e.current[0] = e.users['applicant']
+    assert e.client.get('/api/matchups/ships/12023/examples').status_code == 403
+
+
+def test_loss_research_rechecks_permissions_after_network(matchup, monkeypatch):
+    from app.models import AppSetting
+    from app.services import matchup_examples
+
+    e = matchup
+    e.db.add(AppSetting(key='killboard_enabled', value='true'))
+    e.db.commit()
+
+    async def revoke_access(_type_id, _delay):
+        e.db.add(UserSectionPermission(user_id=e.users['member'].id, section='matchups', can_view=False))
+        e.db.commit()
+        return {'checked_at': '2026-11-06', 'scanned_count': 0, 'samples': []}
+
+    monkeypatch.setattr(matchup_examples.source, 'sample', revoke_access)
+    assert e.client.get('/api/matchups/ships/12023/examples').status_code == 403

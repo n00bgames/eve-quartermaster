@@ -1,12 +1,12 @@
 # PvP Knowledgebase: Matchups
 
-**Unreleased 2.0.1 foundation, November 1, 2026.** Open **Intel → Matchups**, choose **Solo / small gang** or **Fleet command**, and look up the hull that landed on grid. This starts an FC's field manual inside EQM. No additional database migration, private ESI scopes, live character tracking or enemy fitting lookup is introduced. Matching API/frontend are required; source completion is not deployment.
+Open **Intel → Matchups** and choose **Solo / small gang** or **Fleet command**. The 2.2.1 catalog covers every published ship in the installed SDE. The catalog and example fits require matching API and frontend builds.
 
 ![Imported base hull resistances and D-Scan composition](../static/ss/v2.0.1/matchups-hull.jpg)
 
 ## Quick use
 
-1. Search a published ship from the imported SDE, or pick a starter reference.
+1. Browse by **Ship class** or search by name. CCP subclasses such as Assault Frigate and Heavy Interdiction Cruiser are alphabetized, with hulls sorted by name within each class.
 2. Read **shield, armor and hull separately**. The map shows base damage resistances, not a fitted tank. Native type values include built-in type resistances; skills, fitted modules, heat, links and environmental effects are not evaluated. Lowest values are shown only when the entire layer is known; ties are retained, missing/invalid values remain Unknown. Never choose ammunition purely from the hull's shield hole when it may be armor tanked.
 3. **Unknown · show all alternatives** is the initial fit clue. Select a scenario only when you have a reason to investigate it. Its weapon/tank hypothesis, incoming damage, range/control envelope, observations and counter tools are conditional editorial guidance, not a detected fit or win probability.
 4. Switch context to change both the pilot/FC focus and the counter-tool plan. Named example hulls illustrate a role; they are not a ranking and do not verify your fit, skills, numbers, tackle, logistics or ability to disengage.
@@ -14,6 +14,22 @@
 All published SDE ship hulls have base-fact lookup. The initial authored catalog contains **seven hulls / nine scenarios**: Deimos (blaster, rail), Vagabond (autocannon), Arazu (covert tackle/damps), Curse (neuts/drones), Huginn (long webs), Caracal (rapid light, HAM/heavy alternatives) and Orthrus (kiting/extended tackle). This is not a statistical inventory of the current meta. Other hulls explicitly have no reviewed tactical profile.
 
 ![Selected blaster scenario with fleet-command counter plans](../static/ss/v2.0.1/matchups-counters.jpg)
+
+## Ship catalog and example fits
+
+Each hull card shows weapon families indicated by imported hull bonuses, plus turret and launcher hardpoints and drone or fighter capacity where available. Strategic cruisers also depend on the offensive subsystem. Use observed weapon families on the example cards to see what actually appeared in the sampled losses.
+
+Select **Find example fits** on a hull to read up to three distinct fits from the first 40 available non-NPC losses in zKillboard’s ship-loss results. Open **Recorded modules and loaded charges** to inspect fitted modules, rigs, subsystems, drones or fighters and recorded charges by slot. Each example links to its public killmail. Missing records or a disabled killboard source receive an explicit notice. Loss records are a sample of ships that died, with incomplete coverage and no implication about the current opponent’s fit or how often a fit wins. [zKillboard API](https://zkillboard.com/api/docs/) · [CCP killmail coverage](https://support.eveonline.com/hc/en-us/articles/11730655033884-Killmails)
+
+**Estimated fitting stats** apply the current SDE and EQM simulator to recorded equipment. Estimates assume all skills V, recorded charges, cold modules, no implants or fleet boosts, an inactive propulsion module and no special modes. EHP uses an even damage mix. DPS is per cycle before reload or target application. Unsupported effects can affect estimates. Total DPS and volley are omitted when recorded ammo or modeled damage is insufficient. Fitted resistance rows are separate from the base hull map.
+
+Counter suggestions use the observed equipment and the selected pilot or fleet context. A rail Deimos can suggest an Arbitrator with a tracking disruptor and a range or tracking script, for instance. Each suggestion explains when it helps and what limits it. The named hull opens its own reference and loss lookup. These are starting points for building a counter fit. [Rail Deimos loss](https://zkillboard.com/kill/139713584/) · [CCP Arbitrator bonuses](https://www.eveonline.com/ru/news/view/alliance-tournament-xxi-rules-and-regulations)
+
+Live verification used CCP SDE build **3670638**, with **426 published ship types across 48 classes** and all 12 base resistance values present on every hull. The audit also sampled live zKillboard results for eight hulls, including Deimos, Onyx, Typhoon and Erebus. The browser captures use synthetic loss records and public equipment types. [Capture receipt](../static/ss/v2.2.1/capture-receipt.json)
+
+![Onyx base resistances and the heavy interdictor subclass](../static/ss/v2.2.1/matchups-ship-catalog.jpg)
+
+![Sample rail Deimos stats and counter suggestions](../static/ss/v2.2.1/matchups-loss-fit.jpg)
 
 ## Range and evidence
 
@@ -45,7 +61,7 @@ Facts, editorial content and presentation are separated: `services/matchups.py` 
 
 Next development layers:
 
-- Reference fit records: hull and modules, ammunition, skills, active/overheated state, implants/boosts/effects assumptions, damage/application graphs, tank layers, tackle/weapon envelopes, validity/review date and source. Reuse the fitting engine only to the extent its relevant Dogma effects are verified; label unsupported effects.
+- Extend example fit modeling to tackle envelopes, application graphs, heat and special modes as simulator coverage improves. Add validated counter fitting exports.
 - Matchup context: own hull/fit and friendly composition, enemy variant uncertainty, space/security and gate constraints, starting distance, support/numbers, objective and escape plan. Explain why a counter helps and when it fails.
 - Mounted-weapon atlas: actual verified screenshots/clips by family, size and variant; retain source/license/provenance and review history. Start with the common medium guns seen around the pocket.
 - Coverage: common tackle/EWAR/logistics and battlecruiser/marauder variants, then capitals and escalation tools. Quantitative claims need complete fit assumptions or dated observational evidence.

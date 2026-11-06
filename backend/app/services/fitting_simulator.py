@@ -1481,6 +1481,7 @@ def compute_fitting_stats(
     type_group_ids: dict[int, int] | None = None,
     heat: bool = False,
     stats_item_ids: set[int] | None = None,
+    use_recorded_charges: bool = False,
 ) -> dict[str, Any]:
     ship_attrs = effective_ship_attrs_with_subsystems(dogma.get(fitting.ship_type_id, {}), fitting.items, dogma)
     implant_mobility = selected_implant_mobility_multipliers(
@@ -1843,7 +1844,9 @@ def compute_fitting_stats(
         if not item_effects_apply(item, attrs, group, name):
             continue
         explicit_charge = charge_row(item.charge_type_id) if getattr(item, "charge_type_id", None) else None
-        if explicit_charge and not charge_is_compatible_with_module(
+        # A killmail's same-slot charge is direct evidence, including advanced
+        # charge groups that the legacy name-based compatibility check misses.
+        if explicit_charge and not use_recorded_charges and not charge_is_compatible_with_module(
             name,
             group,
             explicit_charge["name"],

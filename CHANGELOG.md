@@ -6,6 +6,8 @@ Version sections are written as user-facing release notes first, with implementa
 
 ## [2.2.1] - Unreleased
 
+- Expand **Intel → Matchups** with a full SDE ship browser ordered by subclass and hull name, weapon bonus families and base resistances. Research up to three distinct zKillboard loss fits per hull with recorded equipment, estimated fitting stats and conditional counter hulls and modules. [Guide](docs/matchups.md#ship-catalog-and-example-fits).
+
 - Raise My Journey clips to **500 visits** and add **Segment selected dates** / **Entire recorded journey** exports. Continue automatically at the next visit or engagement page when a clip reaches ten minutes; split oversized files without dropping timeline events. Save numbered 1080p GIF/MP4 parts to a chosen folder, or download one at a time, with a JSON index and preserved partial results. Owner-only signed paging includes history beyond the map’s 2,000-visit cap and pages through hull/combat records. Existing ten-minute/128 MiB per-file limits, privacy, and desktop download requirements remain. [Guide](docs/journey-map.md#segmented-and-entire-journey-exports).
 
 - Fix the ESI token-rotation lock pattern that could freeze the API during Sync All or background activity: save refreshed credentials in a separate short transaction off the request event loop, preserve in-progress sync work and reject stale/revoked authorizations. Replace nginx HTML error dumps with readable notices and retry temporary failures when checking an existing sync job, with bounded backoff and no automatic sync-start retries. [Reliability guide](docs/sync-reliability.md). No migration or new ESI scope.

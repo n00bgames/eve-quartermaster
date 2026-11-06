@@ -3,3 +3,29 @@
 @media(max-width:760px){.matchup-workspace{grid-template-columns:minmax(0,1fr)}.matchup-picker{position:static}.matchup-command header{align-items:stretch}.matchup-command label{width:100%}.matchup-variant dl{grid-template-columns:1fr;gap:5px}.matchup-variant dd{margin-bottom:10px}.matchup-variants>header label{min-width:0;width:100%}.matchup-weapon-grid{grid-template-columns:1fr}.matchups-page h2{font-size:25px}.matchup-command,.matchup-facts,.matchup-variants{padding:16px}.matchup-empty{padding:20px}.matchup-variant footer{overflow-wrap:anywhere}}
 
 .matchups-page button{border:1px solid var(--border);border-radius:6px;background:var(--eqm-panel,#191e25);color:var(--eqm-text,#f5f7fa);padding:8px 11px;cursor:pointer}.matchups-page button:disabled{opacity:.55;cursor:default}.matchups-page button:hover:not(:disabled){border-color:var(--accent)}.matchup-facts h2{font-size:30px;line-height:1.2}.matchup-facts header .eve-client-item{font-size:inherit}
+
+.matchup-class-ships {
+  display: grid;
+  gap: 5px;
+  max-height: 238px;
+  overflow-y: auto;
+  margin: 8px 0 14px;
+  padding-right: 4px;
+}
+.matchup-class-ships button {text-align: left; overflow-wrap: anywhere}
+.matchup-hull-weapons {margin-top: 20px}
+.matchup-hull-weapons p {margin: 6px 0}
+.matchup-fit-research, .matchup-example {min-width: 0; overflow-wrap: anywhere}
+.matchup-example {border-top: 1px solid var(--border); margin-top: 20px; padding-top: 12px}
+.matchup-example header {display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px}
+.matchup-example time {color: var(--muted); font-size: 12px}
+.matchup-example details {margin: 12px 0}
+.matchup-example summary {cursor: pointer; font-weight: 600}
+.matchup-example .matchup-counter-grid strong {display: block; margin-top: 8px}
+.matchup-example li {line-height: 1.5}
+.matchup-example li small {color: var(--muted)}
+.matchup-fit-stats {display: grid; grid-template-columns: repeat(auto-fit,minmax(110px,1fr)); gap: 8px}
+.matchup-fit-stats div {border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px}
+.matchup-fit-stats dt {color: var(--muted); font-size: 12px}
+.matchup-fit-stats dd {margin: 4px 0 0; font-variant-numeric: tabular-nums; font-weight: 650}
+.matchup-fit-resists p {font-size: 13px}

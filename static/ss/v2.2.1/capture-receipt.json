@@ -419,5 +419,50 @@
         "height": 1080
       }
     ]
+  },
+  "matchup_catalog_followup": {
+    "captured_on": "2026-11-06",
+    "recorded_at_utc": "2026-11-06T15:49:54.235542+00:00",
+    "application_version": "2.2.1",
+    "source_base_commit": "6f218d34f905c62e05d11ef84881fa0c9cb12f3b",
+    "method": "Production React build and actual Matchups API against isolated SQLite. Fabricated account and loss IDs, dates, prices, and aggregate counts, with public SDE and equipment types.",
+    "synthetic": true,
+    "checks": [
+      "426 published hulls across 48 classes with sorted subclasses and hulls",
+      "Onyx selection and its three base resistance layers",
+      "Sample Deimos rail and blaster variants, fitted stats and same-slot Javelin M",
+      "Arbitrator counter link opens its hull",
+      "Assault Frigate catalog fits a 390px viewport"
+    ],
+    "sde_build": 3670638,
+    "live_validation": "All 426 hulls resolve all 12 base resistance values. Sampled seven fitted hulls plus Caldari Shuttle with no usable losses.",
+    "tests": {
+      "backend": 17,
+      "typescript": "passed",
+      "production_build": "passed"
+    },
+    "files": [
+      {
+        "file": "matchups-ship-catalog.jpg",
+        "bytes": 75809,
+        "sha256": "fdbedfae1f6ebaa52a6a64a503eab577dc8988ec99f17d8f59fa2775b5b713fb",
+        "width": 959,
+        "height": 641
+      },
+      {
+        "file": "matchups-loss-fit.jpg",
+        "bytes": 48117,
+        "sha256": "1ddc3e4c0afffb67bf25d726b874a40eb5f8d276a28bb40e970bf9bf49eeda09",
+        "width": 602,
+        "height": 558
+      },
+      {
+        "file": "matchups-catalog-mobile.jpg",
+        "bytes": 35068,
+        "sha256": "f6b32c59e692392d6a69c1cfaddee6ff7c94604b36d564cd7e9759df451b4a1e",
+        "width": 375,
+        "height": 812
+      }
+    ]
   }
 }
