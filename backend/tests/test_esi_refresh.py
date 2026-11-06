@@ -111,3 +111,49 @@ def test_expiry_only_refresh_remains_clean_and_detached_tokens_are_rejected(link
     e.db.expunge(e.token)
     with pytest.raises(HTTPException) as error:asyncio.run(service.refresh_access_token(e.token))
     assert error.value.status_code==409
+
+
+def test_overlapping_refreshes_use_each_saved_rotation(linked):
+    e = linked
+    submitted = []
+
+    async def run(other_token):
+        first_exchange = asyncio.Event()
+        release_first = asyncio.Event()
+
+        async def post(*args, **kwargs):
+            submitted.append(kwargs["data"]["refresh_token"])
+            sequence = len(submitted)
+            if sequence == 1:
+                first_exchange.set()
+                await release_first.wait()
+            return httpx.Response(200, json={
+                "access_token": f"access-{sequence}",
+                "refresh_token": f"rotation-{sequence}",
+            })
+
+        context = AsyncMock()
+        context.__aenter__.return_value = SimpleNamespace(post=post)
+        with patch.object(service.httpx, "AsyncClient", return_value=context):
+            first = asyncio.create_task(service.refresh_access_token(e.token))
+            ready = asyncio.create_task(first_exchange.wait())
+            await asyncio.wait({first, ready}, return_when=asyncio.FIRST_COMPLETED)
+            if first.done():
+                await first
+            second = asyncio.create_task(service.refresh_access_token(other_token))
+            # Keep the first exchange open while the second request tries to refresh.
+            try:
+                await asyncio.wait({second}, timeout=0.2)
+            finally:
+                release_first.set()
+            return await asyncio.gather(first, second)
+
+    with Session(e.engine) as other:
+        other_token = other.get(EsiToken, e.token.id)
+        assert asyncio.run(run(other_token)) == ["access-1", "access-2"]
+        assert not inspect(other_token).attrs.encrypted_refresh_token.history.has_changes()
+
+    assert submitted == ["old", "rotation-1"]
+    with Session(e.engine) as other:
+        stored = other.get(EsiToken, e.token.id)
+        assert decrypt_secret(stored.encrypted_refresh_token, e.key) == "rotation-2"

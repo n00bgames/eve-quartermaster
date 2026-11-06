@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from weakref import WeakValueDictionary
 
 import httpx
 from fastapi import HTTPException
@@ -21,6 +22,10 @@ from app.core.config import get_settings
 from app.core.security import decrypt_secret, encrypt_secret
 from app.models import EsiToken, EveCharacter, User
 from app.services.esi_scope_policy import effective_token_scopes
+
+
+# Keep locks only while a refresh is running or waiting for that authorization.
+_refresh_locks = WeakValueDictionary()
 
 
 @dataclass(frozen=True)
@@ -76,9 +81,21 @@ async def refresh_access_token(token: EsiToken) -> str:
     if db is None or identity is None:
         raise HTTPException(409, "Load the character authorization before refreshing it")
     bind = db.get_bind().engine  # Even a connection-bound caller needs a separate transaction.
+    token_id = int(identity[0])
+    lock = _refresh_locks.setdefault((asyncio.get_running_loop(), bind, token_id), asyncio.Lock())
+    async with lock:
+        access, encrypted, expires = await _exchange_and_persist(bind, token_id)
+        # Synchronize the caller without making the rotated secret dirty again.
+        set_committed_value(token, "encrypted_refresh_token", encrypted)
+        set_committed_value(token, "access_token_expires_at", expires)
+        return access
+
+
+async def _exchange_and_persist(bind, token_id: int) -> tuple[str, str, datetime]:
     # Both database phases run off the API loop, in separate short sessions.
     # The caller's pending inventory/job/contact edits are never committed here.
-    original = await asyncio.to_thread(snapshot, bind, int(identity[0]))
+    # Read after acquiring the lock so a waiting caller uses the saved rotation.
+    original = await asyncio.to_thread(snapshot, bind, token_id)
     settings = get_settings()
     try:
         refresh = decrypt_secret(original.encrypted, settings.token_encryption_key)
@@ -102,7 +119,4 @@ async def refresh_access_token(token: EsiToken) -> str:
     except (ValueError, KeyError, TypeError) as exc:
         raise HTTPException(502, "EVE SSO returned an invalid token response.") from exc
     await asyncio.to_thread(persist, bind, original, encrypted, expires)
-    # Synchronize the caller without making the rotated secret dirty again.
-    set_committed_value(token, "encrypted_refresh_token", encrypted)
-    set_committed_value(token, "access_token_expires_at", expires)
-    return access
+    return access, encrypted, expires
