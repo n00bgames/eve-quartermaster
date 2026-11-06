@@ -4,7 +4,7 @@ This is a minimal sideloadable Android WebView shell for EVE Quartermaster. It l
 
 On first launch, enter the URL where the device can reach EQM. The app stores that URL locally. Use the settings button in the upper-right corner at any time to switch to another installation without rebuilding the APK.
 
-Source version: **2.2.1**, Android **versionCode 30**. Rebuild the APK to apply this version to an installed wrapper; the hosted app version can advance independently.
+Source version: **2.3.0**, Android **versionCode 31**. Rebuild the APK to apply this version to an installed wrapper; the hosted app version can advance independently.
 
 ## Build
 

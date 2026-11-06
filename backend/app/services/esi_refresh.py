@@ -89,7 +89,7 @@ async def refresh_access_token(token: EsiToken) -> str:
             auth=httpx.BasicAuth(settings.eve_sso_client_id, settings.eve_sso_client_secret),
             data={"grant_type": "refresh_token", "refresh_token": refresh, "scope": " ".join(sorted(original.scopes))},
             headers={"Accept": "application/json", "Content-Type": "application/x-www-form-urlencoded",
-                     "User-Agent": "eve-quartermaster/2.2.1 (+https://github.com/n00bgames/eve-quartermaster)"})
+                     "User-Agent": "eve-quartermaster/2.3.0 (+https://github.com/n00bgames/eve-quartermaster)"})
     if response.status_code >= 400:
         raise HTTPException(response.status_code, "EVE SSO refresh failed. Check the character authorization before retrying.")
     try:

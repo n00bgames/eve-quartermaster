@@ -4,7 +4,7 @@ All notable changes to EVE Quartermaster are tracked here.
 
 Version sections are written as user-facing release notes first, with implementation detail included where it helps operators understand deployment or testing impact.
 
-## [2.2.1] - Unreleased
+## [2.3.0] - Unreleased
 
 - Add **Settings → Application Update** above SDE Maintenance. An optional helper on the Docker host checks `origin/main`, runs the Windows or POSIX updater and reports progress through the restart. EQM refreshes the requesting tab after the new revision is ready. Windows and POSIX setup launchers install Python when needed, configure the helper to start in the background and enable the Compose integration. [Host setup](docs/application-updates.md).
 
@@ -18,8 +18,9 @@ Version sections are written as user-facing release notes first, with implementa
 
 - Improve **My Journey** map controls to match the Atlas: cursor-centered wheel zoom, mouse/touch drag panning, two-finger pinch zoom, a zoom readout, Fit journey, Focus selected and keyboard controls. Clear released/cancelled drags, preserve selection and replay, and keep markers/labels at a readable screen size. Frontend-only; no migration or new ESI scope. [Guide and synthetic captures](docs/journey-map.md#map-controls).
 
-- Advance the application/UI, frontend package and lockfile, API, new report/export defaults, outbound service user agents and current version documentation to **2.2.1**. Android wrapper uses **versionName 2.2.1 / versionCode 30**. Existing report snapshots, migrations, fixtures, screenshots and the independent Rust crate version retain their recorded versions.
-- This release requires matching backend/frontend for journey combat exports. The version bump adds no migration or ESI consent scope, and does not build an APK, deploy services or publish a tag/release. [Release draft](docs/releases/v2.2.1.md).
+- Remove C-N4OD from the built-in market hub list.
+
+- Bump the application to **2.3.0** and the Android wrapper to **versionName 2.3.0 / versionCode 31**. Upgrade the backend and frontend together for the new Journey and Matchups features. [Release draft](docs/releases/v2.3.md).
 
 ## [2.1.0] - Unreleased
 

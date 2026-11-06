@@ -1,6 +1,6 @@
 # PvP Knowledgebase: Matchups
 
-Open **Intel → Matchups** and choose **Solo / small gang** or **Fleet command**. The 2.2.1 catalog covers every published ship in the installed SDE. The catalog and example fits require matching API and frontend builds.
+Open **Intel → Matchups** and choose **Solo / small gang** or **Fleet command**. The v2.3 catalog covers every published ship in the installed SDE. The catalog and example fits require matching API and frontend builds.
 
 ![Imported base hull resistances and D-Scan composition](../static/ss/v2.0.1/matchups-hull.jpg)
 

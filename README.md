@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/n00bgames/eve-quartermaster"><img alt="Project" src="https://img.shields.io/badge/project-eve--quartermaster-e8b84d?style=for-the-badge"></a>
-  <img alt="Version" src="https://img.shields.io/badge/version-2.2.1-4fb3c7?style=for-the-badge">
+  <img alt="Version" src="https://img.shields.io/badge/version-2.3.0-4fb3c7?style=for-the-badge">
   <img alt="License" src="https://img.shields.io/badge/license-AGPL--3.0--or--later-70c894?style=for-the-badge">
 </p>
 
@@ -23,7 +23,7 @@
 
 EVE Quartermaster is a containerized, database-first EVE Online quartermaster and alliance operations tool. It tracks characters, corporations, assets, blueprints, recipes, skills, standings/contact sync, wallet snapshots, permissions, audit events, and long-term analytics from EVE ESI plus imported SDE data.
 
-The current application/package version is `2.2.1` (**v2.2.1**). This release adds My Journey zoom/pan controls and branded 1080p GIF/MP4 exports with visit-matched engagement pauses, building on the Command Desk interface, scan and membership intelligence, Receipts, and full-battle discovery in v2.1. See the [v2.2.1 release draft](docs/releases/v2.2.1.md) and [changelog](CHANGELOG.md). Release/tag creation, APK builds and deployment are separate from this source version bump. Earlier notes: [v1.0](docs/releases/v1.0.md), [v1.0.3](docs/releases/v1.0.3.md), [v2.0](docs/releases/v2.0.md), and [v2.1](docs/releases/v2.1.md).
+The current application/package version is **v2.3** (`2.3.0`). This release adds in-app updates, a complete Matchups ship catalog with fit research, and My Journey map controls and segmented 1080p GIF/MP4 exports. It also improves Sync All reliability. See the [v2.3 release draft](docs/releases/v2.3.md) and [changelog](CHANGELOG.md). Earlier notes: [v1.0](docs/releases/v1.0.md), [v1.0.3](docs/releases/v1.0.3.md), [v2.0](docs/releases/v2.0.md), and [v2.1](docs/releases/v2.1.md).
 
 > **Fitting Manager / Simulator: Non-Authoritative. For Informational Use Only.** Still in development and not PYFA-complete. Full feature and calculation parity with PYFA is not claimed; verify consequential fitting decisions against PYFA and the EVE client.
 
@@ -1061,7 +1061,7 @@ Use a tracked pilot to locate a fight, then **Find all battle kills** across its
 
 ![Full-battle collection with completed progress — synthetic development preview](static/ss/v2.0.1/battle-discovery-editor.png)
 
-### My Journey map controls (unreleased v2.2.1)
+### My Journey map controls
 
 Zoom around the pointer with the mouse wheel, drag to pan from any part of the map, or use one-finger drag/two-finger pinch on touch devices. A zoom readout, Fit journey, Focus selected and keyboard controls support navigation. Marker sizes remain readable, and replay keeps the chosen viewport. No backend, database migration or ESI scope changes.
 
@@ -1069,7 +1069,7 @@ Zoom around the pointer with the mouse wheel, drag to pan from any part of the m
 
 [Controls and verification](docs/journey-map.md#map-controls) · [Mobile](static/ss/v2.1/journey-map-controls-mobile.png) · [Capture provenance](static/ss/v2.1/capture-receipt.json). Source follow-up only; no deployment is implied.
 
-### My Journey movie exports (unreleased v2.2.1)
+### My Journey movie exports
 
 Create a **1080p GIF or MP4** from selected character visits: start with the whole journey, zoom in and follow the route at one visit per second, pause to list imported kills/losses, then zoom back out. Observed ship types, UTC dates/times, EQM branding and the export date stay in the film. Generate locally with progress/cancel, preview and desktop-browser download.
 
@@ -1077,18 +1077,18 @@ Create a **1080p GIF or MP4** from selected character visits: start with the who
 
 [Timing, combat matching, limits and browser support](docs/journey-map.md#gif-and-mp4-exports) · [1080p engagement frame](static/ss/v2.1/journey-export-engagement.png) · [Mobile controls](static/ss/v2.1/journey-export-mobile.png) · [Capture provenance](static/ss/v2.1/capture-receipt.json). Source follow-up only; matching API/frontend rollout is required. Android WebView saving is not included.
 
-### Sync All reliability (unreleased 2.2.1 follow-up)
+### Sync All reliability
 
 Keep token-rotation writes out of long sync transactions to prevent the captured API lock stall. Gateway errors now use readable notices, and temporary failures when checking an existing Sync All job retry with bounded backoff without starting a duplicate sync.
 
 ![Actual Characters page: the existing synthetic sync recovered after a 504 status response](static/ss/v2.2.1/sync-gateway-recovered.png)
 
-[Root cause, validation and rollout](docs/sync-reliability.md) · [Readable gateway notice](static/ss/v2.2.1/sync-gateway-message.png). Source follow-up only; matching backend/frontend rebuilds are required.
+[Root cause, validation and rollout](docs/sync-reliability.md) · [Readable gateway notice](static/ss/v2.2.1/sync-gateway-message.png). Requires matching backend and frontend builds.
 
-### My Journey segmented exports (unreleased 2.2.1 follow-up)
+### My Journey segmented exports
 
 Export the selected UTC dates or a character’s **entire recorded journey** as numbered 1080p GIF/MP4 clips. Each part continues at the next visit or engagement page, up to **500 visits / ten minutes / 128 MiB** per file. Long engagements continue without replaying the visit; oversized files split automatically. Save to a desktop folder or download one clip at a time, with a JSON export index and preserved partial results.
 
 ![Entire journey: 501 synthetic visits saved in two consecutive parts](static/ss/v2.2.1/journey-segments-complete.png)
 
-[Scopes, continuation and browser support](docs/journey-map.md#segmented-and-entire-journey-exports) · [Engagement continuation](static/ss/v2.2.1/journey-segments-continuation.png) · [Download preview](static/ss/v2.2.1/journey-segments-download.png). Owner-only paged loading includes visits beyond the replay cap. Source follow-up only; matching API/frontend builds are required.
+[Scopes, continuation and browser support](docs/journey-map.md#segmented-and-entire-journey-exports) · [Engagement continuation](static/ss/v2.2.1/journey-segments-continuation.png) · [Download preview](static/ss/v2.2.1/journey-segments-download.png). Owner-only paged loading includes visits beyond the replay cap. Requires matching API and frontend builds.

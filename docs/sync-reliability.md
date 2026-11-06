@@ -1,6 +1,6 @@
 # Sync All reliability and gateway errors
 
-Unreleased 2.2.1 follow-up, tested locally and in disposable PostgreSQL regression containers. This source change has not deployed or restarted the live application.
+This v2.3 fix was tested locally and in disposable PostgreSQL regression containers.
 
 ## The captured failure
 
@@ -32,6 +32,6 @@ The POST that starts a sync is never automatically retried. If starting a sync t
 - The three optional tests also ran against **real PostgreSQL** in a disposable isolated database and **all passed**: reproduce the legacy lock, release the token while a caller's sync job stays uncommitted, and return a prompt safe 503 while the API loop remains responsive. No production credentials, volumes or published ports were used; test containers were removed.
 - **Eight frontend error/polling tests**, TypeScript and the production build passed. Three browser cases use the real CharactersPage and API client with synthetic local HTTP responses: readable HTML gateway failure without POST retries, the same job recovering after a 504 status poll, and 390px mobile layout. Screenshots crop complete controls/notices; supporting demo components and dossier data are synthetic/minimal.
 
-Deploy matching backend/frontend builds to apply both parts; no migration, dependency change or new ESI scope is needed. A Git pull without rebuilding the running images does not activate the fix. Restarting the API can interrupt existing in-memory jobs. This follow-up has not been committed, pushed or deployed at capture time. [Capture provenance/checksums](../static/ss/v2.2.1/capture-receipt.json).
+Deploy matching backend/frontend builds to apply both parts; no migration, dependency change or new ESI scope is needed. A Git pull without rebuilding the running images does not activate the fix. Restarting the API can interrupt existing in-memory jobs. [Capture provenance/checksums](../static/ss/v2.2.1/capture-receipt.json).
 
 The optional PostgreSQL test requires `EQM_REFRESH_TEST_DATABASE_URL` pointing to a deliberately disposable `eqm_refresh_test` database on localhost. It creates/drops its test tables and refuses other database names/hosts. Do not point it at an application database.
