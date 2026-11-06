@@ -1,7 +1,8 @@
 @echo off
-setlocal EnableExtensions
+setlocal EnableExtensions DisableDelayedExpansion
 
-cd /d "%~dp0"
+if not defined EQM_UPDATE_ROOT set "EQM_UPDATE_ROOT=%~dp0"
+cd /d "%EQM_UPDATE_ROOT%" || exit /b 1
 echo.
 echo Updating EVE Quartermaster from GitHub...
 echo.
@@ -21,15 +22,22 @@ if errorlevel 1 (
 call :find_compose
 if errorlevel 1 exit /b 1
 
-git pull --ff-only
+if defined EQM_UPDATE_TARGET (
+  git merge --ff-only -- "%EQM_UPDATE_TARGET%"
+) else (
+  git pull --ff-only
+)
 if errorlevel 1 (
   echo.
   echo Update stopped because Git could not fast-forward cleanly.
   exit /b 1
 )
 
+set "EQM_UPDATE_REVISION="
+for /f "delims=" %%R in ('git rev-parse HEAD') do set "EQM_UPDATE_REVISION=%%R"
+if not defined EQM_UPDATE_REVISION exit /b 1
 %COMPOSE_CMD% up --build -d
-if errorlevel 1 exit /b 1
+if errorlevel 1 exit /b %errorlevel%
 
 echo.
 echo Update complete.

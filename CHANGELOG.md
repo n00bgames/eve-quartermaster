@@ -6,6 +6,8 @@ Version sections are written as user-facing release notes first, with implementa
 
 ## [2.2.1] - Unreleased
 
+- Add **Settings → Application Update** above SDE Maintenance. An optional helper on the Docker host checks `origin/main`, runs the Windows or POSIX updater and reports progress through the restart. EQM refreshes the requesting tab after the new revision is ready. [Host setup](docs/application-updates.md).
+
 - Expand **Intel → Matchups** with a full SDE ship browser ordered by subclass and hull name, weapon bonus families and base resistances. Research up to three distinct zKillboard loss fits per hull with recorded equipment, estimated fitting stats and conditional counter hulls and modules. [Guide](docs/matchups.md#ship-catalog-and-example-fits).
 
 - Raise My Journey clips to **500 visits** and add **Segment selected dates** / **Entire recorded journey** exports. Continue automatically at the next visit or engagement page when a clip reaches ten minutes; split oversized files without dropping timeline events. Save numbered 1080p GIF/MP4 parts to a chosen folder, or download one at a time, with a JSON index and preserved partial results. Owner-only signed paging includes history beyond the map’s 2,000-visit cap and pages through hull/combat records. Existing ten-minute/128 MiB per-file limits, privacy, and desktop download requirements remain. [Guide](docs/journey-map.md#segmented-and-entire-journey-exports).

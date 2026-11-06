@@ -56,6 +56,7 @@ import { JumpClonesPage } from "./features/characters/JumpClonesPage";
 import { MainCharacterSettings } from "./features/profile/MainCharacterSettings";
 import { ProfilePage } from "./features/profile/ProfilePage";
 import { SettingsPage } from "./features/settings/SettingsPage";
+import { useAppUpdate } from "./features/settings/AppUpdate";
 import { EsiSyncPage } from "./features/esi/EsiSyncPage";
 import { ContractsPage } from "./features/contracts/ContractsPage";
 import { CorporationsPage } from "./features/corporations/CorporationsPage";
@@ -294,6 +295,7 @@ function App() {
   const [loading, setLoading] = useState(false);
 
   const [user, setUser] = useState<UserAccount | null>(null);
+  const appUpdate = useAppUpdate(user?.role === "host" ? user.id : null, activeTab === "settings", api);
   const [justLinkedCharacter] = useState(() => {const p=new URLSearchParams(window.location.search);return p.get("esi_status") ? Number(p.get("character_id"))||undefined : undefined;});
 
   const [bootstrap, setBootstrap] = useState<BootstrapStatus | null>(null);
@@ -620,6 +622,7 @@ function App() {
     else if (locationHash.startsWith("#battle-reports")) setActiveTab("battle_reports");
     else if (locationHash.startsWith("#bounties")) setActiveTab("bounty_analytics");
     else if (locationHash === "#navigation") setActiveTab("navigation");
+    else if (locationHash === "#settings") setActiveTab("settings");
     else if (locationHash === "#receipts") setActiveTab("receipts");
     else if (locationHash.startsWith("#matchups")) setActiveTab("matchups");
     else if (locationHash === "#d-scan") setActiveTab("dscan");
@@ -914,7 +917,7 @@ function App() {
         {activeTab === "jump_clones" && canView("jump_clones") && <JumpClonesPage api={api} EveEntityIcon={EveEntityIcon} formatDateTime={(value) => formatDateTime(value, preferredTimeZone(user))} />}
 
         {activeTab === "settings" && <AppearanceSettings roles={user.roles??[user.role]}/>}
-        {activeTab === "settings" && !utilityOnly.current && !quartermasterOnly.current && canView("settings") && <SettingsPage currentUser={user} api={api} Metric={Metric} ManagedForm={ManagedForm} accountLabel={accountLabel} />}
+        {activeTab === "settings" && !utilityOnly.current && !quartermasterOnly.current && canView("settings") && <SettingsPage currentUser={user} api={api} Metric={Metric} ManagedForm={ManagedForm} accountLabel={accountLabel} appUpdate={appUpdate} />}
 
         {activeTab === "corporations" && canView("corporations") && <CorporationsPage api={api} loadAssets={load} EveEntityIcon={EveEntityIcon} />}
 

@@ -30,6 +30,7 @@ services:
       APP_NAME: eve-quartermaster
       DATABASE_URL: postgresql+psycopg://eve:eve@postgres:5432/eve_quartermaster
       DB_APPLICATION_NAME: eqm-api
+      EQM_UPDATE_REVISION: ${EQM_UPDATE_REVISION:-}
       DB_POOL_SIZE: ${DB_POOL_SIZE:-10}
       DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-20}
       DB_POOL_TIMEOUT_SECONDS: ${DB_POOL_TIMEOUT_SECONDS:-10}
@@ -100,6 +101,8 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
+    labels:
+      com.n00bgames.eqm.revision: ${EQM_UPDATE_REVISION:-}
     command: rq worker --url redis://redis:6379/0 eve-quartermaster
     environment:
       APP_NAME: eve-quartermaster
@@ -145,6 +148,8 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile
+    labels:
+      com.n00bgames.eqm.revision: ${EQM_UPDATE_REVISION:-}
     environment:
       VITE_API_BASE: ${VITE_API_BASE:-/api}
       VITE_ALLOWED_HOSTS: ${VITE_ALLOWED_HOSTS:-eqm.easyduneadmin.app}

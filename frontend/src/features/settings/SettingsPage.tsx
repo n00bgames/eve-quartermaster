@@ -6,6 +6,7 @@ import { isAdminRole, isHostRole } from "../../lib/roles";
 import type { EqmCharacter } from "../../types/characters";
 import type { PermissionMatrix, RoleDefinition, SectionSettings, SdeImportProgress, SdeStatus } from "../../types/settings";
 import { DatabaseAdministration } from "./DatabaseAdministration";
+import { AppUpdatePanel, type useAppUpdate } from "./AppUpdate";
 
 type ApiClient = <T>(path: string, options?: RequestInit) => Promise<T>;
 type UserAccount = { id: number; email: string; display_name: string; role: string; timezone?: string; created_at?: string };
@@ -18,13 +19,14 @@ type SettingsPageProps = {
   Metric: MetricComponent;
   ManagedForm: ManagedFormComponent;
   accountLabel: (user: UserAccount) => string;
+  appUpdate: ReturnType<typeof useAppUpdate>;
 };
 
 function sdeSize(bytes:number) {
   return bytes < 1048576 ? `${(bytes/1024).toFixed(1)} KiB` : `${(bytes/1048576).toFixed(1)} MiB`;
 }
 
-export function SettingsPage({ currentUser, api, Metric, ManagedForm, accountLabel }: SettingsPageProps) {
+export function SettingsPage({ currentUser, api, Metric, ManagedForm, accountLabel, appUpdate }: SettingsPageProps) {
   const adminAccess = isAdminRole(currentUser.role);
   const hostAccess = isHostRole(currentUser.role);
   const [characters, setCharacters] = useState<EqmCharacter[]>([]);
@@ -174,6 +176,8 @@ export function SettingsPage({ currentUser, api, Metric, ManagedForm, accountLab
         </div>
       </section>
       {adminAccess && (
+        <div className="stacked" data-layout-label="Maintenance">
+        {hostAccess && <AppUpdatePanel update={appUpdate} />}
         <section className="panel stacked">
           <div className="section-heading">
             <div><h3>SDE Maintenance</h3><p>Download CCP’s latest static data and import it through the background worker.</p></div>
@@ -198,6 +202,7 @@ export function SettingsPage({ currentUser, api, Metric, ManagedForm, accountLab
           <button type="button" disabled={sdeBusy} onClick={() => void importSde()}><RefreshCw size={18} /> {sdeBusy ? "Maintenance in progress" : "Queue SDE import"}</button>
           <button type="button" disabled={sdeBusy} onClick={() => void importSde(true)}>Queue agents-only import</button>
         </section>
+        </div>
       )}
       {hostAccess && <DatabaseAdministration api={api} />}
       {adminAccess && <SectionModuleSettings api={api} />}

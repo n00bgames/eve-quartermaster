@@ -810,3 +810,11 @@ November 6, 2026 captures from the production UI with an isolated SQLite import 
 ![Rail Deimos estimate and counter suggestions](../static/ss/v2.2.1/matchups-loss-fit.jpg)
 
 ![Assault Frigate subclass on a 390-pixel viewport](../static/ss/v2.2.1/matchups-catalog-mobile.jpg)
+
+## Application Update
+
+Unreleased 2.2.1 captures from the actual Settings UI and bridge API using a fabricated host account, revision and installation states. [Host setup](application-updates.md) · [Capture receipt](../static/ss/v2.2.1/capture-receipt.json).
+
+![The updater installs a synthetic revision above SDE Maintenance](../static/ss/v2.2.1/app-update-installing.jpg)
+
+![Settings after the synthetic update completes and refreshes the tab](../static/ss/v2.2.1/app-update-complete.jpg)

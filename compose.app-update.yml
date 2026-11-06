@@ -1,0 +1,8 @@
+# Opt in on the Docker host using COMPOSE_FILE.
+services:
+  backend:
+    environment:
+      EQM_UPDATE_BRIDGE: /eqm-update
+    volumes:
+      - ./.eqm-update/inbox:/eqm-update/inbox
+      - ./.eqm-update/status:/eqm-update/status:ro

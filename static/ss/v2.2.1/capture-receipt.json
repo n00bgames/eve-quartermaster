@@ -464,5 +464,37 @@
         "height": 812
       }
     ]
+  },
+  "application_update_followup": {
+    "captured_at": "2026-11-06T21:02:22.249009+00:00",
+    "application_version": "2.2.1",
+    "source_base_commit": "d4390e8e166193438862b13c893cfbf90346494b",
+    "method": "Actual production React build and authenticated bridge API on isolated localhost, synthetic update state and temporary 502 responses.",
+    "data": "Fabricated Example Host account and revision. No production deployment or Docker restart.",
+    "validation": [
+      "Application Update above SDE Maintenance",
+      "Temporary gateway error recovers",
+      "Successful update reloads Settings",
+      "Failure keeps retry available",
+      "Application Update panel fits a 390px viewport",
+      "Two backend tests and isolated Git/script lifecycle tests with simulated Docker",
+      "TypeScript, Vite production build and Compose config validation passed"
+    ],
+    "files": [
+      {
+        "file": "app-update-installing.jpg",
+        "bytes": 30042,
+        "sha256": "16f57c26e631586cabddee3f2b5b27cdc20c403d4129311214112d6b3a432a09",
+        "width": 953,
+        "height": 302
+      },
+      {
+        "file": "app-update-complete.jpg",
+        "bytes": 29309,
+        "sha256": "6d3ce80e90f6e8e3e87b3229657a88d153296ff8abe607d6635d99eeb9dcb882",
+        "width": 953,
+        "height": 302
+      }
+    ]
   }
 }

@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 set -eu
 
-cd "$(dirname "$0")"
+cd "${EQM_UPDATE_ROOT:-$(dirname "$0")}"
 
 if ! command -v git >/dev/null 2>&1; then
   echo "Git was not found. Install Git, then run this script again."
@@ -24,7 +24,13 @@ fi
 
 echo
 echo "Updating EVE Quartermaster from GitHub..."
-git pull --ff-only
+if [ -n "${EQM_UPDATE_TARGET:-}" ]; then
+  git merge --ff-only -- "$EQM_UPDATE_TARGET"
+else
+  git pull --ff-only
+fi
+EQM_UPDATE_REVISION=$(git rev-parse HEAD)
+export EQM_UPDATE_REVISION
 
 echo
 echo "Rebuilding containers..."
