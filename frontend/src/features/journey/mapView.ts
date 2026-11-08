@@ -18,3 +18,7 @@ export function panView(view: MapView, start: MapPoint, current: MapPoint): MapV
 export function pinchView(view: MapView, start: MapPoint, startDistance: number, center: MapPoint, distance: number): MapView {
   return panView(zoomView(view, distance / Math.max(1, startDistance), start), start, center);
 }
+
+export function centeredView(view: MapView, at: MapPoint, size: {width: number; height: number}): MapView {
+  return {...view, x: size.width / 2 - at.x * view.scale, y: size.height / 2 - at.y * view.scale};
+}

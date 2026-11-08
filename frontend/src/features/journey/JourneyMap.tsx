@@ -14,11 +14,12 @@ export function JourneyMap({systems, visits, selected, onSelect, context}: {syst
     observer.observe(element);
     return () => observer.disconnect();
   }, []);
-  const {view, dragging, fit, zoom, focus, handlers} = useJourneyMapView(svg, size, onSelect);
   const points = useMemo(() => projectSystems(systems, size.width, size.height), [systems, size]);
   const index = useMemo(() => new Map(points.map(p => [p.system.system_id, p])), [points]);
   const counts = useMemo(() => visitCounts(visits), [visits]);
   const current = visits[visits.length - 1]?.system_id;
+  const currentPoint = current === undefined ? null : index.get(current) ?? null;
+  const {view, dragging, following, fit, zoom, focus, center, toggleFollow, handlers} = useJourneyMapView(svg, size, onSelect, currentPoint);
   const pairs = useMemo(() => {
     const links = new Map<string, {a: number; b: number; gap: boolean}>();
     for (let i = 1; i < visits.length; i++) {
@@ -33,6 +34,9 @@ export function JourneyMap({systems, visits, selected, onSelect, context}: {syst
       <button type="button" aria-label="Zoom journey map in" onClick={() => zoom(1.35)}>+</button>
       <output className="journey-map-zoom" aria-label="Journey map zoom">{Math.round(view.scale * 100)}%</output>
       <button type="button" aria-label="Zoom journey map out" onClick={() => zoom(1 / 1.35)}>−</button>
+      <button type="button" aria-pressed={following} disabled={!currentPoint && !following} onClick={toggleFollow}
+        title="Zoom to and follow the current replay or latest recorded position">Zoom-and-Follow</button>
+      <button type="button" disabled={!currentPoint} onClick={center} title="Center the current position without changing zoom">Center</button>
       <button type="button" onClick={fit}>Fit journey</button>
       <button type="button" disabled={!selectedPoint} onClick={() => {if (selectedPoint) focus(selectedPoint);}}>Focus selected</button>
     </div></div>
@@ -65,6 +69,6 @@ export function JourneyMap({systems, visits, selected, onSelect, context}: {syst
       </g>
       {!points.length && <text x={size.width / 2} y={size.height / 2} textAnchor="middle" fill="#b2c4d5">{systems.length ? 'SDE coordinates unavailable — use the visit log below' : 'Your journey begins with the first online location sample'}</text>}
     </svg>
-    <div className="journey-map-legend"><span>● Current replay position</span><span>Lines = observed system changes, not verified gate paths</span><span>Dashed = collection gap; intermediate systems unknown</span><span>X/Z projection · drag to pan · scroll or pinch to zoom</span></div>
+    <div className="journey-map-legend"><span>● Current replay position</span><span role="status">{following ? currentPoint ? 'Following current position' : 'Following paused: current system coordinates unavailable' : 'Free map view'}</span><span>Lines = observed system changes, not verified gate paths</span><span>Dashed = collection gap; intermediate systems unknown</span><span>X/Z projection · drag to pan · scroll or pinch to zoom</span></div>
   </div>;
 }

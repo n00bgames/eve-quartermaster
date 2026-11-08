@@ -818,3 +818,13 @@ Unreleased 2.2.1 captures from the actual Settings UI and bridge API using a fab
 ![The updater installs a synthetic revision above SDE Maintenance](../static/ss/v2.2.1/app-update-installing.jpg)
 
 ![Settings after the synthetic update completes and refreshes the tab](../static/ss/v2.2.1/app-update-complete.jpg)
+
+## Journey Zoom-and-Follow and Center — unreleased 2.3 follow-up
+
+November 8, 2026 client-date development captures. Actual JourneyPanel/JourneyMap and existing EQM styles with synthetic loopback history/context/settings responses. Demo Cartographer, route observations and illustrative coordinates are fabricated; no live tracking, SSO or private account data.
+
+![Desktop: active follow toggle, Center and current-position status](../static/ss/v2.3.0/journey-follow-desktop.png)
+
+![390px mobile: complete toolbar, centered position and legend](../static/ss/v2.3.0/journey-follow-mobile.png)
+
+26 journey tests, full TypeScript/Vite build and seven browser scenarios pass, including timed replay, live refresh/projection changes, selection, one-time centering, zoom retention, resize, manual navigation, missing coordinates, empty data/date resets and real touch pan/pinch. No browser page errors or mobile document overflow. [Guide](journey-map.md#map-controls) · [Provenance and checksums](../static/ss/v2.3.0/capture-receipt.json). Frontend-only; unreleased development evidence.

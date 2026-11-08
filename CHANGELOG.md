@@ -6,6 +6,8 @@ Version sections are written as user-facing release notes first, with implementa
 
 ## [2.3.0] - Unreleased
 
+- Add **Zoom-and-Follow** and **Center** to My Journey. Follow the current replay/latest recorded position through replay, scrubbing, background refreshes and resize; recenter once without changing zoom using Center. Manual navigation releases following; unavailable current-system coordinates pause it safely. [Controls and synthetic captures](docs/journey-map.md#map-controls). Frontend-only; no migration or new ESI scope.
+
 - Add **Settings → Application Update** above SDE Maintenance. An optional helper on the Docker host checks `origin/main`, runs the Windows or POSIX updater and reports progress through the restart. EQM refreshes the requesting tab after the new revision is ready. Windows and POSIX setup launchers install Python when needed, configure the helper to start in the background and enable the Compose integration. [Host setup](docs/application-updates.md).
 
 - Expand **Intel → Matchups** with a full SDE ship browser ordered by subclass and hull name, weapon bonus families and base resistances. Research up to three distinct zKillboard loss fits per hull with recorded equipment, estimated fitting stats and conditional counter hulls and modules. [Guide](docs/matchups.md#ship-catalog-and-example-fits).

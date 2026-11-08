@@ -31,3 +31,5 @@
 .journey-export-scope select{max-width:100%}
 
 @media(max-width:600px){.journey-export-scope .journey-export-controls label:has(select){flex-basis:100%}}
+
+.journey-map-tools button[aria-pressed=true]{border-color:#89d7df;background:#21434c;color:#c4fffa}

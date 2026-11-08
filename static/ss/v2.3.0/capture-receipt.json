@@ -1,0 +1,45 @@
+{
+  "captured_on": "2026-11-08",
+  "application_version": "2.3.0",
+  "source_base_commit": "63bf0893e97adf19c74f1bcb1f8228a5570563df",
+  "source_state": "Uncommitted Zoom-and-Follow / Center follow-up; no version bump or deployment.",
+  "method": "Actual JourneyPanel/JourneyMap, existing EQM styles, headless Edge at 1100px desktop and 390px touch viewport; complete map/toolbar/legend captures.",
+  "data": "Synthetic local HTTP settings/history/context; fabricated Demo Cartographer, observations and illustrative system coordinates. No live SSO, ESI, account data or production API.",
+  "validation": {
+    "checks": [
+      "Follow centers the replay/live position at 8x; scrubbing and context selection preserve the right target",
+      "Actual timed replay stays centered as visits advance",
+      "Center preserves zoom once; Follow retains an existing close zoom and recenters after resizing",
+      "Mouse pan, wheel, toolbar zoom, arrow pan, Focus selected and Fit journey release follow",
+      "Background history refresh follows new visits and changed projection; unavailable coordinates pause safely and recover",
+      "Date changes reset follow; empty history and missing SDE coordinates disable position controls",
+      "390px controls fit; real touch pan/pinch release follow and Center works at the pinch zoom"
+    ],
+    "errors": [],
+    "synthetic": true
+  },
+  "frontend_validation": {
+    "journey_tests_passed": 26,
+    "production_build": "passed; existing large chunk advisory"
+  },
+  "limitations": "Isolated frontend preview with synthetic API responses. No backend behavior changed. Coordinates are illustrative, not accurate SDE positions.",
+  "source_sha256": {
+    "frontend/src/features/journey/useJourneyMapView.ts": "f1d381bc6ba5c2c88eac89d5748296e904d2d67f5632b29b69382a3d8d0e90f5",
+    "frontend/src/features/journey/mapView.ts": "d2f2c5c20a952e0e51383e18af5bcb47bf8c6c7cd08d33c471bc7a9ef5763f25",
+    "frontend/src/features/journey/JourneyMap.tsx": "ede08f0d8602a36d48483e8ce02e46ef6a5fccc05c1d04c6246bec2dabeeb05c",
+    "frontend/src/features/journey/journey.css": "86373cac01289ba055b2e8f7e9b0cbf31a2d4dd970c2f98ea881cc970c89a6bb",
+    "frontend/tests/journeyMapView.test.ts": "c6db6a84ac508e8723a301c975d97af57bc5dbddbc6421a562bfd3035bbad736"
+  },
+  "images": [
+    {
+      "filename": "journey-follow-desktop.png",
+      "bytes": 218749,
+      "sha256": "af79502a3bf1cdd264bd0c375063775bc787664555bd6edff174f689a5f87d8b"
+    },
+    {
+      "filename": "journey-follow-mobile.png",
+      "bytes": 81710,
+      "sha256": "35ec80910513230e14ef4a37bebdb815651b2bf42df21a21c61d43d47ca8fa31"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {fittedView, panView, pinchView, zoomView} from '../src/features/journey/mapView.ts';
+import {centeredView, fittedView, panView, pinchView, zoomView} from '../src/features/journey/mapView.ts';
 
 test('zoom keeps the cursor world point stationary after an existing pan', () => {
   const before = {scale: 2, x: -140, y: 35}, cursor = {x: 317, y: 128};
@@ -29,4 +29,16 @@ test('pinch zoom anchors its original midpoint and follows both fingers', () => 
   assert.deepEqual(next, {scale: 4, x: -180, y: -120});
   assert.equal((120 - next.x) / next.scale, (100 - start.x) / start.scale);
   assert.ok(Object.values(pinchView(start, {x: 0, y: 0}, 0, {x: 0, y: 0}, 1)).every(Number.isFinite));
+});
+
+test('centering preserves zoom and places an arbitrary world point at the viewport center', () => {
+  const view = {scale: 17.5, x: -320, y: 90}, at = {x: 41, y: 63};
+  const next = centeredView(view, at, {width: 390, height: 380});
+  assert.equal(next.scale, view.scale);
+  assert.equal(at.x * next.scale + next.x, 195);
+  assert.equal(at.y * next.scale + next.y, 190);
+  const resized = centeredView(next, {x: 72, y: 120}, {width: 1200, height: 500});
+  assert.equal(resized.scale, view.scale);
+  assert.equal(72 * resized.scale + resized.x, 600);
+  assert.equal(120 * resized.scale + resized.y, 250);
 });

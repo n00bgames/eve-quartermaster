@@ -1063,11 +1063,11 @@ Use a tracked pilot to locate a fight, then **Find all battle kills** across its
 
 ### My Journey map controls
 
-Zoom around the pointer with the mouse wheel, drag to pan from any part of the map, or use one-finger drag/two-finger pinch on touch devices. A zoom readout, Fit journey, Focus selected and keyboard controls support navigation. Marker sizes remain readable, and replay keeps the chosen viewport. No backend, database migration or ESI scope changes.
+Zoom around the pointer, drag to pan, or use touch/keyboard controls. **Zoom-and-Follow** keeps the current replay/latest recorded position centered at a close zoom. **Center** recenters once without changing zoom. Manual navigation releases follow; Fit journey and Focus selected remain available.
 
-![My Journey map controls — actual UI, synthetic route and coordinates](static/ss/v2.1/journey-map-controls-desktop.png)
+![Zoom-and-Follow active — actual UI with a synthetic route](static/ss/v2.3.0/journey-follow-desktop.png)
 
-[Controls and verification](docs/journey-map.md#map-controls) · [Mobile](static/ss/v2.1/journey-map-controls-mobile.png) · [Capture provenance](static/ss/v2.1/capture-receipt.json). Source follow-up only; no deployment is implied.
+[Controls and verification](docs/journey-map.md#map-controls) · [Mobile](static/ss/v2.3.0/journey-follow-mobile.png) · [Capture provenance](static/ss/v2.3.0/capture-receipt.json). Unreleased 2.3 follow-up.
 
 ### My Journey movie exports
 

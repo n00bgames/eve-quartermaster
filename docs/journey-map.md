@@ -45,16 +45,28 @@ My Journey includes Atlas-style controls:
 - **Scroll the mouse wheel/trackpad** over the map to zoom around the pointer, or use **+ / −**. The readout shows the current zoom (50%–8,000%).
 - **Drag** the background, a route line, or a star to pan. A click/tap selects a system; dragging does not select it. Releasing outside the map or cancelling a touch gesture ends the drag.
 - On touch devices, **drag with one finger** or **pinch with two fingers**. Scroll the page outside the map to move the page.
+- **Zoom-and-Follow** is a toggle: center the current replay or latest recorded position at a minimum of 8× zoom, then keep it centered during playback, scrubbing and stored-history refreshes. A closer existing zoom is retained. Selecting a system for context does not change the follow target.
+- **Center** recenters the current replay/latest recorded position once, preserving zoom and turning following off.
+- Manual pan, wheel/pinch/toolbar/keyboard zoom, arrow-key pan, **Fit journey**, or **Focus selected** turns following off. Clicking Zoom-and-Follow again stops following without moving the camera.
+- Position controls require coordinates for the current system. If they become unavailable while following, the camera holds its view and reports that following is paused; it resumes when coordinates return. Follow can still be turned off while paused.
 - **Fit journey** restores the full projected view. **Focus selected** centers the selected system at 8× zoom.
 - Focus the map with the keyboard: **arrow keys** pan, **+ / −** zoom, and **Home / 0** fit. Visited stars retain **Enter / Space** selection and the searchable visited-system list remains available.
 
-Markers and labels stay at a consistent screen size as the route scales. Replay/scrubbing and context selection preserve your chosen zoom/pan; resizing the map or switching character/date range fits the new view. Wheel gestures over the map are consumed by the map, not the page.
+Markers and labels stay at a consistent screen size as the route scales. Replay/scrubbing and context selection preserve your chosen zoom/pan in free view. Following keeps the current position centered, including when the map resizes or its projection changes. Resizing in free view fits the map; switching character/date range starts in fitted free view. Wheel gestures over the map are consumed by the map, not the page.
 
 ![Desktop zoom and pan controls — synthetic journey](../static/ss/v2.1/journey-map-controls-desktop.png)
 
 ![Touch-sized toolbar and journey — synthetic layout](../static/ss/v2.1/journey-map-controls-mobile.png)
 
 Verification: nine journey math/replay/hull tests and eight actual-browser checks cover anchored wheel zoom, bounded zoom, panning, star selection, focus, keyboard input, replay retention, outside release, touch pinch/pan and cancellation recovery. Desktop/mobile captures use the actual JourneyPanel with synthetic local HTTP responses and illustrative coordinates; no production API or real character data was used. [Capture provenance and checksums](../static/ss/v2.1/capture-receipt.json).
+
+### Zoom-and-Follow and Center — unreleased 2.3 follow-up
+
+![Following the latest recorded position with Center beside the active toggle](../static/ss/v2.3.0/journey-follow-desktop.png)
+
+[Mobile controls](../static/ss/v2.3.0/journey-follow-mobile.png) · [Capture provenance and checksums](../static/ss/v2.3.0/capture-receipt.json).
+
+Validation: 26 journey tests, the complete TypeScript/Vite production build, and seven actual-browser scenarios pass. Browser checks cover replay, scrubbing, background history refresh/projection changes, selection, Center at existing zoom, follow cancellation, resize, missing coordinates, date resets, empty history and real mobile touch gestures. Actual JourneyPanel/JourneyMap with synthetic loopback responses and illustrative coordinates; no live character/API activity. Frontend-only change.
 
 ## Combat and asset context
 
