@@ -65,6 +65,7 @@ See [CHANGELOG.md](CHANGELOG.md) for version-by-version release notes. Applicati
 - Skill Plans integrated into Character Skills, including editable SDE-dogma-derived minimum requirements, recursive prerequisites, per-item provenance, deduplication, ordering, and character progress.
 - Ship Replacement Program instances with generated intake links, EQM character ownership checks, doctrine or general fittings, exact timezone-aware loss recording, immutable historical snapshots, append-only review history, precise valuation/reimbursement fields, and permission-filtered analytics and CSV exports.
 - [Quartermaster role](docs/quartermaster-role.md) with view-only blueprint holdings, running industry jobs, and planetary infrastructure across authenticated characters and authorized linked corporations.
+- **Structures** lists owned Upwell structures and POS towers with ESI status, services, timers and fuel. Uses your own corporation character; POS fuel/settings expand on demand. Requires Structures permission and EVE corporation roles/scopes. [Coverage, authorization and freshness](docs/structures.md). **Unreleased development feature.**
 - [Intel Reports](docs/intel-reports.md) for external characters, corporations, and alliances: zKill combat evidence, recurring co-attackers, ships, geography, badges, smartbomb patterns, change history, and viewer-authorized ESI enrichment.
 - Killboard discovery through zKillboard with canonical ESI killmail storage, resumable incremental sync, direct source links, and historical kill/loss, ISK, hull, geography, participation, opponent, streak, and wingmate analytics.
 - Dynamic Battle Reports for a selected tracked pilot, with browsable retained engagement history, deterministic grouping, illustrated pilot/corporation/alliance/ship identity, team summaries, timeline, damage, SDE-resolved hull classes, clickable pilot zKill links, and revocable public snapshot links.
@@ -80,6 +81,12 @@ See [CHANGELOG.md](CHANGELOG.md) for version-by-version release notes. Applicati
 - Hauling intelligence widgets for industrial kill heat, PvP system intel, smartbomb indicators, and Local Threat analysis with background queue progress for large systems.
 - Jump Capable Ship Plotter with automatic routing through ordered, required cyno waypoints, JDC/JFC fuel math, mapped alternate jump points, explicit station-risk warnings, nearby operational map context, and kill/activity intel per jump.
 - Sideloadable Android WebView wrapper build script that outputs `EQM.apk`.
+
+## Owned structures — development preview
+
+Monitor corporation Upwell structures and POS control towers, fuel expiry, ESI timers and reported POS fuel quantities. Empty lists are supported before your first tower goes up. Responses can be cached for an hour; missing access remains explicit. [Structures guide](docs/structures.md). Matching backend/frontend rollout and per-character authorization required.
+
+![Owned Structures with synthetic corporation data](static/ss/v2.3.0/structures-desktop.png)
 
 ## Organization membership intelligence
 
@@ -202,6 +209,55 @@ The update scripts use a fast-forward-only pull so they stop instead of tramplin
 For one-click updates, run `install-update-helper.bat` on Windows or `sh ./install-update-helper.sh` on Linux or macOS from the checkout on the Docker host. Then use **Settings → Application Update** above **SDE Maintenance**. EQM checks the configured `origin/main`, reports progress through the restart and refreshes the initiating tab when the new revision is ready. [Host setup](docs/application-updates.md).
 
 ![Application Update installing a synthetic revision above SDE Maintenance](static/ss/v2.2.1/app-update-installing.jpg)
+
+#### Linux update-helper permission recovery
+
+Use this only on hosts with root-owned checkout files or permission-denied update failures. Sign in as the unprivileged account that normally runs EQM, open a terminal **in the EQM checkout root**, and wait for any active update/Git operation to finish. These commands apply to the systemd user helper installed by `install-update-helper.sh`; a manually launched helper must be stopped in its own terminal instead.
+
+**1. Stop this checkout's update helper.** The service name is derived using the same checkout-path hash as the installer; this does not stop the EQM app containers.
+
+```bash
+(
+  set -eu
+  eqm_helper="$(python3 - <<'PY'
+import hashlib, os
+from pathlib import Path
+root = Path.cwd().resolve()
+if not (root / ".git").is_dir():
+    raise SystemExit("Run this from the EQM checkout root.")
+print("eqm-update-" + hashlib.sha256(os.fsencode(root)).hexdigest()[:12] + ".service")
+PY
+)"
+  systemctl --user stop "$eqm_helper"
+)
+
+```
+
+**2. Download, verify and run the standalone Python checkout repair.** This works even when permissions prevent pulling the update containing the script. Requires Python 3.10+, curl, sha256sum and sudo. The download is pinned to the reviewed commit and checked before execution; `--root` identifies the checkout explicitly because the downloaded script is outside it. Run this block as the normal EQM account, using sudo only for the repair command.
+
+```bash
+(
+  set -eu
+  test -d .git
+  eqm_root="$(pwd -P)"
+  eqm_repair="$(mktemp /tmp/eqm-checkout.XXXXXX.py)"
+  trap 'rm -f "$eqm_repair"' EXIT
+  curl --fail --location --silent --show-error \
+    'https://raw.githubusercontent.com/n00bgames/eve-quartermaster/9bb56c7508369782bc8b707b3b347ccfa8a5633c/scripts/eqm_checkout.py' \
+    --output "$eqm_repair"
+  printf '%s  %s\n' \
+    'dbda9e127c4ee02e5fe5818c10a7f23ee454976decef994f311ceaffab2dbffa' \
+    "$eqm_repair" | sha256sum --check --status
+  sudo python3 "$eqm_repair" --root "$eqm_root" --repair-owner "$(id -un)"
+  python3 "$eqm_repair" --root "$eqm_root"
+  git status --short
+)
+
+```
+
+The repair changes only tracked source, its parent directories and Git metadata. It excludes `.env`, runtime volumes, untracked files and symlink targets. If `git status` reports local changes after an earlier partial update, preserve and review them before retrying; do not reset or delete them blindly. If the helper cannot be stopped or the checksum/repair fails, resolve that error before continuing.
+
+Once the checkout is clean, run the normal update with `sh ./update-eqm.sh`, then rerun `sh ./install-update-helper.sh` to start the helper with the new checks. Until then, the helper stays stopped. [Full permission-repair and rollout guide](docs/application-updates.md#checkout-permissions).
 
 To restart the existing web services without pulling or rebuilding:
 

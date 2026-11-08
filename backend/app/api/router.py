@@ -135,5 +135,8 @@ api_router.include_router(intel_alliance_router)
 from app.api.receipts import router as receipts_router
 api_router.include_router(receipts_router)
 
+from app.api.structures import router as structures_router
+api_router.include_router(structures_router)
+
 from app.api.app_update import router as app_update_router
 api_router.include_router(app_update_router)

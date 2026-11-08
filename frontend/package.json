@@ -16,7 +16,8 @@
     "test:planetary": "node --test --experimental-strip-types tests/planetaryExport.test.ts tests/planetaryShortageReport.test.ts tests/productionChain.test.ts tests/planetaryCharacterScope.test.ts",
     "test:sync": "node --test --experimental-strip-types tests/characterSyncPolling.test.ts tests/apiErrors.test.ts",
     "preview": "vite preview --host 0.0.0.0",
-    "test:journey": "node --test --experimental-strip-types tests/journeyReplay.test.ts tests/journeyShipTimeline.test.ts tests/journeyMapView.test.ts tests/journeyExport.test.ts tests/journeySegments.test.ts"
+    "test:journey": "node --test --experimental-strip-types tests/journeyReplay.test.ts tests/journeyShipTimeline.test.ts tests/journeyMapView.test.ts tests/journeyExport.test.ts tests/journeySegments.test.ts",
+    "test:structures": "node --test --experimental-strip-types tests/structures.test.ts"
   },
   "dependencies": {
     "@tesseract.js-data/eng": "1.0.0",

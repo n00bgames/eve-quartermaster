@@ -22,7 +22,8 @@ SCOPE_SECTIONS = {
     "esi-characters.read_blueprints.v1": {"industry", "research_projects"},
     "esi-corporations.read_blueprints.v1": {"industry", "research_projects"},
     "esi-characters.read_corporation_roles.v1": {"corporations", "research_projects", "industry"},
-    "esi-corporations.read_structures.v1": {"corporations", "assets"},
+    "esi-corporations.read_structures.v1": {"corporations", "assets", "structures"},
+    "esi-corporations.read_starbases.v1": {"structures"},
     "esi-corporations.read_corporation_membership.v1": {"corporations"},
     "esi-corporations.track_members.v1": {"corporations"},
     "esi-corporations.read_divisions.v1": {"corporations"},
@@ -63,7 +64,7 @@ def is_utility_user(db, user):
         return False  # Recruiting requires its own explicit consent flow.
     permissions = effective_permissions(user, db)
     collection_sections = {"characters", "assets", "skills", "industry", "manufacturing", "research_projects",
-                           "planetary_industry", "corporations", "mining", "contracts", "jump_clones", "fittings", "killboard"}
+                           "planetary_industry", "corporations", "structures", "mining", "contracts", "jump_clones", "fittings", "killboard"}
     return not any(permissions.get(section) for section in collection_sections)
 
 

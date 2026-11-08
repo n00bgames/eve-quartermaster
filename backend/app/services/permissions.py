@@ -54,6 +54,7 @@ SECTION_DEFINITIONS: dict[str, dict[str, object]] = {
     "battle_reports": {"label": "Battle Reports", "default_roles": ["admin", "director", "officer", "member", "intel_analyst", "view_only"]},
     "jump_clones": {"label": "Jump Clones", "default_roles": ["admin", "director", "officer", "member"]},
     "settings": {"label": "Settings", "default_roles": ["admin", "director", "officer", "member", "view_only"]},
+    "structures": {"label": "Structures", "default_roles": ["admin", "director", "officer"]},
     "corporations": {"label": "Corporations", "default_roles": ["admin", "director", "officer"]},
     "assets": {"label": "Assets", "default_roles": ["admin", "director", "officer", "member", "view_only"]},
     "industry": {"label": "Industry", "default_roles": ["admin", "director", "officer", "member"]},

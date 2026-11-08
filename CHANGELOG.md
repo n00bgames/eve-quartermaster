@@ -6,6 +6,8 @@ Version sections are written as user-facing release notes first, with implementa
 
 ## [2.3.0] - Unreleased
 
+- Add **Inventory & Industry → Structures** for owned Upwell structures and POS towers: ESI state/services, fuel expiry, state/reinforcement/unanchoring timers, and expandable POS fuel/access/defense settings. Include search, type/attention filters, separate missing-scope/role/error states and visible-source freshness. Use only the viewer's own character token; dedicated SSO consent preserves allowed scopes and validates the selected character. POS unanchoring start is not treated as completion, and elapsed timers await ESI confirmation. No migration or version bump; matching backend/frontend rollout and corporation-role/scoped consent required. [Guide and limits](docs/structures.md).
+
 - Check checkout ownership/access before app updates can partially modify source. Report actionable permission failures, refuse POSIX root execution, and provide an explicit ownership repair limited to Git-tracked source and Git metadata. Windows/POSIX manual scripts and helper setup share the check. Keep long permission notices and the update heading readable on mobile. [Repair and rollout](docs/application-updates.md#checkout-permissions).
 
 - Add **Zoom-and-Follow** and **Center** to My Journey. Follow the current replay/latest recorded position through replay, scrubbing, background refreshes and resize; recenter once without changing zoom using Center. Manual navigation releases following; unavailable current-system coordinates pause it safely. [Controls and synthetic captures](docs/journey-map.md#map-controls). Frontend-only; no migration or new ESI scope.
