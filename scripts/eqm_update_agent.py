@@ -16,6 +16,8 @@ import urllib.request
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from eqm_checkout import CheckoutError, assert_checkout_writable
+
 JOB_ID = re.compile(rb"[a-f0-9]{32}")
 REVISION = re.compile(r"[a-f0-9]{40}")
 ACTIVE = {"queued", "checking", "installing", "starting"}
@@ -169,6 +171,7 @@ class Agent:
             with subprocess.Popen(
                 args, cwd=directory, env={
                     **self.env, "EQM_UPDATE_ROOT": str(self.root), "EQM_UPDATE_TARGET": revision,
+                    "EQM_UPDATE_PYTHON": sys.executable,
                 }, stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
                 creationflags=HIDDEN_WINDOW, **options,
             ) as process:
@@ -179,6 +182,10 @@ class Agent:
 
     def update(self, job_id: str, lock) -> None:
         self.publish(job_id, "checking", "Checking origin/main for updates.")
+        try:
+            assert_checkout_writable(self.root)
+        except CheckoutError as exc:
+            raise UpdateFailed(str(exc)) from exc
         if self.command(["git", "branch", "--show-current"]) != "main":
             raise UpdateFailed("Switch the EQM checkout to main on the host before updating.")
         if self.command(["git", "status", "--porcelain", "--untracked-files=all"]):
@@ -244,6 +251,8 @@ def main() -> None:
     args = parser.parse_args()
     if not is_local_frontend(args.frontend_url):
         parser.error("Use the loopback HTTP origin of EQM's Compose frontend.")
+    if os.name == "posix" and os.geteuid() == 0:
+        parser.error("Run the helper as the checkout owner, without sudo or root.")
     agent = Agent(Path(__file__).resolve().parents[1], args.frontend_url)
     with lock_runner(agent.data / "agent.lock") as lock:
         print(f"EQM update helper is watching {agent.root}.", flush=True)

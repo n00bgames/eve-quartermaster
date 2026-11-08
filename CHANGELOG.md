@@ -6,6 +6,8 @@ Version sections are written as user-facing release notes first, with implementa
 
 ## [2.3.0] - Unreleased
 
+- Check checkout ownership/access before app updates can partially modify source. Report actionable permission failures, refuse POSIX root execution, and provide an explicit ownership repair limited to Git-tracked source and Git metadata. Windows/POSIX manual scripts and helper setup share the check. Keep long permission notices and the update heading readable on mobile. [Repair and rollout](docs/application-updates.md#checkout-permissions).
+
 - Add **Zoom-and-Follow** and **Center** to My Journey. Follow the current replay/latest recorded position through replay, scrubbing, background refreshes and resize; recenter once without changing zoom using Center. Manual navigation releases following; unavailable current-system coordinates pause it safely. [Controls and synthetic captures](docs/journey-map.md#map-controls). Frontend-only; no migration or new ESI scope.
 
 - Add **Settings → Application Update** above SDE Maintenance. An optional helper on the Docker host checks `origin/main`, runs the Windows or POSIX updater and reports progress through the restart. EQM refreshes the requesting tab after the new revision is ready. Windows and POSIX setup launchers install Python when needed, configure the helper to start in the background and enable the Compose integration. [Host setup](docs/application-updates.md).

@@ -27,7 +27,7 @@ The current application/package version is **v2.3** (`2.3.0`). This release adds
 
 > **Fitting Manager / Simulator: Non-Authoritative. For Informational Use Only.** Still in development and not PYFA-complete. Full feature and calculation parity with PYFA is not claimed; verify consequential fitting decisions against PYFA and the EVE client.
 
-See [CHANGELOG.md](CHANGELOG.md) for version-by-version release notes.
+See [CHANGELOG.md](CHANGELOG.md) for version-by-version release notes. Application Update now checks checkout permissions before merging; see [ownership repair and helper rollout](docs/application-updates.md#checkout-permissions).
 
 ## Install Time
 

@@ -64,3 +64,33 @@ The helper requires a clean `main` checkout that can fast-forward to its configu
 The opt-in overlay mounts a writable request inbox and a separate read-only status directory into the API container. The host helper owns Git and Docker access. The API accepts a request ID from the host account and the helper decides which revision and script to run. Removing the overlay and recreating the backend disables the web control.
 
 If EQM remains unavailable after a build, inspect `.eqm-update/update.log` and `docker compose ps` on the host. Check for a still-running update process before retrying an interrupted job. Use the existing host deployment process for upgrades that require changes to the server or Compose configuration.
+
+## Checkout permissions
+
+Run the helper and manual update scripts as the unprivileged account that owns the checkout. Do not use `sudo git`, extract source archives as root, or run source-writing containers as root against a writable checkout mount. Docker build images do not need ownership of the host source. Use container images or a read-only source mount for tools that only need to read code.
+
+Before fetching/merging, the helper checks the ownership and access of all Git-tracked source, its parent directories and Git metadata. Manual Windows/POSIX updaters and helper setup use the same check. POSIX updates and the helper refuse root execution. A permission failure reports affected paths in Application Update and stops before a partial checkout update. Manual updaters now require host Python 3.10+, already installed for the helper; the helper passes its own interpreter to the script.
+
+Check the checkout from its root:
+
+```sh
+python3 scripts/eqm_checkout.py
+```
+
+For a POSIX checkout accidentally containing root-owned source, first ensure no update or other Git operation is running. Stop the host helper temporarily using its checkout-specific service/task. As the account that normally owns EQM, explicitly repair ownership:
+
+```sh
+sudo python3 scripts/eqm_checkout.py --repair-owner "$(id -un)"
+python3 scripts/eqm_checkout.py
+git status --short
+```
+
+The repair validates the complete path set first. It changes only tracked source, source-parent directories and Git metadata to that account and its primary group, granting the owner read/write access and directory traversal. It preserves existing execute/group/other mode bits. `.env`, SDE/runtime volumes, untracked files and symlink targets are excluded. Linked source parents, linked Git metadata, unusual file types and hard-linked files require manual review; linked worktrees need their own administrative handling. This is an explicit administrator repair, not a sudo privilege granted to the web helper. Windows ACL failures need repair by the checkout owner/administrator; the POSIX command does not alter Windows ACLs.
+
+If an older updater already failed halfway through a merge, do not discard unexplained local changes. Preserve a patch and copies of untracked files, compare each file to the attempted target revision, and recover only verified fragments of that update. A new preflight check prevents starting this partial-update pattern on future permission failures. It cannot make arbitrary Git or filesystem errors transactional.
+
+Start the helper again after repair. When installing a newer `eqm_update_agent.py` or `eqm_checkout.py`, restart the helper once so its running Python process loads the new checks. Linux setup names its user service `eqm-update-<checkout-hash>.service`; find the exact name with `systemctl --user list-units --all 'eqm-update-*'`. Restart that service with `systemctl --user restart <name>`. Windows uses the corresponding Task Scheduler task; macOS uses its LaunchAgent. Restarting the host helper does not restart EQM containers.
+
+![Actionable permission failure before an update — synthetic development example](../static/ss/v2.3.0/app-update-permissions-desktop.png)
+
+Tests include real Linux directory/ref permissions, a blocked merge that leaves both source and docs unchanged, a successful retry after access is restored, scoped ownership repair, runtime/symlink exclusions, hard-link refusal, root execution rejection and Windows batch failure propagation. [Capture provenance](../static/ss/v2.3.0/capture-receipt.json).

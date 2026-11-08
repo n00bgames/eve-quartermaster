@@ -1,0 +1,4 @@
+.app-update-panel .section-heading{flex-wrap:wrap;gap:12px}
+.app-update-panel .section-heading>div{min-width:0;flex:1 1 320px}
+.app-update-panel .section-heading>button{max-width:100%;white-space:normal}
+.app-update-panel .mini-alert{min-width:0;overflow-wrap:anywhere}

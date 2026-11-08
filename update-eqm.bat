@@ -19,6 +19,9 @@ if errorlevel 1 (
   exit /b 1
 )
 
+call :check_checkout
+if errorlevel 1 exit /b 1
+
 call :find_compose
 if errorlevel 1 exit /b 1
 
@@ -45,6 +48,27 @@ echo Frontend: http://localhost:5173
 echo Backend health: http://localhost:8000/api/health
 echo.
 exit /b 0
+
+:check_checkout
+if defined EQM_UPDATE_PYTHON (
+  "%EQM_UPDATE_PYTHON%" scripts\eqm_checkout.py
+  if errorlevel 1 exit /b 1
+  exit /b 0
+)
+where py >nul 2>nul
+if not errorlevel 1 (
+  py -3 scripts\eqm_checkout.py
+  if errorlevel 1 exit /b 1
+  exit /b 0
+)
+where python >nul 2>nul
+if not errorlevel 1 (
+  python scripts\eqm_checkout.py
+  if errorlevel 1 exit /b 1
+  exit /b 0
+)
+echo Python 3.10+ is required for the checkout permission check. Install it and retry.
+exit /b 1
 
 :find_compose
 docker compose version >nul 2>nul

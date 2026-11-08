@@ -3,6 +3,19 @@ set -eu
 
 cd "${EQM_UPDATE_ROOT:-$(dirname "$0")}"
 
+if [ "$(id -u)" -eq 0 ]; then
+  echo "Run EQM updates as the checkout owner, without sudo or root." >&2
+  exit 1
+fi
+
+# Check all source parents and Git metadata before a merge can partly apply.
+EQM_CHECK_PYTHON=${EQM_UPDATE_PYTHON:-python3}
+if ! command -v "$EQM_CHECK_PYTHON" >/dev/null 2>&1; then
+  echo "Python 3.10+ is required for the checkout permission check. Install it and retry." >&2
+  exit 1
+fi
+"$EQM_CHECK_PYTHON" scripts/eqm_checkout.py
+
 if ! command -v git >/dev/null 2>&1; then
   echo "Git was not found. Install Git, then run this script again."
   exit 1

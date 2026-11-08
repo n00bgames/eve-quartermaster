@@ -9,6 +9,12 @@
 
 The publish repository is the actual git repository used for GitHub. Keep source changes mirrored there before preparing a push.
 
+## Checkout ownership
+
+Keep the host checkout owned by the unprivileged EQM account. Do not run Git/source extraction as root, or give root containers a writable source bind mount. Prefer read-only source mounts and separate build/test output volumes. The updater checks all tracked source parents and Git metadata before merging; explicit bounded repair and recovery instructions are in [Application updates](application-updates.md#checkout-permissions).
+
+Run the host-updater regressions with `python -m unittest discover -s scripts/tests -v`. POSIX permission/symlink cases run on Linux; the batch propagation case runs on Windows. Ownership repair tests require a separate disposable Linux fixture.
+
 ## Common Commands
 
 Run local frontend build checks from the local working folder:

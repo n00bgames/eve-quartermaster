@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ApiError } from "../../lib/apiErrors";
+import "./AppUpdate.css";
 
 type ApiClient = <T>(path: string, options?: RequestInit) => Promise<T>;
 type Job = { id: string; phase: "queued" | "checking" | "installing" | "starting" | "current" | "succeeded" | "failed"; message: string; revision?: string };
@@ -101,7 +102,7 @@ export function AppUpdatePanel({ update }: { update: ReturnType<typeof useAppUpd
   const { status, error, reconnecting, busy, start } = update;
   const job = status?.job;
   return (
-    <section className="panel stacked">
+    <section className="panel stacked app-update-panel">
       <div className="section-heading">
         <div>
           <h3>Application Update</h3>

@@ -16,6 +16,7 @@ from pathlib import Path
 from xml.sax.saxutils import escape
 
 from eqm_update_agent import Agent, is_local_frontend, lock_runner
+from eqm_checkout import CheckoutError, assert_checkout_writable
 
 OVERLAY = "compose.app-update.yml"
 ROOT = Path(__file__).resolve().parents[1]
@@ -204,6 +205,10 @@ def setup(frontend_url: str) -> None:
     if dotenv.is_symlink():
         raise SetupError("This checkout uses a linked .env. Use the manual setup to preserve it.")
     run("git", "rev-parse", "--is-inside-work-tree")
+    try:
+        assert_checkout_writable(ROOT)
+    except CheckoutError as exc:
+        raise SetupError(str(exc)) from exc
     endpoint = run("docker", "context", "inspect", "--format", "{{.Endpoints.docker.Host}}")
     if not endpoint.startswith(("unix://", "npipe://")):
         raise SetupError("Run setup on the Docker host using its local Docker context.")

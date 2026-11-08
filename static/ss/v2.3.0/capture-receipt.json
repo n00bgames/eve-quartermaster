@@ -41,5 +41,67 @@
       "bytes": 81710,
       "sha256": "35ec80910513230e14ef4a37bebdb815651b2bf42df21a21c61d43d47ca8fa31"
     }
-  ]
+  ],
+  "application_update_permissions": {
+    "captured_on": "2026-11-08",
+    "application_version": "2.3.0",
+    "source_base_commit": "04cc94f9b89f4efb2cf46811f65bf43daecfedc6",
+    "source_state": "Uncommitted updater-permission follow-up. Host ownership repaired separately; new helper code not deployed.",
+    "method": "Actual AppUpdatePanel and existing EQM styles in local Vite/headless Edge; desktop and 390px mobile notice/toolbar crops.",
+    "data": "Real helper/preflight error formatting with synthetic root-owned-path findings. No live update request or private host state rendered.",
+    "validation": {
+      "unique_cross_platform_unit_tests": 11,
+      "linux_passed": 10,
+      "linux_skipped_windows": 1,
+      "windows_passed": 4,
+      "windows_skipped_posix": 7,
+      "privileged_linux_fixture_checks": [
+        "root-owned path detection",
+        "bounded repair",
+        "runtime/config excluded",
+        "symlink target excluded",
+        "hard-link refusal",
+        "clean repaired checkout",
+        "sudo updater refused"
+      ],
+      "browser": {
+        "checks": [
+          "desktop: actionable ownership failure, repair guidance and retry button render without overflow",
+          "mobile: actionable ownership failure, repair guidance and retry button render without overflow"
+        ],
+        "errors": [],
+        "synthetic": true
+      },
+      "typescript_vite_build": "passed; existing chunk advisory"
+    },
+    "limitations": "Linux updater integration uses actual Git/permissions and simulated Docker in a disposable fixture. No full live build/restart was run. Windows batch tested for preflight failure propagation, not a full Docker deployment.",
+    "source_sha256": {
+      "scripts/eqm_update_agent.py": "4cf9d66497aa28d4189153b95c58377468b3dbce603378526e2580a147c21025",
+      "scripts/setup_eqm_update.py": "25b98d78ece57e06933a9246b27ebf7e700ee729aabe8994f4a18308ef50b742",
+      "update-eqm.sh": "89eaaed8dcc84053a4c6b3c5f04a7fb300e3bec1740c75fc52dcf440af7099bb",
+      "update-eqm.bat": "769137d0cf5624c1171637ad9968775e83596fb18d9560c5044cde6457ee748c",
+      "docs/application-updates.md": "12d1a5fdb62a70cbcda18c3f97d7c1b35f28a82e93f107bd441befe941a947c9",
+      "docs/dev_workflow.md": "0fee713249e6bd4bfd866ea223dd6283b5e6e8996471601daa20d823a0f353c1",
+      "CHANGELOG.md": "ccc160b10410cefd7e14686923ce46d06f3a34dca7925af61ee652e82ad5d954",
+      "README.md": "ec776270dad263488f7d6e207929253d5c7c2d2509147504c596232883a811c9",
+      "docs/releases/v2.3.md": "872a01ec1b911eaae41018ec3216cc64a1ed75a626dc629ffe99c12b42830430",
+      "docs/screenshots.md": "7004811a02bdad9225240347c72944dd9259238df2b809896cbace97d481c55e",
+      "frontend/src/features/settings/AppUpdate.tsx": "786406119a4e88f22c6b57954aac216143098fbf61751c86408323ce33eee4a8",
+      "scripts/eqm_checkout.py": "dbda9e127c4ee02e5fe5818c10a7f23ee454976decef994f311ceaffab2dbffa",
+      "scripts/tests/test_checkout_permissions.py": "77e59a4e264ae44422804d7bbebdb2f3454bd42657980d4a7265c33c28c18b50",
+      "frontend/src/features/settings/AppUpdate.css": "1cce5002638c4ca98327b1a12f18371fd8f06b652f6c402beae1fb41d69cdd95"
+    },
+    "images": [
+      {
+        "filename": "app-update-permissions-desktop.png",
+        "bytes": 39440,
+        "sha256": "39db480524f641f89b93e1c63c16df823fe39bcf4ef7cb30b6e8e846ff97421f"
+      },
+      {
+        "filename": "app-update-permissions-mobile.png",
+        "bytes": 41895,
+        "sha256": "2f23e79d28aa3437d118ce26a25240a50ea483e74fc62e68d1d54bf8f29cc72b"
+      }
+    ]
+  }
 }
