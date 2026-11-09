@@ -909,7 +909,7 @@ function App() {
 
         {activeTab === "contracts" && canView("contracts") && <ContractsPage currentUser={user} api={api} CharacterHoverName={CharacterHoverName} />}
 
-        {activeTab === "analytics" && canView("analytics") && <AnalyticsPlatform currentUser={user} api={api} Metric={Metric} />}
+        {activeTab === "analytics" && canView("analytics") && <AnalyticsPlatform currentUser={user} api={api} Metric={Metric} canViewJourney={canView("navigation")} />}
 
         {activeTab === "recruiting" && canView("recruiting") && <RecruitingPage api={api} />}
 

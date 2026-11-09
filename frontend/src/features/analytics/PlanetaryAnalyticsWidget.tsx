@@ -1,3 +1,4 @@
+import {AnalyticsPane} from "../../components/AnalyticsPane";
 import { Boxes, Factory, Gauge, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 
@@ -62,7 +63,7 @@ export function PlanetaryAnalyticsWidget({
     setProductId("all");
   }
 
-  return <article id="analytics-planetary" className="analytics-widget planetary-analytics-widget analytics-category-anchor">
+  return <AnalyticsPane title="Planetary Production" id="analytics-planetary" className="analytics-pane-wide"><article  className="analytics-widget planetary-analytics-widget analytics-category-anchor">
     <header>
       <div><Factory size={18} /><div><h4>Planetary Production</h4><small>Projected extractor and routed factory output</small></div></div>
       <span>{summary.days === 0 ? "All-Time" : `${summary.days}-day`} history</span>
@@ -95,5 +96,5 @@ export function PlanetaryAnalyticsWidget({
         </div>
       </section>
     </div>
-  </article>;
+  </article></AnalyticsPane>;
 }

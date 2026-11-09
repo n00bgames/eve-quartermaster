@@ -1,3 +1,4 @@
+import {AnalyticsPane} from "../../components/AnalyticsPane";
 import {useEffect,useState} from "react";
 import {TimeSeriesChart} from "../../components/TimeSeriesChart";
 import {ReportTable} from "../industryReports/IndustryReportPage";
@@ -15,7 +16,7 @@ export function ShipAnalyticsWidget({api,days,scope,refreshKey}:{api:Api;days:nu
   return()=>{active=false;};
  },[api,days,scope,refreshKey,typeId,ownerScope]);
  const number=(value:number)=>Math.round(value).toLocaleString();
- return <section className="panel stacked ship-analytics"><h3>Ship inventory Analytics</h3><label>Ship owner scope<select value={ownerScope} onChange={e=>setOwnerScope(e.target.value)}><option value="all">All accessible ship owners</option><option value="selected">Use selected Analytics pilot scope</option></select></label>
+ return <AnalyticsPane title="Ship inventory Analytics"><section className="panel stacked ship-analytics"><h3>Ship inventory Analytics</h3><label>Ship owner scope<select value={ownerScope} onChange={e=>setOwnerScope(e.target.value)}><option value="all">All accessible ship owners</option><option value="selected">Use selected Analytics pilot scope</option></select></label>
  {loading&&<p role="status">Loading ship history…</p>}{error&&<p className="muted" role="status">{error}</p>}
  {data&&<><p className="muted">{data.capitals_visible?"All ship hull sizes":"Subcapital hulls only"} · Capsules excluded · {data.observed_at?`Observed through ${new Date(data.observed_at).toLocaleString()}`:"Run an asset sync or capture an Analytics snapshot to begin history."}</p>
  <div className="status-grid"><article><strong>{number(data.total_ships)}</strong><span>{data.capitals_visible?"Ships":"Subcapital ships"}</span></article><article><strong>{number(data.ship_types)}</strong><span>Distinct ship types</span></article></div>
@@ -24,5 +25,5 @@ export function ShipAnalyticsWidget({api,days,scope,refreshKey}:{api:Api;days:nu
  <label>Hull type history<select value={typeId} onChange={e=>setTypeId(e.target.value)}><option value="">Choose a hull type</option>{data.by_type.map(row=><option key={row.type_id} value={row.type_id}>{row.item} ({number(row.quantity)})</option>)}</select></label>
  {typeId&&data.selected_type_id===Number(typeId)&&data.type_series.length>0&&<TimeSeriesChart ariaLabel="Selected hull type history" selectedDays={days} formatValue={number} series={[{key:typeId,name:data.by_type.find(row=>String(row.type_id)===typeId)?.item??"Hull type",color:"#79e0a7",points:data.type_series}]}/>}
  <ReportTable title="Latest observed ships by type" rows={data.by_type} fields={["item","ship_class","quantity"]}/><p className="muted">{data.notice}</p></>}
- </section>;
+ </section></AnalyticsPane>;
 }

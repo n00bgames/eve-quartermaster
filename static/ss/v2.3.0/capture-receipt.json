@@ -313,5 +313,94 @@
         "sha256": "3e9be507502c489728daeecc8a51158360a729217b71ffc64511169cb993c20f"
       }
     ]
+  },
+  "analytics_panes": {
+    "captured_on": "2026-11-09",
+    "application_version": "2.3.0",
+    "source_base_commit": "56f275113bd5279d666d2add420af3e6c77dfef1",
+    "source_state": "Uncommitted frontend-only cross-page analytics pane follow-up; no version bump or deployment.",
+    "method": "Actual React Analytics/Journey/Bounties/Killboard/SRP/Events/HyperNet views, shared API/styles and native summaries in headless Edge at 1440px and 390px.",
+    "data": "Fabricated local pilots, snapshots, observations and HyperNet participation/preferences. Most views use real local API serializers with isolated SQLite; Killboard uses fixed read fixtures to prevent auto-sync. No production credentials/data, live ESI or SSO.",
+    "validation": {
+      "checks": [
+        "Main Analytics categories and widgets, including private Journey and HyperNet, all start closed; Journey makes no request before expansion",
+        "Analytics page Journey panel has its own linked-pilot/UTC controls, supports all/selected scope and retains choices after collapsing while stopping results polling",
+        "Navigation-denied Analytics hides Journey; category anchors open their collapsed target and native summary keyboard controls work without resetting widget controls",
+        "Journey map/replay remains available while its analytics is collapsed by default, and expanding it restores all six rankings",
+        "Bounties, Killboard and Events analytics summaries/charts/rankings all start as closed panes and expand to their existing data",
+        "SRP summaries/charts/breakdowns start closed; HyperNet analytics starts closed while its existing opt-in privacy controls remain available",
+        "390px collapsed Analytics/Bounties/Killboard/SRP/Events/HyperNet views and expanded Journey filters/rankings fit without horizontal overflow"
+      ],
+      "errors": []
+    },
+    "frontend_validation": "29 existing Journey tests, final TypeScript and full Vite production build passed (existing chunk advisory).",
+    "limitations": "Frontend layout/integration checks only; no backend changed or production integration performed. Existing aggregate reads can run while panes are closed; Journey results stop polling when collapsed.",
+    "source_sha256": {
+      "frontend/src/main.tsx": "a9b5ad583b806469f7fdef14bd8ab92fc5840ae2229f5cf1f65b86868f390b03",
+      "frontend/src/features/analytics/AnalyticsPlatform.tsx": "b1745c1aca776840a66a44586118dca76e99d60db94cd6400cab3eb01004afcc",
+      "frontend/src/features/analytics/FinancialDashboard.tsx": "fcd80dcae011f91c11c436916733f213910df9856a21991733e6dbfd8dbf8b3b",
+      "frontend/src/features/analytics/ManufacturingAnalyticsWidgets.tsx": "822a314b1a59295bb78d33500f2241f34322a9cd859d57b489a00096b91097b1",
+      "frontend/src/features/analytics/MiningAnalyticsWidget.tsx": "da6de54727bbe3dfd3cd8aed98fc49530bc5bac225f13c7d0f0471c21ea52ba6",
+      "frontend/src/features/analytics/PlanetaryAnalyticsWidget.tsx": "b8a2e2719c4d282c47b0abdec0d437364d55079ca994bbb0b6ba38c2a3dab77b",
+      "frontend/src/features/analytics/ResearchAnalyticsWidget.tsx": "a937570c08a1cbbc05603c4c36ae52a7ca6a61c11ed4ab468ef44682110966ac",
+      "frontend/src/features/analytics/ShipAnalyticsWidget.tsx": "1d883c46e26e6c6984171102d1aaab35949c1f3c339011f9deb05aa9e5849217",
+      "frontend/src/features/bounties/BountyAnalyticsPage.tsx": "5c1d6afb5ed3ee1123c3bdc3d3218400691eef57cf5ae6edbd559887fddfdac5",
+      "frontend/src/features/events/EventAnalyticsPane.tsx": "03f8c7ea974e3a1a7f6e7013efeac1f42d846790a2fb04db32731f371d13bc9b",
+      "frontend/src/features/hypernet/HyperNetAnalytics.tsx": "53fdb3476a4c1f577319c239d35244554757fbc43df094086a93c2cedadab90a",
+      "frontend/src/features/journey/analytics.css": "2aaa11602b50f7ccc78a1e9e81450497d741864be6a202494f41427ad184a04e",
+      "frontend/src/features/journey/JourneyAnalytics.tsx": "90147e5c5c94673a61f08f5ec903371d638c527b7d9893c80d7c90815964b734",
+      "frontend/src/features/killboard/KillboardPage.tsx": "2c4595411c19835c2f369d4d5dcda4d67eec11660d0d72cb8595fa5cee2e149e",
+      "frontend/src/features/srp/SrpPage.tsx": "52048423d76dda6a7093d1e8fca8fec78eaf3e99a3efd968c77597ba06093eea",
+      "frontend/src/components/AnalyticsPane.tsx": "a732e8d15eca1bf1f85bbfd5d44f0a88a828d36f31eada01d68ab2d941b57c69",
+      "frontend/src/components/analyticsPane.css": "93399a3a07ce2cb6636d92ac199c2b1550659b6150dda9a783adab6c5c3c9d33",
+      "frontend/src/features/analytics/JourneyAnalyticsSection.tsx": "ebce11a80ad6fdfac582586237331eba5e3d0c657b02dad6f6e2dfafa6834995"
+    },
+    "images": [
+      {
+        "filename": "analytics-platform-collapsed.png",
+        "bytes": 176892,
+        "sha256": "9ee2d5a71649799da1db974a9044db79049bc0a4ecdc89ecee4eac75453d553d"
+      },
+      {
+        "filename": "analytics-platform-journey.png",
+        "bytes": 170631,
+        "sha256": "c518f0318f55215a33a79f587395913ce48025511cd90ed161467483bcddb9c9"
+      },
+      {
+        "filename": "analytics-platform-mobile.png",
+        "bytes": 191401,
+        "sha256": "b7c4c01fc25c893247b21644c6ed7d871c8d122f8c2ff32a42b036d2fa2bb2b8"
+      },
+      {
+        "filename": "journey-analytics-collapsed.png",
+        "bytes": 62405,
+        "sha256": "cc5e42a0a8b1f7d02ee11c63d8ba573f3ff88aee6a52318d54b97bd6b6cc9e29"
+      },
+      {
+        "filename": "bounties-analytics-collapsed.png",
+        "bytes": 112076,
+        "sha256": "0a8685c62c8c4aa971d430736137db02e42c273f8436dfa96f19f1f0620969fa"
+      },
+      {
+        "filename": "killboard-analytics-collapsed.png",
+        "bytes": 71469,
+        "sha256": "77d2aa8d8e6c5254870315c5b7adcddd73941b7f33a8a104d8469132dc9d275d"
+      },
+      {
+        "filename": "srp-analytics-collapsed.png",
+        "bytes": 84547,
+        "sha256": "dd29491af5de9d741341a473eea938d3aeb6eb8fe7e728e07da341d9d0488a7a"
+      },
+      {
+        "filename": "events-analytics-collapsed.png",
+        "bytes": 25957,
+        "sha256": "a71390dddd4e8147f7b68a505ecdb40d2a79a7589c1af294030df84278501882"
+      },
+      {
+        "filename": "hypernet-analytics-collapsed.png",
+        "bytes": 9173,
+        "sha256": "d917fe3802c4d4e94f830c78faff27b2b3e4439c281eed697f677747f86aa687"
+      }
+    ]
   }
 }

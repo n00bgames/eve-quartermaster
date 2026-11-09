@@ -1,3 +1,4 @@
+import {AnalyticsPane} from "../../components/AnalyticsPane";
 import { ArrowDownRight, ArrowUpRight, TrendingUp, WalletCards } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
@@ -25,7 +26,7 @@ export function FinancialDashboard({ data, canManageCorporations, onToggleCorpor
   useEffect(() => { if (!views.some((view) => view.key === selectedKey)) setSelectedKey(views[0]?.key ?? ""); }, [views, selectedKey]);
   const selected = views.find((view) => view.key === selectedKey) ?? views[0];
 
-  return <section id="analytics-financial" className="financial-dashboard analytics-category-anchor" aria-labelledby="financial-dashboard-title">
+  return <AnalyticsPane title="Financial Analytics" id="analytics-financial"><section  className="financial-dashboard analytics-category-anchor" aria-labelledby="financial-dashboard-title">
     <div className="section-heading">
       <div><h3 id="financial-dashboard-title"><WalletCards size={22} /> Financial Analytics</h3><p>Historical wallet movement, growth, spending velocity, and the events behind major changes.</p></div>
       {views.length > 0 && <select aria-label="Financial analytics scope" value={selected?.key ?? ""} onChange={(event) => setSelectedKey(event.target.value)}>{data.personal.length > 0 && <optgroup label="My characters">{data.account && <option value="personal-all">All My Characters</option>}{data.personal.map((row) => <option key={row.character_id} value={`personal-${row.character_id}`}>{row.character_name}</option>)}</optgroup>}{data.corporations.length > 0 && <optgroup label="Corporations">{data.corporations.map((row) => <option key={row.corporation_id} value={`corporation-${row.corporation_id}`}>{row.corporation_name}</option>)}</optgroup>}</select>}
@@ -34,7 +35,7 @@ export function FinancialDashboard({ data, canManageCorporations, onToggleCorpor
     {!selected && <p className="empty">No wallet history is available yet. Run Character Sync after linking the character-wallet ESI scope.</p>}
     {(selected?.kind === "personal" || selected?.kind === "account") && <PersonalFinancialView row={selected.row} days={data.days} />}
     {selected?.kind === "corporation" && <CorporationFinancialView row={selected.row} days={data.days} canManage={canManageCorporations} onToggle={onToggleCorporationTotals} />}
-  </section>;
+  </section></AnalyticsPane>;
 }
 
 function FinancialKpis({ stats, currentLabel = "Current wallet", currentHidden = false, extra }: { stats: WalletStatistics; currentLabel?: string; currentHidden?: boolean; extra?: ReactNode }) {

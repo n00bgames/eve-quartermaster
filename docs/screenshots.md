@@ -876,3 +876,25 @@ November 9, 2026 client date. Actual JourneyPanel/JourneyAnalytics and shared AP
 ![Six journey ranking cards and scope controls](../static/ss/v2.3.0/journey-analytics-desktop.png)
 
 ![Journey analytics controls and all rankings at 390px](../static/ss/v2.3.0/journey-analytics-mobile.png)
+
+## Default-collapsed analytics panes — v2.3.0 development preview
+
+November 9, 2026 client date. Actual affected React views and shared API/styles in headless Edge at 1440px and 390px. Fabricated accounts/history in isolated SQLite; real local serializers for Journey/Analytics/Bounties/SRP/Events/HyperNet. Fixed local Killboard read fixtures prevent automatic synchronization. No production records, live SSO, external ESI or game operations. Seven browser scenario groups cover default collapse, expansion/keyboard/anchors, retained controls, both Journey placements, independent pilot/date scope, Navigation-denied hiding, private HyperNet controls and mobile overflow. Unreleased frontend follow-up; no migration/new scope. [Guide](analytics-panes.md) · [Receipt](../static/ss/v2.3.0/capture-receipt.json).
+
+![Analytics platform collapsed](../static/ss/v2.3.0/analytics-platform-collapsed.png)
+
+![Analytics platform journey](../static/ss/v2.3.0/analytics-platform-journey.png)
+
+![Analytics platform mobile](../static/ss/v2.3.0/analytics-platform-mobile.png)
+
+![Journey analytics collapsed](../static/ss/v2.3.0/journey-analytics-collapsed.png)
+
+![Bounties analytics collapsed](../static/ss/v2.3.0/bounties-analytics-collapsed.png)
+
+![Killboard analytics collapsed](../static/ss/v2.3.0/killboard-analytics-collapsed.png)
+
+![Srp analytics collapsed](../static/ss/v2.3.0/srp-analytics-collapsed.png)
+
+![Events analytics collapsed](../static/ss/v2.3.0/events-analytics-collapsed.png)
+
+![Hypernet analytics collapsed](../static/ss/v2.3.0/hypernet-analytics-collapsed.png)

@@ -1068,6 +1068,12 @@ Open **Intel → Matchups** to browse published ships by CCP subclass and name o
 [Example fit and counters](static/ss/v2.2.1/matchups-loss-fit.jpg) · [Mobile catalog](static/ss/v2.2.1/matchups-catalog-mobile.jpg).
 
 
+### Expandable analytics throughout EQM (unreleased follow-up)
+
+Analytics categories/results now start in collapsed, keyboard-accessible panes across the main Analytics page, Journey, Bounties, Killboard, SRP, Events and private HyperNet analytics. Expand the groups you want to inspect. Journey analytics is also available directly on Analytics with its own pilot/UTC date controls; it stays private to your account and requires Navigation access. Existing filters, exports and privacy controls remain available. [Behavior and coverage](docs/analytics-panes.md).
+
+![Analytics categories collapsed by default](static/ss/v2.3.0/analytics-platform-collapsed.png)
+
 ### My Journey analytics (unreleased follow-up)
 
 Rank systems most visited, ship types most flown, most-flown hulls with imported kills, kill locations, lost hulls and pilots by observed jumps. Compare one pilot or all your account's linked pilots across selected UTC dates or all stored history. Choose observed visits or confirmed span for ship-use rankings, and drill into a pilot from the leaderboard. Full-scope SQL aggregates remain complete when replay rows are limited. Travel is sampled; combat uses existing imports with separate permissions. No new migration or ESI scope. [Definitions and coverage](docs/journey-map.md#journey-analytics).

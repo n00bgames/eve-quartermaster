@@ -1,3 +1,4 @@
+import {AnalyticsPane} from "../../components/AnalyticsPane";
 import { BadgeDollarSign, Factory, PackageCheck, Warehouse } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -8,7 +9,7 @@ const numberFormatter = new Intl.NumberFormat();
 
 export function ManufacturingAnalyticsWidgets({ summary, days }: { summary: ManufacturingAnalytics; days: number }) {
   return <>
-    <article id="analytics-manufacturing" className="analytics-widget manufacturing-analytics-widget analytics-category-anchor">
+    <AnalyticsPane title="Manufacturing Output" id="analytics-manufacturing"><article  className="analytics-widget manufacturing-analytics-widget analytics-category-anchor">
       <header><Factory size={18} /><div><h4>Manufacturing Output</h4><small>{days === 0 ? "All-Time" : `${days}-day`} ledger | {numberFormatter.format(summary.job_count)} realized jobs</small></div></header>
       <div className="manufacturing-kpi-grid">
         <ManufacturingKpi icon={<PackageCheck size={17} />} label="Items built" value={numberFormatter.format(summary.items_built)} />
@@ -17,8 +18,8 @@ export function ManufacturingAnalyticsWidgets({ summary, days }: { summary: Manu
         <ManufacturingKpi label="Saved" value={iskFormatter.format(summary.savings) + " ISK"} positive={summary.savings >= 0} negative={summary.savings < 0} />
       </div>
       <ManufacturingItemList summary={summary} />
-    </article>
-    <article className="analytics-widget manufacturing-analytics-widget">
+    </article></AnalyticsPane>
+    <AnalyticsPane title="Output Disposition"><article className="analytics-widget manufacturing-analytics-widget">
       <header><BadgeDollarSign size={18} /><div><h4>Output Disposition</h4><small>Recorded kept and sold production</small></div></header>
       <div className="manufacturing-kpi-grid">
         <ManufacturingKpi icon={<Warehouse size={17} />} label="Items kept" value={numberFormatter.format(summary.kept_items)} />
@@ -27,7 +28,7 @@ export function ManufacturingAnalyticsWidgets({ summary, days }: { summary: Manu
         <ManufacturingKpi label="Profit after costs" value={iskFormatter.format(summary.realized_profit) + " ISK"} positive={summary.realized_profit >= 0} negative={summary.realized_profit < 0} />
       </div>
       {summary.sold_items === 0 && summary.kept_items === 0 && <p className="empty">Mark completed output as kept or sold to populate disposition analytics.</p>}
-    </article>
+    </article></AnalyticsPane>
   </>;
 }
 

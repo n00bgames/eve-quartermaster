@@ -1,3 +1,4 @@
+import {AnalyticsPane} from "../../components/AnalyticsPane";
 import {EveItemName} from "../clientLinks/EveClientLinks";
 import { useEffect, useRef, useState } from "react";
 import { TimeSeriesChart } from "../../components/TimeSeriesChart";
@@ -108,7 +109,7 @@ export function HyperNetAnalytics({ api, days: sharedDays, characterId = "", ref
       <div className="hypernet-consent-characters">{consent.characters.map(row => <label key={row.id}><input type="checkbox" checked={row.enabled} disabled={saving} onChange={event => void save(event.target.checked, row.id)} />{row.name}</label>)}</div>
       {error && <div className="mini-alert">{error}</div>}
     </section>}
-    {visible && <section className="panel stacked hypernet-private-analytics" aria-label="Private HyperNet analytics">
+    {visible && <AnalyticsPane title="Private HyperNet analytics"><section className="panel stacked hypernet-private-analytics">
       <div className="section-heading"><div><h4>Private HyperNet analytics</h4><p>Only your enabled characters · {days === 0 ? "All-Time" : `${days} days`} · {visible.characters.length} character{visible.characters.length === 1 ? "" : "s"} with records</p></div>{sharedDays == null && <select aria-label="HyperNet analytics reporting period" value={days} onChange={event => setOwnDays(Number(event.target.value))}><option value={7}>7 days</option><option value={30}>30 days</option><option value={90}>90 days</option><option value={365}>1 year</option><option value={0}>All-Time</option></select>}</div>
       <OutcomeMetrics buying={visible.buying} selling={visible.selling} />
       <p className="muted">Results use completion or refund dates; unresolved records use their entry dates. Buying and selling are separate: retained-item valuations and later relistings can overlap, so these are recorded results, not a combined cash-profit ledger.</p>
@@ -119,6 +120,6 @@ export function HyperNetAnalytics({ api, days: sharedDays, characterId = "", ref
       <details><summary>Character breakdown</summary>{visible.characters.map(row => <article className="hypernet-character-analytics" key={row.id}><h5>{row.name}</h5><OutcomeMetrics {...row} /></article>)}</details>
       <div className="section-heading"><h5>Ship and item statistics</h5><select aria-label="HyperNet analytics item category" value={effectiveFilter} onChange={event => setItemFilter(event.target.value)}><option value="all">All items</option>{visible.items.some(row => row.is_ship) && <option value="ships">Ships</option>}{visible.items.some(row => !row.is_ship) && <option value="other">Other items</option>}</select></div>
       {items.length > 0 && <div className="table-wrap"><table><thead><tr><th>Item</th>{visible.buying.records > 0 && <><th>Buyer wins / losses</th><th>Node spend</th><th>Buyer net / ROI</th></>}{visible.selling.records > 0 && <><th>Retained / lost</th><th>Selling result</th></>}</tr></thead><tbody>{items.map(row => <tr key={row.type_id}><td><EveItemName name={row.name} typeId={row.type_id}/><small>{row.is_ship ? "Ship" : "Item"}</small></td>{visible.buying.records > 0 && <><td>{row.buying.records ? `${row.buying.wins} / ${row.buying.losses}` : "—"}</td><td>{row.buying.records ? formatIsk(row.buying.resolved_spend, true) : "—"}</td><td className={profitClass(row.buying.recorded_result)}>{row.buying.records ? formatIsk(row.buying.recorded_result, true) : "—"}<small>{percent(row.buying.roi)}</small></td></>}{visible.selling.records > 0 && <><td>{row.selling.records ? `${row.selling.retained} / ${row.selling.lost}` : "—"}</td><td className={profitClass(row.selling.recorded_result)}>{row.selling.records ? formatIsk(row.selling.recorded_result, true) : "—"}</td></>}</tr>)}</tbody></table></div>}
-    </section>}
+    </section></AnalyticsPane>}
   </>;
 }
