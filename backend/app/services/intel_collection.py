@@ -41,6 +41,11 @@ def claim(db: Session,job_id: str,token: str) -> bool:
 
 
 def owned_job(db: Session,job_id: str,token: str):
+    # Use the same subject -> job order as report deletion. Serialize the
+    # checkpoint's subject writes before testing its still-current lease.
+    sid=db.scalar(select(IntelCollection.subject_id).where(IntelCollection.id==job_id))
+    if sid is None:return None
+    db.scalar(select(IntelSubject).where(IntelSubject.id==sid).with_for_update())
     # Lock the checkpoint until commit. A recovering worker or cancellation
     # cannot change ownership between this check and its database writes.
     row=db.scalar(select(IntelCollection).where(IntelCollection.id==job_id,

@@ -193,7 +193,8 @@ def test_mid_batch_failure_rolls_back_notes_identities_and_retry_ledger(scans,mo
         return original(model)
     monkeypatch.setattr(service,'insert',failing_insert)
     with pytest.raises(RuntimeError,match='Synthetic write failure'):post(e,r)
-    assert count(e,IntelNote)==count(e,IntelSubject)==count(e,IntelScanNoteBatch)==0
+    assert count(e,IntelNote)==count(e,IntelScanNoteBatch)==0
+    assert count(e,IntelSubject)==3  # Original scan stubs survive; 801 new note identities roll back.
     assert e.db.get(LocalScanReport,r['token']) is not None
 
 

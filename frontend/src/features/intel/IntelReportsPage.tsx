@@ -9,6 +9,7 @@ import {IntelIdentityHeader} from "./IntelIdentityHeader";
 import {IntelShipLabel} from "./IntelShipLabel";
 import {IntelMembership} from "./IntelMembership";
 import {AllianceCorporations} from "./AllianceCorporations";
+import {IntelSubjectBrowser} from "./IntelSubjectBrowser";
 import "./intel.css";
 const base="/intel";
 const number=new Intl.NumberFormat(undefined,{maximumFractionDigits:1});
@@ -23,9 +24,10 @@ const tabs=["Overview","Geography","Timeline","Associates","Evidence","History",
 type Tab=typeof tabs[number];
 
 export function IntelReportsPage({api}:{api:ApiClient}) {
- const [subjects,setSubjects]=useState<Subject[]>([]),[report,setReport]=useState<IntelReport|null>(null);
+ const [revision,setRevision]=useState(0),[report,setReport]=useState<IntelReport|null>(null);
+ const [confirmDelete,setConfirmDelete]=useState(false);
  const [selectedId,setSelectedId]=useState(initialId),[tab,setTab]=useState<Tab>("Overview");
- const [paste,setPaste]=useState(""),[resolved,setResolved]=useState<Resolution[]>([]),[search,setSearch]=useState("");
+ const [paste,setPaste]=useState(""),[resolved,setResolved]=useState<Resolution[]>([]);
  const [busy,setBusy]=useState(false),[loading,setLoading]=useState(false),[error,setError]=useState(""),[message,setMessage]=useState("");
  const [from,setFrom]=useState(dateUTC(new Date(Date.now()-90*86400000))),[to,setTo]=useState(dateUTC(new Date())),[pages,setPages]=useState(10);
  const [associateKind,setAssociateKind]=useState("character"),[evidenceIds,setEvidenceIds]=useState<number[]|null>(null),[evidenceTitle,setEvidenceTitle]=useState("");
@@ -33,19 +35,18 @@ export function IntelReportsPage({api}:{api:ApiClient}) {
  const [sighting,setSighting]=useState<SightingDraft>({...emptySighting});
  const pendingSighting=useRef<{signature:string;request_id:string}|null>(null);
  const sequence=useRef(0),currentSubject=useRef(selectedId);currentSubject.current=selectedId;
- useEffect(()=>{const change=()=>{const id=initialId();if(id)setSelectedId(id);};window.addEventListener("hashchange",change);return()=>window.removeEventListener("hashchange",change);},[]);
+ useEffect(()=>{const change=()=>{const id=initialId();setSelectedId(id);};window.addEventListener("hashchange",change);return()=>window.removeEventListener("hashchange",change);},[]);
  const latest=report?.latest_collection;
  function fail(err:unknown){setError(err instanceof Error?err.message:"Request failed");}
- async function lists(){setSubjects(await api<Subject[]>(`${base}/subjects?q=${encodeURIComponent(search)}`));}
+ async function lists(){setRevision(value=>value+1);}
  function windowQuery(){return new URLSearchParams({from_at:`${from}T00:00:00Z`,to_at:new Date(new Date(`${to}T00:00:00Z`).getTime()+86400000).toISOString()});}
  async function loadReport(id=selectedId){
   if(!id)return;const seq=++sequence.current;setLoading(true);
-  try{const data=await api<IntelReport>(`${base}/subjects/${id}/report?${windowQuery()}`);if(seq===sequence.current&&currentSubject.current===id)setReport(data);}
+  try{const data=await api<IntelReport>(`${base}/subjects/${id}/report?${windowQuery()}`);if(seq===sequence.current&&currentSubject.current===id){setReport(data);if(data.subject.archived)setTab("Notes");}}
   finally{if(seq===sequence.current)setLoading(false);}
  }
  async function run(action:()=>Promise<void>){setBusy(true);setError("");setMessage("");try{await action();}catch(err){fail(err);}finally{setBusy(false);}}
- useEffect(()=>{const timer=window.setTimeout(()=>void lists().catch(fail),200);return()=>clearTimeout(timer);},[search]);
- useEffect(()=>{setReport(null);setPrivateData(null);setNotes([]);setEvidenceIds(null);setTab("Overview");if(selectedId)void loadReport(selectedId).catch(fail);},[selectedId]);
+ useEffect(()=>{setConfirmDelete(false);setReport(null);setPrivateData(null);setNotes([]);setEvidenceIds(null);setTab("Overview");if(selectedId)void loadReport(selectedId).catch(fail);},[selectedId]);
  useEffect(()=>{if(selectedId)void loadReport(selectedId).catch(fail);},[from,to]);
  useEffect(()=>{
   if(!latest||!isActive(latest))return;
@@ -84,6 +85,11 @@ export function IntelReportsPage({api}:{api:ApiClient}) {
   if(selectedId===subject.id)await loadReport(subject.id);else open(subject.id);
   await lists();setMessage(sightingMessage(subject,!!seen));
  });}
+ async function changePriority(priority:boolean){
+  const id=selectedId,previous=!!report?.subject.priority;
+  setReport(old=>old?.subject.id===id?{...old,subject:{...old.subject,priority}}:old);
+  await run(async()=>{try{await api(`${base}/subjects/${id}/priority`,request("PATCH",{priority}));if(currentSubject.current===id)await loadReport(id);await lists();}catch(err){setReport(old=>old?.subject.id===id?{...old,subject:{...old.subject,priority:previous}}:old);throw err;}});
+ }
  async function collect(){if(!selectedId)return;await run(async()=>{
   const job=await api<Collection>(`${base}/subjects/${selectedId}/collect`,request("POST",{days:Math.min(20000,Math.max(1,Math.ceil((Date.now()-new Date(`${from}T00:00:00Z`).getTime())/86400000))),max_pages:pages}));
   setReport(old=>old?{...old,latest_collection:job}:old);await lists();setMessage("Public collection queued. You can leave this page; progress is retained in the database.");
@@ -102,17 +108,20 @@ export function IntelReportsPage({api}:{api:ApiClient}) {
     <button className="intel-primary" disabled={busy||!paste.trim()} onClick={()=>void run(async()=>{const result=await api<{rows:Resolution[];warnings:string[]}>(`${base}/resolve`,request("POST",{text:paste}));setResolved(result.rows);setMessage(result.warnings.join(" "));})}><Search size={15}/> Resolve names</button>
     <div className="intel-resolutions">{resolved.map((row,index)=><article key={index}><strong>{row.input}</strong>{row.state==="unresolved"?<small>No exact match. Check spelling or use a zKill entity URL.</small>:<>{row.state==="ambiguous"&&<small>Choose the intended entity:</small>}{row.candidates.map(candidate=><button key={`${candidate.kind}:${candidate.eve_id}`} disabled={busy} onClick={()=>void track(candidate)}><span>{candidate.name}<small>{candidate.kind}</small></span><ChevronRight size={16}/></button>)}</>}</article>)}</div>
    </section>
-   <section className="panel stacked"><h3>Saved subjects</h3><label>Search dossiers<input value={search} onChange={event=>setSearch(event.target.value)} placeholder="Name"/></label><div className="intel-subjects">{subjects.map(subject=><button className={selectedId===subject.id?"selected":""} key={subject.id} disabled={busy} onClick={()=>void runReport(subject)}><span className={`intel-kind kind-${subject.kind}`}>{subject.kind}</span><strong>{subject.name}</strong><small>{subject.latest_collection?`${subject.latest_collection.status} · ${stamp(subject.latest_collection.updated_at)}`:"No collection yet"}</small></button>)}{!subjects.length&&<p className="muted">Resolve an entity to start a dossier.</p>}</div></section>
+   <IntelSubjectBrowser api={api} revision={revision} selectedId={selectedId} busy={busy} onOpen={candidate=>void track(candidate)} onPilot={pilot=>void runReport(pilot)}/>
   </aside>
   <div className="intel-main">{report?<>
-   <section className="panel stacked"><IntelIdentityHeader report={report} api={api} badges={badges}/>
-    <div className="intel-controls"><label>From (UTC)<input type="date" value={from} onChange={event=>{if(event.target.value)setFrom(event.target.value);}}/></label><label>Through (UTC)<input type="date" value={to} onChange={event=>{if(event.target.value)setTo(event.target.value);}}/></label><div className="intel-presets">{[7,30,90,365].map(days=><button key={days} onClick={()=>{setFrom(dateUTC(new Date(Date.now()-days*86400000)));setTo(dateUTC(new Date()));}}>{days}d</button>)}<button onClick={()=>{setFrom("2003-05-06");setTo(dateUTC(new Date()));}}>All retained</button></div><button disabled={busy||loading} onClick={()=>void runReport(report.subject)}><RefreshCw size={15}/> {sighting.system&&report.subject.kind==="character"?"Record sighting / refresh report":"Refresh report"}</button></div>
+   <section className="panel stacked">{report.subject.archived?<h3>{report.subject.name} · Preserved notes</h3>:<IntelIdentityHeader report={report} api={api} badges={badges}/>}
+    {report.subject.archived?<div className="notice inline">This report was deleted. Notes are preserved. A new Local Scan or adding this entity again will re-create its dossier.</div>:<div className="intel-dossier-actions"><label><input type="checkbox" checked={!!report.subject.priority} disabled={busy} onChange={event=>void changePriority(event.target.checked)}/> Priority Target</label><button disabled={busy} onClick={()=>setConfirmDelete(true)}>Delete report</button></div>}
+    {confirmDelete&&<div className="mini-alert intel-delete-confirm" role="alert"><strong>Delete {report.subject.kind} report for {report.subject.name}?</strong><p>Clears this entity’s collected profile, collection history, membership monitoring and manual sightings. Notes are preserved. Other pilots/corporations, shared killmails and Local Scan records remain available.</p><button disabled={busy} onClick={()=>void run(async()=>{await api(`${base}/subjects/${selectedId}`,request("DELETE"));sequence.current++;currentSubject.current=0;setSelectedId(0);setReport(null);setLoading(false);setConfirmDelete(false);window.history.replaceState({},"",window.location.pathname+window.location.search+"#intel");await lists();setMessage("Report deleted. Notes preserved; scanning or adding the entity again can re-create its report from shared evidence.");})}>Confirm delete report</button><button disabled={busy} onClick={()=>setConfirmDelete(false)}>Keep report</button></div>}
+    {!report.subject.archived&&<><div className="intel-controls"><label>From (UTC)<input type="date" value={from} onChange={event=>{if(event.target.value)setFrom(event.target.value);}}/></label><label>Through (UTC)<input type="date" value={to} onChange={event=>{if(event.target.value)setTo(event.target.value);}}/></label><div className="intel-presets">{[7,30,90,365].map(days=><button key={days} onClick={()=>{setFrom(dateUTC(new Date(Date.now()-days*86400000)));setTo(dateUTC(new Date()));}}>{days}d</button>)}<button onClick={()=>{setFrom("2003-05-06");setTo(dateUTC(new Date()));}}>All retained</button></div><button disabled={busy||loading} onClick={()=>void runReport(report.subject)}><RefreshCw size={15}/> {sighting.system&&report.subject.kind==="character"?"Record sighting / refresh report":"Refresh report"}</button></div>
     <div className="intel-collection-controls"><label>Collection depth: pages per kills/losses feed<input type="number" min={1} max={100} value={pages} onChange={event=>setPages(Number(event.target.value))}/></label><button className="intel-primary" disabled={busy||isActive(latest)||pages<1||pages>100||!Number.isInteger(pages)} onClick={()=>void collect()}><Database size={15}/> Collect public history</button><small>Collects from the selected start date through now; up to 200 entries per page. Report dates filter retained evidence independently.</small></div>
     {latest&&<div className={`intel-job job-${latest.status}`} role="status"><div><strong>{latest.status.toUpperCase()} · {latest.stage}</strong><span>Page {latest.page}/{latest.max_pages} · {latest.imported_count} new · {latest.reused_count} reused · {latest.failed_count} failed attempts</span>{latest.available_at&&latest.status==="queued"&&<small>Next attempt: {stamp(latest.available_at)}</small>}</div>{isActive(latest)?<button disabled={busy} onClick={()=>void run(async()=>{const job=await api<Collection>(`${base}/collections/${latest.id}/cancel`,request("POST"));setReport(old=>old?{...old,latest_collection:job}:old);await lists();})}>Cancel collection</button>:latest.stage!=="finished"&&["failed","partial","cancelled"].includes(latest.status)?<button disabled={busy} onClick={()=>void run(async()=>{const job=await api<Collection>(`${base}/collections/${latest.id}/retry`,request("POST"));setReport(old=>old?{...old,latest_collection:job}:old);})}>Resume collection</button>:null}</div>}
     <div className={`intel-coverage ${report.coverage.analysis_limited||latest?.status==="partial"?"limited":""}`}><BookOpen size={17}/><div><strong>{report.coverage.loaded_killmails?`${number.format(report.coverage.loaded_killmails)} retained killmails in this window`:"No retained evidence in this window"}</strong><span>Observed {stamp(report.coverage.observed_from)} — {stamp(report.coverage.observed_to)}.</span><span>{report.coverage.analysis_limited?`Analysis is capped at ${report.coverage.analysis_limit} killmails or the participant budget. `:""}{report.coverage.notice}</span>{latest&&<span>Latest collection coverage: {Object.entries(latest.coverage).filter(([key])=>key==="kills"||key==="losses").map(([key,value])=>`${key}: ${value.status??"pending"} (${value.pages??0} pages)`).join(" · ")||"not collected yet"}</span>}</div></div>
-    {data?.esi?.state==="unavailable"&&<div className="mini-alert">Public ESI unavailable. Retained identity/history may be stale.</div>}{data?.zkill?.state==="unavailable"&&<div className="mini-alert">zKill statistics unavailable. Retained badges may be stale.</div>}
+    {data?.esi?.state==="partial"&&<div className="notice inline">{data.esi.notice}</div>}{data?.esi?.state==="unavailable"&&<div className="mini-alert">Public ESI unavailable. Retained identity/history may be stale.</div>}{data?.zkill?.state==="unavailable"&&<div className="mini-alert">zKill statistics unavailable. Retained badges may be stale.</div>}
     {!!latest?.errors.length&&<p className="muted">Last collection issue: {latest.errors[latest.errors.length-1].message} ({latest.errors[latest.errors.length-1].stage}, page {latest.errors[latest.errors.length-1].page}).</p>}
-    <nav className="intel-tabs" aria-label="Intel report sections">{tabs.map(name=><button key={name} className={tab===name?"active":""} onClick={()=>setTab(name)}>{name}</button>)}</nav>
+    </>}
+    <nav className="intel-tabs" aria-label="Intel report sections">{(report.subject.archived?["Notes"] as const:tabs).map(name=><button key={name} className={tab===name?"active":""} onClick={()=>setTab(name)}>{name}</button>)}</nav>
    </section>
    {loading&&<p role="status" className="muted">Updating retained evidence…</p>}
    {tab==="Timeline"&&<IntelSightingTimeline report={report}/>}

@@ -244,6 +244,8 @@ async def generate(payload: ScanInput, request: Request, user: User = Depends(re
         db.add(row)
         from app.services.local_scan_sightings import record as record_sightings
         record_sightings(db, row)
+        from app.services.intel_subjects import seed_scan
+        seed_scan(db, user, snapshot, at)
         record_audit_event(db, event_kind="intel", title="Local scan generated", actor_user=user,
                            body=f"characters={snapshot['character_count']}; retention={payload.retention}")
         db.commit()

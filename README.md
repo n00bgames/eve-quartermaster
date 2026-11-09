@@ -83,6 +83,12 @@ See [CHANGELOG.md](CHANGELOG.md) for version-by-version release notes. Applicati
 - Jump Capable Ship Plotter with automatic routing through ordered, required cyno waypoints, JDC/JFC fuel math, mapped alternate jump points, explicit station-risk warnings, nearby operational map context, and kill/activity intel per jump.
 - Sideloadable Android WebView wrapper build script that outputs `EQM.apk`.
 
+## Intel subject browser — development preview
+
+Browse collapsed **Alliance → Corporation → Pilots** branches, open entity summaries, and mark or clear **Priority Target** on any report. Priority entries appear first alphabetically at each level. New Local Scans create missing pilot stubs automatically. Delete a selected pilot/corporation/alliance report with confirmation while preserving its notes. **Unreleased; migration 0108 and matching backend/frontend rollout required.** [Behavior and retention](docs/intel-reports.md#saved-subjects-local-scan-stubs-and-priority-targets).
+
+![Intel subject hierarchy and priority target controls with synthetic data](static/ss/v2.3.0/intel-subjects-priority.png)
+
 ## Searchable character notes — development preview
 
 Tag an entire resolved Local Scan with a Public or Private note, then search its text to find every marked character. Notes persist after the source scan expires and appear on later authenticated scans. Public notes stay inside EQM intel; private notes stay author-only. [Workflow and rollout](docs/local-scan-character-notes.md).

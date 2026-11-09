@@ -2,6 +2,9 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 from typing import Literal
+from pydantic import BaseModel, StrictBool
+from app.services import intel_subjects
+from app.services.permissions import quartermaster_read_only
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
@@ -59,7 +62,7 @@ async def resolve(payload: ResolveInput,user: User=Depends(get_current_user),db:
 
 @router.get("/subjects")
 def subjects(q: str=Query(default="",max_length=255),kind: str=Query(default="",max_length=16),user: User=Depends(get_current_user),db: Session=Depends(get_db)):
-    query=select(IntelSubject).order_by(IntelSubject.updated_at.desc()).limit(200)
+    query=select(IntelSubject).where(IntelSubject.archived.is_(False)).order_by(IntelSubject.priority.desc(),func.lower(IntelSubject.name),IntelSubject.eve_id).limit(200)
     if q:query=query.where(IntelSubject.name.ilike(f"%{q}%"))
     if kind:query=query.where(IntelSubject.kind==kind)
     rows=db.scalars(query).all()
@@ -70,14 +73,63 @@ def subjects(q: str=Query(default="",max_length=255),kind: str=Query(default="",
     return result
 
 
+@router.get("/subject-tree")
+def subject_tree(q: str=Query("",max_length=255), user: User=Depends(get_current_user), db: Session=Depends(get_db)):
+    return [{**a,"corporations":[{k:v for k,v in c.items() if k!="pilots"} for c in a["corporations"]]} for a in intel_subjects.catalog(db,q)]
+
+@router.get("/subject-tree/pilots")
+def subject_pilots(alliance: str, corporation: str, q: str=Query("",max_length=255), offset: int=Query(0,ge=0), limit: int=Query(50,ge=1,le=100), user: User=Depends(get_current_user), db: Session=Depends(get_db)):
+    for a in intel_subjects.catalog(db,q):
+        if a["key"] != alliance: continue
+        for c in a["corporations"]:
+            if c["key"] == corporation: return {"rows":c["pilots"][offset:offset+limit],"total":c["pilot_count"]}
+    return {"rows":[],"total":0}
+
+class PriorityInput(BaseModel):
+    priority: StrictBool
+
+@router.patch("/subjects/{subject_id}/priority")
+def priority(subject_id: int, payload: PriorityInput, user: User=Depends(get_current_user), db: Session=Depends(get_db)):
+    if quartermaster_read_only(user,db): raise HTTPException(403,"Your role cannot change dossiers")
+    row=db.scalar(select(IntelSubject).where(IntelSubject.id==subject_id).with_for_update())
+    if row is None: raise HTTPException(404,"Intel subject not found")
+    if row.archived: raise HTTPException(409,"Re-create this dossier before marking a priority target")
+    row.priority=payload.priority
+    record_audit_event(db,event_kind="intel",title="Intel priority target changed",actor_user=user,body=f"subject={subject_id}; priority={payload.priority}")
+    db.commit();return subject_payload(row)
+
+@router.delete("/subjects/{subject_id}")
+def delete_subject(subject_id: int, user: User=Depends(get_current_user), db: Session=Depends(get_db)):
+    if quartermaster_read_only(user,db): raise HTTPException(403,"Your role cannot delete dossiers")
+    row=db.scalar(select(IntelSubject).where(IntelSubject.id==subject_id).with_for_update())
+    if row is None: raise HTTPException(404,"Intel subject not found")
+    intel_subjects.remove_report(db,row)
+    record_audit_event(db,event_kind="intel",title="Intel report deleted; notes retained",actor_user=user,body=f"subject={subject_id}; kind={row.kind}; eve_id={row.eve_id}")
+    db.commit();return {"deleted":True,"notes_preserved":True}
+
 @router.post("/subjects",status_code=201)
 async def create_subject(payload: SubjectInput,user: User=Depends(get_current_user),db: Session=Depends(get_db)):
     at=datetime.now(timezone.utc)
     if payload.sighting:intel_sightings.validate(db,payload.sighting,payload.kind)
-    existing=db.scalar(select(IntelSubject).where(IntelSubject.kind==payload.kind,IntelSubject.eve_id==payload.eve_id))
+    existing=db.scalar(select(IntelSubject).where(IntelSubject.kind==payload.kind,IntelSubject.eve_id==payload.eve_id).with_for_update())
     if existing:
+        if existing.archived:
+            profile=intel_subjects.cached_organization(db,payload.kind,payload.eve_id)
+            if profile:existing.public_data={"esi":{"state":"partial","data":profile,"notice":"Cached public affiliation identity. Collect public history to refresh the full profile."}}
+            existing.archived=False;db.flush()
         if payload.sighting:intel_sightings.record(db,existing,payload.sighting,user,at);db.commit()
+        db.commit()
         return subject_payload(existing)
+    cached_profile=intel_subjects.cached_organization(db,payload.kind,payload.eve_id)
+    if cached_profile:
+        row=IntelSubject(kind=payload.kind,eve_id=payload.eve_id,name=cached_profile["name"],
+            public_data={"esi":{"state":"partial","data":cached_profile,"notice":"Cached public affiliation identity. Collect public history to refresh the full profile."}},created_by_user_id=user.id)
+        statement=intel_subjects.conflict_insert(db,IntelSubject).values(kind=row.kind,eve_id=row.eve_id,name=row.name,
+            public_data=row.public_data,created_by_user_id=user.id).on_conflict_do_nothing(index_elements=["kind","eve_id"])
+        created=db.execute(statement).rowcount
+        if created:record_audit_event(db,event_kind="intel",title=f"Intel subject added: {row.name}"[:255],actor_user=user,body=f"{payload.kind}:{payload.eve_id}; cached affiliation identity")
+        db.commit()
+        return subject_payload(db.scalar(select(IntelSubject).where(IntelSubject.kind==payload.kind,IntelSubject.eve_id==payload.eve_id)))
     source=source_factory()
     try:
         profile=await source.profile(payload.kind,payload.eve_id)
@@ -105,7 +157,7 @@ async def create_subject(payload: SubjectInput,user: User=Depends(get_current_us
 
 @router.post("/subjects/{subject_id}/collect",status_code=202)
 def collect(subject_id: int,payload: CollectInput,user: User=Depends(get_current_user),db: Session=Depends(get_db)):
-    subject_or_404(db,subject_id)
+    subject=subject_or_404(db,subject_id,lock=True)
     active=db.scalar(select(IntelCollection).where(IntelCollection.subject_id==subject_id,IntelCollection.status.in_(["queued","running"])))
     if active:return collection_payload(active)
     if (db.scalar(select(func.count()).select_from(IntelCollection).where(IntelCollection.status.in_(["queued","running"]))) or 0)>=100:raise HTTPException(409,"The intel queue is full; allow existing collections to finish")
@@ -150,7 +202,7 @@ def retry(job_id: str,user: User=Depends(get_current_user),db: Session=Depends(g
 
 @router.get("/subjects/{subject_id}/report")
 def report(subject_id: int,from_at: datetime|None=None,to_at: datetime|None=None,user: User=Depends(get_current_user),db: Session=Depends(get_db)):
-    subject=subject_or_404(db,subject_id)
+    subject=subject_or_404(db,subject_id,include_archived=True)
     end=utc(to_at) if to_at else datetime.now(timezone.utc);start=utc(from_at) if from_at else end-timedelta(days=90)
     if start>=end or end-start>timedelta(days=20000):raise HTTPException(422,"Choose a positive report window of at most 20,000 days")
     return build_report(db,subject,start,end,viewer_user_id=user.id)
@@ -181,7 +233,7 @@ async def authorized_refresh(subject_id: int,payload: AuthorizedRefreshInput,use
 
 @router.get("/subjects/{subject_id}/notes")
 def notes(subject_id: int,user: User=Depends(get_current_user),db: Session=Depends(get_db)):
-    subject_or_404(db,subject_id)
+    subject_or_404(db,subject_id,include_archived=True)
     rows=db.execute(select(IntelNote,User.display_name).join(User,User.id==IntelNote.author_user_id).where(IntelNote.subject_id==subject_id,visible_notes(user)).order_by(IntelNote.id.desc()).limit(100)).all()
     from app.services.permissions import can_view_at_least
     moderate=can_view_at_least(user,"admin",db)
@@ -190,7 +242,7 @@ def notes(subject_id: int,user: User=Depends(get_current_user),db: Session=Depen
 
 @router.post("/subjects/{subject_id}/notes",status_code=201)
 def add_note(subject_id: int,payload: NoteInput,user: User=Depends(get_current_user),db: Session=Depends(get_db)):
-    subject_or_404(db,subject_id)
+    subject_or_404(db,subject_id,include_archived=True)
     if not payload.body.strip():raise HTTPException(422,"Write a note before saving")
     row=IntelNote(subject_id=subject_id,author_user_id=user.id,body=clean_body(payload.body),is_private=payload.is_private);db.add(row)
     record_audit_event(db,event_kind="intel",title="Intel analyst note added",actor_user=user,body=f"subject={subject_id}");db.commit()
@@ -207,7 +259,7 @@ def note_payload(row,author,user,db,moderate=None):
 
 
 def managed_note(db,subject_id,note_id,user):
-    subject_or_404(db,subject_id)
+    subject_or_404(db,subject_id,include_archived=True)
     row=db.scalar(select(IntelNote).where(IntelNote.id==note_id,IntelNote.subject_id==subject_id,visible_notes(user)))
     if row is None:raise HTTPException(404,"Intel note not found")
     if not can_manage_note(row,user,db):raise HTTPException(403,"Only the note author or an administrator can change this note")
@@ -246,7 +298,7 @@ def sighting_lookups(kind:Literal['system','ship'],q:str=Query('',max_length=120
 
 @router.post('/subjects/{subject_id}/sightings',status_code=201)
 def record_sighting(subject_id:int,payload:SightingInput,user:User=Depends(get_current_user),db:Session=Depends(get_db)):
-    subject=subject_or_404(db,subject_id)
+    subject=subject_or_404(db,subject_id,lock=True)
     row=intel_sightings.record(db,subject,payload,user)
     db.commit()
     return intel_sightings.payload(row,user.display_name)

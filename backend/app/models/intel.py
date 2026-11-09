@@ -12,6 +12,8 @@ class IntelSubject(Base):
     kind: Mapped[str] = mapped_column(String(16), nullable=False)
     eve_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
+    priority: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
     public_data: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     created_by_user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())

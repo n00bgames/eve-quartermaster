@@ -49,6 +49,8 @@ def get_monitor(db, sid):
 
 
 def request_refresh(db, subject, user, enabled=None):
+    subject=db.scalar(select(IntelSubject).where(IntelSubject.id==subject.id).with_for_update().execution_options(populate_existing=True))
+    if subject.archived: raise HTTPException(404,"Add this entity again before refreshing its deleted report")
     organization(subject)
     row = get_monitor(db, subject.id)
     at = now()
@@ -141,6 +143,7 @@ def write_census(db, sid, payload, at):
 
 def persist(factory, sid, token, payload, error=False):
     with factory() as db:
+        db.scalar(select(IntelSubject).where(IntelSubject.id == sid).with_for_update())
         row = db.scalar(select(IntelMembershipMonitor).where(
             IntelMembershipMonitor.subject_id == sid, IntelMembershipMonitor.lease_token == token,
             IntelMembershipMonitor.lease_until > now()).with_for_update())

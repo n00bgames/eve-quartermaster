@@ -24,6 +24,8 @@ def scans(env):
 
 
 def dossier(env, eve_id=9001, kind='character'):
+    existing=env.db.scalar(select(IntelSubject).where(IntelSubject.kind==kind,IntelSubject.eve_id==eve_id))
+    if existing:return existing.id
     row=IntelSubject(kind=kind, eve_id=eve_id, name='Synthetic Pilot', created_by_user_id=env.users['member'].id)
     env.db.add(row);env.db.commit()
     return row.id
@@ -44,7 +46,7 @@ def test_generation_indexes_each_resolved_pilot_before_any_dossier(scans):
     rows=env.db.scalars(select(LocalScanSighting)).all()
     assert len(rows)==3 and {r.character_eve_id for r in rows}=={9001,9002,9003}
     assert all(service.utc(r.observed_at).isoformat()==scan['created_at'] for r in rows)
-    assert env.db.scalar(select(func.count()).select_from(IntelSubject))==0
+    assert env.db.scalar(select(func.count()).select_from(IntelSubject))==3
     assert env.db.scalar(select(func.count()).select_from(EveCharacter))==chars
     assert env.db.scalar(select(func.count()).select_from(IntelSighting))==0
     assert record(env.db,env.db.get(LocalScanReport,scan['token']))==0

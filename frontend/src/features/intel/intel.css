@@ -19,3 +19,17 @@
  .intel-sighting-table td:first-child,.intel-sighting-table td:last-child{grid-column:1/-1}
  .intel-sighting-table td::before{content:attr(data-label);display:block;font-size:10px;color:var(--eqm-muted,#aab4c2);margin-bottom:6px}
 }
+
+.intel-subject-tree{display:grid;gap:12px;min-width:0}
+.intel-subject-branch{border:1px solid var(--border,#34404e);border-radius:8px;padding:9px;min-width:0}
+.intel-branch-title{display:flex;flex-wrap:wrap;align-items:center;gap:6px;justify-content:space-between}
+.intel-branch-title button{padding:4px 6px;text-align:left;overflow-wrap:anywhere;min-width:0;white-space:normal}
+.intel-branch-title small{color:var(--muted,#a8b5c5)}
+.intel-subject-branch summary{cursor:pointer;padding:7px 2px;color:var(--muted,#a8b5c5)}
+.intel-corporation-branches{display:grid;gap:8px;margin-top:5px}
+.intel-pilot-leaves{padding:6px 0;max-height:420px;overflow:auto}
+.intel-subject-browser input{min-width:0;width:100%;box-sizing:border-box}
+.intel-dossier-actions{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.intel-dossier-actions label{display:flex;gap:8px;align-items:center}
+.intel-dossier-actions input{width:auto}
+.intel-delete-confirm button{margin:4px 8px 0 0}

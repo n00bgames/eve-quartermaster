@@ -898,3 +898,15 @@ November 9, 2026 client date. Actual affected React views and shared API/styles 
 ![Events analytics collapsed](../static/ss/v2.3.0/events-analytics-collapsed.png)
 
 ![Hypernet analytics collapsed](../static/ss/v2.3.0/hypernet-analytics-collapsed.png)
+
+## Intel subject browser and report retention (2.3 development)
+
+Captured November 9, 2026 from an unreleased working tree based on `2cfb184ff19465548f340925a64822184f97bd6f`. Actual React components and FastAPI routes use an isolated synthetic SQLite database, public-source fixtures and DEMO placeholder portraits/logos; no production intel, game records, SSO, private notes or accounts. Desktop 1480×1100 and mobile 390×844. Crops retain rendered controls without repainting. These features require migration 0108 and matching backend/frontend rollout; no deployment performed. [Guide](intel-reports.md#saved-subjects-local-scan-stubs-and-priority-targets).
+
+![Alliance branches collapsed by default with priority targets first](../static/ss/v2.3.0/intel-subjects-collapsed.png)
+
+![Expanded alliance, corporation and pilot hierarchy with a Priority Target checkbox](../static/ss/v2.3.0/intel-subjects-priority.png)
+
+![Report deletion confirmation states that notes and shared records are preserved](../static/ss/v2.3.0/intel-report-delete.png)
+
+![Collapsed Intel subject browser on mobile](../static/ss/v2.3.0/intel-subjects-mobile.png)

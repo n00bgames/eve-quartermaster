@@ -169,3 +169,37 @@ API: `GET /intel/subjects/{id}/corporations` accepts `search`, `sort=members|nam
 Deploy matching backend/frontend on **0105_intel_membership**; no additional migration or dependency. Recollect an older alliance or use Refresh counts. Browser verification covers expansion, public metadata and names, search/sort, opening a full corporation report, narrow/wide desktop and mobile layouts. Backend tests cover census/profile-cache freshness, shared persistence, partial/failure totals, cancellation, filtering/pagination, cache/cooldown/error retention, source field allow-lists, access revocation and roster changes during I/O.
 
 ![Alliance corporations and cached public intelligence — synthetic development data](../static/ss/v2.0.1/alliance-corporation-expanded.jpg)
+
+## Saved subjects, Local Scan stubs and priority targets
+
+**Unreleased EQM 2.3.0 follow-up.** Requires migration `0108_intel_subject_browser` after 0107, plus matching backend/frontend rollout. No new ESI scopes, enrollment or automatic killboard collection. This development pass does not migrate or deploy a live server.
+
+Saved subjects now appear as **Alliance → Corporation → Pilots**. Branches start collapsed; use each disclosure to expand the next level. Click an alliance/corporation name to open that entity's ordinary Intel summary, or a pilot to open their dossier. A cached organization identity can create the organization dossier without an additional public-source lookup. Combat summaries use the existing shared evidence and report-date rules; full profiles, public membership counts and upstream history can still require explicit collection/refresh.
+
+The browser uses cached public affiliations, not a live ESI roster. Counts show saved pilot dossiers, not the organization's total membership. A corporation appears once under its newest known cached affiliation, with organization snapshots winning equal-time ties. Changing priority does not make an old affiliation newer. Different IDs remain separate even when names match. **No alliance** is distinct from **Alliance unknown / Corporation unknown**. Tracked organizations with no saved pilots remain visible.
+
+**Search dossiers** matches pilot, corporation and alliance names across the complete saved set, retaining the matching ancestors. Matching organization names include their saved descendants. Pilot lists load 50 at a time, with **Load more pilots**; this replaces the sidebar's previous silent 200-subject limit. Search starts fresh collapsed branches; refreshing results or changing a priority preserves expanded branches.
+
+Open any pilot, corporation or alliance report and check **Priority Target**. Uncheck it to clear the flag. The setting is shared with authorized Intel users and displayed with a star. At each level, priority entities sort first alphabetically, followed by regular entities alphabetically. Flags belong to the selected entity only: they do not mark its alliance, corporation or pilots automatically. Opening an inferred organization creates its dossier before it can be marked. Mutation routes independently enforce Intel access and read-only restrictions and audit changes without note content.
+
+### Automatic Local Scan dossiers
+
+Every successful newly generated Local Scan creates an initial dossier for each distinct resolved character that has no active dossier, even when no character note is supplied. Unresolved names are skipped. The scan and its new stubs commit together; a failed write rolls both back. Existing active dossiers, profiles, notes and priority settings are left unchanged. This is prospective; older saved scans are not automatically backfilled.
+
+Stubs retain only the publicly resolved character identity and available corporation/alliance identity. They are explicitly labelled partial; a normal full profile/history collection remains an explicit action. No characters are enrolled into EQM or added to SSO sync, and no collection jobs, combat evidence or manual sightings are invented. Existing canonical combat evidence can already appear in the new summary. Private scan locations, share tokens, account attribution and scan-note bodies are not copied into the identity snapshot. Existing separately stored Local Scan observations retain their own visibility rules. Creating public-identity stubs does not grant the scanning account access to Intel Reports; all reads retain the existing restricted staff permission boundary.
+
+### Delete a pilot, corporation or alliance report
+
+Select the entity's dossier, choose **Delete report**, then **Confirm delete report**. **Keep report** cancels. Deletion clears only that entity's collected public profile/badge snapshot, observations, collection attempts, manual sightings and membership monitoring/history. It also clears its Priority Target flag. Collection/monitor leases are invalidated in the deletion transaction, so an in-flight worker cannot restore the deleted report afterward.
+
+**All notes are preserved**, with the same author, Public/Private visibility and search permissions. A minimal archived identity anchors the notes and existing links, while its report is removed from the active subject list. A preserved note link opens a notes-only view. A later Local Scan re-creates a deleted pilot's public identity stub using the same note identity; adding any deleted entity again restores its dossier. Private notes remain author-only, including against other staff.
+
+Deleting an organization report does not delete its pilot/corporation dossiers. Its grouping header can therefore remain visible based on those saved affiliations. Canonical killmails, reusable public-source caches, enrolled characters, independent Local Scan reports/observations and other dossiers are shared records and remain intact. Re-created reports can rebuild summaries from that retained evidence. This action deletes dossier-owned report data, not all knowledge of the entity throughout EQM.
+
+API: authenticated `GET /intel/subject-tree?q=…`, paged `GET /intel/subject-tree/pilots?alliance=…&corporation=…&q=…&offset=…&limit=…`, `PATCH /intel/subjects/{id}/priority` with a strict Boolean `priority`, and `DELETE /intel/subjects/{id}`. Existing subject creation/report/note routes remain in use. Responses retain `Cache-Control: private, no-store`.
+
+Validation uses synthetic databases/sources: scan creation/idempotency/rollback, more than 200 subjects, paged completeness, search ancestors, unknown affiliations, same-name IDs, priority set/clear ordering and affiliation freshness, all three deletion types, note visibility/re-creation, shared killmail retention, stale worker fencing, access denial and migration upgrade/downgrade. Actual UI verification covers desktop and 390px mobile, collapsed branches, paging, entity summaries, priority controls, search, confirmation/cancel, cleared selection/hash and preserved-note links. SQLite tests do not emulate PostgreSQL's row-lock scheduling; workers and deletion use the same subject-before-job/monitor lock order. No production or upstream ESI data was used.
+
+![Expanded saved subjects and a pilot Priority Target checkbox — synthetic preview](../static/ss/v2.3.0/intel-subjects-priority.png)
+
+![Explicit report deletion confirmation preserving notes — synthetic preview](../static/ss/v2.3.0/intel-report-delete.png)

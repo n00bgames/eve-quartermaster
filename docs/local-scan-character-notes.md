@@ -6,7 +6,7 @@
 
 Generate or open a saved Local Scan. Above the results, enter a **Character note**, choose its visibility, then select **Add note to all N pilots**.
 
-The note is attached to every distinct, resolved EVE character ID in the stored scan. Display filters do not reduce the tagged set. Unresolved names are skipped and the confirmation says so. The server derives the IDs and names from the authorized stored report; the browser cannot supply a different target list. Missing Intel dossiers are created from those resolved identities without fetching ESI, enrolling characters, collecting killmails or claiming that the pilots share an operator.
+The note is attached to every distinct, resolved EVE character ID in the stored scan. Display filters do not reduce the tagged set. Unresolved names are skipped and the confirmation says so. The server derives the IDs and names from the authorized stored report; the browser cannot supply a different target list. New Local Scans now create missing public-identity Intel stubs automatically, before a note is added; older scans can still seed missing note identities during annotation. Neither operation enrolls characters or starts killmail collection. Deleting a dossier preserves these notes and their visibility when the pilot is scanned again. [Subject browsing, priority targets and deletion](intel-reports.md#saved-subjects-local-scan-stubs-and-priority-targets). The newer automatic-stub/browser controls additionally require migration 0108.
 
 Use a specific label such as `Suspected multiboxer · North Gate crew`, with uncertainty clearly recorded. This is a human annotation, not an automatic multiboxing finding.
 

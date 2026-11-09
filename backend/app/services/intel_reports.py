@@ -21,9 +21,9 @@ def require_intel(user: User, db: Session):
         raise HTTPException(403,"Intel Reports requires section access and an Intel Analyst/Officer role or Recruiter capability")
 
 
-def subject_or_404(db: Session, subject_id: int):
-    row=db.get(IntelSubject,subject_id)
-    if row is None: raise HTTPException(404,"Intel subject not found")
+def subject_or_404(db: Session, subject_id: int, include_archived=False, lock=False):
+    row=db.scalar(select(IntelSubject).where(IntelSubject.id==subject_id).with_for_update().execution_options(populate_existing=True)) if lock else db.get(IntelSubject,subject_id)
+    if row is None or (row.archived and not include_archived): raise HTTPException(404,"Intel subject not found; add the entity again if its report was deleted")
     return row
 
 
@@ -39,7 +39,7 @@ def collection_payload(row: IntelCollection):
 
 
 def subject_payload(row: IntelSubject):
-    return {"id":row.id,"kind":row.kind,"eve_id":row.eve_id,"name":row.name,"public_data":row.public_data,"updated_at":row.updated_at}
+    return {"id":row.id,"kind":row.kind,"eve_id":row.eve_id,"name":row.name,"public_data":row.public_data,"updated_at":row.updated_at,"archived":row.archived,"priority":row.priority}
 
 
 def read_metadata(db: Session, namespace: str, ids: set[int]) -> dict[int,dict]:
@@ -104,7 +104,7 @@ def evidence_facts(db: Session, subject: IntelSubject, from_at: datetime, to_at:
 
 
 def build_report(db: Session, subject: IntelSubject, from_at: datetime, to_at: datetime, viewer_user_id: int | None = None):
-    facts,types,limited=evidence_facts(db,subject,from_at,to_at)
+    facts,types,limited=([],{},False) if subject.archived else evidence_facts(db,subject,from_at,to_at)
     summary=summarize_evidence(subject.kind,subject.eve_id,facts,from_at,to_at)
     for row in summary["ships"]:row["name"]=types.get(row["id"],{}).get("name") or f"Type {row['id']}"
     for kind in ("character","corporation","alliance"):
@@ -113,7 +113,7 @@ def build_report(db: Session, subject: IntelSubject, from_at: datetime, to_at: d
         for row in summary["associates"]:
             if row["kind"]==kind:row["name"]=names.get(row["id"],f"{kind.title()} {row['id']}")
     from app.services.intel_sightings import merge
-    sightings=merge(db,subject,summary,from_at,to_at,viewer_user_id)
+    sightings={"total":0,"limit":200,"rows":[],"notice":"Report deleted; notes retained."} if subject.archived else merge(db,subject,summary,from_at,to_at,viewer_user_id)
     region_totals={}
     for row in summary["systems"]:
         if row["region_id"] is None:continue

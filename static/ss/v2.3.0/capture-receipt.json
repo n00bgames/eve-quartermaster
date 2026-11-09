@@ -402,5 +402,72 @@
         "sha256": "d917fe3802c4d4e94f830c78faff27b2b3e4439c281eed697f677747f86aa687"
       }
     ]
+  },
+  "intel_subject_browser": {
+    "captured_on": "2026-11-09",
+    "application_version": "2.3.0",
+    "source_base_commit": "2cfb184ff19465548f340925a64822184f97bd6f",
+    "state": "Unreleased implementation; no commit, push, deployment or live migration in this task.",
+    "method": "Actual IntelReportsPage/IntelSubjectBrowser/LocalScanPage, isolated real FastAPI routes and SQLite; headless Edge 1480x1100 desktop, 390x844 mobile. Rendered component crops; no pixel repainting.",
+    "data": "Fabricated Demo pilots/organizations, canonical combat fixture, note and Local Scan ESI fixtures. External EVE images replaced with DEMO SVG placeholders only inside the preview. No live accounts, SSO, tokens or production intelligence.",
+    "source_sha256": {
+      "frontend/src/features/intel/intel.css": "f5c433895fc457349553563623b55e92acce7fb5f06fe1ffccdf290fb4c73e7a",
+      "frontend/src/features/intel/IntelReportsPage.tsx": "bd0a57cb8622e030485b6dccb1a0340a415f2c32be7bc471a645c1ed5686547d",
+      "frontend/src/features/intel/types.ts": "5f71b4491b6ad2933dccbb3c79ff4e0b6b370be1497eff280d66ff6abbaf7d3c",
+      "backend/tests/test_local_scan_sightings.py": "d638548ab6f95b51fd95ba1c438b55cc453a2a1a92c2694b536bdcf800b2f392",
+      "backend/tests/test_scan_character_notes.py": "f3bae11d698d6cede559c7b573d74a48a18546fe45ee536a5c2c056bb8ad35e8",
+      "backend/app/api/intel.py": "7ccf98708a86f7ae5a1230669a0d10fc3cfba56ae1556383701a2e046f876677",
+      "backend/app/api/local_scan.py": "b721a416d72d3c1db972406f6082e950d38c44dae2cea86d3385e77c4a5ea598",
+      "backend/app/models/intel.py": "c144ba63e86271635715ac66a7731eb7132190f0c95f9ae4bf6f858467a52498",
+      "backend/app/services/intel_collection.py": "162d79949ee4f1f53d638bf072373e25dc6038af56b778ec89d6f21e9ba74041",
+      "backend/app/services/intel_membership.py": "177337098a657e4bc61781d777548f51e61fd3f1bf9e888a3877f77190acda73",
+      "backend/app/services/intel_reports.py": "fc429cfb1ff635ca66e77028866dc6b63a8dbe8d8a5408f31de2f9d0a4d555e0",
+      "backend/alembic/versions/0108_intel_subject_browser.py": "ebfb5336b53bcd4f867a5e40747b9fee959d0f74029318a69fa761d4cbdce02b",
+      "backend/app/services/intel_subjects.py": "df79063ee5e230f575eea6b3409b0695550088f97980d054bc5efd80cccd8ef6",
+      "backend/tests/test_intel_subject_browser.py": "6cf7487ccba07d99d006d0ce912d2e6e2d3445de70b4c1148de9434e1800ffeb",
+      "frontend/src/features/intel/IntelSubjectBrowser.tsx": "9752126eef6cb3040286b0b17f9300f4cf1a89815a909d3f5a9d124597c88570"
+    },
+    "validation": {
+      "checks": [
+        "All branches default collapsed; priority alliance appears before alphabetical regular alliance",
+        "Corporation priority order and lazy pilot pagination loads all 65 pilots",
+        "Entity titles open normal summaries; report priority checkbox sets/clears and persists in sorted tree; pilot search retains ancestors",
+        "Delete cancel/confirm work; selection/hash clear; old links display preserved notes with operational report controls removed",
+        "Real Local Scan generation creates missing public-identity pilot stubs; inferred corporation and alliance titles open their entity summaries",
+        "390px mobile subject browser has no horizontal overflow"
+      ],
+      "errors": []
+    },
+    "backend_validation": {
+      "tests_passed": 143,
+      "migration": "0108 upgrade/downgrade verified in disposable SQLite; not applied live",
+      "limitations": "No live ESI or PostgreSQL concurrency run; source uses matching subject-first lock order and fenced checkpoints."
+    },
+    "frontend_validation": {
+      "typescript": "passed",
+      "production_bundle": "passed; existing chunk-size advisory"
+    },
+    "images": [
+      {
+        "filename": "intel-report-delete.png",
+        "sha256": "d569d82ebb00ab4b13c73f91b7ff603ca099b1747048b47d6770c6fa04a71632",
+        "synthetic": true
+      },
+      {
+        "filename": "intel-subjects-collapsed.png",
+        "sha256": "f9eb053008172e60e3f7638c33dfaf5457ed0e2adf827103c6aa9ca7ec1f5083",
+        "synthetic": true
+      },
+      {
+        "filename": "intel-subjects-mobile.png",
+        "sha256": "372be978e8a9ecb2c1755137db474c310c820405b40e437dd81ba728a4820637",
+        "synthetic": true
+      },
+      {
+        "filename": "intel-subjects-priority.png",
+        "sha256": "ca1f7847aa70590381f4edf700e2fdccff9ebf2b932cecf90381286d020149ba",
+        "synthetic": true
+      }
+    ]
   }
 }
