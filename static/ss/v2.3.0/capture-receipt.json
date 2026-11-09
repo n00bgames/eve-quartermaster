@@ -166,7 +166,7 @@
       "checks": [
         "Default private visibility; explicit public bulk note tags all six resolved pilots despite a one-pilot display filter, and skips unresolved names",
         "Current character annotations appear on scan rows; note search returns all six dossier links and a reusable search link",
-        "Second real fixture account can search public notes and cannot see or search the author\u2019s private annotations",
+        "Second real fixture account can search public notes and cannot see or search the author’s private annotations",
         "Dossier link opens the actual Intel Reports page; individual note editing saves text and visibility with concurrency checks",
         "Deep-linked note search honors current viewer permissions and a subsequent public-to-private change",
         "A newly generated scan of previously tagged characters automatically shows their persistent notes without adding duplicates",
@@ -211,6 +211,60 @@
         "filename": "local-scan-character-notes-mobile.png",
         "bytes": 159954,
         "sha256": "197e4e76ad5c675ba1eb97c5a3ac366c3dc22e66dee07d88fba654ce2f56a47d"
+      }
+    ]
+  },
+  "manual_pos": {
+    "captured_on": "2026-11-08",
+    "application_version": "2.3.0",
+    "source_base_commit": "607082b46ee012cda5f276e384c8a6dcc70fd562",
+    "source_state": "Uncommitted manual POS follow-up; no version bump, deployment or live migration.",
+    "method": "Actual React StructuresPage/manual components, shared API/styles, headless Edge at 1440px and 390px; real FastAPI CRUD, isolated synthetic SQLite and mocked ESI.",
+    "data": "Fabricated accounts, records, locations and quantities. Browser UTC clock fixed to Nov 9 02:00 UTC (Nov 8 20:00 America/Chicago). No production credentials, live ESI or game operations.",
+    "validation": {
+      "checks": [
+        "Actual API creates and persists an owner-private 23-day large Caldari reading with no linked character or ESI token; survives browser reload",
+        "Reinforced checkbox disables normal state and switches from fuel to a live stront countdown; one hour consumes an estimated 400 units without changing the stored reading",
+        "Optional exact reinforcement end overrides the stront estimate; UTC input is stored correctly from a Chicago-time browser",
+        "Other Admin account cannot see the private record; a concurrent edit is rejected without losing the newer saved reading",
+        "Small tower presets, offline state, zero-versus-unknown quantities, note search, attention filter and confirmed JSON API deletion work",
+        "Manual records remain available alongside a working Upwell feed and explicitly denied POS ESI access; returning online resumes a new fuel reading",
+        "390px cards and reinforced-mode form remain readable with no horizontal overflow"
+      ],
+      "errors": []
+    },
+    "backend_validation": "111 backend cases plus seven existing subtests passed, including 39 manual POS cases; SQLite migration roundtrip/data-loss guard, roles/scopes, account isolation and conflicts.",
+    "frontend_validation": "Nine timer/estimate tests, TypeScript and full production Vite build passed (existing chunk advisory).",
+    "limitations": "Synthetic local integration; no live PostgreSQL migration or ESI call. Manual estimates assume continuous operation; no monitoring/alerts.",
+    "source_sha256": {
+      "backend/app/models/manual_pos.py": "32df9908fef7623d4e4f2897aa8080b2c33786c092f5f2545583254bf07e2911",
+      "backend/app/models/__init__.py": "cfa68d26483844be86ec27a417f86ae7b9ec1502c1c41a673fb72dabd83fa2d6",
+      "backend/app/api/manual_pos.py": "4e4db3b4afbece46d25ded495e39baf86215e0fb4b8dfc97aef20578aec06b8e",
+      "backend/app/api/structures.py": "d52f34137b6269df99fbb37d75071617de710496c5b04526a3702b9dd272135a",
+      "backend/alembic/versions/0107_manual_pos.py": "22f533dbd22c120e711ae1f57a3a9cce1efdb5e1cebc54c367693dc2d69dbe45",
+      "backend/tests/test_manual_pos.py": "815be16d6be75bd3be3cab7445a4ba5408f3c37ca16afd2c4680dc36cde5be11",
+      "frontend/src/features/structures/StructuresPage.tsx": "cf6b9ad189305cc1d8e2611ca7e5e15e6e250f8d7b068f5289d78cf2e9ca30fe",
+      "frontend/src/features/structures/ManualPosPanel.tsx": "1e8fc418a25d7c874cd18b8efe3723d7509f6e14ae0c997d0b7325c9c2589363",
+      "frontend/src/features/structures/ManualPosForm.tsx": "9d3fa15089ba8bcd01a9911261c61bd2d7ffa7cfc24ce2ff2c42ee438f64aaed",
+      "frontend/src/features/structures/manualModel.ts": "aa2456f4296a6e0249f241e19838f35a7b46bcbec3f5c7fa9bee6726be53f047",
+      "frontend/src/features/structures/structures.css": "618d8cfe49db50f1116a7dd64f9b1f074599e51c4ef55ee5b32efe75c47f4776",
+      "frontend/tests/structures.test.ts": "0853bdcaf5d40b18184576db8422895f7c42177736fbef7c2b02dcdbb2e72c4d"
+    },
+    "images": [
+      {
+        "filename": "manual-pos-desktop.png",
+        "bytes": 168896,
+        "sha256": "841bbd12fdc2230e9a8ef9a3b90ea279e4ebc786f5834a252085263421222cbe"
+      },
+      {
+        "filename": "manual-pos-mobile.png",
+        "bytes": 175785,
+        "sha256": "223305d37158760a8aaf266172b429bc2975173813390662c0eee621cc3677ef"
+      },
+      {
+        "filename": "manual-pos-reinforced-form.png",
+        "bytes": 94967,
+        "sha256": "17873ed8c1577ab3c89fac1259fc4f786ebd4bd356a963facf42b4a80a1aa55c"
       }
     ]
   }

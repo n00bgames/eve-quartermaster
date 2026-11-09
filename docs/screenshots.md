@@ -858,3 +858,13 @@ November 8, 2026 client date. Actual LocalScanPage/LocalScanResults, IntelReport
 ![Note text search with six linked matching characters](../static/ss/v2.3.0/character-note-search.png)
 
 ![Public and Private character annotations at 390px](../static/ss/v2.3.0/local-scan-character-notes-mobile.png)
+
+## Manual POS tracking — v2.3.0 development preview
+
+November 8, 2026 client date. Actual StructuresPage/manual POS components, shared API client and existing EQM styles rendered in headless Edge at 1440px and 390px, backed by the real FastAPI CRUD routes and an isolated SQLite database. Fabricated accounts, corporation, locations, quantities and UTC times; mocked ESI denied the POS list while Upwell remained available. No live character, SSO, ESI or gameplay data. Browser scenarios verified persistence without a character, owner isolation, optimistic conflicts, reinforced checkbox/stront consumption, exact UTC overrides, presets, search, filters, deletion and mobile layout. Unreleased; requires migration 0107 plus matching backend/frontend rollout. [Guide](structures.md#manual-pos-tracking) · [Capture receipt](../static/ss/v2.3.0/capture-receipt.json).
+
+![Manual fuel and reinforced strontium records](../static/ss/v2.3.0/manual-pos-desktop.png)
+
+![Manual POS cards at 390px](../static/ss/v2.3.0/manual-pos-mobile.png)
+
+![Reinforced mode checkbox and strontium fields at 390px](../static/ss/v2.3.0/manual-pos-reinforced-form.png)

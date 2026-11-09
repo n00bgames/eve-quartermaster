@@ -1,10 +1,29 @@
 # Structures
 
-Open **Inventory & Industry → Structures** to read owned Upwell structures and POS control towers from ESI. This is an unreleased development feature for EQM 2.3.0; matching backend and frontend rollout is required.
+Open **Inventory & Industry → Structures** for private manual POS tracking and ESI corporation structures. This is an unreleased development feature for EQM 2.3.0. Manual records require migration `0107_manual_pos` and matching backend/frontend rollout. The existing ESI dashboard does not require an additional ESI scope for this follow-up.
 
-Select one of your linked corporation characters. The module reads that character's **current** corporation, checking ESI rather than relying on an old corporation link. Choose another linked character to view another corporation. Each viewer uses their own character authorization; this module does not borrow another account's tokens or share private structure data through public reports or the navigation catalog.
+For **ESI corporation structures**, select one of your linked corporation characters. The module reads that character's **current** corporation, checking ESI rather than relying on an old corporation link. Choose another linked character to view another corporation. Each viewer uses their own character authorization; this module does not borrow another account's tokens or share private structure data through public reports or the navigation catalog.
 
-## Authorization
+## Manual POS tracking
+
+Manual records need EQM **Structures** section access, but no linked character, ESI token or EVE Director role. They are saved on the server for your EQM account and are available across your devices. Other accounts, including other Hosts/Admins, cannot list, update or remove your records. Manual records stay out of the public navigation catalog and shared reports.
+
+1. Choose **Add manual POS**. Enter a name and optionally the corporation, system/moon and notes.
+2. Pick a standard tower preset, or choose **Faction / custom tower** and enter the tower type. Standard large/medium/small presets use 40/20/10 fuel blocks per hour and 400/200/100 strontium units per hour. Both rates are editable for your actual tower and bonuses; selecting a new preset replaces both rates.
+3. Enter the quantities observed in game and the **Reading time (UTC)**. Blank quantities mean unknown; `0` means empty. The current-time button uses EVE UTC, regardless of your display timezone.
+4. Leave **Reinforced mode** unchecked for normal online fuel tracking. The fuel estimate is `recorded blocks ÷ blocks per hour`, counted from the reading time. Offline and Unknown states retain the reading without assuming consumption.
+5. Check **Reinforced mode** to count down the recorded strontium instead. The estimated reinforcement end is `reading time + strontium ÷ strontium per hour`. Switching modes sets the reading time to now: verify the quantities, or set the time to the actual observation/reinforcement start. An optional **Exact reinforcement end (UTC)** overrides the calculated end; the strontium balance remains an independent estimate.
+6. Save. Use **Update reading / edit** after refueling or changing state/rates. **Reload records** fetches readings saved on another device. Removing a record requires confirmation and only removes the EQM record.
+
+Cards show the recorded state, reading time, recorded quantities, estimated remaining consumable and UTC/local end times. While online, recorded strontium capacity is potential reinforcement duration rather than an active timer. Reinforced mode uses strontium for its active countdown and does not estimate ordinary fuel depletion. Countdown text updates every 30 seconds while the page is mounted. Elapsed estimates stay marked **verify in game** and do not automatically switch the recorded state.
+
+Search manual records by name, tower, corporation, location or notes. The separate **Manual POS needs attention** filter includes reinforced/offline records and estimated online fuel within 72 hours. The ESI list retains its existing seven-day fuel threshold and independent counts/filters. Manual records remain usable when ESI POS access is denied or there are no linked characters.
+
+All estimates assume continuous operation in the recorded state at the entered rate. Hourly fuel ticks, bonuses, state changes and missed refuels can shift the actual result. Recorded values do not update from EVE. This feature does not detect attacks, poll in the background, or send alerts. Refresh the reading in game to establish a new baseline. Repeated create requests are idempotent; conflicting edits/removals from another tab are rejected so newer readings are not overwritten.
+
+![Manual POS fuel and reinforced strontium tracking with synthetic records](../static/ss/v2.3.0/manual-pos-desktop.png)
+
+## ESI authorization
 
 The new **Structures** section defaults to host/admin, director and officer accounts. Existing section permissions and global module disabling apply. EQM permission does not grant EVE corporation roles.
 
@@ -35,7 +54,7 @@ Expired timestamps read **Elapsed · awaiting ESI update**. The module does not 
 
 Both lists are paginated fully, with duplicated IDs removed. A failed page makes that source unavailable instead of presenting a partial list as complete. Missing scopes, denied roles, authorization failures and upstream errors are distinct from successful empty lists. The other source can still display; coverage is labelled partial. Failed refreshes retain prior results with an explicit warning. A successful empty list is valid before you deploy your first tower.
 
-This first implementation reads ESI on demand and uses its transport cache; it does not retain a structure history or poll offline in the worker. It does not currently enumerate POCOs/skyhooks or create attack notifications. Upwell fuel block quantities would require separate corporation asset access; the module uses ESI's reported expiry instead. POS fuel duration is not estimated from tower size or guessed fuel consumption. No database migration, version bump or live EVE operation is needed to use this module after rollout and authorization.
+This first implementation reads ESI on demand and uses its transport cache; it does not retain a structure history or poll offline in the worker. It does not currently enumerate POCOs/skyhooks or create attack notifications. Upwell fuel block quantities would require separate corporation asset access; the module uses ESI's reported expiry instead. ESI POS fuel duration is not guessed from tower size; estimates belong to the separate user-entered manual records. Manual tracking requires migration `0107_manual_pos` (after `0106_scan_character_notes`); the existing ESI path needs no additional schema change. Migration downgrade refuses to discard saved manual records until they are explicitly exported/removed. No version bump or live EVE operation is part of this follow-up.
 
 ## Source and verification
 

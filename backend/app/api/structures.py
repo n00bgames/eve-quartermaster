@@ -94,3 +94,8 @@ async def pos_detail(token_id: int, starbase_id: int, user: User = Depends(get_c
         return await service.pos_detail(client, db, character, starbase_id)
     finally:
         await client.close()
+
+
+# Manual records use the same section gate without requiring a character token.
+from app.api.manual_pos import router as manual_pos_router
+router.include_router(manual_pos_router)

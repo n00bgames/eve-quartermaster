@@ -65,7 +65,7 @@ See [CHANGELOG.md](CHANGELOG.md) for version-by-version release notes. Applicati
 - Skill Plans integrated into Character Skills, including editable SDE-dogma-derived minimum requirements, recursive prerequisites, per-item provenance, deduplication, ordering, and character progress.
 - Ship Replacement Program instances with generated intake links, EQM character ownership checks, doctrine or general fittings, exact timezone-aware loss recording, immutable historical snapshots, append-only review history, precise valuation/reimbursement fields, and permission-filtered analytics and CSV exports.
 - [Quartermaster role](docs/quartermaster-role.md) with view-only blueprint holdings, running industry jobs, and planetary infrastructure across authenticated characters and authorized linked corporations.
-- **Structures** lists owned Upwell structures and POS towers with ESI status, services, timers and fuel. Uses your own corporation character; POS fuel/settings expand on demand. Requires Structures permission and EVE corporation roles/scopes. [Coverage, authorization and freshness](docs/structures.md). **Unreleased development feature.**
+- **Structures** includes private manual POS records with fuel estimates and a **Reinforced mode** checkbox that counts down strontium, plus owned Upwell structures and POS towers with ESI status, services, timers and fuel. Manual tracking requires only EQM Structures permission and migration 0107; ESI uses your own corporation character and the required EVE roles/scopes, with POS fuel/settings on demand. [Coverage, authorization and freshness](docs/structures.md). **Unreleased development feature.**
 - **Local Scan character notes:** add one Public or Private note to every resolved pilot, retain it across future scans, and search note text for all matching character/dossier links. Public notes are shared only with signed-in EQM intel users; private notes are author-only. Excluded from public scan links/PDFs. [Guide](docs/local-scan-character-notes.md). **Unreleased; requires migration 0106 and matching backend/frontend rollout.**
 - [Intel Reports](docs/intel-reports.md) for external characters, corporations, and alliances: zKill combat evidence, recurring co-attackers, ships, geography, badges, smartbomb patterns, change history, and viewer-authorized ESI enrichment.
 - Killboard discovery through zKillboard with canonical ESI killmail storage, resumable incremental sync, direct source links, and historical kill/loss, ISK, hull, geography, participation, opponent, streak, and wingmate analytics.
@@ -91,7 +91,9 @@ Tag an entire resolved Local Scan with a Public or Private note, then search its
 
 ## Owned structures — development preview
 
-Monitor corporation Upwell structures and POS control towers, fuel expiry, ESI timers and reported POS fuel quantities. Empty lists are supported before your first tower goes up. Responses can be cached for an hour; missing access remains explicit. [Structures guide](docs/structures.md). Matching backend/frontend rollout and per-character authorization required.
+Track a POS manually without EVE Director: save private fuel/strontium readings, choose tower rates, and check **Reinforced mode** to count down strontium. Manual records need migration 0107 and matching backend/frontend rollout. The separate ESI view monitors corporation Upwell/POS state, fuel and timers with the selected character’s roles and authorization. [Structures guide](docs/structures.md).
+
+![Manual POS fuel and reinforced strontium tracking with synthetic records](static/ss/v2.3.0/manual-pos-desktop.png)
 
 ![Owned Structures with synthetic corporation data](static/ss/v2.3.0/structures-desktop.png)
 

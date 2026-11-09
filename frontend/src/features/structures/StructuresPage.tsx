@@ -2,6 +2,7 @@ import {useEffect,useState} from "react";
 import {Building2,RefreshCw,Shield,Timer} from "lucide-react";
 import {activeTimer,label,needsAttention,remaining,type Overview,type PosDetail,type Structure,type Source} from "./model";
 import "./structures.css";
+import {ManualPosPanel} from "./ManualPosPanel";
 
 type Api = <T>(path:string,options?:RequestInit)=>Promise<T>;
 type Link = {token_id:number;character_name:string;corporation_name:string;upwell_authorized:boolean;pos_authorized:boolean};
@@ -18,7 +19,9 @@ export function StructuresPage({api,formatDateTime}:{api:Api;formatDateTime:Date
   },[api]);
   const selected=links?.find(c=>c.token_id===token);
   return <section className="panel stacked structures-page" aria-label="Owned structures">
-    <div className="section-heading"><div><h3><Building2 size={22}/> Structures</h3><p className="muted">Corporation structures and POS towers · ESI status, timers and fuel</p></div></div>
+    <div className="section-heading"><div><h3><Building2 size={22}/> Structures</h3><p className="muted">Corporation structures and POS towers · ESI status and private manual tracking</p></div></div>
+    <ManualPosPanel api={api} date={formatDateTime}/>
+    <h4 className="structures-esi-heading">ESI corporation structures</h4>
     {error&&<p className="mini-alert" role="alert">{error}</p>}
     {links===null&&!error&&<p role="status">Loading your linked characters…</p>}
     {links?.length===0&&<div className="notice">Link a corporation character through EVE SSO in ESI Sync to get started. No structures are required yet.</div>}
