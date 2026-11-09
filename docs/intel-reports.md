@@ -2,6 +2,10 @@
 
 Intel Reports is a restricted staff workspace for investigating EVE characters, corporations, and alliances without enrolling outside characters into EQM. Open **Intel → Intel Reports**. Paste one name or zKill entity URL per line, resolve the names, and choose the intended match if the same name identifies more than one entity. Saved dossiers and `#intel/{id}` links still require authentication and Intel Reports access.
 
+## Run and share a report
+
+The default **Run / share a report** tab now supports systems, characters, corporations and alliances, explicit recent zKill pulls, UTC activity/common-hull/system rankings and saved public or private snapshots. **Saved dossiers and notes** preserves the existing restricted workspace below. Public snapshot links (`#intel-report/{token}`) expose only frozen public combat/ESI data; notes, priority flags, scan/manual sightings and private enrichment stay inside EQM. Requires migration **0109_intel_activity** and matching backend/frontend rollout. [Complete builder, sources, limits and sharing guide](intel-report-builder.md).
+
 ## First version
 
 - Public ESI identity, current character affiliation, character employment history, corporation alliance history, and public alliance member corporations.
@@ -172,7 +176,7 @@ Deploy matching backend/frontend on **0105_intel_membership**; no additional mig
 
 ## Saved subjects, Local Scan stubs and priority targets
 
-**Unreleased EQM 2.3.0 follow-up.** Requires migration `0108_intel_subject_browser` after 0107, plus matching backend/frontend rollout. No new ESI scopes, enrollment or automatic killboard collection. This development pass does not migrate or deploy a live server.
+**Unreleased EQM 2.4.0 follow-up.** Requires migration `0108_intel_subject_browser` after 0107, plus matching backend/frontend rollout. No new ESI scopes, enrollment or automatic killboard collection. This development pass does not migrate or deploy a live server.
 
 Saved subjects now appear as **Alliance → Corporation → Pilots**. Branches start collapsed; use each disclosure to expand the next level. Click an alliance/corporation name to open that entity's ordinary Intel summary, or a pilot to open their dossier. A cached organization identity can create the organization dossier without an additional public-source lookup. Combat summaries use the existing shared evidence and report-date rules; full profiles, public membership counts and upstream history can still require explicit collection/refresh.
 

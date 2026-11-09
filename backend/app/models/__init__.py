@@ -187,3 +187,5 @@ from app.models.journey import JourneyTracker, JourneyVisit, JourneyShipSegment
 from app.models.intel_membership import IntelMembershipMonitor, IntelMembershipSnapshot
 
 from app.models.manual_pos import ManualPos
+
+from app.models.intel_activity import IntelActivitySample

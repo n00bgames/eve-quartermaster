@@ -1,0 +1,18 @@
+export type Kind="system"|"character"|"corporation"|"alliance";
+export type Target={kind:Kind;eve_id:number;name:string;security_status?:number|null};
+export type Hour={hour:string;killmails:number;pod_killmails:number;jumps:number|null;ship_kills:number|null;pod_kills:number|null;npc_kills:number|null;jumps_reported_at?:string;kills_reported_at?:string};
+export type PublicReport={schema_version:string;target:Target;window:{from_at:string;to_at:string};generated_at:string;
+ summary:{killmails:number;pvp_killmails:number;npc_killmails:number;kills:number;losses:number;combat_pilots:number;systems:number};
+ active_systems:{system_id:number;name:string;killmails:number}[];
+ common_hulls:{type_id:number;name:string;appearances:number}[];
+ combat_pilots:{character_id:number;name:string;appearances:number;distinct_days:number;last_seen:string}[];
+ utc_hours:{hour:number;killmails:number}[];hourly:Hour[];
+ recent_killmails:{killmail_id:number;time:string;system_id:number;system_name:string;victim_id:number|null;victim_name:string;hull_id:number|null;hull_name:string;attackers:number;npc_only:boolean;value:number|null;url:string}[];
+ esi_activity:{available:boolean;samples:number;latest_reported_at?:string|null;notice:string};
+ coverage:{analysis_limited:boolean;killmail_limit:number;pilot_limit:number;ranking_limit:number;recent_limit:number;unknown_victim_hulls:number;notice:string}};
+export type Sightings={total_sightings:number;distinct_pilots:number;limit:number;rows:{character_id:number;name:string;sightings:number;distinct_days:number;sightings_per_day:number;last_seen:string}[];hulls:{type_id:number|null;name:string;sightings:number}[];notice:string};
+export type Refresh={status:string|null;finished_at:string|null;imported:number|null;reused:number|null;failed:number|null;notice:string|null;next_refresh_at:string|null;cached?:boolean};
+export type Result={public_report:PublicReport;internal_sightings:Sightings|null;refresh:Refresh};
+export type Snapshot={token:string;is_private:boolean;anonymous:boolean;creator:string;created_at:string;expires_at:string|null;retention:string;application_version:string;share_path:string|null;report:PublicReport};
+export type Saved=Omit<Snapshot,"report">&{target:Target};
+export type {ApiClient} from "../intel/types";

@@ -1,0 +1,101 @@
+{
+  "captured_on": "2026-11-09",
+  "application_version": "2.4.0",
+  "source_base_commit": "ef2c4c0d10af0a89209490325878c993bb7df2c2",
+  "source_state": "Uncommitted authorized v2.4.0 version bump plus report-builder/sharing implementation. No release/deployment/live migration.",
+  "method": "Actual React components and shared EQM styles; real FastAPI routes and disposable SQLite; headless Edge desktop 1480x1100/mobile 390x844. Rendered component/full-page captures; no repainting.",
+  "data": "Synthetic Demo systems/pilots/organizations, canonical combat fixtures, internal public/private observations, ESI Last-Modified hour samples and source fixtures. No production users/SSO/ESI/zKill or private gameplay data.",
+  "source_sha256": {
+    "frontend/src/main.tsx": "bcf47e4d3ae312e3ee18db1fb26c24e8326a5329b2ddf6d66de6e9a0a34a75ff",
+    "frontend/src/lib/api.ts": "339c083eab2b68d5983d2cd0a74e314628f15a0619ef4a8cbd874c2a9648c17b",
+    "frontend/src/features/intel/IntelReportsPage.tsx": "a236a62d4652802f0b490faa2f5ad4a15a922f4ffe6e875ebd3e6f2e8c5572a9",
+    "backend/app/api/router.py": "597ac208991e4f82c0a81eee1847e0c187e6d0a6ba2a2416cb4b7827acb6851e",
+    "backend/app/models/__init__.py": "226bd8df26d01206d1afcdd5edd59abaeb6d06d2f1da96fd967653af859a680d",
+    "backend/app/services/intel_reports.py": "289322182390106006398609453c2ed3974366cde46058b5e9339c77112b4d50",
+    "backend/app/api/intel_reports.py": "9fa459b819dec2bba72c877fbc4dae3843e27b764a50f7ab126280425f3c2ec6",
+    "backend/app/services/intel_report_builder.py": "46be268aee1da06602bf54faa57f3aefbfeb528209bf27da95ab6319ced57695",
+    "backend/app/services/intel_report_refresh.py": "8bba519d46fcd6ea117eb4a55cb6eab25f359040f371b81913a93adb538a1c7b",
+    "backend/app/models/intel_activity.py": "5ac6f0f3a3190b665ab5381ad266b0c1c1750edb45056d6a424d2800537e6de1",
+    "backend/alembic/versions/0109_intel_activity.py": "db185b3946579b53c951f408cfef3c8bd35318f9d7de8839bae176acceae7725",
+    "backend/tests/test_intel_report_builder.py": "e673cd4012eb973b1d71951ff9b06d638b8ce107088e837a3cc508a43e2b0ca2",
+    "frontend/src/features/intelReports/IntelReportBuilder.tsx": "a9033d49efdd7f2beff49b2c7f9cafec9a122948696067a216879fd4ae44e2a9",
+    "frontend/src/features/intelReports/intelReports.css": "aa36282576259d858fe0ddc7dfe23cfe637448944af08f7d2c7f2866e54b645b",
+    "frontend/src/features/intelReports/IntelReportsWorkspace.tsx": "c9e13450e6f343909127e4ff9edc53f5248f0626f7a94428b4c34de28e56f804",
+    "frontend/src/features/intelReports/IntelReportView.tsx": "7ad69580bc61e06ec2ce02d8f853afeb909528b04e73d817c4fcaff25adac35d",
+    "frontend/src/features/intelReports/PublicIntelReportPage.tsx": "e0be75c579bf455ff01cff829ee84e3f106f78343128801944671707f4c43ce2",
+    "frontend/src/features/intelReports/types.ts": "8cf1153fa7cf73a6cc801c49cde58159ca9ce4a63d65dc9a471c1e945d9b24d2"
+  },
+  "validation": {
+    "checks": [
+      "System lookup/run, retained killmails, latest ESI capture, all analytics default-collapsed and five hourly charts plus UTC distribution",
+      "Separate visible sighting frequency/hulls exclude another analyst’s private scan; explicit zKill imports then respects shared hourly cache",
+      "Private-by-default and anonymous snapshot controls; anonymous public route shows fixed public combat data without observations, notes, refresh controls or live source queries",
+      "The real full EQM App entry point opens an Intel snapshot for an anonymous reader without requiring sign-in",
+      "Revocation cancel/confirm and server-side anonymous denial remove the stale public report",
+      "Character, corporation and alliance lookups use identical report controls with most-active systems, combat hulls, activity hours and recent killmails",
+      "Legacy saved-dossier navigation stays available; expanded system charts and tables fit 390px mobile without page overflow"
+    ],
+    "errors": []
+  },
+  "backend_validation": {
+    "tests_passed": 160,
+    "new_report_cases": 17,
+    "migration": "0109 upgrade/downgrade in disposable SQLite only; no live/PostgreSQL migration/interleaving test"
+  },
+  "frontend_validation": {
+    "typescript": "passed",
+    "production_bundle": "passed; existing chunk advisory",
+    "full_app_public_auth_bypass": "passed"
+  },
+  "limitations": "No live source completeness or real-player traffic claim. Existing screenshot receipts under v2.3.0 are untouched. Historical ESI series is synthetic in captures; real samples accumulate on report/activity requests.",
+  "images": [
+    {
+      "filename": "intel-reports-alliance.png",
+      "bytes": 190987,
+      "width": 1444,
+      "height": 1714,
+      "sha256": "99cbe2a7500edda960b4a4c4d288c267844647ed6b3fd05015892919981e5578",
+      "synthetic": true
+    },
+    {
+      "filename": "intel-reports-builder.png",
+      "bytes": 112371,
+      "width": 1480,
+      "height": 1100,
+      "sha256": "e9bbd16971d3f17a1017298e46bdbde3e650944a5a5df5f87c31f666e459f78d",
+      "synthetic": true
+    },
+    {
+      "filename": "intel-reports-mobile.png",
+      "bytes": 209381,
+      "width": 354,
+      "height": 3044,
+      "sha256": "eaede7719a787c14fd9c02055f539efaacd1032dc171e4d91c6be46d08a37f82",
+      "synthetic": true
+    },
+    {
+      "filename": "intel-reports-public.png",
+      "bytes": 236704,
+      "width": 1480,
+      "height": 2203,
+      "sha256": "eab95c448bdc6b443240e5cda02e00533c344dc7830bfe5b5460636e6673d129",
+      "synthetic": true
+    },
+    {
+      "filename": "intel-reports-sightings.png",
+      "bytes": 55717,
+      "width": 1444,
+      "height": 484,
+      "sha256": "ac78a2a4b3bfd601c43d37620e6fa7efd34d49557d31181dd41d84cfe6219ae5",
+      "synthetic": true
+    },
+    {
+      "filename": "intel-reports-system-charts.png",
+      "bytes": 93982,
+      "width": 1444,
+      "height": 1046,
+      "sha256": "16a79caf45b933c1f06c73017782184075517446e451f506f5e3aeda7245c8c3",
+      "synthetic": true
+    }
+  ]
+}

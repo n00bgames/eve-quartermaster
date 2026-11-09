@@ -8,6 +8,7 @@ from app.api.industry_reports import router as industry_reports_router
 from app.api.dscan import router as dscan_router
 from app.api.local_scan import router as local_scan_router
 from app.api.intel import router as intel_router
+from app.api.intel_reports import router as intel_reports_router, public_router as public_intel_reports_router
 from app.api.fleet_assignments import router as fleet_assignments_router
 from fastapi import APIRouter
 from app.api.mission_atlas import router as mission_atlas_router
@@ -59,6 +60,8 @@ from app.api.quartermaster_oversight import router as quartermaster_oversight_ro
 from app.api.client_links import router as client_links_router
 
 api_router = APIRouter()
+api_router.include_router(intel_reports_router)
+api_router.include_router(public_intel_reports_router)
 api_router.include_router(client_links_router)
 api_router.include_router(account_sso_router)
 api_router.include_router(ship_reports_router)

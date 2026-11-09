@@ -42,7 +42,7 @@ The response includes at most the first **2,000 visits** in the selected window,
 
 On Analytics, the pane supplies its own linked-pilot and UTC date controls and requires both Analytics and Navigation access. On Journey it uses the map pilot and date controls. Both placements retain account privacy independently of broader Analytics corporation scope. [Shared pane behavior](analytics-panes.md).
 
-**Unreleased 2.3.0 follow-up.** Journey analytics is available on the main **Analytics** page and above the Journey replay. Its pane is **collapsed by default** in both locations; expand the heading to read existing stored data. Its default scope is **All my pilots → All stored history**, independently of the selected map pilot and replay dates. Choose **Selected journey pilot** for one character, or **Selected journey dates (UTC)** to use the date inputs above. No new migration, ESI consent, enrollment or external collection is added; matching API/frontend rollout is required.
+**Unreleased 2.4.0 follow-up.** Journey analytics is available on the main **Analytics** page and above the Journey replay. Its pane is **collapsed by default** in both locations; expand the heading to read existing stored data. Its default scope is **All my pilots → All stored history**, independently of the selected map pilot and replay dates. Choose **Selected journey pilot** for one character, or **Selected journey dates (UTC)** to use the date inputs above. No new migration, ESI consent, enrollment or external collection is added; matching API/frontend rollout is required.
 
 | Ranking | What it counts |
 | --- | --- |

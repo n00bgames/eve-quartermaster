@@ -1,6 +1,6 @@
 # Local Scan character notes
 
-**Unreleased development feature for EQM 2.3.0.** Requires migration `0106_scan_character_notes` and matching backend/frontend rollout. No new ESI scopes or background collection are required.
+**Unreleased development feature for EQM 2.4.0.** Requires migration `0106_scan_character_notes` and matching backend/frontend rollout. No new ESI scopes or background collection are required.
 
 ## Tag a scan
 

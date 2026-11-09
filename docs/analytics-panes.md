@@ -1,6 +1,6 @@
 # Expandable analytics panes
 
-Unreleased EQM 2.3.0 frontend follow-up. Analytics results throughout EQM now use expandable panes that start **collapsed** when their view mounts. Select a pane heading, or focus it and press Enter/Space, to expand or collapse it. Dates, scope filters, exports, privacy controls and operational actions remain available in their existing locations. Coverage/error notices stay visible.
+Unreleased EQM 2.4.0 frontend follow-up. Analytics results throughout EQM now use expandable panes that start **collapsed** when their view mounts. Select a pane heading, or focus it and press Enter/Space, to expand or collapse it. Dates, scope filters, exports, privacy controls and operational actions remain available in their existing locations. Coverage/error notices stay visible.
 
 ## Covered views
 

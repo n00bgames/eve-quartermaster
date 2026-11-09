@@ -18,7 +18,8 @@ import { PublicDScanPage } from "./features/dscan/PublicDScanPage";
 import { QuartermasterPage } from "./features/quartermaster/QuartermasterPage";
 import { LocalScanPage } from "./features/localScan/LocalScanPage";
 import { PublicLocalScanPage } from "./features/localScan/PublicLocalScanPage";
-import { IntelReportsPage } from "./features/intel/IntelReportsPage";
+import { IntelReportsWorkspace } from "./features/intelReports/IntelReportsWorkspace";
+import { PublicIntelReportPage } from "./features/intelReports/PublicIntelReportPage";
 import { FleetAssignmentsPage } from "./features/fleetAssignments/FleetAssignmentsPage";
 import { Activity, Boxes, Building2, CalendarDays, ClipboardList, Coins, Database, Factory, FlaskConical, GraduationCap, Globe2, KeyRound, MapIcon, MessageCircle, NotebookTabs, PackagePlus, Pickaxe, Plus, RefreshCw, ScrollText, Settings, ShieldCheck, ShoppingCart, Siren, Skull, Sparkles, Store, Swords, TrendingUp, UserRoundCheck } from "lucide-react";
 
@@ -548,7 +549,7 @@ function App() {
         : ["waypoint", "destination", "structures", "navigation"].includes(esiMode ?? "") ? "navigation" : "esi";
 
     const esiError = params.get("esi_error");
-    if (window.location.hash.startsWith("#receipt/") || window.location.hash.startsWith("#local-scan/") || window.location.hash.startsWith("#d-scan/") || window.location.hash.startsWith("#industry-report/")) { setAuthReady(true); return; }
+    if (window.location.hash.startsWith("#intel-report/") || window.location.hash.startsWith("#receipt/") || window.location.hash.startsWith("#local-scan/") || window.location.hash.startsWith("#d-scan/") || window.location.hash.startsWith("#industry-report/")) { setAuthReady(true); return; }
 
     if (window.location.hash === "#navigation") setActiveTab("navigation");
     else if (window.location.hash === "#structures") setActiveTab("structures");
@@ -699,6 +700,7 @@ function App() {
   const publicExchangeId = locationHash.startsWith("#exchange/") ? locationHash.slice("#exchange/".length) : null;
   const publicReceiptToken = locationHash.startsWith("#receipt/") ? locationHash.slice("#receipt/".length) : null;
   const publicIndustryReportToken = locationHash.startsWith("#industry-report/") ? locationHash.slice("#industry-report/".length) : null;
+  const publicIntelToken = locationHash.startsWith("#intel-report/") ? locationHash.slice("#intel-report/".length) : null;
   const publicDScanToken = locationHash.startsWith("#d-scan/") ? locationHash.slice("#d-scan/".length) : null;
   const publicLocalScanToken = locationHash.startsWith("#local-scan/") ? locationHash.slice("#local-scan/".length) : null;
   const publicBattleReportToken = locationHash.startsWith("#battle-report/") ? locationHash.slice("#battle-report/".length) : null;
@@ -711,6 +713,7 @@ function App() {
 
   if (publicIndustryReportToken) return <PublicIndustryReportPage api={api} token={publicIndustryReportToken} onBack={()=>{window.location.hash="";window.location.reload();}}/>;
 
+  if (publicIntelToken) return <PublicIntelReportPage api={api} token={publicIntelToken} onBack={() => { window.location.hash=""; window.location.reload(); }} />;
   if (publicDScanToken) return <PublicDScanPage api={api} token={publicDScanToken} onBack={() => { window.location.hash = ""; window.location.reload(); }} />;
 
   if (publicLocalScanToken) return <PublicLocalScanPage api={api} token={publicLocalScanToken} onBack={() => { window.location.hash = ""; window.location.reload(); }} />;
@@ -883,7 +886,7 @@ function App() {
         {activeTab === "local_scan" && canView("local_scan") && <LocalScanPage api={api} allowDscan={canView("dscan")} />}
         {activeTab === "matchups" && canView("matchups") && <MatchupsPage key={locationHash} api={api} />}
         {activeTab === "dscan" && canView("dscan") && <DScanPage api={api} allowMatchups={canView("matchups")} />}
-        {activeTab === "intel_reports" && canView("intel_reports") && <IntelReportsPage key={locationHash} api={api} />}
+        {activeTab === "intel_reports" && canView("intel_reports") && <IntelReportsWorkspace key={locationHash} api={api} />}
 
         {activeTab === "fleet_assignments" && canView("fleet_assignments") && <FleetAssignmentsPage key={locationHash} api={api} />}
 
@@ -2407,7 +2410,7 @@ function subtitleFor(tab: string) {
   if (tab === "matchups") return "PvP hull facts, fit scenarios and counter tools for pilots and fleet commanders.";
   if (tab === "dscan") return "Analyze directional scans, ship classes and deployables, and share timed intel reports.";
   if (tab === "local_scan") return "Turn local pilot lists into public alliance and corporation reports.";
-  if (tab === "intel_reports") return "Investigate public combat evidence and permission-scoped ESI enrichment.";
+  if (tab === "intel_reports") return "Run system, pilot, corporation and alliance reports; inspect saved dossiers and share public combat snapshots.";
   if (tab === "fleet_assignments") return "Plan fleet compositions, assign fittings, and view your own ship assignments.";
   if (tab === "plex") return "Track private PLEX holdings, global market prices, and fee-adjusted trade scenarios.";
 

@@ -65,9 +65,12 @@ def name_map(db: Session, kind: str, ids: set[int]):
 
 
 def evidence_facts(db: Session, subject: IntelSubject, from_at: datetime, to_at: datetime):
-    victim_column=getattr(Killmail,f"victim_{subject.kind}_id")
-    attacker_column=getattr(KillmailAttacker,f"{subject.kind}_id")
-    relevant=or_(victim_column==subject.eve_id,exists().where(KillmailAttacker.killmail_id==Killmail.killmail_id,attacker_column==subject.eve_id))
+    if subject.kind=="system":
+        relevant=Killmail.solar_system_id==subject.eve_id
+    else:
+        victim_column=getattr(Killmail,f"victim_{subject.kind}_id")
+        attacker_column=getattr(KillmailAttacker,f"{subject.kind}_id")
+        relevant=or_(victim_column==subject.eve_id,exists().where(KillmailAttacker.killmail_id==Killmail.killmail_id,attacker_column==subject.eve_id))
     query=select(Killmail.killmail_id,Killmail.killmail_time,Killmail.solar_system_id,Killmail.victim_character_id,Killmail.victim_corporation_id,Killmail.victim_alliance_id,Killmail.victim_ship_type_id,ZkillEnrichment.npc,ZkillEnrichment.solo).outerjoin(ZkillEnrichment,ZkillEnrichment.killmail_id==Killmail.killmail_id).where(relevant,Killmail.killmail_time>=from_at,Killmail.killmail_time<to_at).order_by(Killmail.killmail_time.desc(),Killmail.killmail_id.desc()).limit(FACT_LIMIT+1)
     rows=db.execute(query).all(); limited=len(rows)>FACT_LIMIT; rows=rows[:FACT_LIMIT]
     facts={row.killmail_id:{"id":row.killmail_id,"time":utc(row.killmail_time),"system_id":row.solar_system_id,"npc_only":row.npc is True,"solo":row.solo is True,

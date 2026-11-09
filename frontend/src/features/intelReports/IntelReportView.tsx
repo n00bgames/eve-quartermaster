@@ -1,0 +1,41 @@
+import {useState} from "react";
+import {AnalyticsPane} from "../../components/AnalyticsPane";
+import type {Hour,PublicReport,Sightings} from "./types";
+import "./intelReports.css";
+const n=(value:number)=>value.toLocaleString();
+export const utc=(value:string)=>new Date(value).toISOString().replace("T"," ").slice(0,19)+" UTC";
+const zkill=(kind:string,id:number)=>`https://zkillboard.com/${kind}/${id}/`;
+
+export function IntelReportView({report,sightings}:{report:PublicReport;sightings?:Sightings|null}) {
+ const target=report.target;
+ return <div className="intel-report-results">
+  <header className="panel"><span className="eyebrow">Intel Report · {target.kind}</span><h2>{target.name}</h2><p>{utc(report.window.from_at)} — {utc(report.window.to_at)}</p><p className="muted">Generated {utc(report.generated_at)} · <a href={zkill(target.kind,target.eve_id)} target="_blank" rel="noreferrer">Open target on zKillboard</a></p></header>
+  <p className="notice inline">{report.coverage.notice}{report.coverage.analysis_limited&&` Analysis capped at ${n(report.coverage.killmail_limit)} killmails / the participant budget.`}</p>
+  <div className="intel-report-metrics">{[["Retained killmails",report.summary.killmails],["PvP killmails",report.summary.pvp_killmails],["Combat pilots",report.summary.combat_pilots],["Active systems",report.summary.systems]].map(([label,value])=><div className="panel" key={label}><small>{label}</small><strong>{n(Number(value))}</strong></div>)}</div>
+  {target.kind==="system"&&<p className="muted">{report.esi_activity.notice} Latest reported hour end: {report.esi_activity.latest_reported_at?utc(report.esi_activity.latest_reported_at):"Unavailable"}. {report.esi_activity.samples} retained feed samples.</p>}
+  <AnalyticsPane title="Activity charts" description="Imported killmails by hour, UTC activity pattern and available system traffic totals.">
+   <div className="intel-report-charts"><Series rows={report.hourly} field="killmails" label="Imported PvP killmails / UTC hour" color="#e8b84d"/>{target.kind==="system"&&<><Series rows={report.hourly} field="jumps" label="ESI jumps / reported hour" color="#80b9f2"/><Series rows={report.hourly} field="pod_kills" label="ESI pod deaths / reported hour" color="#db8de1"/><Series rows={report.hourly} field="ship_kills" label="ESI ship deaths / reported hour" color="#e68a7d"/><Series rows={report.hourly} field="npc_kills" label="ESI NPC kills / reported hour" color="#85c9b4"/></>}
+    <UtcHours rows={report.utc_hours}/></div>
+  </AnalyticsPane>
+  <AnalyticsPane title="Most active systems and common hulls" description="Ranked PvP killmail activity and pilot/hull appearances in the selected UTC window."><div className="intel-report-two">
+   <div><h3>Most active systems</h3><Table headers={["System","Killmails"]} rows={report.active_systems.map(row=>[<a href={zkill("system",row.system_id)} target="_blank" rel="noreferrer">{row.name}</a>,n(row.killmails)])}/></div>
+   <div><h3>Common combat hulls</h3><Table headers={["Hull","Appearances"]} rows={report.common_hulls.map(row=>[row.name,n(row.appearances)])}/><p className="muted">One pilot/hull appearance per killmail; this is recorded combat equipment, not fleet composition or time flown.</p></div>
+  </div></AnalyticsPane>
+  <AnalyticsPane title="Frequent combat appearances" description="Distinct PvP killmails per pilot; these are not complete system visit counts."><Table headers={["Pilot","Killmails","UTC days","Last appearance"]} rows={report.combat_pilots.map(row=>[<a href={zkill("character",row.character_id)} target="_blank" rel="noreferrer">{row.name}</a>,n(row.appearances),n(row.distinct_days),utc(row.last_seen)])}/><p className="muted">Top {report.coverage.pilot_limit} of {n(report.summary.combat_pilots)} recorded combat pilots.</p></AnalyticsPane>
+  {sightings&&<AnalyticsPane title="Internal sighting frequency" description="Recorded Local Scan/manual observations, separate from public combat activity and excluded from shares."><p className="notice inline">{sightings.notice}</p><p>{n(sightings.total_sightings)} sightings · {n(sightings.distinct_pilots)} pilots. Top {sightings.limit} shown.</p><Table headers={["Pilot","Sightings","UTC days","Sightings/day","Last seen"]} rows={sightings.rows.map(row=>[row.name,n(row.sightings),n(row.distinct_days),String(row.sightings_per_day),utc(row.last_seen)])}/><h3>Observed sighting hulls</h3><Table headers={["Hull","Sightings"]} rows={sightings.hulls.map(row=>[row.name,n(row.sightings)])}/></AnalyticsPane>}
+  <section className="panel"><h3>Recent killmails</h3><p className="muted">Newest {report.coverage.recent_limit} retained records in this window. Source collection may be incomplete; NPC-only records remain labelled.</p><Table headers={["Killmail / UTC","System","Victim","Hull","Attackers","ISK value"]} rows={report.recent_killmails.map(row=>[
+   <a href={row.url} target="_blank" rel="noreferrer">#{row.killmail_id}<small>{utc(row.time)}{row.npc_only?" · NPC-only":""}</small></a>,row.system_name,row.victim_name,row.hull_name,n(row.attackers),row.value===null?"Unknown":n(row.value)])}/></section>
+ </div>;
+}
+function Table({headers,rows}:{headers:string[];rows:React.ReactNode[][]}) {return <div className="intel-report-table"><table><thead><tr>{headers.map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>{rows.map((row,i)=><tr key={i}>{row.map((value,j)=><td key={j}>{value}</td>)}</tr>)}</tbody></table>{!rows.length&&<p className="muted">No recorded data in this window.</p>}</div>;}
+function Series({rows,field,label,color}:{rows:Hour[];field:"killmails"|"jumps"|"ship_kills"|"pod_kills"|"npc_kills";label:string;color:string}) {
+ const [showTable,setShowTable]=useState(false);
+ const known=rows.filter(r=>r[field]!==null),max=Math.max(1,...known.map(r=>r[field]??0));
+ const width=600,height=180,left=45,right=12,top=12,bottom=34;
+ const x=(i:number)=>left+i*(width-left-right)/Math.max(1,rows.length-1),y=(v:number)=>top+(max-v)*(height-top-bottom)/max;
+ const lines:string[]=[];let current="";
+ rows.forEach((r,i)=>{const value=r[field];if(value===null){if(current)lines.push(current);current="";}else current+=(current?" L":"M")+x(i)+","+y(value);});if(current)lines.push(current);
+ return <article className="panel intel-report-chart"><h3>{label}</h3>{known.length?<svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={label}><title>{label}: {known.length} recorded points, peak {max}</title><path d={`M${left},${top} V${height-bottom} H${width-right}`} fill="none" stroke="currentColor" opacity=".4"/><text x="4" y={top+8}>{n(max)}</text><text x="18" y={height-bottom}>0</text>{lines.map((d,i)=><path key={i} d={d} fill="none" stroke={color} strokeWidth="2"/>)}{rows.map((row,i)=>row[field]!==null&&(rows[i-1]?.[field]==null||rows[i+1]?.[field]==null)?<circle key={i} cx={x(i)} cy={y(row[field]??0)} r="3" fill={color}/>:null)}<text x={left} y={height-9}>{rows[0]?.hour.slice(5,16).replace("T"," ")}</text><text x={width-right} y={height-9} textAnchor="end">{rows[rows.length-1]?.hour.slice(5,16).replace("T"," ")} UTC</text></svg>:<p className="muted">No reported-hour data available. Missing samples are unknown, not zero.</p>}
+  <button type="button" onClick={()=>setShowTable(v=>!v)}>{showTable?"Hide":"Show"} hourly values</button>{showTable&&<Table headers={field==="killmails"?["UTC hour","Count"]:["Interval start hour (UTC)","Count","Upstream hour ending (UTC)"]} rows={rows.map(r=>[r.hour.slice(0,16).replace("T"," "),r[field]===null?"Unknown":n(r[field]??0),...(field==="killmails"?[]:[(field==="jumps"?r.jumps_reported_at:r.kills_reported_at)?utc((field==="jumps"?r.jumps_reported_at:r.kills_reported_at)!):"Unknown"])])}/>}</article>;
+}
+function UtcHours({rows}:{rows:{hour:number;killmails:number}[]}) {const peak=Math.max(1,...rows.map(r=>r.killmails));return <article className="panel intel-report-chart"><h3>PvP activity by UTC hour of day</h3><div className="intel-report-utc" role="img" aria-label="Recorded PvP killmails by UTC hour">{rows.map(r=><div key={r.hour} title={`${r.hour}:00 UTC: ${r.killmails} killmails`}><span style={{height:`${r.killmails/peak*110}px`}}/><small>{r.hour}</small></div>)}</div><p className="muted">Killmail occurrences across the selected dates; not online hours.</p></article>;}

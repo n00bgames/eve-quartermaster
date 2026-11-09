@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/n00bgames/eve-quartermaster"><img alt="Project" src="https://img.shields.io/badge/project-eve--quartermaster-e8b84d?style=for-the-badge"></a>
-  <img alt="Version" src="https://img.shields.io/badge/version-2.3.0-4fb3c7?style=for-the-badge">
+  <img alt="Version" src="https://img.shields.io/badge/version-2.4.0-4fb3c7?style=for-the-badge">
   <img alt="License" src="https://img.shields.io/badge/license-AGPL--3.0--or--later-70c894?style=for-the-badge">
 </p>
 
@@ -23,7 +23,7 @@
 
 EVE Quartermaster is a containerized, database-first EVE Online quartermaster and alliance operations tool. It tracks characters, corporations, assets, blueprints, recipes, skills, standings/contact sync, wallet snapshots, permissions, audit events, and long-term analytics from EVE ESI plus imported SDE data.
 
-The current application/package version is **v2.3** (`2.3.0`). This release adds in-app updates, a complete Matchups ship catalog with fit research, and My Journey map controls and segmented 1080p GIF/MP4 exports. It also improves Sync All reliability. See the [v2.3 release draft](docs/releases/v2.3.md) and [changelog](CHANGELOG.md). Earlier notes: [v1.0](docs/releases/v1.0.md), [v1.0.3](docs/releases/v1.0.3.md), [v2.0](docs/releases/v2.0.md), and [v2.1](docs/releases/v2.1.md).
+The current application/package version is **v2.4.0** (`2.4.0`). This version adds grouped and prioritized Intel dossiers, automatic Local Scan pilot stubs, searchable character notes, owned Structures and manual POS tracking, and Journey analytics with collapsed analytics panes throughout EQM. See the [v2.4.0 release draft](docs/releases/v2.4.md) and [changelog](CHANGELOG.md). Earlier notes: [v2.3](docs/releases/v2.3.md), [v2.1](docs/releases/v2.1.md), [v2.0](docs/releases/v2.0.md), [v1.0.3](docs/releases/v1.0.3.md) and [v1.0](docs/releases/v1.0.md).
 
 > **Fitting Manager / Simulator: Non-Authoritative. For Informational Use Only.** Still in development and not PYFA-complete. Full feature and calculation parity with PYFA is not claimed; verify consequential fitting decisions against PYFA and the EVE client.
 
@@ -67,7 +67,7 @@ See [CHANGELOG.md](CHANGELOG.md) for version-by-version release notes. Applicati
 - [Quartermaster role](docs/quartermaster-role.md) with view-only blueprint holdings, running industry jobs, and planetary infrastructure across authenticated characters and authorized linked corporations.
 - **Structures** includes private manual POS records with fuel estimates and a **Reinforced mode** checkbox that counts down strontium, plus owned Upwell structures and POS towers with ESI status, services, timers and fuel. Manual tracking requires only EQM Structures permission and migration 0107; ESI uses your own corporation character and the required EVE roles/scopes, with POS fuel/settings on demand. [Coverage, authorization and freshness](docs/structures.md). **Unreleased development feature.**
 - **Local Scan character notes:** add one Public or Private note to every resolved pilot, retain it across future scans, and search note text for all matching character/dossier links. Public notes are shared only with signed-in EQM intel users; private notes are author-only. Excluded from public scan links/PDFs. [Guide](docs/local-scan-character-notes.md). **Unreleased; requires migration 0106 and matching backend/frontend rollout.**
-- [Intel Reports](docs/intel-reports.md) for external characters, corporations, and alliances: zKill combat evidence, recurring co-attackers, ships, geography, badges, smartbomb patterns, change history, and viewer-authorized ESI enrichment.
+- [Intel Reports](docs/intel-report-builder.md) for systems, characters, corporations and alliances: activity hours, common hulls, active systems, recent zKill pulls, separate internal sightings, hourly ESI system charts and revocable public/private snapshots. Saved dossiers retain priority flags, staff notes, combat evidence and viewer-authorized ESI enrichment. **Unreleased; requires migration 0109 and matching backend/frontend rollout.**
 - Killboard discovery through zKillboard with canonical ESI killmail storage, resumable incremental sync, direct source links, and historical kill/loss, ISK, hull, geography, participation, opponent, streak, and wingmate analytics.
 - Dynamic Battle Reports for a selected tracked pilot, with browsable retained engagement history, deterministic grouping, illustrated pilot/corporation/alliance/ship identity, team summaries, timeline, damage, SDE-resolved hull classes, clickable pilot zKill links, and revocable public snapshot links.
 - Private HyperNet analytics with per-character opt-in (disabled by default), account controls, buying/selling and ship/item breakdowns, and All-Time reporting. See [private analytics](docs/hypernet-private-analytics.md).
@@ -82,6 +82,14 @@ See [CHANGELOG.md](CHANGELOG.md) for version-by-version release notes. Applicati
 - Hauling intelligence widgets for industrial kill heat, PvP system intel, smartbomb indicators, and Local Threat analysis with background queue progress for large systems.
 - Jump Capable Ship Plotter with automatic routing through ordered, required cyno waypoints, JDC/JFC fuel math, mapped alternate jump points, explicit station-risk warnings, nearby operational map context, and kill/activity intel per jump.
 - Sideloadable Android WebView wrapper build script that outputs `EQM.apk`.
+
+## Shareable Intel Reports — v2.4.0 development preview
+
+Run a report on a system, pilot, corporation or alliance. Inspect common combat hulls, active systems, UTC activity and recent killmails, or explicitly pull recent zKill evidence. System reports also show separate internal sightings and available hourly ESI jumps/deaths/NPC totals. Save privately or create an expiring public combat snapshot that can be revoked. Notes, priority flags, scan/manual observations and private ESI stay out of shares. [Workflow, source coverage and rollout](docs/intel-report-builder.md).
+
+![System hourly activity charts with synthetic data](static/ss/v2.4.0/intel-reports-system-charts.png)
+
+![Anonymous public combat snapshot with synthetic data](static/ss/v2.4.0/intel-reports-public.png)
 
 ## Intel subject browser — development preview
 

@@ -2999,7 +2999,7 @@ async def auth_callback(code: str | None = None, state: str | None = None, db: S
             headers={
                 "Accept": "application/json",
                 "Content-Type": "application/x-www-form-urlencoded",
-                "User-Agent": "eve-quartermaster/2.3.0 (+https://github.com/n00bgames/eve-quartermaster)",
+                "User-Agent": "eve-quartermaster/2.4.0 (+https://github.com/n00bgames/eve-quartermaster)",
             },
         )
     if response.status_code >= 400:

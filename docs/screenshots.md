@@ -910,3 +910,19 @@ Captured November 9, 2026 from an unreleased working tree based on `2cfb184ff194
 ![Report deletion confirmation states that notes and shared records are preserved](../static/ss/v2.3.0/intel-report-delete.png)
 
 ![Collapsed Intel subject browser on mobile](../static/ss/v2.3.0/intel-subjects-mobile.png)
+
+## Intel Reports — v2.4.0 development previews
+
+November 9, 2026 client date. Actual IntelReportsWorkspace/builder/view/public components and existing EQM styles, with real FastAPI report/resolve/refresh/snapshot routes backed by isolated SQLite. Fabricated systems, public killmails, analysts, private/shared sightings and ESI-hour samples; mocked public-source adapters. Full EQM App entry point also tested anonymously. No production records, credentials, live ESI/zKill pulls or real private intelligence. Desktop 1480×1100, mobile 390×844; rendered component crops/full pages, no pixel repainting. All source/image hashes and validation are in [v2.4.0 capture receipt](../static/ss/v2.4.0/capture-receipt.json). Requires migration 0109 and matching rollout; no live deployment. [Guide](intel-report-builder.md).
+
+![Target lookup, UTC controls, explicit collection and snapshot privacy controls](../static/ss/v2.4.0/intel-reports-builder.png)
+
+![System killmail, jump, pod/ship/NPC and UTC-hour charts](../static/ss/v2.4.0/intel-reports-system-charts.png)
+
+![Internal sightings kept separate from combat and public sharing](../static/ss/v2.4.0/intel-reports-sightings.png)
+
+![Anonymous public snapshot with public combat data only](../static/ss/v2.4.0/intel-reports-public.png)
+
+![Alliance report with active systems, common hulls and activity hours](../static/ss/v2.4.0/intel-reports-alliance.png)
+
+![System report at 390px with expanded charts and contained scrolling tables](../static/ss/v2.4.0/intel-reports-mobile.png)

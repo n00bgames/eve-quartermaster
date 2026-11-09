@@ -14,6 +14,7 @@ function formatApiError(detail: unknown): string {
 }
 
 function requestTimeoutMs(path: string): number {
+  if (path.startsWith("/intel-reports/")) return 90000;
   if (/^\/esi\/sync\/(?:characters\/all|character-skills\/all)\/[^/?]+/.test(path)) return 15000;
   if (path.startsWith("/quartermaster/assets-page?") && new URLSearchParams(path.split("?")[1]).get("all_records") === "true") return 120000;
   if (path.startsWith("/industry-reports") || path.startsWith("/inventory-reports")) return 120000;
