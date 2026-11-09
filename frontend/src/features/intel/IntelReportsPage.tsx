@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Activity, BookOpen, ChevronRight, Clock, Crosshair, Database, ExternalLink, Globe2, Network, Plus, RefreshCw, Search, ShieldCheck } from "lucide-react";
 import type { ApiClient, Association, Candidate, Collection, IntelReport, Note, PrivateData, Ranking, Resolution, Subject } from "./types";
 import {IntelNotes} from "./IntelNotes";
+import {NoteSearch} from "./NoteSearch";
 import {IntelSightingFields,emptySighting,type SightingDraft} from "./IntelSightingFields";
 import {IntelSightingTimeline} from "./IntelSightingTimeline";
 import {IntelIdentityHeader} from "./IntelIdentityHeader";
@@ -32,6 +33,7 @@ export function IntelReportsPage({api}:{api:ApiClient}) {
  const [sighting,setSighting]=useState<SightingDraft>({...emptySighting});
  const pendingSighting=useRef<{signature:string;request_id:string}|null>(null);
  const sequence=useRef(0),currentSubject=useRef(selectedId);currentSubject.current=selectedId;
+ useEffect(()=>{const change=()=>{const id=initialId();if(id)setSelectedId(id);};window.addEventListener("hashchange",change);return()=>window.removeEventListener("hashchange",change);},[]);
  const latest=report?.latest_collection;
  function fail(err:unknown){setError(err instanceof Error?err.message:"Request failed");}
  async function lists(){setSubjects(await api<Subject[]>(`${base}/subjects?q=${encodeURIComponent(search)}`));}
@@ -92,6 +94,7 @@ export function IntelReportsPage({api}:{api:ApiClient}) {
  return <section className="intel-page">
   <header className="panel intel-header"><div><span className="intel-eyebrow">INTELLIGENCE / EVIDENCE</span><h2><Search size={25}/> Intel Reports</h2><p>Investigate combat history, recurring associates, and operating patterns.</p></div><span className="intel-access"><ShieldCheck size={16}/> Restricted staff workspace</span></header>
   {error&&<div className="mini-alert" role="alert">{error}</div>}{message&&<div className="notice inline" role="status">{message}</div>}
+  <NoteSearch api={api}/>
   <div className="intel-layout"><aside className="intel-sidebar">
    <section className="panel stacked"><div><h3>Open a dossier</h3><p className="muted">Characters, corporations, alliances. Subjects do not need to be synced to EQM.</p></div>
     <label>Paste names or zKill entity URLs<textarea rows={3} maxLength={30000} value={paste} onChange={event=>setPaste(event.target.value)} placeholder={"Pilot Name\nCorporation Name\nhttps://zkillboard.com/alliance/…/"}/></label>

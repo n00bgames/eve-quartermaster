@@ -22,11 +22,14 @@ class CollectInput(Input):
     max_pages: int = Field(default=10,ge=1,le=100)
 class NoteInput(Input):
     body: str = Field(min_length=1,max_length=5000)
+    is_private: bool = False
 class AuthorizedRefreshInput(Input):
     dataset: Literal["skills","fittings","applicant"]
 
 class NoteEditInput(NoteInput):
     expected_body: str = Field(min_length=1,max_length=5000)
+    expected_is_private: bool = False
 
 class NoteDeleteInput(Input):
     expected_body: str = Field(min_length=1,max_length=5000)
+    expected_is_private: bool = False

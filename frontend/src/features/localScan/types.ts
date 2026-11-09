@@ -5,4 +5,4 @@ export type ReportMeta = { token: string; share_url: string | null; is_private: 
 export type ScanReport = ReportMeta & { pilots: Pilot[]; unresolved: string[]; warnings: string[]; source: string; highlighted_count: number; system: {id: number; name: string} | null };
 export type Condition = { field: "name" | "corporation_name" | "alliance_name"; operator: "contains" | "starts" | "ends" | "equals"; value: string };
 export type Highlight = { id: number; kind: "corporation" | "alliance"; eve_id: number; name: string; color?: ScanColor };
-export type ScanContext = { retentions: string[]; max_pilots: number; corporations: {id: number; name: string}[]; can_generate: boolean; management_scope: string; creator_name?: string };
+export type ScanContext = { retentions: string[]; max_pilots: number; corporations: {id: number; name: string}[]; can_generate: boolean; management_scope: string; creator_name?: string; can_view_notes?: boolean; can_note?: boolean };

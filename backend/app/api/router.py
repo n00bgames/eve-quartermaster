@@ -135,6 +135,9 @@ api_router.include_router(intel_alliance_router)
 from app.api.receipts import router as receipts_router
 api_router.include_router(receipts_router)
 
+from app.api.character_notes import router as character_notes_router
+api_router.include_router(character_notes_router)
+
 from app.api.structures import router as structures_router
 api_router.include_router(structures_router)
 

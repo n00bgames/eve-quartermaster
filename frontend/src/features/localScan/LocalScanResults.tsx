@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import {noteSearchLink,type ScanNotes} from "../intel/noteLinks";
 import type { ApiClient, Condition, Highlight, Pilot, ScanReport } from "./types";
 import { markPilots, pilotColor, colorStyle } from "./highlights";
 import type { AutomaticRule, OrganizationTarget, SaveColor } from "./highlights";
@@ -26,7 +27,7 @@ function PilotPortrait({pilot}: {pilot: Pilot}) {
   </a>;
 }
 
-export function LocalScanResults({ report, api, allowCopy = true, embedded = false, highlights, automaticRules, onSaveColor }: {report: ScanReport; api: ApiClient; allowCopy?: boolean; embedded?: boolean; highlights?: Highlight[]; automaticRules?: AutomaticRule[]; onSaveColor?: SaveColor}) {
+export function LocalScanResults({ report, api, allowCopy = true, embedded = false, highlights, automaticRules, onSaveColor, characterNotes }: {report: ScanReport; api: ApiClient; allowCopy?: boolean; embedded?: boolean; highlights?: Highlight[]; automaticRules?: AutomaticRule[]; onSaveColor?: SaveColor; characterNotes?: ScanNotes}) {
   const [colorTarget,setColorTarget]=useState<OrganizationTarget|null>(null);
   const [mode, setMode] = useState("simple");
   const [query, setQuery] = useState("");
@@ -81,7 +82,7 @@ export function LocalScanResults({ report, api, allowCopy = true, embedded = fal
           return <details key={cid} className={`scan-corporation ${color?"scan-marked":""}`} style={colorStyle(color)}>
             <summary className={`scan-org-row ${onSaveColor&&first.corporation_id?"scan-org-editable":""}`}><OrgLogo kind="corporations" id={first.corporation_id}/><span title={first.corporation_name}>{color&&<span className="scan-mark-indicator" aria-label="Colored organization">● </span>}{first.corporation_name}</span><span className="scan-count">{members.length}</span>
               {onSaveColor&&first.corporation_id&&<button className="scan-org-color-button" type="button" aria-label={`Color corporation ${first.corporation_name}`} onClick={e=>{e.preventDefault();e.stopPropagation();setColorTarget({kind:"corporation",eve_id:first.corporation_id!,name:first.corporation_name});}}>Color</button>}
-            </summary><ul className="scan-pilots">{members.map(p=><li key={p.character_id}><PilotPortrait pilot={p}/><span><a href={`https://zkillboard.com/character/${p.character_id}/`} target="_blank" rel="noopener noreferrer">{p.name}</a><span className="muted"> {p.character_id}</span></span></li>)}</ul>
+            </summary><ul className="scan-pilots">{members.map(p=><li key={p.character_id}><PilotPortrait pilot={p}/><span><a href={`https://zkillboard.com/character/${p.character_id}/`} target="_blank" rel="noopener noreferrer">{p.name}</a><span className="muted"> {p.character_id}</span>{characterNotes?.[p.character_id] && <span className="scan-character-notes">{characterNotes[p.character_id].notes.map(note=><a key={note.id} href={noteSearchLink(note.body)} title="Find all characters with matching note text">{note.is_private?"🔒 Private":"Public"}: {note.body}{note.truncated?"…":""}</a>)}<small><a href={`#intel/${characterNotes[p.character_id].subject_id}`}>Open dossier · {characterNotes[p.character_id].total} notes</a></small></span>}</span></li>)}</ul>
           </details>;
         })}
       </section>;

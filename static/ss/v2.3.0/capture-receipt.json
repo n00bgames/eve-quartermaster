@@ -154,5 +154,64 @@
         "sha256": "9b4676c3963760b6684e2ff26f3126cd7bdf2f64f84fb77083643e07f852f542"
       }
     ]
+  },
+  "scan_character_notes": {
+    "captured_on": "2026-11-08",
+    "application_version": "2.3.0",
+    "source_base_commit": "93ad3f029f8c6ab3545caf79f642d26924c7e12a",
+    "source_state": "Uncommitted Local Scan/Intel Public and Private character notes; requires migration 0106 and matching backend/frontend rollout. No deployment or version bump.",
+    "method": "Actual production LocalScanPage/Results, IntelReportsPage/IntelNotes and NoteSearch with shared API client/styles; headless Edge at 1440px desktop and 390px mobile, complete relevant panel crops.",
+    "data": "Fabricated six-pilot scan plus unresolved name, labels and fixed November 8 note timestamps. Real FastAPI endpoints and isolated SQLite with two fake accounts; public ESI mocked and external portraits blocked. No production or private game data.",
+    "validation": {
+      "checks": [
+        "Default private visibility; explicit public bulk note tags all six resolved pilots despite a one-pilot display filter, and skips unresolved names",
+        "Current character annotations appear on scan rows; note search returns all six dossier links and a reusable search link",
+        "Second real fixture account can search public notes and cannot see or search the author\u2019s private annotations",
+        "Dossier link opens the actual Intel Reports page; individual note editing saves text and visibility with concurrency checks",
+        "Deep-linked note search honors current viewer permissions and a subsequent public-to-private change",
+        "A newly generated scan of previously tagged characters automatically shows their persistent notes without adding duplicates",
+        "390px mobile bulk controls, privacy labels and annotated character rows remain readable without horizontal overflow"
+      ],
+      "errors": []
+    },
+    "backend_validation": "95 broad Local Scan/Intel regression cases passed; final 22-case notes/editing suite passed after added atomic rollback and author-controlled visibility cases (97 unique cases overall). Includes 9,999-pilot batches, literal/paged search, private-note isolation, no public/PDF leakage, durable annotations and migration rollback guard.",
+    "frontend_validation": "Final TypeScript and full production Vite bundle passed; existing large-chunk advisory.",
+    "limitations": "SQLite and synthetic loopback verification. No live production/PostgreSQL migration or ESI collection performed. Public means signed-in EQM Intel access. Existing dossiers use current note data; shared public scan snapshots and PDFs never include notes. Three 300-character previews per pilot/match, complete character pagination, existing dossier note list limit retained.",
+    "source_sha256": {
+      "backend/app/api/character_notes.py": "40c7d522810e731ef9ecaed5bb8ab3441e4847f74fc2fca47caf6232872e52e9",
+      "backend/app/api/intel.py": "65762f436824c854b9095e0f61a23465cfd1102f1fbff9b0f23e3efd456ba4d0",
+      "backend/app/api/local_scan.py": "9bbcd04343a9e932411421fc15d78f9cde0c6711ed7fc7656dae22ba508dd4f6",
+      "backend/app/services/character_notes.py": "6afca1cc877b3406875d7c44820346a1daf409f7dfacb31329c579b384d40fa9",
+      "backend/app/models/intel.py": "d78fb1648aab30823c0b90953d78661631eaa3c4b3bc57a7f6c5c1bca170f035",
+      "backend/app/schemas/intel.py": "dc94f37a28087838824ca405c6fd49f74f2159fef7900966a6d3e205d7e1e827",
+      "backend/alembic/versions/0106_scan_character_notes.py": "5f5131e199a0c93e55414a83d028fe63220e3914265c49b317eb8839832cc115",
+      "frontend/src/features/localScan/LocalScanPage.tsx": "cddf55dc15096c7e0f5d01870b331e79db3980418a68cb31f8465b183b2ae39f",
+      "frontend/src/features/localScan/LocalScanResults.tsx": "edfcb23d37181a0fd9677efdbabb376b48b209d905dcc1ab23b6c3e0aecad5a3",
+      "frontend/src/features/localScan/AnnotatedLocalScan.tsx": "b3808a03b17cc5b9a65a1781d5e2d79cb7a7cd9e2315db99576d8d0fdc53e5f1",
+      "frontend/src/features/intel/IntelReportsPage.tsx": "d11e46b0f044a425898f7f16e73ffd5f8d21657d46db2e5b9a6b9db830b17463",
+      "frontend/src/features/intel/IntelNotes.tsx": "333427369b991c2f5a813eebf9a18bfac1a200be7230fa094601bda74c43848c",
+      "frontend/src/features/intel/NoteSearch.tsx": "3874b994f9da09775d3cbe7ab5e446d6e7696cb764bd2b1b4455fe9443ae22f9",
+      "frontend/src/features/intel/noteLinks.ts": "57b70f34ab23a1e2ac074b131f8c81c6e5806fd2d6ff7e0ee17f81f2abc1c5bf",
+      "frontend/src/features/intel/noteSearch.css": "53ff0383d12c53447f50dc51a2a469b9702e1d36b761801232d587a12032e5e9",
+      "backend/tests/test_scan_character_notes.py": "d952f74cd836ccc560005cb43431e28e9e4de6497325435cf088b7fe5cef940e",
+      "frontend/src/features/intel/types.ts": "92a41ddcc0d828cd192cb64e350a9933247687bdd93d000ca92c4bb001e8972d"
+    },
+    "images": [
+      {
+        "filename": "local-scan-character-notes-desktop.png",
+        "bytes": 168582,
+        "sha256": "81890d20cd068ead4cb7c6cc281a1121d919511d2ef5853a4a8d0f274e0334c9"
+      },
+      {
+        "filename": "character-note-search.png",
+        "bytes": 71916,
+        "sha256": "7fc885e3a222b8c2ff32388e839cdd97a5a18ae100295c3ef43633c5d258d1d3"
+      },
+      {
+        "filename": "local-scan-character-notes-mobile.png",
+        "bytes": 159954,
+        "sha256": "197e4e76ad5c675ba1eb97c5a3ac366c3dc22e66dee07d88fba654ce2f56a47d"
+      }
+    ]
   }
 }

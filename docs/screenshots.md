@@ -847,3 +847,14 @@ November 8, 2026 client date. Actual StructuresPage, shared API client and exist
 ![Owned Upwell structures and expanded POS fuel with synthetic data](../static/ss/v2.3.0/structures-desktop.png)
 
 ![Structures filters, cards and POS fuel at 390px](../static/ss/v2.3.0/structures-mobile.png)
+
+
+## Local Scan character notes — v2.3.0 development preview
+
+November 8, 2026 client date. Actual LocalScanPage/LocalScanResults, IntelReportsPage, dossier note editor, shared API client and EQM styles, served through local Vite/headless Edge against real FastAPI routes and a separate disposable SQLite database. Fabricated pilots, corporation/alliance, labels and fixed synthetic note timestamps. Two synthetic accounts (Officer author and Admin viewer); public ESI source mocked and external portraits blocked. No production credentials, real notes, live account collection or game actions. Captures retain the full relevant report or search panel; mobile viewport is 390px. Unreleased; requires migration 0106 and matching backend/frontend rollout. [Guide](local-scan-character-notes.md) · [Capture receipt](../static/ss/v2.3.0/capture-receipt.json).
+
+![Scan-wide Public note applied to six synthetic resolved pilots](../static/ss/v2.3.0/local-scan-character-notes-desktop.png)
+
+![Note text search with six linked matching characters](../static/ss/v2.3.0/character-note-search.png)
+
+![Public and Private character annotations at 390px](../static/ss/v2.3.0/local-scan-character-notes-mobile.png)

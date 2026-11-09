@@ -58,12 +58,29 @@ class IntelSourceCache(Base):
     payload: Mapped[dict] = mapped_column(JSON, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
 
+class IntelScanNoteBatch(Base):
+    """Retry-safe bulk annotation; independent of expiring report bearer links."""
+    __tablename__ = "intel_scan_note_batches"
+    __table_args__ = (UniqueConstraint("author_user_id", "request_id", name="uq_intel_scan_note_request"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    author_user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
+    request_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    source_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    is_private: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    pilot_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
 class IntelNote(Base):
     __tablename__ = "intel_notes"
+    __table_args__ = (UniqueConstraint("subject_id", "scan_batch_id", name="uq_intel_note_scan_pilot"),)
     id: Mapped[int] = mapped_column(primary_key=True)
     subject_id: Mapped[int] = mapped_column(ForeignKey("intel_subjects.id", ondelete="CASCADE"), nullable=False, index=True)
     author_user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
     body: Mapped[str] = mapped_column(Text, nullable=False)
+    is_private: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
+    scan_batch_id: Mapped[int | None] = mapped_column(ForeignKey("intel_scan_note_batches.id", ondelete="SET NULL"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
 class IntelSighting(Base):

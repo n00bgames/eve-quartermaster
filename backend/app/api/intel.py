@@ -17,6 +17,7 @@ from app.services.intel_reports import require_intel, subject_or_404, subject_pa
 from app.services.intel_authorized import private_enrichment, refresh_authorized
 from app.services.audit import record_audit_event
 from app.services import intel_sightings
+from app.services.character_notes import visible as visible_notes, clean_body
 
 
 def access(response: Response,user: User=Depends(get_current_user),db: Session=Depends(get_db)):
@@ -181,7 +182,7 @@ async def authorized_refresh(subject_id: int,payload: AuthorizedRefreshInput,use
 @router.get("/subjects/{subject_id}/notes")
 def notes(subject_id: int,user: User=Depends(get_current_user),db: Session=Depends(get_db)):
     subject_or_404(db,subject_id)
-    rows=db.execute(select(IntelNote,User.display_name).join(User,User.id==IntelNote.author_user_id).where(IntelNote.subject_id==subject_id).order_by(IntelNote.id.desc()).limit(100)).all()
+    rows=db.execute(select(IntelNote,User.display_name).join(User,User.id==IntelNote.author_user_id).where(IntelNote.subject_id==subject_id,visible_notes(user)).order_by(IntelNote.id.desc()).limit(100)).all()
     from app.services.permissions import can_view_at_least
     moderate=can_view_at_least(user,"admin",db)
     return [note_payload(row,name,user,db,moderate) for row,name in rows]
@@ -191,23 +192,23 @@ def notes(subject_id: int,user: User=Depends(get_current_user),db: Session=Depen
 def add_note(subject_id: int,payload: NoteInput,user: User=Depends(get_current_user),db: Session=Depends(get_db)):
     subject_or_404(db,subject_id)
     if not payload.body.strip():raise HTTPException(422,"Write a note before saving")
-    row=IntelNote(subject_id=subject_id,author_user_id=user.id,body=payload.body.strip());db.add(row)
+    row=IntelNote(subject_id=subject_id,author_user_id=user.id,body=clean_body(payload.body),is_private=payload.is_private);db.add(row)
     record_audit_event(db,event_kind="intel",title="Intel analyst note added",actor_user=user,body=f"subject={subject_id}");db.commit()
     return note_payload(row,user.display_name,user,db)
 
 def can_manage_note(row,user,db):
     from app.services.permissions import can_view_at_least
-    return row.author_user_id==user.id or can_view_at_least(user,"admin",db)
+    return row.author_user_id==user.id or (not row.is_private and can_view_at_least(user,"admin",db))
 
 
 def note_payload(row,author,user,db,moderate=None):
-    allowed=can_manage_note(row,user,db) if moderate is None else row.author_user_id==user.id or moderate
-    return {"id":row.id,"body":row.body,"author":author,"created_at":row.created_at,"can_edit":allowed,"can_delete":allowed}
+    allowed=can_manage_note(row,user,db) if moderate is None else row.author_user_id==user.id or (moderate and not row.is_private)
+    return {"id":row.id,"body":row.body,"author":author,"created_at":row.created_at,"can_edit":allowed,"can_delete":allowed,"is_private":row.is_private,"can_change_visibility":row.author_user_id==user.id}
 
 
 def managed_note(db,subject_id,note_id,user):
     subject_or_404(db,subject_id)
-    row=db.scalar(select(IntelNote).where(IntelNote.id==note_id,IntelNote.subject_id==subject_id))
+    row=db.scalar(select(IntelNote).where(IntelNote.id==note_id,IntelNote.subject_id==subject_id,visible_notes(user)))
     if row is None:raise HTTPException(404,"Intel note not found")
     if not can_manage_note(row,user,db):raise HTTPException(403,"Only the note author or an administrator can change this note")
     return row
@@ -216,10 +217,12 @@ def managed_note(db,subject_id,note_id,user):
 @router.patch("/subjects/{subject_id}/notes/{note_id}")
 def edit_note(subject_id:int,note_id:int,payload:NoteEditInput,user:User=Depends(get_current_user),db:Session=Depends(get_db)):
     row=managed_note(db,subject_id,note_id,user)
+    if payload.is_private!=row.is_private and row.author_user_id!=user.id:
+        raise HTTPException(403,"Only the note author can change its visibility")
     if not payload.body.strip():raise HTTPException(422,"Write a note before saving")
     author=db.get(User,row.author_user_id).display_name
-    changed=db.execute(update(IntelNote).where(IntelNote.id==row.id,IntelNote.subject_id==subject_id,IntelNote.body==payload.expected_body)
-        .values(body=payload.body.strip()).execution_options(synchronize_session=False)).rowcount
+    changed=db.execute(update(IntelNote).where(IntelNote.id==row.id,IntelNote.subject_id==subject_id,IntelNote.body==payload.expected_body,IntelNote.is_private==payload.expected_is_private)
+        .values(body=clean_body(payload.body),is_private=payload.is_private).execution_options(synchronize_session=False)).rowcount
     if changed!=1:raise HTTPException(409,"This note changed or was deleted. Reload the notes before trying again.")
     record_audit_event(db,event_kind="intel",title="Intel analyst note edited",actor_user=user,body=f"subject={subject_id}; note={note_id}")
     db.commit();db.refresh(row)
@@ -229,7 +232,7 @@ def edit_note(subject_id:int,note_id:int,payload:NoteEditInput,user:User=Depends
 @router.delete("/subjects/{subject_id}/notes/{note_id}")
 def delete_note(subject_id:int,note_id:int,payload:NoteDeleteInput,user:User=Depends(get_current_user),db:Session=Depends(get_db)):
     row=managed_note(db,subject_id,note_id,user)
-    changed=db.execute(delete(IntelNote).where(IntelNote.id==row.id,IntelNote.subject_id==subject_id,IntelNote.body==payload.expected_body)
+    changed=db.execute(delete(IntelNote).where(IntelNote.id==row.id,IntelNote.subject_id==subject_id,IntelNote.body==payload.expected_body,IntelNote.is_private==payload.expected_is_private)
         .execution_options(synchronize_session=False)).rowcount
     if changed!=1:raise HTTPException(409,"This note changed or was deleted. Reload the notes before trying again.")
     record_audit_event(db,event_kind="intel",title="Intel analyst note deleted",actor_user=user,body=f"subject={subject_id}; note={note_id}")

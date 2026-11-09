@@ -66,6 +66,7 @@ See [CHANGELOG.md](CHANGELOG.md) for version-by-version release notes. Applicati
 - Ship Replacement Program instances with generated intake links, EQM character ownership checks, doctrine or general fittings, exact timezone-aware loss recording, immutable historical snapshots, append-only review history, precise valuation/reimbursement fields, and permission-filtered analytics and CSV exports.
 - [Quartermaster role](docs/quartermaster-role.md) with view-only blueprint holdings, running industry jobs, and planetary infrastructure across authenticated characters and authorized linked corporations.
 - **Structures** lists owned Upwell structures and POS towers with ESI status, services, timers and fuel. Uses your own corporation character; POS fuel/settings expand on demand. Requires Structures permission and EVE corporation roles/scopes. [Coverage, authorization and freshness](docs/structures.md). **Unreleased development feature.**
+- **Local Scan character notes:** add one Public or Private note to every resolved pilot, retain it across future scans, and search note text for all matching character/dossier links. Public notes are shared only with signed-in EQM intel users; private notes are author-only. Excluded from public scan links/PDFs. [Guide](docs/local-scan-character-notes.md). **Unreleased; requires migration 0106 and matching backend/frontend rollout.**
 - [Intel Reports](docs/intel-reports.md) for external characters, corporations, and alliances: zKill combat evidence, recurring co-attackers, ships, geography, badges, smartbomb patterns, change history, and viewer-authorized ESI enrichment.
 - Killboard discovery through zKillboard with canonical ESI killmail storage, resumable incremental sync, direct source links, and historical kill/loss, ISK, hull, geography, participation, opponent, streak, and wingmate analytics.
 - Dynamic Battle Reports for a selected tracked pilot, with browsable retained engagement history, deterministic grouping, illustrated pilot/corporation/alliance/ship identity, team summaries, timeline, damage, SDE-resolved hull classes, clickable pilot zKill links, and revocable public snapshot links.
@@ -81,6 +82,12 @@ See [CHANGELOG.md](CHANGELOG.md) for version-by-version release notes. Applicati
 - Hauling intelligence widgets for industrial kill heat, PvP system intel, smartbomb indicators, and Local Threat analysis with background queue progress for large systems.
 - Jump Capable Ship Plotter with automatic routing through ordered, required cyno waypoints, JDC/JFC fuel math, mapped alternate jump points, explicit station-risk warnings, nearby operational map context, and kill/activity intel per jump.
 - Sideloadable Android WebView wrapper build script that outputs `EQM.apk`.
+
+## Searchable character notes — development preview
+
+Tag an entire resolved Local Scan with a Public or Private note, then search its text to find every marked character. Notes persist after the source scan expires and appear on later authenticated scans. Public notes stay inside EQM intel; private notes stay author-only. [Workflow and rollout](docs/local-scan-character-notes.md).
+
+![Note search finding six synthetic characters with the same crew label](static/ss/v2.3.0/character-note-search.png)
 
 ## Owned structures — development preview
 

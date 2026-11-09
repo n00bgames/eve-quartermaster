@@ -91,10 +91,13 @@ def metadata(row):
 @router.get("/context")
 def context(user: User = Depends(require_scan), db: Session = Depends(get_db)):
     from app.services.report_identity import report_identity
+    from app.services.character_notes import available as notes_available
     rank = role_rank(user, db)
     return {"retentions": list(service.RETENTIONS), "max_pilots": service.MAX_PILOTS, "creator_name": report_identity(db, user)[0],
             "corporations": [{"id": cid, "name": name} for cid, name in service.corporations(db, user)],
             "can_generate": not quartermaster_read_only(user, db),
+            "can_view_notes": notes_available(db, user),
+            "can_note": notes_available(db, user, write=True),
             "management_scope": "all reports" if rank >= ROLE_RANK["admin"] else
                 "your reports and your corporations' reports" if rank >= ROLE_RANK["director"] else "your reports"}
 

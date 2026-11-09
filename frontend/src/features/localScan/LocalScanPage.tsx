@@ -7,7 +7,8 @@ import { ReportPrivacyOptions } from "../localScan/ReportPrivacyOptions";
 import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import type { ApiClient, Highlight, ReportMeta, ScanContext, ScanReport } from "./types";
-import { LocalScanResults } from "./LocalScanResults";
+import { AnnotatedLocalScan } from "./AnnotatedLocalScan";
+import { NoteSearch } from "../intel/NoteSearch";
 import "./localScan.css";
 
 type DeleteSpec = {tokens: string[]} | {from_at: string; to_at: string} | {all_in_scope: true};
@@ -114,7 +115,8 @@ export function LocalScanPage({api,allowDscan=false}: {api: ApiClient;allowDscan
     </form></section>
     <details key="local-scan-2" data-layout-id="local-scan-2" data-layout-label="details" className="panel scan-highlight-editor"><summary>Highlighted organizations <span className="scan-count">{highlights.length}</span></summary><StandingsColors api={api} basePath="/local-scans" onRules={setAutomaticRules} disabled={!context?.can_generate}/><OrganizationColors highlights={highlights} onSave={saveColor} busy={highlightBusy} disabled={!context?.can_generate}/>
     </details>
-    {report && <div className="panel"><LocalScanResults key={report.token} report={report} api={api} highlights={context ? highlights : undefined} automaticRules={automaticRules} onSaveColor={context?.can_generate ? saveColor : undefined}/></div>}
+    {context?.can_view_notes && <NoteSearch key="local-scan-notes" api={api}/>}
+    {report && <div className="panel"><AnnotatedLocalScan canViewNotes={Boolean(context?.can_view_notes)} canNote={Boolean(context?.can_note)} key={report.token} report={report} api={api} highlights={context ? highlights : undefined} automaticRules={automaticRules} onSaveColor={context?.can_generate ? saveColor : undefined}/></div>}
     <section key="local-scan-3" data-layout-id="local-scan-3" data-layout-label="Section 3" className="panel scan-history"><div className="scan-report-header"><h3>Saved local scans</h3><button type="button" onClick={()=>void loadHistory().catch(e=>setError(errorText(e)))}>Refresh reports</button></div><p className="muted">Manage {context?.management_scope ?? "your reports"}. {history.total} active reports. Expired reports are removed automatically.</p>
       {context?.can_generate && <><div className="scan-report-actions"><button type="button" disabled={selected.length===0 || deleting} onClick={()=>setPending({spec:{tokens:selected},message:`Delete ${selected.length} selected report(s) within ${context.management_scope}?`})}>Delete selected ({selected.length})</button><button type="button" disabled={history.total===0 || deleting} onClick={()=>setPending({spec:{all_in_scope:true},message:`Delete ALL reports within ${context.management_scope}? ${history.total} active reports currently match.`})}>Delete all in scope</button></div>
       <div className="scan-date-range"><label>Generated from (UTC, inclusive)<input type="datetime-local" value={from} onChange={e=>setFrom(e.target.value)}/></label><label>Generated before (UTC, exclusive)<input type="datetime-local" value={to} onChange={e=>setTo(e.target.value)}/></label><button type="button" disabled={deleting} onClick={()=>void dateDeletion()}>Delete date range</button></div></>}
