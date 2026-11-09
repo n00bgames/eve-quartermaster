@@ -1195,3 +1195,7 @@ Export the selected UTC dates or a character’s **entire recorded journey** as 
 Journey analytics on Analytics and Journey now ranks and graphs **Recorded hulls with most kills** by imported kills. **Ship types most lost** uses imported losses. The visit/span selector applies to most-flown travel hulls; kill/loss counts determine combat card positions, labels and bar lengths. [Definitions](docs/journey-map.md#journey-analytics).
 
 ![Journey combat hull rankings use kills and losses with span selected](static/ss/v2.4.0/journey-combat-counts-analytics.png)
+
+Intel Reports can explicitly pull up to **10 zKill pages** (up to 2,000 distinct references) for any supported target, with overlap deduplication, visible coverage counts and retryable partial results. [Pull details](docs/intel-report-builder.md#pull-recent-zkill-evidence).
+
+![Intel Reports ten-page pull coverage — synthetic v2.4.0 preview](static/ss/v2.4.0/intel-reports-ten-pages.png)

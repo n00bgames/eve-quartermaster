@@ -11,7 +11,7 @@ export type PublicReport={schema_version:string;target:Target;window:{from_at:st
  esi_activity:{available:boolean;samples:number;latest_reported_at?:string|null;notice:string};
  coverage:{analysis_limited:boolean;killmail_limit:number;pilot_limit:number;ranking_limit:number;recent_limit:number;unknown_victim_hulls:number;notice:string}};
 export type Sightings={total_sightings:number;distinct_pilots:number;limit:number;rows:{character_id:number;name:string;sightings:number;distinct_days:number;sightings_per_day:number;last_seen:string}[];hulls:{type_id:number|null;name:string;sightings:number}[];notice:string};
-export type Refresh={status:string|null;finished_at:string|null;imported:number|null;reused:number|null;failed:number|null;notice:string|null;next_refresh_at:string|null;cached?:boolean};
+export type Refresh={status:string|null;finished_at:string|null;imported:number|null;reused:number|null;failed:number|null;notice:string|null;next_refresh_at:string|null;cached?:boolean;pages?:number|null;page_limit?:number|null;discovered?:number|null;stop_reason?:string|null};
 export type Result={public_report:PublicReport;internal_sightings:Sightings|null;refresh:Refresh};
 export type Snapshot={token:string;is_private:boolean;anonymous:boolean;creator:string;created_at:string;expires_at:string|null;retention:string;application_version:string;share_path:string|null;report:PublicReport};
 export type Saved=Omit<Snapshot,"report">&{target:Target};

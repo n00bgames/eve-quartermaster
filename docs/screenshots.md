@@ -947,3 +947,11 @@ Captured November 9, 2026 from the unreleased 2.4.0 working tree: actual Structu
 | Banner | ![Fuel and reinforcement timer reminders](../static/ss/v2.4.0/structure-timer-banner.png) |
 | Calendar | ![Managed reinforcement deadline](../static/ss/v2.4.0/structure-timer-calendar.png) |
 | Mobile | ![Mobile timer controls](../static/ss/v2.4.0/structure-timer-mobile.png) |
+
+## Intel Reports ten-page pulls — v2.4.0
+
+Captured November 9, 2026 from the unreleased working tree on c3d2dcb. Actual React Intel Reports controls and real API routes use a synthetic, isolated SQLite preview and a paced-source replacement returning 30 distinct Demo killmails across ten pages. No live zKill/ESI/SSO, production users or private gameplay data. Browser checks verified the full pull, cached repeat, persistent coverage and 390px overflow. Component crops are unaltered. [Guide](intel-report-builder.md#pull-recent-zkill-evidence) · [Receipt](../static/ss/v2.4.0/capture-receipt.json)
+
+![Desktop ten-page pull coverage](../static/ss/v2.4.0/intel-reports-ten-pages.png)
+
+![Mobile ten-page pull coverage](../static/ss/v2.4.0/intel-reports-ten-pages-mobile.png)

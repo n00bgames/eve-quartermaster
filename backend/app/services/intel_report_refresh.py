@@ -12,12 +12,17 @@ from app.services.character_notes import conflict_insert
 from app.services.intel_sources import PublicSource, ENTITY_MODIFIER
 from app.services.killboard_sync import upsert_killmail, ensure_discovery, upsert_enrichment
 
+MAX_PAGES = 10
+MAX_PAGE_ENTRIES = 200
+PAGE_BUDGET_SECONDS = 20
+CANONICAL_BUDGET_SECONDS = 25
+
 def now():return datetime.now(timezone.utc)
-def key(kind,eid):return f'intel-report-refresh:{kind}:{eid}'
+def key(kind,eid):return f'intel-report-refresh:pages10:{kind}:{eid}'
 def status(db,kind,eid):
     row=db.get(IntelSourceCache,key(kind,eid))
     data=row.payload if row else {}
-    return {k:data.get(k) for k in ('status','finished_at','imported','reused','failed','notice')} | {'next_refresh_at':utc(row.expires_at).isoformat() if row else None}
+    return {k:data.get(k) for k in ('status','finished_at','imported','reused','failed','notice','pages','page_limit','discovered','stop_reason')} | {'next_refresh_at':utc(row.expires_at).isoformat() if row else None}
 
 def claim(db,kind,eid):
     at=now();token=str(uuid4())
@@ -33,14 +38,35 @@ def matches(kind,eid,payload):
 
 async def fetch(source,kind,eid,known):
     modifier='solarSystemID' if kind=='system' else ENTITY_MODIFIER[kind]
-    rows=await asyncio.wait_for(source.zget(f'{modifier}/{eid}/page/1'),timeout=15)
-    if not isinstance(rows,list) or len(rows)>200:raise ValueError('Invalid public killmail page')
     refs={}
-    for row in rows:
-        if not isinstance(row,dict):continue
-        kid=row.get('killmail_id');hash_value=(row.get('zkb') or {}).get('hash')
-        if type(kid) is int and kid>0 and isinstance(hash_value,str) and 1<=len(hash_value)<=128:refs.setdefault(kid,row)
-    chosen=list(refs.items())[:25]
+    coverage={'pages':0,'page_limit':MAX_PAGES,'stop_reason':'page_cap','retry_after':0}
+    deadline=asyncio.get_running_loop().time()+PAGE_BUDGET_SECONDS
+    for page in range(1,MAX_PAGES+1):
+        try:
+            remaining=deadline-asyncio.get_running_loop().time()
+            if remaining<=0:raise asyncio.TimeoutError()
+            rows=await asyncio.wait_for(source.zget(f'{modifier}/{eid}/page/{page}'),timeout=min(15,remaining))
+            if not isinstance(rows,list) or len(rows)>MAX_PAGE_ENTRIES:raise ValueError('Invalid public killmail page')
+        except Exception as error:
+            if not coverage['pages']:raise
+            coverage.update(stop_reason='time_budget' if isinstance(error,asyncio.TimeoutError) else 'source_error',
+                            retry_after=max(60,getattr(error,'retry_after',60)))
+            break
+        coverage['pages']+=1
+        if not rows:
+            coverage['stop_reason']='feed_exhausted'
+            break
+        before=len(refs)
+        for row in rows:
+            if not isinstance(row,dict):continue
+            kid=row.get('killmail_id');zkb=row.get('zkb')
+            hash_value=zkb.get('hash') if isinstance(zkb,dict) else None
+            if type(kid) is int and kid>0 and isinstance(hash_value,str) and 1<=len(hash_value)<=128:refs.setdefault(kid,row)
+        if len(refs)==before:
+            coverage['stop_reason']='no_new_references'
+            break
+    coverage['discovered']=len(refs)
+    chosen=list(refs.items())
     gate=asyncio.Semaphore(4)
     async def one(kid,row):
         if kid in known:return kid,row,None,None
@@ -52,7 +78,7 @@ async def fetch(source,kind,eid,known):
             except Exception:return kid,row,None,'Public ESI killmail unavailable or outside target scope'
     tasks=[asyncio.create_task(one(kid,row)) for kid,row in chosen]
     try:
-        done,pending=await asyncio.wait(tasks,timeout=30) if tasks else (set(),set())
+        done,pending=await asyncio.wait(tasks,timeout=CANONICAL_BUDGET_SECONDS) if tasks else (set(),set())
         for task in pending:task.cancel()
         await asyncio.gather(*pending,return_exceptions=True)
         results=[task.result() if task in done else (kid,row,None,'Public ESI killmail timeout') for task,(kid,row) in zip(tasks,chosen)]
@@ -82,14 +108,14 @@ async def fetch(source,kind,eid,known):
             except Exception:return None
     try:metadata=[p for p in await asyncio.wait_for(asyncio.gather(*(type_meta(tid) for tid in sorted(types)[:25])),timeout=5) if p]
     except asyncio.TimeoutError:metadata=[]
-    return results,resolved,metadata,len(refs)
+    return results,resolved,metadata,coverage
 
 def persist(db,kind,eid,token,result,error=None):
     row=db.scalar(select(IntelSourceCache).where(IntelSourceCache.key==key(kind,eid)).with_for_update().execution_options(populate_existing=True))
     if row is None or row.payload.get('lease')!=token or utc(row.expires_at)<=now():raise HTTPException(409,'Refresh lease expired; reload the report')
-    imported=reused=failed=0;at=now()
+    imported=reused=failed=0;at=now();coverage={}
     if result:
-        results,names,types,discovered=result
+        results,names,types,coverage=result
         for kid,reference,payload,issue in results:
             if issue:failed+=1;continue
             try:
@@ -114,9 +140,18 @@ def persist(db,kind,eid,token,result,error=None):
             cache_key=f"type:{item['id']}";cached=db.get(IntelSourceCache,cache_key)
             if cached:cached.payload=item;cached.expires_at=at+timedelta(days=30)
             else:db.add(IntelSourceCache(key=cache_key,payload=item,expires_at=at+timedelta(days=30)))
-    row.payload=dict(status='error' if error else 'partial' if failed else 'completed',finished_at=at.isoformat(),imported=imported,reused=reused,failed=failed,
-        notice='Public source refresh failed; retained evidence was kept.' if error else 'Newest page sampled: at most 25 killmails per pull. zKill can omit recent/missing records; a page is not complete system or entity history.')
-    row.expires_at=at+timedelta(seconds=max(60,getattr(error,'retry_after',60)) if error else 3600)
+    incomplete=coverage.get('stop_reason') in ('time_budget','source_error','no_new_references')
+    state='error' if error else 'partial' if failed or incomplete else 'completed'
+    reason={'page_cap':'10-page limit reached','feed_exhausted':'source feed ended','time_budget':'page time budget reached',
+            'source_error':'later source page unavailable','no_new_references':'source returned no new valid references'}.get(coverage.get('stop_reason'),'')
+    notice=('Public source refresh failed; retained evidence was kept.' if error else
+        f"Read {coverage.get('pages',0)} of up to {MAX_PAGES} zKill pages; {coverage.get('discovered',0)} unique references ({reason}). "
+        'zKill can omit recent/missing records; this is not complete system or entity history.')
+    if failed:notice+=' Some canonical killmails could not be verified within this pull; retained evidence was kept. Retry after the displayed cooldown.'
+    row.payload=dict(status=state,finished_at=at.isoformat(),imported=imported,reused=reused,failed=failed,notice=notice,
+        **{k:coverage.get(k) for k in ('pages','page_limit','discovered','stop_reason')})
+    cooldown=max(60,getattr(error,'retry_after',60),coverage.get('retry_after',0)) if error or state=='partial' else 3600
+    row.expires_at=at+timedelta(seconds=cooldown)
     db.commit();return status(db,kind,eid)
 
 def save_activity(db,eid,snapshot):

@@ -28,6 +28,7 @@ def read(e,kind='system',eid=SYSTEM):
 class Source(FakeSource):
     async def zget(self,path):
         self.pages.append(path)
+        if not path.endswith('/page/1'):return []
         return [{'killmail_id':kid,'zkb':{'hash':f'hash-{kid}','npc':False,'totalValue':100}} for kid in (101,102,103)]
 @pytest.fixture
 def reports(env):
@@ -42,7 +43,7 @@ def pull(e,kind='system',eid=SYSTEM):
 def test_pull_and_all_four_report_scopes(reports):
     e=reports;before=e.db.scalar(select(func.count()).select_from(EveCharacter))
     value=pull(e);assert value['imported']==3 and value['status']=='completed'
-    assert e.report_source.pages==[f'solarSystemID/{SYSTEM}/page/1']
+    assert e.report_source.pages==[f'solarSystemID/{SYSTEM}/page/1',f'solarSystemID/{SYSTEM}/page/2']
     assert len(e.report_source.killcalls)==3
     for kind,eid in [('system',SYSTEM),('character',9001),('corporation',8002),('alliance',7001)]:
         if kind!='system':subject(e,kind,eid)
@@ -52,7 +53,7 @@ def test_pull_and_all_four_report_scopes(reports):
         assert sum(r['killmails'] for r in data['utc_hours'])==3
         assert len(data['common_hulls'])==1
     assert e.db.scalar(select(func.count()).select_from(EveCharacter))==before
-    assert pull(e)['cached'] and len(e.report_source.pages)==1
+    assert pull(e)['cached'] and len(e.report_source.pages)==2
 
 def test_no_external_fetch_on_report_reads_and_unknown_counts(reports):
     data=read(reports)
@@ -146,14 +147,89 @@ def test_source_failure_preserves_evidence_and_scope_mismatch(reports):
     assert refresh.matches('system',SYSTEM,{'solar_system_id':SYSTEM})
     assert not refresh.matches('character',9001,{'victim':{'character_id':9002},'attackers':[]})
 
-def test_refresh_cap_partial_failures_and_no_metadata_enrollment(reports):
+def test_refresh_imports_beyond_old_cap_with_partial_failures(reports):
     e=reports
     async def page(path):return [{'killmail_id':kid,'zkb':{'hash':f'hash-{kid}','npc':False}} for kid in range(101,161)]
     e.report_source.fail_id=102
     with patch.object(e.report_source,'zget',side_effect=page):value=pull(e)
-    assert value['status']=='partial' and value['failed']==1 and value['imported']==24
-    assert len(e.report_source.killcalls)==25
-    assert e.db.scalar(select(func.count()).select_from(Killmail))==24
+    assert value['status']=='partial' and value['failed']==1 and value['imported']==59
+    assert len(e.report_source.killcalls)==60
+    assert e.db.scalar(select(func.count()).select_from(Killmail))==59
+
+
+@pytest.mark.parametrize('kind,eid,modifier',[
+    ('system',SYSTEM,'solarSystemID'),('character',9001,'characterID'),
+    ('corporation',8002,'corporationID'),('alliance',7001,'allianceID')])
+def test_ten_pages_for_each_target_deduplicate_overlaps(reports,kind,eid,modifier):
+    e=reports
+    if kind!='system':subject(e,kind,eid)
+    calls=[]
+    async def page(path):
+        calls.append(path);number=int(path.rsplit('/',1)[1]);assert number<=10
+        ids=[100+number*2,101+number*2,102]  # overlaps never consume a new slot
+        return [{'killmail_id':kid,'zkb':{'hash':f'hash-{kid}'}} for kid in ids]
+    with patch.object(e.report_source,'zget',side_effect=page):value=pull(e,kind,eid)
+    assert calls==[f'{modifier}/{eid}/page/{i}' for i in range(1,11)]
+    assert value['pages']==10 and value['page_limit']==10 and value['stop_reason']=='page_cap'
+    assert value['discovered']==20 and value['imported']==20 and value['status']=='completed'
+    assert len(e.report_source.killcalls)==len(set(e.report_source.killcalls))==20
+    assert pull(e,kind,eid)['cached'] and len(calls)==10
+
+
+def test_full_ten_page_reference_bound_and_known_reuse(reports):
+    import asyncio
+    e=reports;calls=[]
+    async def page(path):
+        number=int(path.rsplit('/',1)[1]);calls.append(number)
+        return [{'killmail_id':kid,'zkb':{'hash':'fixture'}} for kid in range(number*200,(number+1)*200)]
+    with patch.object(e.report_source,'zget',side_effect=page):
+        result=asyncio.run(refresh.fetch(e.report_source,'system',SYSTEM,set(range(200,2200))))
+    assert calls==list(range(1,11)) and len(result[0])==2000
+    assert result[3]['discovered']==2000 and result[3]['pages']==10
+    assert e.report_source.killcalls==[]
+
+
+def test_later_page_failure_retains_evidence_and_source_retry_delay(reports):
+    from app.services.intel_sources import IntelSourceError
+    e=reports
+    async def page(path):
+        if path.endswith('/page/2'):raise IntelSourceError('synthetic rate limit',180)
+        return [{'killmail_id':101,'zkb':{'hash':'fixture'}}]
+    with patch.object(e.report_source,'zget',side_effect=page):value=pull(e)
+    assert value['status']=='partial' and value['imported']==1
+    assert value['pages']==1 and value['stop_reason']=='source_error'
+    assert e.db.get(Killmail,101) is not None
+    cooldown=datetime.fromisoformat(value['next_refresh_at'])-datetime.fromisoformat(value['finished_at'])
+    assert cooldown.total_seconds()==180
+
+
+def test_page_budget_and_malformed_later_page_keep_verified_rows(reports):
+    import asyncio
+    e=reports
+    for later,reason in [(asyncio.TimeoutError(),'time_budget'),({'error':'bad'},'source_error')]:
+        async def page(path):
+            if path.endswith('/page/2'):
+                if isinstance(later,Exception):raise later
+                return later
+            return [{'killmail_id':101,'zkb':{'hash':'fixture'}}, {'killmail_id':999,'zkb':[]},None]
+        with patch.object(e.report_source,'zget',side_effect=page):
+            result=asyncio.run(refresh.fetch(e.report_source,'system',SYSTEM,set()))
+        assert result[3]['stop_reason']==reason and result[3]['discovered']==1
+        assert len(result[0])==1 and result[0][0][2]['killmail_id']==101
+
+
+def test_empty_feed_and_repeated_page_stop_early(reports):
+    import asyncio
+    e=reports
+    async def empty(path):e.report_source.pages.append(path);return []
+    with patch.object(e.report_source,'zget',side_effect=empty):
+        result=asyncio.run(refresh.fetch(e.report_source,'system',SYSTEM,set()))
+    assert result[3]['pages']==1 and result[3]['stop_reason']=='feed_exhausted'
+    async def repeat(path):return [{'killmail_id':101,'zkb':{'hash':'fixture'}}]
+    with patch.object(e.report_source,'zget',side_effect=repeat):
+        result=asyncio.run(refresh.fetch(e.report_source,'system',SYSTEM,set()))
+    assert result[3]['pages']==2 and result[3]['stop_reason']=='no_new_references'
+    assert len(result[0])==1
 
 def test_refresh_cross_request_lease_fencing(reports):
     e=reports;first=refresh.claim(e.db,'system',SYSTEM)

@@ -208,5 +208,37 @@
       "production_build": "passed; existing bundle-size advisory",
       "migration": "populated upgrade/downgrade passed in isolated SQLite"
     }
+  },
+  "intel_ten_page_pulls": {
+    "captured_on": "2026-11-09",
+    "application_version": "2.4.0",
+    "source_base_commit": "c3d2dcb405ec297e5b04df9405ed20a5d52c94f7",
+    "source_state": "Uncommitted ten-page Intel Reports pull expansion; no migration/deployment/version bump",
+    "method": "Actual React components and real FastAPI routes in isolated SQLite; headless Edge1440x1100/mobile390x844; component crops, no repainting",
+    "data": "Synthetic Demo targets, thirty public canonical killmail fixtures across ten source pages. No live sources or private gameplay.",
+    "source_sha256": {
+      "backend/app/services/intel_report_refresh.py": "b8507b40b546cc3f929b348e20e38876eb849df6ef78c19225c9e90c471a00fb",
+      "backend/tests/test_intel_report_builder.py": "5dbc260db3488f72e9da575cd5d80ce9c71af9336fad70c2b50e1c875b99d950",
+      "frontend/src/features/intelReports/IntelReportBuilder.tsx": "d7d394ba57cf1e8415b208da25f406417bf55217e489efc28e2ffff483b11b3a",
+      "frontend/src/features/intelReports/types.ts": "9688f36324bdd70f47c0b9aeef6121d2000b1081a73fab08737db435ad582671"
+    },
+    "images_sha256": {
+      "intel-reports-ten-pages-mobile.png": "a454523bb624adc36e1d2481f4c6fc9c4aef82230e6371e41adc2ea34b52b853",
+      "intel-reports-ten-pages.png": "1147fed4cdcbea07b01fd1077c7de1113cc0189033fc39b02d1d8f250e2def7d"
+    },
+    "validation": {
+      "backend_cases_passed": 57,
+      "new_pagination_cases": 8,
+      "typescript": "passed",
+      "production_build": "passed; existing bundle advisory",
+      "browser": {
+        "checks": [
+          "Actual Intel Reports button imports 30 distinct killmails across all ten source pages and discloses page/reference coverage",
+          "Second pull reuses the shared cache and preserves ten-page coverage",
+          "390px pull controls and coverage text fit without page overflow"
+        ],
+        "errors": []
+      }
+    }
   }
 }
