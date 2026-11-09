@@ -267,5 +267,51 @@
         "sha256": "17873ed8c1577ab3c89fac1259fc4f786ebd4bd356a963facf42b4a80a1aa55c"
       }
     ]
+  },
+  "journey_analytics": {
+    "captured_on": "2026-11-09",
+    "application_version": "2.3.0",
+    "source_base_commit": "938773bb462d3fe5960923934d578bf564418afd",
+    "source_state": "Uncommitted Journey analytics follow-up; no version bump, deployment or migration.",
+    "method": "Actual JourneyPanel/JourneyAnalytics, shared API and EQM styles; headless Edge at 1440px and 390px with real FastAPI read-only endpoints and isolated SQLite.",
+    "data": "Fabricated accounts/pilots, system names/coordinates, hulls, observations and killmails. Fixed browser/API clock Nov 9 2026 18:00 UTC. No production data, real SSO or external ESI collection.",
+    "validation": {
+      "checks": [
+        "Actual JourneyPanel and API show all six rankings, full-history travel totals, distinct imported combat and two account-owned pilot leaders",
+        "Date-range and selected-pilot controls change the server aggregate scope; ship ranking can switch from observed visits to confirmed span",
+        "Pilot leaderboard drill-down selects that pilot in the actual Journey map; another Admin sees only their own account history",
+        "Revoking combat access hides combat aggregates while retaining travel; a failed refresh labels previous results and can recover",
+        "Definitions distinguish travel observations from imported attacker/victim hulls; complete six-card desktop and 390px mobile captures have no horizontal overflow",
+        "Top-N limits are explicit and independent of full totals; increasing the ranking size reveals the remaining system groups",
+        "Erasing a selected pilot’s journey refreshes analytics to empty travel without deleting imported combat or inventing flight hulls; analytics can collapse and reopen"
+      ],
+      "errors": []
+    },
+    "backend_validation": "70 Journey/history/hull/export/analytics cases passed, including 19 analytics cases and full aggregates beyond 2,000 visits/5,000 hull segments.",
+    "frontend_validation": "29 Journey/map/export/scope tests, TypeScript and full Vite production build passed; existing chunk advisory.",
+    "limitations": "Synthetic local integration with SQLite; no live PostgreSQL performance/integration or ESI test. Travel sampling misses fast stops and does not establish exact flight time or gate jumps. Combat coverage depends on existing imports.",
+    "source_sha256": {
+      "backend/app/api/journey.py": "aa34a06fc161aee31c1a0ebcbf2843dc13f72abff613bd72dc2b6578c5c2ff9a",
+      "backend/app/services/journey_analytics.py": "52a29d3c680ad393a54b732fbaec1d9d9d444f05dc8113a7af308d4bf4e2d3ed",
+      "backend/tests/test_journey_analytics.py": "165ef506083784d70f378e3842bbb7f84ff7038c91940ec9aec3b598b2d4c095",
+      "frontend/src/features/journey/JourneyPanel.tsx": "12aa75878f1ce360c0b640080da2b6ccc5a885aa3954a808e62b209b93b2897b",
+      "frontend/src/features/journey/JourneyAnalytics.tsx": "9df11c968beff562466423ad6cf07cdd30f7b416faf9e1371adb6658b59642a4",
+      "frontend/src/features/journey/analyticsModel.ts": "14a321ca6e65e2b3592b7f9c451d86e3232ee25774fa9eb6e745116cb5e363f7",
+      "frontend/src/features/journey/analytics.css": "10737b4067a525ef5b5a5a77272bab907328ca8a5f48f1873c2dc31b64a6ca64",
+      "frontend/tests/journeyAnalytics.test.ts": "8f388bc5ee784f3156322023098e016d228bb15fed759c4a534f468a6e0c21ad",
+      "frontend/package.json": "9460d30ba408ad1c4746b924dc8e12c8c333bde1e38dd6d57787eb720b47dd98"
+    },
+    "images": [
+      {
+        "filename": "journey-analytics-desktop.png",
+        "bytes": 151435,
+        "sha256": "296cc0edf51306941f8103ec36b51cf5abe07ed6b4ca4940e9108b33ba8a4c24"
+      },
+      {
+        "filename": "journey-analytics-mobile.png",
+        "bytes": 169344,
+        "sha256": "3e9be507502c489728daeecc8a51158360a729217b71ffc64511169cb993c20f"
+      }
+    ]
   }
 }

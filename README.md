@@ -1068,6 +1068,12 @@ Open **Intel → Matchups** to browse published ships by CCP subclass and name o
 [Example fit and counters](static/ss/v2.2.1/matchups-loss-fit.jpg) · [Mobile catalog](static/ss/v2.2.1/matchups-catalog-mobile.jpg).
 
 
+### My Journey analytics (unreleased follow-up)
+
+Rank systems most visited, ship types most flown, most-flown hulls with imported kills, kill locations, lost hulls and pilots by observed jumps. Compare one pilot or all your account's linked pilots across selected UTC dates or all stored history. Choose observed visits or confirmed span for ship-use rankings, and drill into a pilot from the leaderboard. Full-scope SQL aggregates remain complete when replay rows are limited. Travel is sampled; combat uses existing imports with separate permissions. No new migration or ESI scope. [Definitions and coverage](docs/journey-map.md#journey-analytics).
+
+![Journey analytics with synthetic account-private travel and combat](static/ss/v2.3.0/journey-analytics-desktop.png)
+
 ### My Journey — optional hull history (unreleased follow-up)
 
 Opt a linked character into **Record ship types** with minimal read-only ship consent. See hull icons/names beside recorded timeline entries and the current replay position; same-system hull changes add replay steps without increasing system visits. Earlier/location-only observations remain Unknown hull. Account-private, with the existing pause/erase controls; no ship names or individual ship IDs retained. Requires migration **0104** after 0103 and matching API/frontend. [Controls, limits and privacy](docs/journey-map.md#optional-ship-types-and-hull-icons).

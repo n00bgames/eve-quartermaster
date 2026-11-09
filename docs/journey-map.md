@@ -38,6 +38,36 @@ The map uses imported SDE X/Z positions. Lines join observed system changes; the
 
 The response includes at most the first **2,000 visits** in the selected window, with a visible truncation warning. Narrow the dates for a complete replay. All-time system totals remain complete. Timeline pages show 50 entries; the replay uses the loaded visits and hull segments. At most 5,000 hull segments are returned within loaded visits, with an explicit warning when truncated; narrow the date window for a complete replay. Unavailable hull rows stay unknown. History is retained until the account erases it; ordinary app restarts preserve it.
 
+## Journey analytics
+
+**Unreleased 2.3.0 follow-up.** Journey analytics appears above the replay and reads existing stored data. Its default scope is **All my pilots → All stored history**, independently of the selected map pilot and replay dates. Choose **Selected journey pilot** for one character, or **Selected journey dates (UTC)** to use the date inputs above. No new migration, ESI consent, enrollment or external collection is added; matching API/frontend rollout is required.
+
+| Ranking | What it counts |
+| --- | --- |
+| Systems most visited | Stored visits overlapping the selected dates, including resumed observations after gaps. |
+| Ship types most flown | Hulls ranked by the number of visits containing an actual hull observation; optionally rank by summed confirmed observation span. |
+| Most-flown hulls with kills | Recorded hull types with imported kills in the same pilot/date scope, ranked by the chosen visit/span measure. Kill hull comes from the selected pilot's attacker entry. |
+| Systems with most kills | Distinct imported killmails involving selected pilots as attackers, grouped by kill location. |
+| Ship types most lost | Distinct imported losses, grouped by the victim's destroyed hull. Unknown hulls remain explicit. |
+| Pilots with most jumps | Account-owned pilots ranked by observed consecutive system changes without a recorded gap; selecting a name opens that pilot's journey and analytics. |
+
+Summary cards show observed visits, unique systems, observed jumps, summed confirmed hull span, imported kills and imported losses. All aggregate queries run against the full selected scope in SQL: the replay's 2,000-visit and 5,000-hull limits do not trim these totals. Rankings default to the top 10 groups, with top 25/50 options. The caption shows the total groups and any top-N limit; limiting displayed groups does not limit aggregate totals. Equal values have deterministic secondary ordering.
+
+### Interpretation and coverage
+
+- **Observed jumps** are destination observations whose preceding visit was in another system and whose continuity flag has no gap. The preceding visit may be before the requested start. Initial observations, pauses/resumes and repeated same-system observations do not add jumps. Fast intermediate stops can be missed, and the counter does not distinguish stargates, wormholes or jump drives.
+- **Most flown** means recorded hull use. Visit counts are distinct per hull and visit, so a visit with multiple hulls contributes once to each observed hull but once to total visits. **Confirmed observation span** sums each hull segment's first-to-last confirmed samples, clipped to the requested dates. It excludes between-segment gaps, can include docked time, and is not exact flight/online time. Single samples have a zero-second span. Visits without any hull record are counted explicitly; partially missing history is never reconstructed.
+- **Combat is a separate source.** It uses already-imported killmails for the chosen pilots/dates, including combat outside recorded travel. It can predate Journey tracking. A recorded hull and a combat hull sharing a type does not prove the combat occurred during a particular recorded visit. Victim hulls never backfill flight history. Missing/conflicting attacker hull IDs remain unknown and cannot qualify a guessed hull for the most-flown-with-kills ranking.
+- **Shared kills** count once per group, even if duplicate attacker entries exist. A kill shared by two selected pilots can appear under both pilots and under each participating hull type. The account summary and kill-system totals count distinct killmails. A mail can be a kill for one selected pilot and a loss for another. Imported coverage may be incomplete; zero imported combat is not proof that no combat occurred.
+
+Analytics is private to the signed-in account. Only currently owned linked characters and that account's trackers contribute; other staff cannot request another account's character. Existing Navigation permission/global disabling applies. Combat columns and rankings additionally require current access to Killboard, Battle Reports or Intel Reports; unavailable combat reads **Unavailable**, and no killmail query is made. Travel rankings remain usable without current ESI authorization. Pausing tracking preserves past rankings; clearing a character's journey refreshes its travel/hull statistics without deleting imported combat.
+
+Visible analytics checks stored data every 60 seconds and supports manual refresh. Hiding analytics or closing Journey stops its polling. Pilot/date/sort/row changes cancel previous requests and start a separate result view. Refresh failures retain previous results with a warning and their last checked time. Analytics does not collect new data, modify EVE, or share history publicly.
+
+The private/no-store `GET /journey/analytics` endpoint accepts optional local `character_id`, `period=all|range`, UTC `from_at`/exclusive `to_at`, `ship_order=visits|span`, and `limit` from 1–50. Date ranges use the existing Journey validation; all-history scope has no replay/date-page cutoff. Migration 0103/0104 and normal matching app builds remain prerequisites for existing Journey storage.
+
+![Private journey rankings with synthetic travel and combat](../static/ss/v2.3.0/journey-analytics-desktop.png)
+
 ## Map controls
 
 My Journey includes Atlas-style controls:

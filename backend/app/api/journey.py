@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Literal
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Query, Response
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -87,3 +87,11 @@ def export_history(character_id:int,scope:Literal['all','range']='range',from_at
     from app.services.journey_exports import export_page
     if cursor and len(cursor)>4096:raise HTTPException(400,'Invalid journey export cursor')
     return export_page(db,user,character_id,scope,from_at,to_at,cursor)
+
+
+@router.get('/analytics')
+def analytics(character_id:int|None=None,period:Literal['range','all']='range',from_at:datetime|None=None,to_at:datetime|None=None,
+              ship_order:Literal['visits','span']='visits',limit:int=Query(10,ge=1,le=50),
+              user:User=Depends(get_current_user),db:Session=Depends(get_db)):
+    from app.services.journey_analytics import overview
+    return overview(db,user,character_id,period,from_at,to_at,ship_order,limit)

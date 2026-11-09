@@ -868,3 +868,11 @@ November 8, 2026 client date. Actual StructuresPage/manual POS components, share
 ![Manual POS cards at 390px](../static/ss/v2.3.0/manual-pos-mobile.png)
 
 ![Reinforced mode checkbox and strontium fields at 390px](../static/ss/v2.3.0/manual-pos-reinforced-form.png)
+
+## Journey analytics — v2.3.0 development preview
+
+November 9, 2026 client date. Actual JourneyPanel/JourneyAnalytics and shared API/styles rendered in headless Edge at 1440px and 390px, backed by real Journey APIs and an isolated synthetic SQLite database. Fabricated pilots, system names/coordinates, hulls, observations and killmails; no live SSO, ESI, user history or production data. Browser checks cover all six rankings, pilot/date/span controls, drill-down, other-Admin isolation, revoked combat access, failed refresh retention, top-N/full-total distinctions, history erasure and mobile layout. Unreleased; matching backend/frontend rollout required. No new migration or scope. [Guide](journey-map.md#journey-analytics) · [Capture receipt](../static/ss/v2.3.0/capture-receipt.json).
+
+![Six journey ranking cards and scope controls](../static/ss/v2.3.0/journey-analytics-desktop.png)
+
+![Journey analytics controls and all rankings at 390px](../static/ss/v2.3.0/journey-analytics-mobile.png)
