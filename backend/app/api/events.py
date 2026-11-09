@@ -180,6 +180,7 @@ def serialize_attendance(row: EventAttendanceEntry) -> dict[str, Any]:
 
 
 def serialize_event(event: Event, current_user: User, db: Session, *, detail: bool = False) -> dict[str, Any]:
+    from app.services.structure_timers import managed_timer
     formup = formup_location(event)
     own_response = next((row for row in event.responses if row.user_id == current_user.id), None)
     own_registrations = [row for row in event.registrations if row.user_id == current_user.id]
@@ -192,6 +193,7 @@ def serialize_event(event: Event, current_user: User, db: Session, *, detail: bo
     payload: dict[str, Any] = {
         "id": event.id,
         "title": event.title,
+        "managed_structure_timer": bool(managed_timer(event, db)),
         "event_type": event.event_type,
         "lifecycle_status": event.lifecycle_status,
         "registration_status": event.registration_status,

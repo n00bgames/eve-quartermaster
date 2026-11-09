@@ -926,3 +926,24 @@ November 9, 2026 client date. Actual IntelReportsWorkspace/builder/view/public c
 ![Alliance report with active systems, common hulls and activity hours](../static/ss/v2.4.0/intel-reports-alliance.png)
 
 ![System report at 390px with expanded charts and contained scrolling tables](../static/ss/v2.4.0/intel-reports-mobile.png)
+
+## Journey combat-count rankings — v2.4.0 correction
+
+Captured November 9, 2026 from a working tree based on `18fc326eecfc198c54835e98dcdcb1cf71b5b64c`. Actual shared JourneyAnalytics in Analytics' JourneyAnalyticsSection and JourneyPanel, backed by real Journey API routes and synthetic SQLite. Fabricated pilot/hulls/visits/killmails deliberately give one hull more visits and another more kills/losses; both combat bars retain the 3:1 count ratio after selecting confirmed span. Four browser groups cover both placements, scope/date controls, independent travel sorting and 390px no overflow; no page errors. Three rendered component captures; no repainting or live accounts, ESI or killboard collection. [Definitions](journey-map.md#journey-analytics) · [Additive capture receipt](../static/ss/v2.4.0/capture-receipt.json). No version bump or migration; matching backend/frontend rollout required.
+
+![Analytics placement: combat cards show counts while travel uses confirmed span](../static/ss/v2.4.0/journey-combat-counts-analytics.png)
+
+![Journey placement: kill/loss counts determine order and bar length](../static/ss/v2.4.0/journey-combat-counts-journey.png)
+
+![Corrected count rankings at 390px](../static/ss/v2.4.0/journey-combat-counts-mobile.png)
+
+## Structure calendar timers and role reminders — v2.4.0
+
+Captured November 9, 2026 from the unreleased 2.4.0 working tree: actual Structures/settings/banner/Calendar components and shared styles, real FastAPI routes with isolated SQLite and synthetic Demo towers/users. The private browser harness explicitly triggers the real delivery service. No production account, ESI/SSO or private gameplay data was used; images are rendered component crops with no repainting. The desktop viewport was 1440×1100; mobile was 390×844. UI checks cover opt-in, custom lead times/roles, fuel/stront events, deduplicated inbox delivery, calendar links, failed-save retry, persistent dismissal, disabling, overflow and reduced motion. [Guide](structures.md#calendar-timers-and-role-reminders) · [Receipt](../static/ss/v2.4.0/capture-receipt.json)
+
+| View | Synthetic development capture |
+| --- | --- |
+| Settings | ![Calendar checkbox, recipient roles and custom minutes](../static/ss/v2.4.0/structure-timer-settings.png) |
+| Banner | ![Fuel and reinforcement timer reminders](../static/ss/v2.4.0/structure-timer-banner.png) |
+| Calendar | ![Managed reinforcement deadline](../static/ss/v2.4.0/structure-timer-calendar.png) |
+| Mobile | ![Mobile timer controls](../static/ss/v2.4.0/structure-timer-mobile.png) |

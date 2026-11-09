@@ -140,6 +140,8 @@ def replace(record_id: UUID, body: UpdateReading, user: User = Depends(get_curre
     if result.rowcount != 1:
         db.rollback()
         raise HTTPException(409, "This POS changed in another tab. Reload before editing again.")
+    from app.services.structure_timers import sync_manual
+    sync_manual(db, user.id, str(record_id))
     db.commit()
     db.expire_all()
     return serialize(owned(db, user, record_id))
@@ -153,5 +155,7 @@ def remove(record_id: UUID, version: Annotated[int, Query(ge=1)], user: User = D
     if result.rowcount != 1:
         db.rollback()
         raise HTTPException(409, "This POS changed in another tab. Reload before removing it.")
+    from app.services.structure_timers import sync_manual
+    sync_manual(db, user.id, str(record_id))
     db.commit()
     return {"removed": True, "id": str(record_id)}

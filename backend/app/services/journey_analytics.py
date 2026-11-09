@@ -129,7 +129,10 @@ def overview(db, user, character_id=None, period="range", from_at=None, to_at=No
     sorting = (hull_stats.c.observed_seconds.desc(), hull_stats.c.visits.desc()) if ship_order == "span" else (
         hull_stats.c.visits.desc(), hull_stats.c.observed_seconds.desc())
     ships = ships.order_by(*sorting, name, hull_stats.c.ship_type_id)
-    combat_ships = rank(db, ships.where(kill_hulls.c.kills > 0), limit) if available else empty
+    # Combat ranks must order the full candidate set by kills before top-N;
+    # the travel visit/span selector applies only to the most-flown ranking.
+    combat_ships = rank(db, ships.where(kill_hulls.c.kills > 0).order_by(None)
+        .order_by(kill_hulls.c.kills.desc(), name, hull_stats.c.ship_type_id), limit) if available else empty
     pilots = select(cohort, func.coalesce(pilot_visits.c.visits, 0).label("visits"),
         func.coalesce(pilot_visits.c.systems, 0).label("systems"), func.coalesce(jump_stats.c.jumps, 0).label("jumps"))\
         .outerjoin(pilot_visits, pilot_visits.c.character_id == cohort.c.character_id)\
@@ -153,7 +156,7 @@ def overview(db, user, character_id=None, period="range", from_at=None, to_at=No
         "notices": [
             "Travel rankings aggregate all stored observations in scope, independently of the replay limits. Visits overlap the selected dates.",
             "Observed jumps count consecutive system changes without a recorded gap, at the destination observation time. Fast stops can be missed; these are not verified stargate jumps.",
-            "Ships rank by observed visits or confirmed hull span. Spans stop at the last confirmed sample, exclude recording gaps, can include docked time, and are not flight/online time. Missing hull history stays unknown.",
+            "Most-flown ships rank by observed visits or confirmed hull span. Recorded hulls with kills rank by imported kills; lost hulls rank by imported losses. Combat rankings and their bars do not use the visit/span selector. Spans stop at the last confirmed sample, exclude recording gaps, can include docked time, and are not flight/online time. Missing hull history stays unknown.",
             "Combat uses existing imported killmails for these pilots and dates, independently of recorded travel. Kill hulls come from the pilot's attacker entry; lost hulls come from the victim. No historical flight hull is inferred.",
             "Distinct killmails count once per ranking group. Shared kills can appear in multiple pilot/hull groups; a mail can be a kill for one selected pilot and a loss for another. Imports may be incomplete."
             if available else "Combat rankings are unavailable without Killboard, Battle Reports or Intel Reports permission."]}

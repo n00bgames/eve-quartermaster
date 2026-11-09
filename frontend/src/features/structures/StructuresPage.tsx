@@ -2,6 +2,7 @@ import {useEffect,useState} from "react";
 import {Building2,RefreshCw,Shield,Timer} from "lucide-react";
 import {activeTimer,label,needsAttention,remaining,type Overview,type PosDetail,type Structure,type Source} from "./model";
 import "./structures.css";
+import {StructureTimerSettings} from "./StructureTimerSettings";
 import {ManualPosPanel} from "./ManualPosPanel";
 
 type Api = <T>(path:string,options?:RequestInit)=>Promise<T>;
@@ -79,6 +80,7 @@ function StructureCard({row,tokenId,api,date,now,revision}:{row:Structure;tokenI
     <h4>{row.name}</h4><p className="muted">{row.type_name} · {row.system_name}{row.security_status!=null&&` (${row.security_status.toFixed(1)})`}</p><small className="muted">ID {row.id}{row.moon_id?` · ${row.moon_name??`Moon ${row.moon_id}`}`:""}</small>
     <div className="structures-timers">{row.kind==="upwell"?<Time name="Fuel expires" at={row.fuel_expires} date={date} now={now}/>:<div className="structures-time"><span>Fuel on hand</span><strong>See fuel & settings below</strong><small>ESI does not report POS fuel expiry.</small></div>}{timer&&<Time name={timer.name} at={timer.at} date={date} now={now}/>} {row.unanchors_at&&<Time name="Unanchors" at={row.unanchors_at} date={date} now={now}/>}</div>
     {row.kind==="upwell"&&<><div className="structures-services">{row.services?.length?row.services.map((service,index)=><span key={`${service.name}-${index}`} className={service.state==="online"?"scope-ok":"scope-warn"}>{service.name} · {label(service.state)}</span>):<span className="muted">No services reported.</span>}</div><details><summary>Reinforcement settings</summary><p>Configured reinforcement hour: {row.reinforce_hour==null?"Not reported":`${String(row.reinforce_hour).padStart(2,"0")}:00 UTC`}. This setting is separate from an active state timer.</p>{row.next_reinforce_hour!=null&&<p>Requested hour: {String(row.next_reinforce_hour).padStart(2,"0")}:00 UTC · applies {row.next_reinforce_apply?date(row.next_reinforce_apply):"at a time ESI did not report"}.</p>}{row.state_timer_start&&<p>Current state began {date(row.state_timer_start)}.</p>}</details></>}
+    <StructureTimerSettings api={api} source={row.kind} sourceId={String(row.id)} tokenKey={tokenId} revision={revision}/>
     {row.kind==="pos"&&<>{row.onlined_since&&<p className="muted">Online since {date(row.onlined_since)}</p>}{row.unanchor_at&&<p className="scope-warn">Unanchoring started {date(row.unanchor_at)}. Completion time is not reported.</p>}<PosFuel key={revision} id={row.id} tokenId={tokenId} api={api} date={date}/></>}
   </article>;
 }

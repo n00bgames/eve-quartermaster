@@ -80,6 +80,7 @@ export type EventPermissions = {
 };
 
 export type EventSummary = {
+  managed_structure_timer?: boolean;
   id: number;
   title: string;
   event_type: EventType;

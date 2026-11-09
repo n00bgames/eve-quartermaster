@@ -23,6 +23,9 @@ from app.models import (
     EventCharacterRegistration,
     EventUserResponse,
     User,
+    UserRoleAssignment,
+    StructureTimerConfig,
+    StructureTimer,
 )
 from app.schemas.events import AttendanceManualCreate, EventCreate
 from app.services.events import (
@@ -74,6 +77,9 @@ class EventServiceTests(unittest.TestCase):
             self.engine,
             tables=[
                 User.__table__,
+                UserRoleAssignment.__table__,
+                StructureTimerConfig.__table__,
+                StructureTimer.__table__,
                 EveAlliance.__table__,
                 EveCorporation.__table__,
                 EveCharacter.__table__,

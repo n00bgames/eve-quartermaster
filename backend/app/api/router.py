@@ -146,3 +146,5 @@ api_router.include_router(structures_router)
 
 from app.api.app_update import router as app_update_router
 api_router.include_router(app_update_router)
+from app.api.structure_timers import router as structure_timers_router
+api_router.include_router(structure_timers_router)

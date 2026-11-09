@@ -1,6 +1,7 @@
 import {useEffect,useState,type FormEvent} from "react";
 import {Plus,RefreshCw,Shield} from "lucide-react";
 import {durationHours,fuelEstimate,manualAttention,reinforcementTimer,strontEstimate,type ManualPos} from "./manualModel";
+import {StructureTimerSettings} from "./StructureTimerSettings";
 import {ManualPosForm} from "./ManualPosForm";
 
 export type StructuresApi = <T>(path:string,options?:RequestInit)=>Promise<T>;
@@ -55,6 +56,7 @@ function ManualPosCard({row,api,date,now,editing,onEdit,onRemove}:{row:ManualPos
       {row.state==="reinforced"&&<div className="structures-time"><span>Reinforcement ends · {reinforced?.source??"manual"}</span><strong>{reinforced===null?"Enter stront quantity or an exact end":reinforced.hoursLeft<=0?"Elapsed · verify in game":durationHours(reinforced.hoursLeft)}</strong>
         {reinforced&&<time dateTime={reinforced.at}>{date(reinforced.at)}<span>{utcStamp(reinforced.at)}</span></time>}{reinforced?.source==="entered"&&<small>Entered end time overrides the strontium estimate.</small>}</div>}</div>
     <p className="muted">Reading {date(row.observed_at)} · {utcStamp(row.observed_at)}</p><p className="muted manual-pos-assumptions">Countdowns assume continuous operation in the recorded state at the entered rate: fuel while online, strontium while reinforced. Hourly ticks and bonuses can shift depletion. Quantities do not update from EVE.</p>
+    <StructureTimerSettings api={api} source="manual" sourceId={row.id} revision={String(row.version)}/>
     {row.notes&&<p className="manual-pos-notes">{row.notes}</p>}
     <div className="button-row"><button disabled={editing||busy} onClick={onEdit}>Update reading / edit</button><button disabled={editing||busy} onClick={()=>setConfirm(true)}>Remove record</button></div>
     {confirm&&<form className="manual-pos-delete" onSubmit={event=>void remove(event)}><p>Remove “{row.name}” from your manual records? This only removes the EQM record.</p><div className="button-row"><button disabled={busy||editing} type="submit">{busy?"Removing…":"Confirm removal"}</button><button type="button" disabled={busy} onClick={()=>setConfirm(false)}>Keep record</button></div></form>}

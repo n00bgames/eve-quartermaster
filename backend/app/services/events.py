@@ -106,6 +106,9 @@ def can_create_event(user: User, db: Session) -> bool:
 
 
 def can_manage_event(event: Event, user: User, db: Session) -> bool:
+    from app.services.structure_timers import managed_timer
+    if managed_timer(event, db):
+        return False  # Deadlines and audiences are managed from Structures.
     if not can_view_section(user, "calendar_events", db):
         return False
     if role_rank(user, db) >= ROLE_RANK["director"]:
@@ -155,6 +158,10 @@ def active_affiliations(user: User, db: Session) -> tuple[set[int], set[int]]:
 
 
 def event_is_visible(event: Event, user: User, db: Session) -> bool:
+    from app.services.structure_timers import managed_timer, visible
+    timer = managed_timer(event, db)
+    if timer:
+        return visible(timer, user, db)
     if not can_view_section(user, "calendar_events", db):
         return False
     if role_rank(user, db) >= ROLE_RANK["director"] or event.created_by_user_id == user.id:
@@ -207,6 +214,9 @@ def attendance_is_open(event: Event, *, now: datetime | None = None) -> bool:
 
 
 def can_record_attendance(event: Event, user: User, db: Session, *, now: datetime | None = None) -> bool:
+    from app.services.structure_timers import managed_timer
+    if managed_timer(event, db):
+        return False
     return (
         can_view_section(user, "calendar_events", db)
         and role_rank(user, db) >= ROLE_RANK["officer"]

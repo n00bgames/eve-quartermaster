@@ -48,10 +48,14 @@ On Analytics, the pane supplies its own linked-pilot and UTC date controls and r
 | --- | --- |
 | Systems most visited | Stored visits overlapping the selected dates, including resumed observations after gaps. |
 | Ship types most flown | Hulls ranked by the number of visits containing an actual hull observation; optionally rank by summed confirmed observation span. |
-| Most-flown hulls with kills | Recorded hull types with imported kills in the same pilot/date scope, ranked by the chosen visit/span measure. Kill hull comes from the selected pilot's attacker entry. |
+| Recorded hulls with most kills | Recorded hull types with imported kills in the same pilot/date scope, ranked and graphed by descending kill count. The visit/span selector does not change this ranking. Kill hull comes from the selected pilot's attacker entry. |
 | Systems with most kills | Distinct imported killmails involving selected pilots as attackers, grouped by kill location. |
-| Ship types most lost | Distinct imported losses, grouped by the victim's destroyed hull. Unknown hulls remain explicit. |
+| Ship types most lost | Distinct imported losses, grouped by the victim's destroyed hull, ranked and graphed by descending loss count. Unknown hulls remain explicit. |
 | Pilots with most jumps | Account-owned pilots ranked by observed consecutive system changes without a recorded gap; selecting a name opens that pilot's journey and analytics. |
+
+**Combat counts determine position and bars.** The kills card uses imported kills and the losses card uses imported losses, independently of the travel visit/span selector. SQL applies kill sorting before the top-N cutoff; equal kill counts use hull name/ID, not visit counts. Travel visits and confirmed span remain supporting context on the kills card. The existing recorded-hull eligibility and selected pilot/date/privacy scope are unchanged.
+
+![Corrected Journey combat ranks on Analytics with span selected — synthetic v2.4.0 preview](../static/ss/v2.4.0/journey-combat-counts-analytics.png)
 
 Summary cards show observed visits, unique systems, observed jumps, summed confirmed hull span, imported kills and imported losses. All aggregate queries run against the full selected scope in SQL: the replay's 2,000-visit and 5,000-hull limits do not trim these totals. Rankings default to the top 10 groups, with top 25/50 options. The caption shows the total groups and any top-N limit; limiting displayed groups does not limit aggregate totals. Equal values have deterministic secondary ordering.
 
@@ -59,7 +63,7 @@ Summary cards show observed visits, unique systems, observed jumps, summed confi
 
 - **Observed jumps** are destination observations whose preceding visit was in another system and whose continuity flag has no gap. The preceding visit may be before the requested start. Initial observations, pauses/resumes and repeated same-system observations do not add jumps. Fast intermediate stops can be missed, and the counter does not distinguish stargates, wormholes or jump drives.
 - **Most flown** means recorded hull use. Visit counts are distinct per hull and visit, so a visit with multiple hulls contributes once to each observed hull but once to total visits. **Confirmed observation span** sums each hull segment's first-to-last confirmed samples, clipped to the requested dates. It excludes between-segment gaps, can include docked time, and is not exact flight/online time. Single samples have a zero-second span. Visits without any hull record are counted explicitly; partially missing history is never reconstructed.
-- **Combat is a separate source.** It uses already-imported killmails for the chosen pilots/dates, including combat outside recorded travel. It can predate Journey tracking. A recorded hull and a combat hull sharing a type does not prove the combat occurred during a particular recorded visit. Victim hulls never backfill flight history. Missing/conflicting attacker hull IDs remain unknown and cannot qualify a guessed hull for the most-flown-with-kills ranking.
+- **Combat is a separate source.** It uses already-imported killmails for the chosen pilots/dates, including combat outside recorded travel. It can predate Journey tracking. A recorded hull and a combat hull sharing a type does not prove the combat occurred during a particular recorded visit. Victim hulls never backfill flight history. Missing/conflicting attacker hull IDs remain unknown and cannot qualify a guessed hull for the recorded-hulls-with-kills ranking.
 - **Shared kills** count once per group, even if duplicate attacker entries exist. A kill shared by two selected pilots can appear under both pilots and under each participating hull type. The account summary and kill-system totals count distinct killmails. A mail can be a kill for one selected pilot and a loss for another. Imported coverage may be incomplete; zero imported combat is not proof that no combat occurred.
 
 Analytics is private to the signed-in account. Only currently owned linked characters and that account's trackers contribute; other staff cannot request another account's character. Existing Navigation permission/global disabling applies. Combat columns and rankings additionally require current access to Killboard, Battle Reports or Intel Reports; unavailable combat reads **Unavailable**, and no killmail query is made. Travel rankings remain usable without current ESI authorization. Pausing tracking preserves past rankings; clearing a character's journey refreshes its travel/hull statistics without deleting imported combat.
@@ -68,7 +72,7 @@ Visible analytics checks stored data every 60 seconds and supports manual refres
 
 The private/no-store `GET /journey/analytics` endpoint accepts optional local `character_id`, `period=all|range`, UTC `from_at`/exclusive `to_at`, `ship_order=visits|span`, and `limit` from 1–50. Date ranges use the existing Journey validation; all-history scope has no replay/date-page cutoff. Migration 0103/0104 and normal matching app builds remain prerequisites for existing Journey storage.
 
-![Private journey rankings with synthetic travel and combat](../static/ss/v2.3.0/journey-analytics-desktop.png)
+![Historical pre-correction journey rankings with synthetic travel and combat](../static/ss/v2.3.0/journey-analytics-desktop.png)
 
 ## Map controls
 

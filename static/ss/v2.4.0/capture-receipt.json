@@ -28,7 +28,7 @@
   "validation": {
     "checks": [
       "System lookup/run, retained killmails, latest ESI capture, all analytics default-collapsed and five hourly charts plus UTC distribution",
-      "Separate visible sighting frequency/hulls exclude another analyst’s private scan; explicit zKill imports then respects shared hourly cache",
+      "Separate visible sighting frequency/hulls exclude another analyst\u2019s private scan; explicit zKill imports then respects shared hourly cache",
       "Private-by-default and anonymous snapshot controls; anonymous public route shows fixed public combat data without observations, notes, refresh controls or live source queries",
       "The real full EQM App entry point opens an Intel snapshot for an anonymous reader without requiring sign-in",
       "Revocation cancel/confirm and server-side anonymous denial remove the stale public report",
@@ -97,5 +97,116 @@
       "sha256": "16a79caf45b933c1f06c73017782184075517446e451f506f5e3aeda7245c8c3",
       "synthetic": true
     }
-  ]
+  ],
+  "journey_combat_ranking": {
+    "captured_on": "2026-11-09",
+    "application_version": "2.4.0",
+    "source_base_commit": "18fc326eecfc198c54835e98dcdcb1cf71b5b64c",
+    "state": "Uncommitted combat count correction; no version bump, migration execution or deployment.",
+    "method": "Actual JourneyAnalytics via Analytics JourneyAnalyticsSection and JourneyPanel; real isolated Journey API, synthetic SQLite, headless Edge1440x1100 and390x844. Complete relevant component crops; no repainting.",
+    "data": "Fabricated Demo Pilot, Scout/Cruiser travel observations and imported combat. Five Scout visits versus one Cruiser visit; Cruiser has three kills/losses versus Scout one. No production/ESI/private account data.",
+    "source_sha256": {
+      "backend/app/services/journey_analytics.py": "abe54171cde9288f46c15c929ae220daf36c3c525590348b26ac42034d1c81b6",
+      "backend/tests/test_journey_analytics.py": "fb38c10c1cde6da40279d2fdafb593c67fc449ab28dd6c705cdcc1f0cdbcd63d",
+      "frontend/src/features/journey/JourneyAnalytics.tsx": "c7dfec2e531037b67c74d83b3ce9120f6de76c80d94239c07e9eb992158d464c",
+      "frontend/src/features/analytics/JourneyAnalyticsSection.tsx": "ebce11a80ad6fdfac582586237331eba5e3d0c657b02dad6f6e2dfafa6834995",
+      "frontend/src/features/journey/JourneyPanel.tsx": "12aa75878f1ce360c0b640080da2b6ccc5a885aa3954a808e62b209b93b2897b"
+    },
+    "validation": {
+      "checks": [
+        "Analytics placement uses kill/loss ordering and 3:1 graph ratios while travel switches from visit to span ordering",
+        "Selected-pilot/date scopes preserve combat count ranks and units",
+        "Actual JourneyPanel placement shares the corrected kill/loss metrics and keeps travel sorting independent",
+        "390px expanded rankings show combat units and ratios without horizontal page overflow"
+      ],
+      "errors": []
+    },
+    "backend_cases_passed": 24,
+    "new_regression_cases": 5,
+    "frontend_model_cases_passed": 3,
+    "typescript": "passed",
+    "production_bundle": "passed; existing chunk advisory",
+    "limitations": "Existing recorded-hull eligibility and account/pilot/date/combat permissions remain. Loss ranking already used losses and is regression-verified. No new schema or collection.",
+    "images": [
+      {
+        "filename": "journey-combat-counts-analytics.png",
+        "bytes": 162430,
+        "width": 1404,
+        "height": 1294,
+        "sha256": "755ac8422965b74f1163d25043530803b5bc859fa3323d9d2442b8ebe431554c",
+        "synthetic": true
+      },
+      {
+        "filename": "journey-combat-counts-journey.png",
+        "bytes": 141611,
+        "width": 1366,
+        "height": 1171,
+        "sha256": "436323a4d477d6e7fdd467b6a7b7ed6d580800091f334b4962c1bc6821eb147f",
+        "synthetic": true
+      },
+      {
+        "filename": "journey-combat-counts-mobile.png",
+        "bytes": 156505,
+        "width": 328,
+        "height": 2364,
+        "sha256": "5a61857b1ca0694d1b16cc4c16d1012c101bb3a9f81ec16a2ff00887d8b3f989",
+        "synthetic": true
+      }
+    ]
+  },
+  "structure_timer_reminders": {
+    "captured_on": "2026-11-09",
+    "application_version": "2.4.0",
+    "source_base_commit": "18fc326eecfc198c54835e98dcdcb1cf71b5b64c",
+    "source_state": "Uncommitted structure timers plus preserved Journey combat correction; no deployment/release/live migration",
+    "method": "Actual React components, real FastAPI routes and timer delivery service in isolated SQLite, headless Edge desktop1440x1100/mobile390x844; rendered component crops; no repainting",
+    "data": "Synthetic Demo users/towers only; no real accounts, ESI/SSO, private gameplay or credentials",
+    "images_sha256": {
+      "structure-timer-banner.png": "90cf4286946d8db73bf3f601feb25308058b39d09331a6a04c98df25c4cd91fa",
+      "structure-timer-calendar.png": "158a89dce61e7c9ffb6f18577b81dd6476eb4dd2e24ba0cc783ffb654919c62a",
+      "structure-timer-mobile.png": "1fe4e828a8a135af2168eb4f6eb2a78822698da238ba75920c99604365492f59",
+      "structure-timer-settings.png": "de39b2af156b0f31abc11cfcb4b5e07bbb3151cc3b734cafb6896939940f057e"
+    },
+    "source_sha256": {
+      "backend/alembic/versions/0110_structure_timers.py": "b0bed640bfb79368d374dcf785472284da312db55dcd457c5743be36e719e258",
+      "backend/app/main.py": "e46719a1fbaec490c06ac8c144c0b0de1ceb4d3d5195d2bd944c35617142ffaa",
+      "backend/app/api/events.py": "6baed91fed621b2ce7cac92363335e1e74ea1a3db808e5454c2f2b641151d4c1",
+      "backend/app/api/manual_pos.py": "e18b9616efd6da204205dae82ddff6c842beac9a90cf81a8f54ec7cbb221c15a",
+      "backend/app/api/router.py": "e92ce90b830bf47ed55b171bbe425f6f594153d0a3db77fb364b20aef98ffd89",
+      "backend/app/api/structure_timers.py": "151737b0820de62218388bd2bd39d2277e3709ff5de06f9661da74cd798ea4ce",
+      "backend/app/models/structure_timer.py": "6466420c960c1ed26810b801ddc915b0ccc0d4c1fc1dfee766c864d9e4c09836",
+      "backend/app/models/__init__.py": "c1bb4816b93b3d1b070836c50de18d6b31dc2c2f22df6262186df12be74b11f3",
+      "backend/app/services/events.py": "2cc37c9bd9572a9056b41e3d2e69803ff3de91c5e6e59366651e1a237d91c230",
+      "backend/app/services/structure_timers.py": "ba956414cadd27c7aa0d5343bc838ff6956f526f8eaa1f27d6654e0b0c8ab5d1",
+      "backend/tests/test_events_foundation.py": "e56e5cbbf4e714d2260a6b1aa9a22a42cb683fcd1c455954242b701dfcccad80",
+      "backend/tests/test_structure_timers.py": "a9e73c0ff75a25ec6e4c37254d0e1258358fc12b1d0722dd0b5ebd51e0ac584f",
+      "frontend/src/main.tsx": "9277f75fd20ac0001f82073abc58eb66c37b69e68a7e4b7f0f0c1686e5fa548a",
+      "frontend/src/features/events/EventDetailPanel.tsx": "2ef729f04752b17ce138cf63a11405ad4fd445655c6e3a1f999b9629b20f484e",
+      "frontend/src/features/structures/ManualPosPanel.tsx": "4a1cfa64eb3a4695f2538839991b8aeb979ba6be40df0b31b266a1b00d1abb61",
+      "frontend/src/features/structures/structures.css": "495bcc4db5babf63e70f102bf354693a3a846070691b07ce1fbea94c98718296",
+      "frontend/src/features/structures/StructuresPage.tsx": "9ec0f000f365fb980c114525fe7c97ded33cb6b4d163c1224f1c9748452283e8",
+      "frontend/src/features/structures/StructureTimerBanner.tsx": "31c1477759d2b6fc4eb066da81642ae40d65354ec08aa7795823b16a0d32ce8c",
+      "frontend/src/features/structures/StructureTimerSettings.tsx": "e0f9e21d3ee815dbac5a9dfeb14171b74a00258376c2619ba3e6e73dfb8fdb07",
+      "frontend/src/types/events.ts": "19ca13d2c5b6fa6ada2685527f93ee7c858f1dace4c121cc8b55b75d947123e2"
+    },
+    "checks": {
+      "checks": [
+        "Per-structure opt-in, roles and custom thresholds save; online fuel and reinforced stront create calendar deadlines",
+        "Offline tick delivers two EQM inbox notices plus banner, with no duplicate on a repeated tick and no private notes",
+        "Banner opens the actual read-only Calendar event deadline view, with source caveat and selected-role scope",
+        "Failed save preserves draft settings and supports retry",
+        "390px controls fit without horizontal overflow; reduced-motion preference disables flashing",
+        "Banner dismissal persists for its recipient; disabling tracking cancels the linked fuel event"
+      ],
+      "errors": []
+    },
+    "validation": {
+      "backend_cases_passed": 109,
+      "new_timer_cases": 16,
+      "browser_groups_passed": 6,
+      "typescript": "passed",
+      "production_build": "passed; existing bundle-size advisory",
+      "migration": "populated upgrade/downgrade passed in isolated SQLite"
+    }
+  }
 }

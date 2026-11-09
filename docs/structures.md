@@ -2,7 +2,7 @@
 
 Open **Inventory & Industry → Structures** for private manual POS tracking and ESI corporation structures. This is an unreleased development feature for EQM 2.4.0. Manual records require migration `0107_manual_pos` and matching backend/frontend rollout. The existing ESI dashboard does not require an additional ESI scope for this follow-up.
 
-For **ESI corporation structures**, select one of your linked corporation characters. The module reads that character's **current** corporation, checking ESI rather than relying on an old corporation link. Choose another linked character to view another corporation. Each viewer uses their own character authorization; this module does not borrow another account's tokens or share private structure data through public reports or the navigation catalog.
+For **ESI corporation structures**, select one of your linked corporation characters. The module reads that character's **current** corporation, checking ESI rather than relying on an old corporation link. Choose another linked character to view another corporation. Each viewer uses their own character authorization; this module does not borrow another account's tokens or share private structure data through public reports or the navigation catalog. Explicitly enabled Calendar timers share only their selected deadline details with eligible roles.
 
 ## Manual POS tracking
 
@@ -19,9 +19,36 @@ Cards show the recorded state, reading time, recorded quantities, estimated rema
 
 Search manual records by name, tower, corporation, location or notes. The separate **Manual POS needs attention** filter includes reinforced/offline records and estimated online fuel within 72 hours. The ESI list retains its existing seven-day fuel threshold and independent counts/filters. Manual records remain usable when ESI POS access is denied or there are no linked characters.
 
-All estimates assume continuous operation in the recorded state at the entered rate. Hourly fuel ticks, bonuses, state changes and missed refuels can shift the actual result. Recorded values do not update from EVE. This feature does not detect attacks, poll in the background, or send alerts. Refresh the reading in game to establish a new baseline. Repeated create requests are idempotent; conflicting edits/removals from another tab are rejected so newer readings are not overwritten.
+All estimates assume continuous operation in the recorded state at the entered rate. Hourly fuel ticks, bonuses, state changes and missed refuels can shift the actual result. Recorded values do not update from EVE. Manual readings do not detect attacks or update from EVE. Optional Calendar timers can send saved-deadline reminders as described below. Refresh the reading in game to establish a new baseline. Repeated create requests are idempotent; conflicting edits/removals from another tab are rejected so newer readings are not overwritten.
 
 ![Manual POS fuel and reinforced strontium tracking with synthetic records](../static/ss/v2.3.0/manual-pos-desktop.png)
+
+## Calendar timers and role reminders
+
+Officers and higher who can manage Calendar events and access Structures can expand **Calendar timers & reminders** on a structure card. Check **Create calendar timers and send reminders**, select recipient roles, enter reminder lead times in minutes separated by commas, and save. For example, `1440, 60` sends reminders one day and one hour before each deadline. Choose up to eight thresholds between one minute and 30 days. Built-in and custom roles are supported; role matches are explicit, rather than automatically including higher-ranked roles. Recipients also need both Structures and Calendar access. The owner can view/manage the schedule; banner/inbox delivery requires a selected role too.
+
+This is an explicit opt-in to share the structure name, location and deadlines. It does not share private manual POS notes, recorded quantities, other structures, or ESI credentials. Each account manages its own source-backed schedule. Calendar timers are read-only in Calendar: update the reading or timer settings in Structures instead. No RSVP, fleet-composition or attendance workflow is needed for a deadline.
+
+Supported deadlines:
+
+| Source | Fuel | Reinforcement |
+| --- | --- | --- |
+| Online manual POS | Reading time + blocks / blocks per hour | None until marked reinforced |
+| Reinforced manual POS | Paused | Exact entered end, otherwise reading time + strontium / strontium per hour |
+| ESI Upwell | Reported fuel expiry | State-timer end only in armor/hull reinforcement |
+| ESI POS | Not supplied by ESI; use manual tracking | Reported end while reinforced |
+
+Enabling with no current deadline watches the source for a later applicable reading/state. Editing a manual reading updates its calendar timers in the same save; removing it, changing state or disabling tracking cancels inapplicable events and banners. ESI schedules refresh from the owner's authorized current-corporation source every five minutes, honoring existing ESI caching (up to one hour). Missing/denied sources or lost owner access pause reminders and hide/cancel the managed events; restored sources resume without repeating a previously delivered threshold for the same deadline. A changed deadline creates a fresh reminder cycle.
+
+The server checks reminders about every 30 seconds, even when no user has the page open. Due reminders appear as **System notices in EQM Messages**, plus an authenticated flashing banner with **View calendar timer** and **Dismiss reminder**. Role/module/source authorization is checked again before delivery and while showing a banner. Multiple due thresholds after a late start produce one catch-up notice at the most urgent threshold; an already elapsed deadline does not generate historical reminder spam. There is one banner per active timer. Dismissal acknowledges existing notices for that recipient; a later threshold can alert again. Messages remain in inbox history. Reduced-motion preferences disable the animation.
+
+Manual fuel/stront deadlines remain estimates. Update them after refueling and verify important timings in game. These reminders do not detect attacks or send EVE mail, Discord messages, browser push notifications or email; the EQM server must be running to deliver them. Historical inbox notices remain historical if the underlying timer changes.
+
+Deployment requires migration **0110_structure_timers** after 0109, plus matching backend/frontend builds. No new ESI scopes or external messaging setup is needed. Settings are off by default. The migration adds durable configurations, linked calendar deadlines and unique per-recipient deliveries for restart/concurrent-worker deduplication.
+
+![Opt-in calendar timer roles and custom reminders — synthetic v2.4.0 preview](../static/ss/v2.4.0/structure-timer-settings.png)
+
+![EQM timer banner — synthetic v2.4.0 preview](../static/ss/v2.4.0/structure-timer-banner.png)
 
 ## ESI authorization
 
@@ -54,7 +81,7 @@ Expired timestamps read **Elapsed · awaiting ESI update**. The module does not 
 
 Both lists are paginated fully, with duplicated IDs removed. A failed page makes that source unavailable instead of presenting a partial list as complete. Missing scopes, denied roles, authorization failures and upstream errors are distinct from successful empty lists. The other source can still display; coverage is labelled partial. Failed refreshes retain prior results with an explicit warning. A successful empty list is valid before you deploy your first tower.
 
-This first implementation reads ESI on demand and uses its transport cache; it does not retain a structure history or poll offline in the worker. It does not currently enumerate POCOs/skyhooks or create attack notifications. Upwell fuel block quantities would require separate corporation asset access; the module uses ESI's reported expiry instead. ESI POS fuel duration is not guessed from tower size; estimates belong to the separate user-entered manual records. Manual tracking requires migration `0107_manual_pos` (after `0106_scan_character_notes`); the existing ESI path needs no additional schema change. Migration downgrade refuses to discard saved manual records until they are explicitly exported/removed. No version bump or live EVE operation is part of this follow-up.
+This first implementation reads ESI on demand and uses its transport cache; it does not retain a structure history or poll offline in the worker. It does not currently enumerate POCOs/skyhooks or create attack notifications. Upwell fuel block quantities would require separate corporation asset access; the module uses ESI's reported expiry instead. ESI POS fuel duration is not guessed from tower size; estimates belong to the separate user-entered manual records. Manual tracking requires migration `0107_manual_pos` (after `0106_scan_character_notes`); the existing ESI dashboard needs no additional schema change. Optional calendar reminders require migration `0110_structure_timers`. Migration downgrade refuses to discard saved manual records until they are explicitly exported/removed. No version bump or live EVE operation is part of this follow-up.
 
 ## Source and verification
 

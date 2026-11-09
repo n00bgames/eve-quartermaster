@@ -60,6 +60,7 @@ import { SettingsPage } from "./features/settings/SettingsPage";
 import { useAppUpdate } from "./features/settings/AppUpdate";
 import { EsiSyncPage } from "./features/esi/EsiSyncPage";
 import { ContractsPage } from "./features/contracts/ContractsPage";
+import {StructureTimerBanner} from "./features/structures/StructureTimerBanner";
 import { StructuresPage } from "./features/structures/StructuresPage";
 import { CorporationsPage } from "./features/corporations/CorporationsPage";
 import { BlueprintPreview } from "./features/industry/BlueprintPreview";
@@ -855,6 +856,7 @@ function App() {
         {error && <div className="alert">{error}</div>}
 
         {notice && <div className="notice">{notice}</div>}
+        <StructureTimerBanner api={api} onOpenEvent={id=>{window.location.hash=`events/${id}`;setActiveTab("calendar_events");}}/>
         {justLinkedCharacter && <MainCharacterSettings api={api} linkedCharacterId={justLinkedCharacter}/>}
 
 

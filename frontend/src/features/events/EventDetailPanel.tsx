@@ -54,21 +54,22 @@ export function EventDetailPanel({
           {event.permissions.can_manage && <button type="button" onClick={onEdit}><Pencil size={17} /> Edit</button>}
         </div>
         {error && <div className="mini-alert">{error}</div>}
-        <div className="event-detail-facts">
+        {event.managed_structure_timer ? <><p className="notice">Structure timer · managed from <a href="#structures">Structures</a>. Visible to the selected eligible roles.</p>
+          <div className="event-detail-facts"><div><CalendarClock size={19}/><span><small>Deadline · local</small><strong>{formatDateTime(event.start_at,timeZone)}</strong><em>{formatEveTime(event.start_at)}</em></span></div><div><MapPin size={19}/><span><small>Location</small><strong>{event.operational_area || "Not entered"}</strong></span></div></div></> : (<div className="event-detail-facts">
           <div><CalendarClock size={19} /><span><small>Formup · local</small><strong>{formatDateTime(event.formup_at || event.start_at, timeZone)}</strong><em>{formatEveTime(event.formup_at || event.start_at)}</em></span></div>
           <div><MapPin size={19} /><span><small>Formup</small><strong>{formup?.system_name || "Pending"}</strong><em>{formup?.location_name || "System formup"}</em></span></div>
           <div><Route size={19} /><span><small>Destination</small><strong>{destination?.system_name || "Not specified"}</strong><em>{destination?.location_name || event.route_notes || "No route notes"}</em></span></div>
           <div><ShieldCheck size={19} /><span><small>Doctrine</small><strong>{event.doctrine.name || event.doctrine_mode}</strong><em>{event.doctrine_mode}</em></span></div>
           <div><Users size={19} /><span><small>Lead</small><strong>{event.lead.name || "Unassigned"}</strong><em>{event.created_by.name ? `Created by ${event.created_by.name}` : ""}</em></span></div>
           <div><Headphones size={19} /><span><small>Voice</small><strong>{event.discord_voice_label || "Not specified"}</strong>{event.discord_voice_url && <a href={event.discord_voice_url} target="_blank" rel="noreferrer">Open voice <ExternalLink size={13} /></a>}</span></div>
-        </div>
+        </div>)}
         {(event.instructions || event.doctrine_notes || event.related_url) && <div className="event-briefing">
           {event.instructions && <div><h4>Instructions</h4><p>{event.instructions}</p></div>}
           {event.doctrine_notes && <div><h4>Doctrine notes</h4><p>{event.doctrine_notes}</p></div>}
           {event.related_url && <a href={event.related_url} target="_blank" rel="noreferrer">Open related resource <ExternalLink size={14} /></a>}
         </div>}
         <div className="event-detail-toolbar">
-          {event.permissions.can_view_composition && <button type="button" className="event-secondary-button" onClick={onOpenComposition}><Users size={17} /> Fleet composition</button>}
+          {!event.managed_structure_timer && event.permissions.can_view_composition && <button type="button" className="event-secondary-button" onClick={onOpenComposition}><Users size={17} /> Fleet composition</button>}
           {event.permissions.can_record_attendance && <button type="button" className="event-secondary-button" onClick={onOpenAttendance}><CheckCircle2 size={17} /> Record attendance</button>}
           {event.permissions.can_manage && event.lifecycle_status === "draft" && <button disabled={busy} type="button" onClick={() => void transition("scheduled")}>Publish event</button>}
           {event.permissions.can_manage && event.lifecycle_status === "scheduled" && <button disabled={busy} type="button" onClick={() => void transition("in_progress")}>Mark in progress</button>}
@@ -79,7 +80,7 @@ export function EventDetailPanel({
           {event.permissions.can_manage && event.registration_status !== "locked" && <button disabled={busy} type="button" onClick={() => void transition(undefined, "locked")}>Lock roster</button>}
         </div>
       </section>
-      <div className="event-detail-columns">
+      {!event.managed_structure_timer && <div className="event-detail-columns">
         <section className="panel"><EventRegistrationPanel api={api} event={event} onChanged={onRefresh} /></section>
         <section className="panel event-requirements-panel">
           <div className="event-pane-heading"><div><span className="eyebrow">Fleet needs</span><h3>Composition Plan</h3></div></div>
@@ -88,7 +89,7 @@ export function EventDetailPanel({
             {event.doctrine_requirements.map((requirement) => <article key={`doctrine:${requirement.id ?? requirement.sort_order}`}><span><strong>{requirement.label}</strong><small>{requirement.options.map((option) => option.ship_name || option.manual_name_snapshot).filter(Boolean).join(" · ") || "Accepted hulls pending"}</small></span><b>{requirement.requested_quantity}</b></article>)}
           </>}
         </section>
-      </div>
+      </div>}
     </div>
   );
 }

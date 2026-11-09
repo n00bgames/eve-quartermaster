@@ -198,6 +198,41 @@ def test_top_limit_does_not_trim_totals_and_ship_rank_order_is_explicit(env):
     assert span["ships"]["rows"][0]["ship_type_id"]==111
 
 
+@pytest.mark.parametrize("order", ["visits", "span"])
+@pytest.mark.parametrize("limit", [1, 10])
+def test_combat_hull_order_uses_kills_and_losses_before_top_limit(env, order, limit):
+    e=env
+    for index in range(5):visit(e,0,10,index*70,length=60,hull=111)
+    visit(e,0,11,400,length=1,hull=222)
+    mail(e,200,victim=9999000,attackers=((0,111),))
+    for index in range(3):mail(e,201+index,victim=9999000,attackers=((0,222),))
+    mail(e,210,victim=e.chars[0].character_id,lost_type=111)
+    for index in range(3):mail(e,211+index,victim=e.chars[0].character_id,lost_type=222)
+    e.db.commit()
+    data=stats(e,f"period=all&ship_order={order}&limit={limit}")
+    assert data["ships"]["rows"][0]["ship_type_id"]==111
+    assert data["combat_ships"]["rows"][0]["ship_type_id"]==222
+    assert data["combat_ships"]["rows"][0]["kills"]==3
+    assert data["lost_ships"]["rows"][0]["ship_type_id"]==222
+    assert data["lost_ships"]["rows"][0]["losses"]==3
+    assert data["combat_ships"]["total"]==data["lost_ships"]["total"]==2
+    assert data["combat_ships"]["truncated"]==(limit==1)
+    if limit==10:
+        assert [row["kills"] for row in data["combat_ships"]["rows"]]==[3,1]
+        assert [row["losses"] for row in data["lost_ships"]["rows"]]==[3,1]
+
+
+def test_equal_kill_hulls_use_name_tiebreak_instead_of_travel_counts(env):
+    e=env
+    for index in range(3):visit(e,0,10,index*15,hull=111)
+    visit(e,0,11,100,length=1,hull=222)
+    for index,hull in enumerate((111,222)):mail(e,220+index,victim=9999000,attackers=((0,hull),))
+    e.db.commit()
+    data=stats(e,"period=all&limit=1")
+    assert data["ships"]["rows"][0]["ship_type_id"]==111
+    assert data["combat_ships"]["rows"][0]["name"]=="Demo Cruiser"
+
+
 def test_entire_history_beyond_replay_and_hull_limits_is_aggregated(env):
     e=env
     for index in range(2010):

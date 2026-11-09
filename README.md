@@ -65,7 +65,7 @@ See [CHANGELOG.md](CHANGELOG.md) for version-by-version release notes. Applicati
 - Skill Plans integrated into Character Skills, including editable SDE-dogma-derived minimum requirements, recursive prerequisites, per-item provenance, deduplication, ordering, and character progress.
 - Ship Replacement Program instances with generated intake links, EQM character ownership checks, doctrine or general fittings, exact timezone-aware loss recording, immutable historical snapshots, append-only review history, precise valuation/reimbursement fields, and permission-filtered analytics and CSV exports.
 - [Quartermaster role](docs/quartermaster-role.md) with view-only blueprint holdings, running industry jobs, and planetary infrastructure across authenticated characters and authorized linked corporations.
-- **Structures** includes private manual POS records with fuel estimates and a **Reinforced mode** checkbox that counts down strontium, plus owned Upwell structures and POS towers with ESI status, services, timers and fuel. Manual tracking requires only EQM Structures permission and migration 0107; ESI uses your own corporation character and the required EVE roles/scopes, with POS fuel/settings on demand. [Coverage, authorization and freshness](docs/structures.md). **Unreleased development feature.**
+- **Structures** supports opt-in Calendar fuel/reinforcement timers with custom reminder lead times, eligible-role EQM inbox notices and flashing banners (Officer+ event managers; migration 0110). It also includes private manual POS records with fuel estimates and a **Reinforced mode** checkbox that counts down strontium, plus owned Upwell structures and POS towers with ESI status, services, timers and fuel. Manual tracking requires only EQM Structures permission and migration 0107; ESI uses your own corporation character and the required EVE roles/scopes, with POS fuel/settings on demand. [Coverage, authorization and freshness](docs/structures.md). **Unreleased development feature.**
 - **Local Scan character notes:** add one Public or Private note to every resolved pilot, retain it across future scans, and search note text for all matching character/dossier links. Public notes are shared only with signed-in EQM intel users; private notes are author-only. Excluded from public scan links/PDFs. [Guide](docs/local-scan-character-notes.md). **Unreleased; requires migration 0106 and matching backend/frontend rollout.**
 - [Intel Reports](docs/intel-report-builder.md) for systems, characters, corporations and alliances: activity hours, common hulls, active systems, recent zKill pulls, separate internal sightings, hourly ESI system charts and revocable public/private snapshots. Saved dossiers retain priority flags, staff notes, combat evidence and viewer-authorized ESI enrichment. **Unreleased; requires migration 0109 and matching backend/frontend rollout.**
 - Killboard discovery through zKillboard with canonical ESI killmail storage, resumable incremental sync, direct source links, and historical kill/loss, ISK, hull, geography, participation, opponent, streak, and wingmate analytics.
@@ -106,6 +106,12 @@ Tag an entire resolved Local Scan with a Public or Private note, then search its
 ## Owned structures — development preview
 
 Track a POS manually without EVE Director: save private fuel/strontium readings, choose tower rates, and check **Reinforced mode** to count down strontium. Manual records need migration 0107 and matching backend/frontend rollout. The separate ESI view monitors corporation Upwell/POS state, fuel and timers with the selected character’s roles and authorization. [Structures guide](docs/structures.md).
+
+Enable **Calendar timers & reminders** on a structure card to select roles and reminder lead times. Calendar events follow fuel/reinforcement deadlines; private manual notes and quantities stay private. [Timer guide](docs/structures.md#calendar-timers-and-role-reminders).
+
+![Structure timer settings with synthetic records](static/ss/v2.4.0/structure-timer-settings.png)
+
+![Structure timer reminder banner with synthetic records](static/ss/v2.4.0/structure-timer-banner.png)
 
 ![Manual POS fuel and reinforced strontium tracking with synthetic records](static/ss/v2.3.0/manual-pos-desktop.png)
 
@@ -1090,7 +1096,7 @@ Analytics categories/results now start in collapsed, keyboard-accessible panes a
 
 ### My Journey analytics (unreleased follow-up)
 
-Rank systems most visited, ship types most flown, most-flown hulls with imported kills, kill locations, lost hulls and pilots by observed jumps. Compare one pilot or all your account's linked pilots across selected UTC dates or all stored history. Choose observed visits or confirmed span for ship-use rankings, and drill into a pilot from the leaderboard. Full-scope SQL aggregates remain complete when replay rows are limited. Travel is sampled; combat uses existing imports with separate permissions. No new migration or ESI scope. [Definitions and coverage](docs/journey-map.md#journey-analytics).
+Rank systems most visited, ship types most flown, recorded hulls with most imported kills, kill locations, lost hulls and pilots by observed jumps. Compare one pilot or all your account's linked pilots across selected UTC dates or all stored history. Choose observed visits or confirmed span for travel ship-use rankings; combat hull positions and bars use kill/loss counts independently. Drill into a pilot from the leaderboard. Full-scope SQL aggregates remain complete when replay rows are limited. Travel is sampled; combat uses existing imports with separate permissions. No new migration or ESI scope. [Definitions and coverage](docs/journey-map.md#journey-analytics).
 
 ![Journey analytics with synthetic account-private travel and combat](static/ss/v2.3.0/journey-analytics-desktop.png)
 
@@ -1183,3 +1189,9 @@ Export the selected UTC dates or a character’s **entire recorded journey** as 
 ![Entire journey: 501 synthetic visits saved in two consecutive parts](static/ss/v2.2.1/journey-segments-complete.png)
 
 [Scopes, continuation and browser support](docs/journey-map.md#segmented-and-entire-journey-exports) · [Engagement continuation](static/ss/v2.2.1/journey-segments-continuation.png) · [Download preview](static/ss/v2.2.1/journey-segments-download.png). Owner-only paged loading includes visits beyond the replay cap. Requires matching API and frontend builds.
+
+### Journey combat rankings (v2.4.0 correction)
+
+Journey analytics on Analytics and Journey now ranks and graphs **Recorded hulls with most kills** by imported kills. **Ship types most lost** uses imported losses. The visit/span selector applies to most-flown travel hulls; kill/loss counts determine combat card positions, labels and bar lengths. [Definitions](docs/journey-map.md#journey-analytics).
+
+![Journey combat hull rankings use kills and losses with span selected](static/ss/v2.4.0/journey-combat-counts-analytics.png)
