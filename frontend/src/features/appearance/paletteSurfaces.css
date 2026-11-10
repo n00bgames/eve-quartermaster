@@ -1,0 +1,67 @@
+/* Root-level tokens also reach portals mounted directly under document.body. */
+:root {
+ --eqm-raised:var(--eqm-panel);
+ --eqm-inset:color-mix(in srgb,var(--eqm-background) 72%,var(--eqm-panel));
+ --eqm-success:#8bd6ad;
+ --eqm-warning:#edc47e;
+ --eqm-danger:#ef9ba6;
+ --eqm-overlay-shadow:0 14px 36px #0005;
+}
+html[data-eqm-mode=light] {
+ --eqm-success:#246347;
+ --eqm-warning:#765016;
+ --eqm-danger:#a1243c;
+ --eqm-overlay-shadow:0 12px 28px #30283224;
+}
+/* Do not paint opaque rectangular patches behind inline table labels. */
+html[data-eqm-theme] :is(.cell-filter,.sort-column,.sort-header,.inline-filter,.character-hover-name) {
+ background:transparent;box-shadow:none;color:var(--eqm-text);
+}
+html[data-eqm-theme] :is(.cell-filter,.sort-column,.sort-header,.inline-filter,.character-hover-name):is(:hover,:focus-visible) {
+ background:transparent;color:var(--eqm-accent);
+}
+html[data-eqm-theme] :is(.modal-window,.character-hover-card) {
+ background:var(--eqm-raised);color:var(--eqm-text);border-color:var(--eqm-border);box-shadow:var(--eqm-overlay-shadow);
+}
+html[data-eqm-theme] .modal-window :is(h2,h3,h4,strong,label) {color:var(--eqm-text)}
+html[data-eqm-theme] :is(.character-hover-actions button,.character-hover-external,.context-actions button) {
+ background:var(--eqm-inset);color:var(--eqm-text);border-color:var(--eqm-border);
+}
+html[data-eqm-theme] :is(.character-hover-actions button,.character-hover-external,.character-hover-close):is(:hover,:focus-visible) {
+ color:var(--eqm-accent);border-color:var(--eqm-accent);box-shadow:none;
+}
+html[data-eqm-theme] .character-hover-card :is(.character-hover-metrics span,.character-hover-categories span) {background:var(--eqm-inset)}
+html[data-eqm-theme] :is(.context-owned,.eve-client-success) {color:var(--eqm-success)}
+html[data-eqm-theme] .context-missing {color:var(--eqm-danger)}
+html[data-eqm-theme] .blueprint-filter button.active {color:var(--eqm-accent)}
+html[data-eqm-theme] .bp-badge.copy {color:var(--eqm-warning)}
+html[data-eqm-theme] .bp-badge.original {color:var(--eqm-success)}
+/* The implant hover layer has legacy !important opacity rules; retain its opaque surface. */
+html[data-eqm-theme] .implant-chip-list .implant-dogma-card {background:var(--eqm-raised)!important;color:var(--eqm-text);border-color:var(--eqm-border);box-shadow:var(--eqm-overlay-shadow)}
+html[data-eqm-theme] .implant-chip-list .implant-dogma-heading {background:var(--eqm-inset);border-color:var(--eqm-border)}
+html[data-eqm-theme] .implant-chip-list .implant-dogma-row :is(span,strong) {color:var(--eqm-text)}
+html[data-eqm-theme] .implant-chip-list .implant-dogma-heading img {background:var(--eqm-inset)}
+
+/* Dark Mode deliberately reuses Command Desk's navigation/layout and arrangement IDs. */
+.app-shell.command-desk-shell.dark-mode-shell {background:var(--eqm-background);color:var(--eqm-text)}
+.app-shell.command-desk-shell.dark-mode-shell .sidebar {background:var(--eqm-background);border-color:var(--eqm-border)}
+.app-shell.command-desk-shell.dark-mode-shell .content {background:var(--eqm-background)}
+.app-shell.command-desk-shell.dark-mode-shell .content :is(.panel,.card-list>article,.mini-list>div,.table-wrap) {background:var(--eqm-panel);color:var(--eqm-text);border-color:var(--eqm-border);box-shadow:none}
+.app-shell.command-desk-shell.dark-mode-shell :is(h1,h2,h3,h4,strong,label) {color:var(--eqm-text)}
+.app-shell.command-desk-shell.dark-mode-shell :is(.muted,.eyebrow,small,.hero p) {color:var(--eqm-muted)}
+.app-shell.command-desk-shell.dark-mode-shell :is(a,.inline-filter,.cell-filter:hover,.eve-item-launch) {color:var(--eqm-accent)}
+.app-shell.command-desk-shell.dark-mode-shell .toolbar>button {background:var(--eqm-panel);color:var(--eqm-text);border-color:var(--eqm-border);box-shadow:none}
+.app-shell.command-desk-shell.dark-mode-shell .sidebar .nav-module>button {color:var(--eqm-muted)}
+.app-shell.command-desk-shell.dark-mode-shell .sidebar .nav-module>button.active {color:var(--eqm-text);background:color-mix(in srgb,var(--eqm-accent) 8%,var(--eqm-background));border-left-color:var(--eqm-accent)}
+.app-shell.command-desk-shell.dark-mode-shell .sidebar .nav-module>button:hover {color:var(--eqm-text);background:var(--eqm-panel)}
+.app-shell.command-desk-shell.dark-mode-shell .content :is(.status-grid>article,.blueprint-preview .status-grid>article) {background:transparent;color:var(--eqm-text)}
+.app-shell.command-desk-shell.dark-mode-shell :is(button,a,input,select,textarea):focus-visible {outline:2px solid var(--eqm-accent);outline-offset:3px}
+.edition-dark-mode .edition-preview {border-radius:0}
+
+html[data-eqm-theme] .bubble-panel{background:var(--eqm-raised);color:var(--eqm-text);border-color:var(--eqm-border);box-shadow:var(--eqm-overlay-shadow)}
+html[data-eqm-theme] .next-event-badge{background:var(--eqm-raised);color:var(--eqm-text);border-color:var(--eqm-border);box-shadow:none}
+html[data-eqm-theme] .next-event-copy :is(strong,small),html[data-eqm-theme] .next-event-location{color:var(--eqm-text)}
+.app-shell.command-desk-shell.dark-mode-shell .sidebar .nav-module>button.fittings-wip{color:var(--eqm-danger)}
+
+.app-shell.command-desk-shell.dark-mode-shell [data-layout-region=overview-inventory]>section,
+.app-shell.command-desk-shell.dark-mode-shell [data-layout-region=overview] :is(.overview-events-widget,.eqm-support-card){padding:20px}

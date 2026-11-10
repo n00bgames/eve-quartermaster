@@ -1,8 +1,8 @@
 export type Theme = {background:string;panel:string;text:string;muted:string;accent:string;border:string};
 export type NavGroup = {id:string;name:string;modules:string[]};
-export type InterfaceStyle = "classic" | "command_desk" | "orbital_ring" | "imperial_archive" | "void_cartography" | "frontier_terminal";
+export type InterfaceStyle = "classic" | "command_desk" | "dark_mode" | "orbital_ring" | "imperial_archive" | "void_cartography" | "frontier_terminal";
 // Missing/unknown values must remain Classic, including old accounts/clients.
-export function resolveInterface(value:unknown):InterfaceStyle{return typeof value==="string" && ["command_desk","orbital_ring","imperial_archive","void_cartography","frontier_terminal"].includes(value) ? value as InterfaceStyle : "classic";}
+export function resolveInterface(value:unknown):InterfaceStyle{return typeof value==="string" && ["command_desk","dark_mode","orbital_ring","imperial_archive","void_cartography","frontier_terminal"].includes(value) ? value as InterfaceStyle : "classic";}
 export type Preferences = {interface?:InterfaceStyle;theme?:Theme;navigation?:NavGroup[];layouts?:Record<string,string[]>};
 export const presets:Record<string,Theme> = {
   "EQM dark":{background:"#101215",panel:"#191e25",text:"#f5f7fa",muted:"#aab4c2",accent:"#e8b84d",border:"#3b4654"},

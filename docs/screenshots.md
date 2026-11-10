@@ -1,6 +1,6 @@
 # EQM screenshot gallery
 
-**Latest:** [Four space interfaces](#four-space-interfaces), captured November 10, 2026. Earlier captures remain below.
+**Latest:** [Dark Mode and palette consistency](#dark-mode-and-palette-consistency), captured November 10, 2026. Earlier captures remain below.
 
 HyperNet and PLEX previews added **October 3, 2026**, from source commit `4ec0931cda1f800afb1d83560e19862809148ccd`. Atlas previews were added September 19 from `f6131a1be18e808c886f75c380c6ebf646323bfb`; the earlier gallery reconciliation was September 11 against the v1.0 candidate `f894f27ad7fb2ef4956e5bef2e97d3865fe8cfd2`. [README](../README.md) · [v1.0.5 release notes](releases/v1.0.5.md) · [Install](../README.md#install)
 
@@ -1013,3 +1013,19 @@ Rust-and-bone industrial terminal; hamburger drawer, vertical dropdown sections,
 Frontier’s vertical drawer with native expandable Profile and Administration sections; destination links retain ordinary permissions.
 
 ![Frontier Profile and Administration dropdown sections](../static/ss/v2.4.0/frontier-terminal-menu-desktop.png)
+
+## Dark Mode and palette consistency
+
+Unreleased v2.4.0 captures from November 10, 2026. Actual UI components, real appearance API and disposable SQLite in an isolated synthetic shell. Fabricated blueprint/research, skill, implant, event and pilot data; no private gameplay screenshot, production account/DB, SSO or ESI. Eleven built-in palettes and six overlay families were checked for matching opaque surfaces and sampled text contrast. [Guide and limits](dark-mode-and-palette.md) · [Additive receipt](../static/ss/v2.4.0/capture-receipt.json).
+
+![Near-black Command Desk style Overview](../static/ss/v2.4.0/dark-mode-desktop.png)
+
+![Dark Mode mobile Industry at 390px](../static/ss/v2.4.0/dark-mode-mobile.png)
+
+![Dark Mode blueprint tooltip and research metadata](../static/ss/v2.4.0/dark-mode-blueprint-palette.png)
+
+![Imperial Archive tooltip, metadata and interaction help match the light palette](../static/ss/v2.4.0/imperial-blueprint-palette.png)
+
+![Light skill dogma popover with matching inner fields and readable bonus text](../static/ss/v2.4.0/imperial-skill-palette.png)
+
+![Seven interface choices, including Dark Mode](../static/ss/v2.4.0/dark-mode-picker.png)

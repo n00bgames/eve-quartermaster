@@ -6,6 +6,8 @@ Version sections are written as user-facing release notes first, with implementa
 
 ## [2.4.0] - Unreleased
 
+- Add **Dark Mode**, a seventh interface using Command Desk’s layout with near-black surfaces, soft gray text and muted blue links. Correct blueprint/skill/character/implant/event popover and in-game-link dialog palette mismatches, shared inbox surfaces and inline table-label backgrounds. Keep blueprint interaction help in the themed card instead of a duplicate native title tooltip. Validate sampled overlay colors/contrast across all eleven built-in palettes. Matching frontend/API required; no new migration or ESI scope. [Guide](docs/dark-mode-and-palette.md).
+
 - Add four opt-in **space interfaces**: Orbital Ring (top dock/capsules), Imperial Archive (ivory arched index), Void Cartography (right atlas/diamonds), and Frontier Terminal (industrial hamburger drawer with vertical dropdowns and Profile/Administration sections). Include distinct page pictograms, default palettes and responsive panel styling; retain account-specific colors, banners, shortcuts, panel ordering and permissions. Apply layout/palette together or change only the layout. Matching frontend/API required; no new migration or ESI scope. [Guide](docs/space-interfaces.md).
 
 - Add **T2/T3 tech filters** and **Ships / Modules / subsystems** product filters to the owned blueprint browser. Combine with existing owner/kind/family/subtype/search filters and CSV/JSON exports; classify the manufactured product from SDE Dogma, including active-research blueprints. Unknown metadata remains visible under All. Matching backend/frontend builds required; no migration or new ESI scope. [Guide](docs/blueprint-tech-filters.md).

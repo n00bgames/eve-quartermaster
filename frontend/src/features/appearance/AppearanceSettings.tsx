@@ -1,12 +1,12 @@
 import React,{useEffect,useState} from "react";
 import {useAppearance,ArrangeButton} from "./AppearanceProvider";
 import {presets,themeError,resolveInterface,type Theme} from "./model";
-import {isSpaceInterface,spaceInterfaces} from "./interfaceCatalog";
+import {interfaceTheme} from "./interfaceCatalog";
 import {InterfaceChooser} from "./InterfaceChooser";
 import {isAdminRole} from "../../lib/roles";
 export function AppearanceSettings({roles}:{roles:string[]}){
  const a=useAppearance(),style=resolveInterface(a.personal.preferences.interface);
- const savedTheme=a.personal.preferences.theme??(isSpaceInterface(style)?spaceInterfaces[style].theme:presets["EQM dark"]);
+ const savedTheme=a.personal.preferences.theme??(interfaceTheme(style)??presets["EQM dark"]);
  const [theme,setTheme]=useState<Theme>(savedTheme),[preset,setPreset]=useState("Custom");
  useEffect(()=>{setTheme(savedTheme);return()=>a.preview(null);},[a.personal.preferences.theme,a.personal.preferences.interface]);
  const invalid=themeError(theme),disabled=!a.ready||a.busy;

@@ -35,10 +35,10 @@
 }
 
 .skill-dogma-popover {
-  background: color-mix(in srgb, var(--eqm-background, #111820) 96.86%, transparent);
+  background: var(--eqm-raised, var(--eqm-panel));
   border: 1px solid var(--eqm-accent, #4fb3c7);
   border-radius: 10px;
-  box-shadow: 0 20px 55px #000c, 0 0 0 1px #ffffff0a inset;
+  box-shadow: var(--eqm-overlay-shadow);
   color: var(--eqm-text, #dce3ec);
   max-height: min(76vh, 720px);
   overflow: auto;
@@ -74,7 +74,7 @@
 }
 
 .skill-dogma-popover h5 {
-  color: #f3cf78;
+  color: var(--eqm-accent);
   font-size: .78rem;
   letter-spacing: .045em;
   margin-bottom: 7px;
@@ -83,7 +83,7 @@
 
 .skill-dogma-close {
   align-items: center;
-  background: #171f28;
+  background: var(--eqm-inset);
   border: 1px solid var(--eqm-border, #3b4654);
   border-radius: 7px;
   color: var(--eqm-text, #dce3ec);
@@ -109,7 +109,7 @@
 }
 
 .skill-dogma-content > p {
-  color: #c4cfdd;
+  color: var(--eqm-text);
   font-size: .9rem;
   line-height: 1.5;
 }
@@ -122,7 +122,7 @@
 }
 
 .skill-dogma-meta div {
-  background: #080d13b8;
+  background: var(--eqm-inset);
   border: 1px solid var(--eqm-border, #303741);
   border-radius: 7px;
   min-width: 0;
@@ -155,7 +155,7 @@
 
 .skill-dogma-prerequisites li,
 .skill-dogma-bonuses li {
-  background: #080d137a;
+  background: var(--eqm-inset);
   border-left: 3px solid var(--eqm-accent, #4fb3c7);
   border-radius: 4px;
   padding: 6px 8px;
@@ -173,21 +173,21 @@
 
 .skill-dogma-bonuses span,
 .skill-dogma-bonuses small {
-  color: #c4cfdd;
+  color: var(--eqm-text);
   font-size: .82rem;
   line-height: 1.35;
 }
 
 .skill-dogma-bonuses strong {
-  color: #79e0a7;
+  color: var(--eqm-success);
 }
 
 .skill-dogma-bonuses small {
-  color: #91a2b5;
+  color: var(--eqm-muted);
 }
 
 .skill-dogma-profiles details {
-  background: #0b1118;
+  background: var(--eqm-inset);
   border: 1px solid var(--eqm-border, #303741);
   border-radius: 7px;
   overflow: hidden;
@@ -224,7 +224,7 @@
 }
 
 .skill-dogma-chips span {
-  background: #17313a;
+  background: var(--eqm-inset);
   border: 1px solid color-mix(in srgb, var(--eqm-accent, #4fb3c7) 46.67%, transparent);
   border-radius: 999px;
   color: var(--eqm-text, #c9f6ff);
@@ -239,7 +239,7 @@
 
 .skill-dogma-content footer {
   border-top: 1px solid var(--eqm-border, #303741);
-  color: #6f7f92;
+  color: var(--eqm-muted);
   font-family: Consolas, "Liberation Mono", monospace;
   font-size: .67rem;
   padding-top: 9px;

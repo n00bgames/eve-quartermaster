@@ -484,5 +484,200 @@
         "sha256": "fc1718f9ce0e51adc331fac56048f651ef71ccabd8b95500e1ef8d5944490e5f"
       }
     ]
+  },
+  "dark_mode_palette_consistency": {
+    "captured_at_utc": "2026-11-10T21:42:39.416794+00:00",
+    "application_version": "2.4.0",
+    "source_base_commit": "3871e7ebc1dfcc62ae7242cf92ee6f428133fbe7",
+    "source_state": "Authorized uncommitted palette consistency fixes and seventh Dark Mode interface. No deployment/version bump/release.",
+    "method": "Actual appearance, Command Desk Overview/navigation, BlueprintHoverCard, SkillDogmaPopover, CharacterHoverName, ImplantDogmaChip, NextEventBadge and EVE-link dialog components in synthetic Vite shell; real appearance API with disposable SQLite. Headless Edge desktop1480x1050 (skill capture1480x1400), mobile390x844, native full-page/picker crop, animations completed for captures.",
+    "data_provenance": "Fabricated Demo holdings, research/pilot/skill/implant/event data. Original private screenshot used only to identify the defect; not copied into repository. No production account/DB, SSO or ESI. Client-link preview reads locally intercepted; no draft/send action.",
+    "source_sha256": {
+      "frontend/src/features/appearance/paletteSurfaces.css": "70b5d8da98fc1204f509388dbcd2a340e6f03f643a91b351a2c7c02e2093c9d5",
+      "frontend/src/features/appearance/interfaceCatalog.ts": "af000164130a20640a36add6b35113433efd36f278e5f0102be6e16ceec5da22",
+      "frontend/src/features/appearance/model.ts": "9af453c4c70622c36faa23fd85b1cc69c1edcc74433b946b1de083f7cfd48213",
+      "frontend/src/features/appearance/AppearanceProvider.tsx": "239333d5200a954d2b905fb816eba046bfebc0b54c5237c91da87559093ba399",
+      "frontend/src/features/appearance/AppearanceSettings.tsx": "ed0c56ee79e016463b811c5c27aeadbd171103281edd1e679a67ea803149daac",
+      "frontend/src/features/appearance/InterfaceChooser.tsx": "4f335b1eb42885ca05978486dbc154ad89896dad6cdccbf5aad201b7eaae752a",
+      "frontend/src/features/appearance/CommandNavigation.tsx": "8c98575a5503f9380e444936bfe6c350943f5aeb17f3a295c2d2a60d448b6fe7",
+      "frontend/src/features/overview/OverviewLayout.tsx": "8a517759ee884a42f0963c29703b1e5fdcfeb5bfa2d8361b5372066c780817a1",
+      "backend/app/api/appearance.py": "f5d293710bc5d1dc5b2aed1e72cb2432bead9116f26bc920e919fba68ca3e394",
+      "frontend/src/components/blueprintHoverCard.css": "06cefed02875f17a8c2d2beddb50e3525ce6c594698f21ece4dc9a278af0972a",
+      "frontend/src/components/BlueprintHoverCard.tsx": "cf3653cb63d4513a0b4e23d9c907b0425069caa12599897b1c8d119a92b10a04",
+      "frontend/src/features/characters/skillDogmaPopover.css": "92640c26b989afafd4bb4b9330c18704bc43d957fb52cefa6bc60c1bd88b1b8c",
+      "frontend/src/features/events/events.css": "19728b91c5038648c32da31a5a92c0144dbc8611834ec0385cf11734f54713e8",
+      "frontend/src/features/clientLinks/clientLinks.css": "0982672034af1d7af92f16d9ae82f46aa07d99de6dc624f2aca798fc2359e47b",
+      "backend/tests/test_appearance.py": "58707349e9d320335d2dbbbd3e7610bf9cfa20d23b13d6f436005b2ac23630da",
+      "frontend/tests/spaceInterfaces.test.ts": "3f9f89c6457bb235ed467dad6e9e9153c94fcc8c366ac5df537850af814386e9"
+    },
+    "validation": {
+      "backend_appearance_tests": 74,
+      "frontend_appearance_tests": 15,
+      "typescript": "pass",
+      "production_vite_build": "pass; existing chunk advisory",
+      "browser": {
+        "checks": [
+          "Eleven built-in palettes: six real overlays each match their opaque palette surface, with measured primary contrast \u22654.5:1 and secondary \u22653:1",
+          "Portalled active blueprint card retains readable research metadata, themed Alt+Enter/right-click help and no duplicate native title tooltip",
+          "Inline table labels remain transparent; character, skill, implant, event and EVE-link dialogs follow light/dark colors",
+          "Actual Dark Mode card applies layout/colors; resetting the palette retains Dark Mode defaults after reload",
+          "Dark Mode persists as the seventh interface, reuses actual Command Desk Overview/navigation and fits 390px Industry"
+        ],
+        "errors": [],
+        "palettes": [
+          {
+            "palette": "EQM dark",
+            "blueprint": 15.606858054768269,
+            "skill": 15.606858054768269,
+            "character": 15.606858054768269,
+            "implant": 15.606858054768269,
+            "event": 17.02989197509242,
+            "dialog": 15.606858054768269
+          },
+          {
+            "palette": "Weathered brass",
+            "blueprint": 13.247821170285327,
+            "skill": 13.247821170285327,
+            "character": 13.247821170285327,
+            "implant": 13.247821170285327,
+            "event": 14.534544985508793,
+            "dialog": 13.247821170285327
+          },
+          {
+            "palette": "Deep space",
+            "blueprint": 14.299119541583298,
+            "skill": 14.299119541583298,
+            "character": 14.299119541583298,
+            "implant": 14.299119541583298,
+            "event": 16.294793764291725,
+            "dialog": 14.299119541583298
+          },
+          {
+            "palette": "Emerald",
+            "blueprint": 13.885269456660776,
+            "skill": 13.885269456660776,
+            "character": 13.885269456660776,
+            "implant": 13.885269456660776,
+            "event": 16.092423967878172,
+            "dialog": 13.885269456660776
+          },
+          {
+            "palette": "Amethyst",
+            "blueprint": 13.913739060872594,
+            "skill": 13.913739060872594,
+            "character": 13.913739060872594,
+            "implant": 13.913739060872594,
+            "event": 15.759100918531699,
+            "dialog": 13.913739060872594
+          },
+          {
+            "palette": "Daylight",
+            "blueprint": 15.88585436543965,
+            "skill": 15.88585436543965,
+            "character": 15.88585436543965,
+            "implant": 15.88585436543965,
+            "event": 14.518062942275979,
+            "dialog": 15.88585436543965
+          },
+          {
+            "palette": "Orbital Ring",
+            "blueprint": 13.776151955771743,
+            "skill": 13.776151955771743,
+            "character": 13.776151955771743,
+            "implant": 13.776151955771743,
+            "event": 15.764885658009394,
+            "dialog": 13.776151955771743
+          },
+          {
+            "palette": "Imperial Archive",
+            "blueprint": 13.77464382433558,
+            "skill": 13.77464382433558,
+            "character": 13.77464382433558,
+            "implant": 13.77464382433558,
+            "event": 11.975987315236782,
+            "dialog": 13.77464382433558
+          },
+          {
+            "palette": "Void Cartography",
+            "blueprint": 14.466957635420341,
+            "skill": 14.466957635420341,
+            "character": 14.466957635420341,
+            "implant": 14.466957635420341,
+            "event": 15.981539673964432,
+            "dialog": 14.466957635420341
+          },
+          {
+            "palette": "Frontier Terminal",
+            "blueprint": 12.999705356810749,
+            "skill": 12.999705356810749,
+            "character": 12.999705356810749,
+            "implant": 12.999705356810749,
+            "event": 14.80111551864789,
+            "dialog": 12.999705356810749
+          },
+          {
+            "palette": "Dark Mode",
+            "blueprint": 13.251833988602959,
+            "skill": 13.251833988602959,
+            "character": 13.251833988602959,
+            "implant": 13.251833988602959,
+            "event": 13.93968766935792,
+            "dialog": 13.251833988602959
+          }
+        ]
+      },
+      "visual_inspection": "All six final captures inspected. Light tooltip and skill details match surfaces and retain complete metadata; Dark Mode has black/gray/blue tones and contained mobile controls."
+    },
+    "limitations": [
+      "Isolated synthetic shell, not complete production App bootstrap.",
+      "Six overlay families across eleven built-in palettes; not exhaustive every-page/chart/browser-native-control color verification.",
+      "Inbox/container shared styles reviewed; not an end-to-end inbox action or messaging test.",
+      "No PostgreSQL/live account/remote deployment verification.",
+      "Other browser-native title tooltips remain browser/OS-controlled."
+    ],
+    "images": [
+      {
+        "file": "dark-mode-blueprint-palette.png",
+        "bytes": 127363,
+        "width": 1480,
+        "height": 1050,
+        "sha256": "62a9dbfe4089f24ba911b02b80998e4ae2243d36fc2ca3bdd7cc6a4f8e9c39c1"
+      },
+      {
+        "file": "dark-mode-desktop.png",
+        "bytes": 193976,
+        "width": 1480,
+        "height": 1359,
+        "sha256": "9bdb227a53105ee203146deb9623b197796af9b734c4193724a1a65aee468d1d"
+      },
+      {
+        "file": "dark-mode-mobile.png",
+        "bytes": 133285,
+        "width": 390,
+        "height": 1855,
+        "sha256": "5cc1c8d5df1443abacac89944525ad28b0f7615d9ff1f8a1d367a4fe216eb1e7"
+      },
+      {
+        "file": "dark-mode-picker.png",
+        "bytes": 118546,
+        "width": 1122,
+        "height": 1209,
+        "sha256": "1ae2bd4578f96127a39d1487c4ca8e0e7a28b062e41dd49c841cde0d6dfcf58b"
+      },
+      {
+        "file": "imperial-blueprint-palette.png",
+        "bytes": 131878,
+        "width": 1480,
+        "height": 1050,
+        "sha256": "c8ec7ba6c7b049a25ce1ab6c34da0487f2a2f7a10efb41196aafe00c602e4cc5"
+      },
+      {
+        "file": "imperial-skill-palette.png",
+        "bytes": 169896,
+        "width": 1480,
+        "height": 1400,
+        "sha256": "a29caa8f86ab80135313096276cb81810faaa82b52b2bb73a923de1209def747"
+      }
+    ]
   }
 }

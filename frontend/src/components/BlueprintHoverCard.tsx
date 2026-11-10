@@ -86,7 +86,7 @@ export function BlueprintHoverCard({ details, children, className = "" }: { deta
   return <span
     className={`blueprint-hover-target ${className}`.trim()}
     tabIndex={clientLinks.account ? 0 : undefined}
-    title={clientLinks.account ? "Open in EVE (Alt+Enter or right-click); hover for blueprint details" : undefined}
+    aria-description={clientLinks.account ? "Open in EVE (Alt+Enter or right-click); hover for blueprint details" : undefined}
     onContextMenu={event => {if(clientLinks.account){event.preventDefault();event.stopPropagation();setAnchor(null);launch();}}}
     onClick={event => {if(clientLinks.account && !(event.target as HTMLElement).closest("button,a,input,select")){event.stopPropagation();setAnchor(null);launch();}}}
     onKeyDown={event => {if(clientLinks.account && event.altKey && event.key==="Enter"){event.preventDefault();event.stopPropagation();setAnchor(null);launch();}}}
@@ -113,6 +113,7 @@ export function BlueprintHoverCard({ details, children, className = "" }: { deta
       {!use && !details.definitionOnly && <div className="blueprint-use-summary"><strong>Not currently in use</strong></div>}
       {details.definitionOnly && !efficiencyKnown && <small className="blueprint-hover-note">ME/TE and location apply to an owned blueprint instance.</small>}
       {details.note && <small className="blueprint-hover-note">{details.note}</small>}
+      {clientLinks.account && <small className="blueprint-hover-note">Open in EVE with Alt+Enter or right-click.</small>}
     </div>, document.body)}
   </span>;
 }

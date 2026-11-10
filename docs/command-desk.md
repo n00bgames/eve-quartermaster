@@ -33,3 +33,7 @@ Actual browser checks use the production build and real auth, preferences and in
 ![Classic fallback](../static/ss/v2.0.1/eqm-classic-overview.jpg)
 
 ![Mobile Command Desk](../static/ss/v2.0.1/command-desk-mobile.jpg)
+
+## Near-black Dark Mode variant (unreleased 2.4.0)
+
+Choose **Dark Mode** under Appearance for this layout with near-black surfaces, soft gray text and muted blue links. The same navigation, Overview and panel arrangements are used. [Palette behavior, overlay fixes and previews](dark-mode-and-palette.md).

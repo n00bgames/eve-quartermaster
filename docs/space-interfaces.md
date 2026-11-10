@@ -1,6 +1,6 @@
-# Four space interfaces
+# Space interfaces and Dark Mode
 
-Unreleased v2.4.0 additions. Open **Appearance → Interface** to choose from six layouts: the existing EQM-Classic and Command Desk, plus four new space editions.
+Unreleased v2.4.0 additions. Open **Appearance → Interface** to choose from seven layouts: the existing EQM-Classic and Command Desk, four space editions, and the near-black **Dark Mode**. [Dark Mode and palette consistency](dark-mode-and-palette.md).
 
 | Edition | Navigation | Geometry and palette |
 |---|---|---|
@@ -8,8 +8,9 @@ Unreleased v2.4.0 additions. Open **Appearance → Interface** to choose from si
 | Imperial Archive | Left two-column navigation index | Ivory/bronze arches, engraved seals, serif headings |
 | Void Cartography | Right-side navigation atlas | Violet/lime diamonds, plotted lines and coordinate corners |
 | Frontier Terminal | Hamburger drawer with vertical dropdown sections | Rust/bone industrial plates, stencil corners, monospaced headings |
+| Dark Mode | Command Desk left navigation and mobile menu | Near-black surfaces, soft gray text and muted blue links |
 
-Each page has its own pictogram in the navigation and page heading. Frames vary by sector: flight, crew, intelligence, trade, industry and systems. Each edition gives those frames a distinct treatment. Original vector artwork introduces the Overview; no decorative diagram represents live telemetry.
+The four space editions give each page its own pictogram in the navigation and page heading. Dark Mode retains Command Desk’s existing icon treatment. Frames vary by sector: flight, crew, intelligence, trade, industry and systems. Each edition gives those frames a distinct treatment. Original vector artwork introduces the Overview; no decorative diagram represents live telemetry.
 
 ## Choose layout and colors
 
@@ -27,7 +28,7 @@ Frontier gathers Profile, Settings and Audit into those dedicated sections for p
 
 ## Scope and rollout
 
-The new shell, page emblems and shared panel styling extend across signed-in modules. Existing module content, workflows, permission checks and data sources remain in place; they have not all been rebuilt as separate page implementations. Public/login layouts keep their existing structure. No new ESI scope, data collection or migration is required. Deploy matching frontend/API builds so the API accepts the four new interface IDs. Existing appearance storage migration 0095 remains a prerequisite.
+The new shell, page emblems and shared panel styling extend across signed-in modules. Existing module content, workflows, permission checks and data sources remain in place; they have not all been rebuilt as separate page implementations. Public/login layouts keep their existing structure. No new ESI scope, data collection or migration is required. Deploy matching frontend/API builds so the API accepts the new interface IDs, including dark_mode. Existing appearance storage migration 0095 remains a prerequisite.
 
 ## Validation and previews
 

@@ -27,11 +27,23 @@ export const spaceInterfaces = {
   },
 } satisfies Record<string,{name:string;kicker:string;description:string;layout:string;geometry:string;theme:Theme}>;
 
+export const darkModeInterface = {
+  name:"Dark Mode", kicker:"COMMAND DESK / LOW LIGHT",
+  description:"Command Desk’s familiar layout with near-black surfaces, soft gray text and quiet blue links.",
+  layout:"Command Desk / left navigation", geometry:"Black & soft gray",
+  theme:{background:"#050607",panel:"#0e1114",text:"#d5d8dd",muted:"#9aa4ae",accent:"#8eb4c9",border:"#333b44"},
+} satisfies typeof spaceInterfaces.orbital_ring;
+export const interfaceEditions = {...spaceInterfaces,dark_mode:darkModeInterface};
+export function interfaceTheme(style:InterfaceStyle):Theme|null {
+  return style==="dark_mode"?darkModeInterface.theme:isSpaceInterface(style)?spaceInterfaces[style].theme:null;
+}
+
 export type SpaceInterface = keyof typeof spaceInterfaces;
 export function isSpaceInterface(style: InterfaceStyle): style is SpaceInterface {
   return Object.prototype.hasOwnProperty.call(spaceInterfaces, style);
 }
 export function interfaceShellClass(style: InterfaceStyle): string {
+  if (style === "dark_mode") return " command-desk-shell dark-mode-shell";
   if (style === "command_desk") return " command-desk-shell";
   return isSpaceInterface(style) ? ` space-interface-shell ${style.replace(/_/g, "-")}-shell` : "";
 }

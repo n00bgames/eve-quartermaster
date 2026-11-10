@@ -184,7 +184,7 @@ def test_quartermaster_interface_switch_does_not_widen_real_auth(app):
     assert app.client.put('/api/appearance/branding/banner',json={'revision':0,'image':image()},headers=headers).status_code==403
     assert app.client.post('/api/local-scans',json={'text':'Alpha One','retention':'24h'},headers=headers).status_code==403
 
-@pytest.mark.parametrize('choice',['orbital_ring','imperial_archive','void_cartography','frontier_terminal'])
+@pytest.mark.parametrize('choice',['orbital_ring','imperial_archive','void_cartography','frontier_terminal','dark_mode'])
 @pytest.mark.parametrize('role',['member','intel_analyst','quartermaster','applicant'])
 def test_space_interface_round_trip_preserves_permissions_and_saved_workspace(app,choice,role):
     from app.services.permissions import effective_permissions
@@ -203,7 +203,7 @@ def test_space_interface_round_trip_preserves_permissions_and_saved_workspace(ap
     app.current[0]=app.users['other']
     assert app.client.get('/api/appearance/me').json()['preferences']=={}
 
-@pytest.mark.parametrize('choice',['orbital_ring','imperial_archive','void_cartography','frontier_terminal'])
+@pytest.mark.parametrize('choice',['orbital_ring','imperial_archive','void_cartography','frontier_terminal','dark_mode'])
 def test_space_interface_and_palette_apply_together(app,choice):
     palette={'background':'#170d2b','panel':'#28183d','text':'#f4efff','muted':'#c3b1d8','accent':'#d3f57b','border':'#725d8b'}
     response=app.client.patch('/api/appearance/me',json={'revision':0,'interface':choice,'theme':palette})

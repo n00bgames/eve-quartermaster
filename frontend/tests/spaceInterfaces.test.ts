@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {resolveInterface,defaultNavigation,navigationWithDefaults,themeError} from "../src/features/appearance/model.ts";
-import {spaceInterfaces,interfaceShellClass,frontierNavigationGroups} from "../src/features/appearance/interfaceCatalog.ts";
+import {spaceInterfaces,interfaceShellClass,frontierNavigationGroups,darkModeInterface,interfaceTheme} from "../src/features/appearance/interfaceCatalog.ts";
 
 test("four distinct editions resolve and expose readable default palettes",()=>{
   assert.equal(Object.keys(spaceInterfaces).length,4);
@@ -26,4 +26,12 @@ test("frontier separates Profile and Administration without changing saved short
   assert.deepEqual(new Set(groups.flatMap(g=>g.modules)),new Set(saved.flatMap(g=>g.modules)));
   assert.equal(groups.flatMap(g=>g.modules).filter(m=>m==="profile").length,1);
   assert.equal(groups.flatMap(g=>g.modules).filter(m=>m==="industry").length,2);
+});
+
+test("Dark Mode reuses Command Desk and has its own readable low-light palette",()=>{
+ assert.equal(resolveInterface("dark_mode"),"dark_mode");
+ assert.equal(interfaceShellClass("dark_mode")," command-desk-shell dark-mode-shell");
+ assert.equal(interfaceTheme("dark_mode"),darkModeInterface.theme);
+ assert.equal(themeError(darkModeInterface.theme),"");
+ assert.equal(interfaceTheme("classic"),null);
 });

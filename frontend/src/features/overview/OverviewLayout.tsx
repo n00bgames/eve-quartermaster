@@ -9,7 +9,7 @@ type Props={metrics:ReactNode;assets:ReactNode;blueprints:ReactNode;events:React
 
 // All interfaces render the same data/actions and stable arrangement IDs.
 export function OverviewLayout({metrics,assets,blueprints,events}:Props){
- const command=useInterfaceStyle()==="command_desk";
+ const style=useInterfaceStyle(),command=style==="command_desk"||style==="dark_mode";
  return <>
   <InterfaceArtwork/>
   {command&&<header className="command-desk-intro"><div><p className="command-kicker">YOUR PEOPLE. YOUR STOCK. YOUR NEXT MOVE.</p><h3>A little order<br/><em>in the void.</em></h3><p>The hangar ledger, the blueprint library, and what comes next.</p></div><CargoYardArtwork/></header>}
