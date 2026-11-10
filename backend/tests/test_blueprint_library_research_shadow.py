@@ -18,6 +18,8 @@ from app.models import (
     EveCorporation,
     EveGroup,
     EveType,
+    EveDogmaAttribute,
+    EveTypeDogmaAttribute,
     IndustryActivity,
     IndustryActivityInput,
     Location,
@@ -25,6 +27,7 @@ from app.models import (
     ResearchProject,
     SnapshotRun,
     User,
+    UserRoleAssignment,
 )
 from app.models.enums import ActivityKind, OwnerKind
 
@@ -36,6 +39,7 @@ class BlueprintLibraryResearchShadowTests(unittest.TestCase):
             self.engine,
             tables=[
                 User.__table__,
+                UserRoleAssignment.__table__,
                 EveAlliance.__table__,
                 EveCorporation.__table__,
                 EveCharacter.__table__,
@@ -43,6 +47,8 @@ class BlueprintLibraryResearchShadowTests(unittest.TestCase):
                 EveCategory.__table__,
                 EveGroup.__table__,
                 EveType.__table__,
+                EveDogmaAttribute.__table__,
+                EveTypeDogmaAttribute.__table__,
                 Location.__table__,
                 Asset.__table__,
                 Blueprint.__table__,

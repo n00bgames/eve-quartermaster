@@ -25,6 +25,7 @@ from app.models import (
     EveCorporation,
     EveGroup,
     EveType,
+    EveTypeDogmaAttribute,
     IndustryActivity,
     IndustryActivityInput,
     Location,
@@ -713,6 +714,13 @@ def blueprint_rows(current_user: User, db: Session, *, owner_filter: Callable[[O
     all_blueprint_type_ids = {blueprint.blueprint_type_id for blueprint in blueprints}
     all_blueprint_type_ids.update(int(project.blueprint_type_id) for project in research_projects if project.blueprint_type_id is not None)
     product_fallbacks = blueprint_product_type_fallbacks(db, all_blueprint_type_ids)
+    product_type_ids = {bp.product_type_id for bp in blueprints if bp.product_type_id}
+    product_type_ids.update(product.type_id for product in product_fallbacks.values())
+    # Dogma techLevel (422) belongs to the manufactured item, not its blueprint.
+    tech_levels = dict(db.execute(
+        select(EveTypeDogmaAttribute.type_id, EveTypeDogmaAttribute.value)
+        .where(EveTypeDogmaAttribute.type_id.in_(product_type_ids), EveTypeDogmaAttribute.attribute_id == 422)
+    ).all()) if product_type_ids else {}
     blueprint_uses = active_blueprint_uses(db, blueprints)
     asset_hierarchy = load_blueprint_asset_hierarchy(db, blueprints)
     hangar_names = corporation_hangar_names(db, list(asset_hierarchy.values()))
@@ -766,6 +774,7 @@ def blueprint_rows(current_user: User, db: Session, *, owner_filter: Callable[[O
                     "inventory_subtype": inventory_subtype(product_type, blueprint.blueprint_type.name if blueprint.blueprint_type else None),
                     "capital_construction_related": blueprint.blueprint_type_id in capital_blueprint_type_ids and family not in {"reactions", "ram"},
                     **type_metadata("blueprint", blueprint.blueprint_type),
+                    "product_tech_level": tech_levels.get(product_type.type_id) if product_type else None,
                     **type_metadata("product", product_type),
                 },
             )
@@ -821,6 +830,7 @@ def blueprint_rows(current_user: User, db: Session, *, owner_filter: Callable[[O
             "inventory_subtype": inventory_subtype(product_type, blueprint_type.name if blueprint_type else None),
             "capital_construction_related": int(project.blueprint_type_id) in capital_blueprint_type_ids and family not in {"reactions", "ram"},
             **type_metadata("blueprint", blueprint_type),
+            "product_tech_level": tech_levels.get(product_type.type_id) if product_type else None,
             **type_metadata("product", product_type),
         })
     return results
@@ -841,6 +851,14 @@ def blueprint_matches_export_filters(row: dict[str, Any], filters: dict[str, Any
     if kind == "bpc" and not row.get("is_copy"):
         return False
     if filters.get("owner") and str(row.get("owner_name")) != str(filters["owner"]):
+        return False
+    tech_level = str(filters.get("tech_level") or "all")
+    if tech_level != "all" and row.get("product_tech_level") != {"2": 2, "3": 3}.get(tech_level, -1):
+        return False
+    product_category = str(filters.get("product_category") or "all")
+    if product_category == "ships" and row.get("product_category_id") != 6:
+        return False
+    if product_category == "modules" and row.get("product_category_id") not in {7, 32}:
         return False
     family = str(row.get("inventory_family") or "other")
     category = str(filters.get("category") or "all")
@@ -933,6 +951,7 @@ def blueprint_export_row(row: dict[str, Any], options: dict[str, Any], aliases: 
         "product_group_id": export_id(row.get("product_group_id")),
         "product_group_name": row.get("product_group_name"),
         "product_market_group_id": export_id(row.get("product_market_group_id")),
+        "product_tech_level": row.get("product_tech_level"),
         "last_synced_at_utc": iso_utc(row.get("last_synced_at")),
     }
 
@@ -978,7 +997,7 @@ def export_blueprints(
         "location_flag", "location_flag_name", "container_id", "parent_container_id", "location_resolution_status", "owner_type", "owner_id", "owner_name", "inventory_state", "research_shadow", "active", "active_activity",
         "active_status", "industry_job_id", "industry_job_runs", "industry_facility", "industry_installer", "industry_start_date_utc", "industry_end_date_utc", "inventory_family",
         "inventory_subtype", "capital_construction_related", "blueprint_category_id", "blueprint_category_name", "blueprint_group_id", "blueprint_group_name", "product_category_id",
-        "product_category_name", "product_group_id", "product_group_name", "product_market_group_id", "last_synced_at_utc",
+        "product_category_name", "product_group_id", "product_group_name", "product_market_group_id", "product_tech_level", "last_synced_at_utc",
     ]
     return export_payload("blueprints", file_format, export_rows, datetime.now(timezone.utc), fields, location_quality)
 

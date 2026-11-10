@@ -294,5 +294,62 @@
         "sha256": "4b9aac41f8c997d52d3bedc4d63a4debad3d1051d209f49a5e095bd6792897e4"
       }
     ]
+  },
+  "blueprint_tech_filters": {
+    "captured_at_utc": "2026-11-10T16:16:30.706659+00:00",
+    "application_version": "2.4.0",
+    "source_base_commit": "bc56c40a92a1c18a27ad417de7a0469541fc9337",
+    "source_state": "Authorized uncommitted blueprint tech/product filters and component extraction. No deployment or release.",
+    "method": "Actual BlueprintList React component and shared EQM styles in isolated Vite preview; headless Edge desktop 1480x1100 and mobile 390x844/full-page; visually inspected.",
+    "data_provenance": "Eight fabricated blueprint holdings, demo pilot/corporation/station labels; no production account, inventory, SSO or ESI data.",
+    "source_sha256": {
+      "frontend/src/features/industry/BlueprintList.tsx": "ad246c90893ea29b307529a203220d5fb144a40e3bda2ea76bddb26aaf427d74",
+      "frontend/src/main.tsx": "e73bd2fa69dcb93b827f836fa6c87c297f6344bc300a0fd8c18356bd3d3f703d",
+      "frontend/src/features/industry/blueprintFilters.ts": "3cc8343feff953e80a4070d9dfcd4540ab0ed72681e6d5729bf5c282d9b6a3f1",
+      "frontend/src/features/industry/blueprintFilters.css": "a8ed7b7332fd87686620009a3b37a20567e43afe46cbee133ceaec72a344e7f2",
+      "frontend/src/types/inventory.ts": "6846c96a57313c0c99efea3783511b9139cd7c0d4c2363d6f240d3624ca4501f",
+      "backend/app/api/quartermaster.py": "e33281e0108fc864fdc69f5dedb7e9aa4adb0c07b874dde87cb470c8f380ead4",
+      "backend/tests/test_blueprint_library_research_shadow.py": "382e90a929b49d98af7bac1ef8b9cd198cfa746ba14d36b727d8d59f53adb901",
+      "backend/tests/test_blueprint_export_locations.py": "1226a9fe7a4f5978fcd4cce97e1f0fef133f2a21e17db4c599e5a727db391862",
+      "frontend/tests/blueprintFilters.test.ts": "64353c6ff5961985074c049dc9e84bf670f34cc3680dfaf2651a6c8b50d71214",
+      "backend/tests/test_blueprint_tech_filters.py": "6a144f6c125e26ec155b053d0d802e7baf4419feffb1c7541897a4ef6befb4c0"
+    },
+    "validation": {
+      "frontend_unit_tests": 2,
+      "backend_tests": 24,
+      "typescript": "pass",
+      "production_vite_build": "pass; existing large-chunk advisory",
+      "browser": {
+        "checks": [
+          "T2 + Ships filters the complete owned list and passes the same selection to exports",
+          "T3 Modules includes subsystems and changing tech clears incompatible subtype",
+          "Text search, no-match feedback, BPO/BPC and owner filters intersect correctly",
+          "Desktop and 390px mobile actual UI captures, keyboard selection, no horizontal page overflow"
+        ],
+        "errors": []
+      },
+      "visual_inspection": "Desktop and mobile captures inspected; complete labels and meaningful results; mobile no horizontal page overflow."
+    },
+    "limitations": [
+      "Isolated component preview, without the authenticated navigation shell.",
+      "Export selection callback inspected in browser; actual CSV/JSON route covered by separate SQLite backend regressions.",
+      "No live account, production database, PostgreSQL or remote deployment verification."
+    ],
+    "images": [
+      {
+        "file": "blueprint-tech-filters-desktop.png",
+        "bytes": 108001,
+        "width": 1480,
+        "height": 1100,
+        "sha256": "d97824dc4ba34811882072b0c4194d5bb2b176ea39ea227bc4d3587c2c70da1a"
+      },
+      {
+        "file": "blueprint-tech-filters-mobile.png",
+        "bytes": 86784,
+        "width": 390,
+        "height": 1125,
+        "sha256": "6ed85e897c36128c02743286a4c0eac29ae6b60a261ec738d6b432fd66596f85"
+      }
+    ]
   }
 }

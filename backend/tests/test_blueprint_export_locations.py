@@ -10,8 +10,8 @@ from sqlalchemy.orm import Session
 from app.api.quartermaster import export_blueprints, list_blueprints
 from app.models import (
     Asset, Base, Blueprint, BlueprintSnapshot, EveAlliance, EveCategory, EveCharacter, EveCorporation,
-    EveGroup, EveType, IndustryActivity, IndustryActivityInput, Location, OwnershipEntity, ResearchProject,
-    SnapshotRun, User,
+    EveGroup, EveType, EveDogmaAttribute, EveTypeDogmaAttribute, IndustryActivity, IndustryActivityInput, Location, OwnershipEntity, ResearchProject,
+    SnapshotRun, User, UserRoleAssignment,
 )
 from app.models.enums import ActivityKind, LocationKind, OwnerKind
 
@@ -22,8 +22,8 @@ class BlueprintExportLocationTests(unittest.TestCase):
         Base.metadata.create_all(
             self.engine,
             tables=[
-                User.__table__, EveAlliance.__table__, EveCorporation.__table__, EveCharacter.__table__, OwnershipEntity.__table__,
-                EveCategory.__table__, EveGroup.__table__, EveType.__table__, Location.__table__, Asset.__table__, Blueprint.__table__,
+                User.__table__, UserRoleAssignment.__table__, EveAlliance.__table__, EveCorporation.__table__, EveCharacter.__table__, OwnershipEntity.__table__,
+                EveCategory.__table__, EveGroup.__table__, EveType.__table__, EveDogmaAttribute.__table__, EveTypeDogmaAttribute.__table__, Location.__table__, Asset.__table__, Blueprint.__table__,
                 IndustryActivity.__table__, IndustryActivityInput.__table__, SnapshotRun.__table__, BlueprintSnapshot.__table__, ResearchProject.__table__,
             ],
         )

@@ -1,6 +1,6 @@
 # EQM screenshot gallery
 
-**Latest:** [PI facilities export](#pi-facilities-export), captured November 10, 2026. Earlier captures remain below.
+**Latest:** [Blueprint tech filters](#blueprint-tech-filters), captured November 10, 2026. Earlier captures remain below.
 
 HyperNet and PLEX previews added **October 3, 2026**, from source commit `4ec0931cda1f800afb1d83560e19862809148ccd`. Atlas previews were added September 19 from `f6131a1be18e808c886f75c380c6ebf646323bfb`; the earlier gallery reconciliation was September 11 against the v1.0 candidate `f894f27ad7fb2ef4956e5bef2e97d3865fe8cfd2`. [README](../README.md) · [v1.0.5 release notes](releases/v1.0.5.md) · [Install](../README.md#install)
 
@@ -963,3 +963,11 @@ Actual **unreleased v2.4.0 development** captures from November 10, 2026. The re
 ![PI facilities report, current scope and both download formats](../static/ss/v2.4.0/pi-facilities-desktop.png)
 
 ![PI facilities report at 390px without horizontal page overflow](../static/ss/v2.4.0/pi-facilities-mobile.png)
+
+## Blueprint tech filters
+
+Unreleased v2.4.0 development captures from November 10, 2026. Actual extracted Industry blueprint browser and shared EQM styles with synthetic holdings only. Desktop shows T2 modules across owners and blueprint kinds; mobile shows a T3 subsystem at 390px without horizontal page overflow. The isolated preview supplies an export-filter callback; backend exports are regression-tested separately. [Guide](blueprint-tech-filters.md) · [Additive capture receipt](../static/ss/v2.4.0/capture-receipt.json).
+
+![Owned T2 modules with tech, product, subtype and owner controls](../static/ss/v2.4.0/blueprint-tech-filters-desktop.png)
+
+![T3 subsystem filter on 390px mobile](../static/ss/v2.4.0/blueprint-tech-filters-mobile.png)

@@ -6,6 +6,8 @@ Version sections are written as user-facing release notes first, with implementa
 
 ## [2.4.0] - Unreleased
 
+- Add **T2/T3 tech filters** and **Ships / Modules / subsystems** product filters to the owned blueprint browser. Combine with existing owner/kind/family/subtype/search filters and CSV/JSON exports; classify the manufactured product from SDE Dogma, including active-research blueprints. Unknown metadata remains visible under All. Matching backend/frontend builds required; no migration or new ESI scope. [Guide](docs/blueprint-tech-filters.md).
+
 - Add a dedicated **PI facilities report** with CSV/JSON downloads, installed-building counts and character/group/system/planet-type filtering. Include empty buildings and unconfigured processors, configured recipes/capacity, extractor programs, complete reported routes, and separate observed/projected stock with source freshness. CSV has one row per facility; existing general and supply exports remain available. Frontend-only; no migration or new ESI scope. [Guide](docs/pi-facilities-export.md).
 
 - Expand **Intel Reports zKill pulls** from one page/25 killmails to **up to 10 pages**, with up to 2,000 distinct references. Deduplicate page overlaps, stop at feed exhaustion, retain earlier evidence on later-page failure and disclose persistent page/reference/import/failure coverage. Partial pulls use a shorter retry cooldown and reuse saved canonical evidence; full pulls retain the one-hour cache. Applies to system, character, corporation and alliance reports; existing source pacing, concurrency, permissions and time budgets remain bounded. No migration or new scope. [Guide](docs/intel-report-builder.md#pull-recent-zkill-evidence).
