@@ -240,5 +240,59 @@
         "errors": []
       }
     }
+  },
+  "pi_facilities_export": {
+    "captured_on": "2026-11-10",
+    "application_version": "2.4.0",
+    "source_base_commit": "37315244764466493f19c1f6e66aee20ca88323b",
+    "source_state": "Uncommitted authorized facilities-export implementation; no commit, push or deployment.",
+    "method": "Actual PlanetaryIndustryPage in a headless Edge/Vite local preview, 1480x1100 and 390x844. Native screenshot crops preserve controls/report labels; no repainting.",
+    "data": "Synthetic Demo pilots/colonies, fixture recipe and observed/projected inventories; in-memory API adapter. Portraits intercepted with synthetic SVG. No production account, ESI or private gameplay data.",
+    "source_sha256": {
+      "frontend/src/features/industry/planetaryFacilitiesExport.ts": "38263b6b2901bb52b75809c5677cf593c400ff58058b52f9d04274fe24a7d622",
+      "frontend/src/features/industry/PlanetaryFacilitiesReportPanel.tsx": "f4e9256076e32fdacbb34461c7fcdde4390f9f81a62371c9a2c40a1d36ca245b",
+      "frontend/src/features/industry/PlanetaryIndustryPage.tsx": "d45f01e30a4d33536f70c0bf97b67db1dde0fef589fd9020c50eafc4c0770fe0",
+      "frontend/src/features/industry/piSupply.css": "096776a6baa0edecdc71fae8ef069f339ddabf0595967e95da7f3138b9272801",
+      "frontend/tests/planetaryFacilitiesExport.test.ts": "de6c4301dadf2c42278448175a0b8c2f3e9ecb3fbcfae356be39f7f2c79d8610",
+      "frontend/tests/fixtures/planetary-facilities-input.v1.json": "da62e7b49112177c0aa52071a95d04801a298032aa2aee6e9565fb907ec6b7aa",
+      "frontend/package.json": "ab781477a81f5827004621ae11b0709da797b82f40bdef2b6d2b97bb3aaca28e"
+    },
+    "validation": {
+      "checks": [
+        "Default My Characters Only JSON download includes both own colonies and excludes the other pilot",
+        "System filter restricts exported colonies, preserves empty processor, and retains full route details",
+        "Actual CSV download contains one header and six facility rows, including empty buildings",
+        "No-match filters show zero facilities and disable both downloads",
+        "Individual pilot and corporation group selectors update the actual downloaded data",
+        "Desktop and 390px mobile captures of actual PI page; no horizontal document overflow or page errors; portraits intercepted with synthetic SVG, no live API requests"
+      ],
+      "errors": []
+    },
+    "checks": [
+      "16 PI export/scope/supply/production tests pass",
+      "TypeScript and full production Vite build pass; pre-existing chunk advisory only",
+      "Both final screenshots visually inspected; complete labels and no horizontal overflow"
+    ],
+    "limitations": [
+      "Component/in-memory API preview, not authenticated production",
+      "Inventory report, not an EVE clipboard template",
+      "CPU/power/capacity/link geometry are unavailable and not invented"
+    ],
+    "images": [
+      {
+        "filename": "pi-facilities-desktop.png",
+        "bytes": 44389,
+        "width": 1435,
+        "height": 278,
+        "sha256": "3745c9261c7b4aa519e740af041a3f0623dffc96885fa1a548babfdc20cec982"
+      },
+      {
+        "filename": "pi-facilities-mobile.png",
+        "bytes": 48189,
+        "width": 371,
+        "height": 648,
+        "sha256": "4b9aac41f8c997d52d3bedc4d63a4debad3d1051d209f49a5e095bd6792897e4"
+      }
+    ]
   }
 }

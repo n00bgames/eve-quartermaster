@@ -1,6 +1,6 @@
 # EQM screenshot gallery
 
-**Latest:** [persistent scan colors](#persistent-scan-colors), captured October 31, 2026. Earlier: [v2.0 development previews](#v20-development-previews), captured October 28, 2026.
+**Latest:** [PI facilities export](#pi-facilities-export), captured November 10, 2026. Earlier captures remain below.
 
 HyperNet and PLEX previews added **October 3, 2026**, from source commit `4ec0931cda1f800afb1d83560e19862809148ccd`. Atlas previews were added September 19 from `f6131a1be18e808c886f75c380c6ebf646323bfb`; the earlier gallery reconciliation was September 11 against the v1.0 candidate `f894f27ad7fb2ef4956e5bef2e97d3865fe8cfd2`. [README](../README.md) · [v1.0.5 release notes](releases/v1.0.5.md) · [Install](../README.md#install)
 
@@ -955,3 +955,11 @@ Captured November 9, 2026 from the unreleased working tree on c3d2dcb. Actual Re
 ![Desktop ten-page pull coverage](../static/ss/v2.4.0/intel-reports-ten-pages.png)
 
 ![Mobile ten-page pull coverage](../static/ss/v2.4.0/intel-reports-ten-pages-mobile.png)
+
+## PI facilities export
+
+Actual **unreleased v2.4.0 development** captures from November 10, 2026. The real Planetary Industry page uses synthetic pilots/colonies and local in-memory API fixtures. Desktop 1480px and mobile 390px captures retain complete scope controls, counts and download labels. JSON/CSV were downloaded and inspected through these controls. No production account, ESI or private gameplay data is shown. Provenance is appended under `pi_facilities_export` in the existing v2.4.0 capture receipt.
+
+![PI facilities report, current scope and both download formats](../static/ss/v2.4.0/pi-facilities-desktop.png)
+
+![PI facilities report at 390px without horizontal page overflow](../static/ss/v2.4.0/pi-facilities-mobile.png)

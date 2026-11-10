@@ -64,3 +64,7 @@ Production checks remain pending:
 - Confirm green excess supply and final products; a supply deficit must remain a deficit after selecting a large stockpile.
 - Try a P4 recipe fed from P2, including shared P2 requirements and any direct P1 input; verify intermediate batches, final output, leftovers, and per-recipe runtimes. Also confirm direct-input mode still works.
 - Confirm the deployed Rust binary supports pi-shortage, pi-production, and pi-production-chain commands.
+
+## Installed facilities export
+
+The separate **PI facilities report** below the character/system/planet-type selectors exports one CSV row per installed building or a detailed JSON report, including empty processors, configured recipes, extractor programs, contents and routes. All three selectors apply. See [PI facilities export](pi-facilities-export.md) for the contract, freshness and scope details.

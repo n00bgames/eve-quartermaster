@@ -13,7 +13,7 @@
     "test:skills": "node --test --experimental-strip-types tests/skillReport.test.ts tests/skillDogmaPresentation.test.ts",
     "test:scans": "node --test --experimental-strip-types tests/scanHighlights.test.ts",
     "test:navigation": "node --test --experimental-strip-types tests/jumpReplot.test.ts tests/systemDistances.test.ts tests/atlas.test.ts",
-    "test:planetary": "node --test --experimental-strip-types tests/planetaryExport.test.ts tests/planetaryShortageReport.test.ts tests/productionChain.test.ts tests/planetaryCharacterScope.test.ts",
+    "test:planetary": "node --test --experimental-strip-types tests/planetaryExport.test.ts tests/planetaryFacilitiesExport.test.ts tests/planetaryShortageReport.test.ts tests/productionChain.test.ts tests/planetaryCharacterScope.test.ts",
     "test:sync": "node --test --experimental-strip-types tests/characterSyncPolling.test.ts tests/apiErrors.test.ts",
     "preview": "vite preview --host 0.0.0.0",
     "test:journey": "node --test --experimental-strip-types tests/journeyReplay.test.ts tests/journeyShipTimeline.test.ts tests/journeyMapView.test.ts tests/journeyExport.test.ts tests/journeySegments.test.ts tests/journeyAnalytics.test.ts",

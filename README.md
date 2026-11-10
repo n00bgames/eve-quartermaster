@@ -25,6 +25,10 @@ EVE Quartermaster is a containerized, database-first EVE Online quartermaster an
 
 The current application/package version is **v2.4.0** (`2.4.0`). This version adds grouped and prioritized Intel dossiers, automatic Local Scan pilot stubs, searchable character notes, owned Structures and manual POS tracking, and Journey analytics with collapsed analytics panes throughout EQM. See the [v2.4.0 release draft](docs/releases/v2.4.md) and [changelog](CHANGELOG.md). Earlier notes: [v2.3](docs/releases/v2.3.md), [v2.1](docs/releases/v2.1.md), [v2.0](docs/releases/v2.0.md), [v1.0.3](docs/releases/v1.0.3.md) and [v1.0](docs/releases/v1.0.md).
 
+**PI facilities export:** Download installed buildings, recipes, extractor programs and routes as CSV or JSON, filtered by pilot/group, system and planet type. Includes empty and unconfigured facilities. [Guide](docs/pi-facilities-export.md).
+
+![PI facilities export — actual synthetic v2.4.0 development preview](static/ss/v2.4.0/pi-facilities-desktop.png)
+
 > **Fitting Manager / Simulator: Non-Authoritative. For Informational Use Only.** Still in development and not PYFA-complete. Full feature and calculation parity with PYFA is not claimed; verify consequential fitting decisions against PYFA and the EVE client.
 
 See [CHANGELOG.md](CHANGELOG.md) for version-by-version release notes. Application Update now checks checkout permissions before merging; see [ownership repair and helper rollout](docs/application-updates.md#checkout-permissions).

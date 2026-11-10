@@ -19,3 +19,10 @@
 .pi-hangar-sync p { margin: 0; }
 
 .pi-ingredient-input .pi-import-ingredient:disabled { opacity: .45; cursor: not-allowed; }
+
+.planetary-facilities-export { border: 1px solid var(--line, #334155); border-radius: 10px; padding: 16px; margin-block: 16px; min-width: 0; }
+.planetary-facilities-export h3 { display: flex; align-items: center; gap: 8px; }
+.planetary-facilities-export .section-heading { flex-wrap: wrap; }
+.planetary-facilities-export .section-heading > div { min-width: 0; }
+.planetary-facilities-export p { margin: 8px 0; }
+.planetary-facilities-export small { display: block; overflow-wrap: anywhere; }

@@ -3,6 +3,7 @@ import { AlertTriangle, BarChart3, ChevronDown, Download, Factory, Globe2, Refre
 import { useEffect, useMemo, useRef, useState } from "react";
 import { scopePlanetaryCharacters } from "./planetaryCharacterScope";
 import { HangarAssetSync } from "./HangarAssetSync";
+import { PlanetaryFacilitiesReportPanel } from "./PlanetaryFacilitiesReportPanel";
 import { PiPlanner } from "./PiPlanner";
 import { ProductionCalculator, type PiHangar } from "./ProductionCalculator";
 import "./piSupply.css";
@@ -279,6 +280,7 @@ export function PlanetaryIndustryPage({
     {character === "corp" && <small>My Corp Pilots includes corporations where one of your own linked characters has verified corporate roles. Corporate-role ESI access is required.</small>}
     {data?.corporation_scope_notice && <p className="notice warning">{data.corporation_scope_notice}</p>}
     {data && !data.character_scopes && <p className="notice warning">Update the backend to enable character groups. Individual character selection remains available.</p>}
+    <PlanetaryFacilitiesReportPanel data={data} scope={{ character, system, planet_type: planetType }} />
     <div className="pi-hangar-monitor">
       <label>Corporate inventory to monitor<select value={hangarId} onChange={e => {
         setHangarId(e.target.value);

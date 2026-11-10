@@ -1,0 +1,398 @@
+{
+  "as_of": "2026-11-10T12:00:00Z",
+  "characters": [
+    {
+      "id": 7,
+      "name": "Demo Pilot 7"
+    },
+    {
+      "id": 8,
+      "name": "Demo Pilot 8"
+    }
+  ],
+  "character_scopes": [
+    {
+      "id": "mine",
+      "name": "My Characters Only",
+      "character_ids": [
+        7
+      ]
+    },
+    {
+      "id": "corp",
+      "name": "My Corp Pilots",
+      "character_ids": [
+        7,
+        8
+      ]
+    },
+    {
+      "id": "all",
+      "name": "All permitted pilots",
+      "character_ids": [
+        7,
+        8
+      ]
+    }
+  ],
+  "sync_tokens": [],
+  "schematics": [
+    {
+      "id": 1,
+      "name": "Water",
+      "cycle_time": 1800,
+      "output": {
+        "type_id": 3645,
+        "name": "Water",
+        "quantity": 20,
+        "volume": 0.19
+      },
+      "inputs": [
+        {
+          "type_id": 2268,
+          "name": "Aqueous Liquids",
+          "quantity": 3000,
+          "volume": 0.005
+        }
+      ]
+    }
+  ],
+  "colonies": [
+    {
+      "id": 1,
+      "character_id": 7,
+      "character_eve_id": 90000007,
+      "character_name": "Demo Pilot 7",
+      "planet_id": 40000001,
+      "planet_name": "Demo Barren I",
+      "planet_type": "barren",
+      "solar_system_id": 30000001,
+      "solar_system_name": "Demo Pocket",
+      "security_status": 0.2,
+      "upgrade_level": 5,
+      "num_pins": 6,
+      "esi_last_update": "2026-11-10T12:00:00Z",
+      "last_synced_at": "2026-11-10T12:00:00Z",
+      "link_count": 5,
+      "route_count": 1,
+      "projection": {
+        "checkpoint_at": "2026-11-10T12:00:00Z",
+        "projected_at": "2026-11-10T12:00:00Z",
+        "is_projection": true,
+        "events_processed": 4,
+        "truncated": false,
+        "warning": "Synthetic checkpoint; review source age."
+      },
+      "summary": {
+        "extractors": 1,
+        "expired_extractors": 0,
+        "expiring_extractors": 0,
+        "factories": 2,
+        "starved_factories": 1,
+        "stored_volume": 5.7,
+        "observed_stored_volume": 0,
+        "projected_daily_output": 0
+      },
+      "pins": [
+        {
+          "pin_id": 100,
+          "type_id": 2257,
+          "type_name": "Barren Command Center",
+          "status": "online",
+          "projected_status": "idle",
+          "content_source": "projected",
+          "is_factory": false,
+          "is_extractor": false,
+          "has_inbound_route": false,
+          "stored_volume": 0,
+          "observed_stored_volume": 0,
+          "contents": [],
+          "observed_contents": [],
+          "projected_produced": [],
+          "projected_blocked": []
+        },
+        {
+          "pin_id": 101,
+          "type_id": 2541,
+          "type_name": "Barren Launchpad",
+          "status": "online",
+          "projected_status": "idle",
+          "content_source": "projected",
+          "is_factory": false,
+          "is_extractor": false,
+          "has_inbound_route": false,
+          "stored_volume": 0,
+          "observed_stored_volume": 0,
+          "contents": [],
+          "observed_contents": [],
+          "projected_produced": [],
+          "projected_blocked": []
+        },
+        {
+          "pin_id": 102,
+          "type_id": 2535,
+          "type_name": "Barren Storage Facility",
+          "status": "online",
+          "projected_status": "idle",
+          "content_source": "projected",
+          "is_factory": false,
+          "is_extractor": false,
+          "has_inbound_route": false,
+          "stored_volume": 0,
+          "observed_stored_volume": 0,
+          "contents": [],
+          "observed_contents": [],
+          "projected_produced": [],
+          "projected_blocked": []
+        },
+        {
+          "pin_id": 103,
+          "type_id": 2480,
+          "type_name": "Barren Basic Industry Facility",
+          "status": "online",
+          "projected_status": "starved",
+          "content_source": "projected",
+          "is_factory": true,
+          "is_extractor": false,
+          "has_inbound_route": false,
+          "stored_volume": 5.7,
+          "observed_stored_volume": 0,
+          "contents": [
+            {
+              "type_id": 3645,
+              "name": "Water",
+              "amount": 20,
+              "volume": 0.19
+            },
+            {
+              "type_id": 2398,
+              "name": "Reactive Metals",
+              "amount": 10,
+              "volume": 0.19
+            }
+          ],
+          "observed_contents": [
+            {
+              "type_id": 3645,
+              "name": "Water",
+              "amount": 0,
+              "volume": 0.19
+            }
+          ],
+          "projected_produced": [
+            {
+              "type_id": 3645,
+              "name": "Water",
+              "amount": 20,
+              "volume": 0.19
+            }
+          ],
+          "projected_blocked": [],
+          "schematic_id": 1,
+          "latitude": 0,
+          "longitude": 0,
+          "schematic": {
+            "id": 1,
+            "name": "Water",
+            "cycle_time": 1800,
+            "output": {
+              "type_id": 3645,
+              "name": "Water",
+              "quantity": 20,
+              "volume": 0.19
+            },
+            "inputs": [
+              {
+                "type_id": 2268,
+                "name": "Aqueous Liquids",
+                "quantity": 3000,
+                "volume": 0.005
+              }
+            ]
+          }
+        },
+        {
+          "pin_id": 104,
+          "type_id": 2472,
+          "type_name": "Barren Advanced Industry Facility",
+          "status": "online",
+          "projected_status": "idle",
+          "content_source": "projected",
+          "is_factory": true,
+          "is_extractor": false,
+          "has_inbound_route": false,
+          "stored_volume": 0,
+          "observed_stored_volume": 0,
+          "contents": [],
+          "observed_contents": [],
+          "projected_produced": [],
+          "projected_blocked": []
+        },
+        {
+          "pin_id": 105,
+          "type_id": 3060,
+          "type_name": "Barren Extractor Control Unit",
+          "status": "online",
+          "projected_status": "idle",
+          "content_source": "projected",
+          "is_factory": false,
+          "is_extractor": true,
+          "has_inbound_route": false,
+          "stored_volume": 0,
+          "observed_stored_volume": 0,
+          "contents": [],
+          "observed_contents": [],
+          "projected_produced": [],
+          "projected_blocked": [],
+          "install_time": "2026-11-10T12:00:00Z",
+          "expiry_time": "2026-11-11T12:00:00Z",
+          "extractor": {
+            "cycle_time": 900,
+            "head_count": 6,
+            "product_type_id": 2268,
+            "product_name": "Aqueous Liquids",
+            "qty_per_cycle": 2000,
+            "cycle_count": 96,
+            "projected_program_output": 160000,
+            "projected_daily_output": 160000,
+            "projected_remaining_output": 80000,
+            "projection_source": "dogma"
+          }
+        }
+      ],
+      "routes": [
+        {
+          "route_id": 700,
+          "source_pin_id": 105,
+          "destination_pin_id": 101,
+          "content_type_id": 2268,
+          "content_name": "Aqueous Liquids",
+          "quantity": 2000,
+          "waypoints": [
+            102
+          ]
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "character_id": 7,
+      "character_eve_id": 90000007,
+      "character_name": "Demo Pilot 7",
+      "planet_id": 40000002,
+      "planet_name": "Demo Lava II",
+      "planet_type": "lava",
+      "solar_system_id": 30000002,
+      "solar_system_name": "Demo Frontier",
+      "security_status": 0.2,
+      "upgrade_level": 5,
+      "num_pins": 1,
+      "esi_last_update": "2026-11-10T12:00:00Z",
+      "last_synced_at": "2026-11-10T12:00:00Z",
+      "link_count": 5,
+      "route_count": 1,
+      "projection": {
+        "checkpoint_at": "2026-11-10T12:00:00Z",
+        "projected_at": "2026-11-10T12:00:00Z",
+        "is_projection": true,
+        "events_processed": 4,
+        "truncated": false,
+        "warning": "Synthetic checkpoint; review source age."
+      },
+      "summary": {
+        "extractors": 0,
+        "expired_extractors": 0,
+        "expiring_extractors": 0,
+        "factories": 0,
+        "starved_factories": 1,
+        "stored_volume": 5.7,
+        "observed_stored_volume": 0,
+        "projected_daily_output": 0
+      },
+      "pins": [
+        {
+          "pin_id": 200,
+          "type_id": 2524,
+          "type_name": "Lava Command Center",
+          "status": "online",
+          "projected_status": "idle",
+          "content_source": "projected",
+          "is_factory": false,
+          "is_extractor": false,
+          "has_inbound_route": false,
+          "stored_volume": 0,
+          "observed_stored_volume": 0,
+          "contents": [],
+          "observed_contents": [],
+          "projected_produced": [],
+          "projected_blocked": []
+        }
+      ],
+      "routes": []
+    },
+    {
+      "id": 3,
+      "character_id": 8,
+      "character_eve_id": 90000008,
+      "character_name": "Demo Pilot 8",
+      "planet_id": 40000003,
+      "planet_name": "Other Pilot Planet",
+      "planet_type": "barren",
+      "solar_system_id": 30000003,
+      "solar_system_name": "Demo Pocket",
+      "security_status": 0.2,
+      "upgrade_level": 5,
+      "num_pins": 1,
+      "esi_last_update": "2026-11-10T12:00:00Z",
+      "last_synced_at": "2026-11-10T12:00:00Z",
+      "link_count": 5,
+      "route_count": 1,
+      "projection": {
+        "checkpoint_at": "2026-11-10T12:00:00Z",
+        "projected_at": "2026-11-10T12:00:00Z",
+        "is_projection": true,
+        "events_processed": 4,
+        "truncated": false,
+        "warning": "Synthetic checkpoint; review source age."
+      },
+      "summary": {
+        "extractors": 0,
+        "expired_extractors": 0,
+        "expiring_extractors": 0,
+        "factories": 0,
+        "starved_factories": 1,
+        "stored_volume": 5.7,
+        "observed_stored_volume": 0,
+        "projected_daily_output": 0
+      },
+      "pins": [
+        {
+          "pin_id": 300,
+          "type_id": 2535,
+          "type_name": "Barren Storage Facility",
+          "status": "online",
+          "projected_status": "idle",
+          "content_source": "projected",
+          "is_factory": false,
+          "is_extractor": false,
+          "has_inbound_route": false,
+          "stored_volume": 0,
+          "observed_stored_volume": 0,
+          "contents": [],
+          "observed_contents": [],
+          "projected_produced": [],
+          "projected_blocked": []
+        }
+      ],
+      "routes": []
+    }
+  ],
+  "summary": {
+    "colonies": 3,
+    "characters": 2,
+    "expired_extractors": 0,
+    "expiring_extractors": 0,
+    "starved_factories": 1,
+    "stored_volume": 5.7
+  }
+}
