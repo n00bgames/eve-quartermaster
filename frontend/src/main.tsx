@@ -8,6 +8,8 @@ import "./features/appearance/commandDesk.css";
 import {LayoutRegion} from "./features/appearance/LayoutRegion";
 import {AppearanceProvider,AppearanceStatus,ArrangeButton,BrandImage,useAppearanceAccount,useInterfaceStyle} from "./features/appearance/AppearanceProvider";
 import {AppearanceSettings} from "./features/appearance/AppearanceSettings";
+import {interfaceShellClass} from "./features/appearance/interfaceCatalog";
+import {InterfacePageMark} from "./features/appearance/InterfaceArtwork";
 import {CommandNavigation} from "./features/appearance/CommandNavigation";
 import {CustomNavigation} from "./features/appearance/CustomNavigation";
 import {InventoryReportPage} from "./features/industryReports/InventoryReportPage";
@@ -734,7 +736,7 @@ function App() {
 
   return (
 
-    <main className={`app-shell${interfaceStyle==="command_desk"?" command-desk-shell":""}${["local_scan", "dscan", "industry_reports", "inventory_reports", "ship_reports", "receipts"].includes(activeTab) ? " scan-report-shell" : ""}`}>
+    <main className={`app-shell${interfaceShellClass(interfaceStyle)}${["local_scan", "dscan", "industry_reports", "inventory_reports", "ship_reports", "receipts"].includes(activeTab) ? " scan-report-shell" : ""}`}>
 
       <aside className="sidebar">
 
@@ -818,6 +820,7 @@ function App() {
 
           <div>
 
+            <InterfacePageMark module={activeTab}/>
             <span className="eyebrow">Quartermaster Console</span>
 
             <h2>{titleFor(activeTab)}</h2>

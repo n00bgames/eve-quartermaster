@@ -351,5 +351,138 @@
         "sha256": "6ed85e897c36128c02743286a4c0eac29ae6b60a261ec738d6b432fd66596f85"
       }
     ]
+  },
+  "space_interfaces": {
+    "captured_at_utc": "2026-11-10T21:22:12.973242+00:00",
+    "application_version": "2.4.0",
+    "source_base_commit": "ad0c4cf516bb96d5dfd55cb7a2d30c284e41edeb",
+    "source_state": "Authorized uncommitted four-interface implementation. No deployment/version bump/release.",
+    "method": "Actual appearance/navigation, OverviewLayout, BlueprintList, BlueprintPreview and AppearanceSettings components with shared EQM styles; real FastAPI appearance routes and disposable SQLite; headless Edge desktop1480x1100/mobile390x844; native full-page screenshots, picker clipped with complete labels.",
+    "data_provenance": "Fabricated Demo Capsuleer/industry holdings/stations, static sample metrics/table/events. No production account, SSO, ESI, live DB or private gameplay screenshot used. Original decorative SVG artwork and installed Lucide page icons.",
+    "source_sha256": {
+      "frontend/src/features/appearance/interfaceCatalog.ts": "55aa97670474453b7f3561b272a392b959699f30ec2fa623e72705a7b6fac591",
+      "frontend/src/features/appearance/ModuleSigil.tsx": "1f5f7a2421f176de0d47f59178ea8e704e2e63b92a520d60b62ef78b361c7aa2",
+      "frontend/src/features/appearance/SpaceNavigation.tsx": "a31adffd2cb94f156363a4f9cb80e848a5b934f738f882ef917fcf24e120dd4c",
+      "frontend/src/features/appearance/InterfaceChooser.tsx": "74c20544e187187886fae9a78245400e5fb6072f52f94194c2addf55e144f944",
+      "frontend/src/features/appearance/InterfaceArtwork.tsx": "711c26799005ba3e7518b37c7ccfc8f7a6856ca6cd7a12002b81e638c2b13599",
+      "frontend/src/features/appearance/spaceInterfaces.css": "b2ee542276ada2bd38ab8c5aa1bf2f9d240df7efb7624d0957f54a1fec90890b",
+      "frontend/src/features/appearance/model.ts": "d1a2db477cf6ee3ebd70a1e664c3d055e2823543dd6a9547cbb039c0ac316bb4",
+      "frontend/src/features/appearance/AppearanceProvider.tsx": "5c12fae0a3d4bbc73b4d7f3d209ae54db59cfc513beb1be0987b7765f684878e",
+      "frontend/src/features/appearance/AppearanceSettings.tsx": "3cc2807f3577a443a8a2d5d0b3fec121890e2e84d8853bc9f00d5921311f09ce",
+      "frontend/src/features/appearance/CommandNavigation.tsx": "02316bd5ecfbfe17af7c508c2d7777d239c6627e2a1b752b16ce79f4bf98c4c8",
+      "frontend/src/features/appearance/CustomNavigation.tsx": "759298483e1d51c980abf6f66169499626fca533058e77996370658eeedc1237",
+      "frontend/src/features/appearance/NavigationGroup.tsx": "b4065f027eb6e7e888c3c00170f3735074fc54f0e3db9d7eaaf7f3ca11ad011b",
+      "frontend/src/features/overview/OverviewLayout.tsx": "d51b5ac325434927550936380bd24ad5cd7fefa5bc3ddd23f8c585152b48f1cb",
+      "frontend/src/main.tsx": "326576f6a986358837173288c5866de2a516a3ec77bc8d599a4ddfc2514e2974",
+      "backend/app/api/appearance.py": "15510a611c35817b81866cdf4aa479eca3c80a032e07668ffd85581d42398b7f",
+      "frontend/src/features/appearance/appearance.css": "4449a06ce25d74501e639c6939c57d585269797f26e0e4857f1f894711bc10ee",
+      "frontend/tests/spaceInterfaces.test.ts": "e5415a019a300ee421de8e0a3c2280b28969f79e8d59e389f05b8ddcf0b35a7a",
+      "backend/tests/test_appearance.py": "8f08498b3408a764e061adbd1dee9a2e7c48a3b60d7304f9855209a740a3e823"
+    },
+    "validation": {
+      "backend_appearance_tests": 69,
+      "frontend_appearance_tests": 14,
+      "typescript": "pass",
+      "production_vite_build": "pass; existing large-chunk advisory",
+      "browser": {
+        "checks": [
+          "Orbital Ring: actual preference save/reload, distinctive desktop geometry, Industry filters, 390px containment and keyboard menu close",
+          "Imperial Archive: actual preference save/reload, distinctive desktop geometry, Industry filters, 390px containment and keyboard menu close",
+          "Void Cartography: actual preference save/reload, distinctive desktop geometry, Industry filters, 390px containment and keyboard menu close",
+          "Frontier Terminal: actual preference save/reload, distinctive desktop geometry, Industry filters, 390px containment and keyboard menu close",
+          "Frontier hamburger has real expandable Profile/Administration sections; both navigate and selecting a page closes the drawer",
+          "Frontier navigation editor saves Quicklaunch shortcuts and retains their original links across reload",
+          "Switching back to Command Desk/Classic restores their normal navigation and removes new page/icon treatments",
+          "Existing panel-arrow ordering saves through the real API and survives reload in a new interface",
+          "Second account starts independently; permission-filtered preview excludes Audit and Industry even in the Frontier drawer"
+        ],
+        "errors": []
+      },
+      "responsive_widths": [
+        390,
+        768,
+        1024,
+        1480
+      ],
+      "visual_inspection": "All four desktop and mobile states, picker and Frontier drawer inspected. Labels/results complete; no document horizontal overflow. Light active-filter/semantic text contrast refined."
+    },
+    "limitations": [
+      "Isolated synthetic shell uses the actual components rather than the complete authenticated App/bootstrap.",
+      "Underlying content for every feature page was not redesigned; new shared shell/panel styling and page emblems apply around existing modules.",
+      "Permission-filtered menu fixture supplements real API tests, including existing actual-auth Quartermaster checks.",
+      "No PostgreSQL/live account/remote deployment verification."
+    ],
+    "images": [
+      {
+        "file": "frontier-terminal-desktop.png",
+        "bytes": 151354,
+        "width": 1480,
+        "height": 1499,
+        "sha256": "1de4860b4a7b5d57811e76dbdbc7a9f1b56f51f9e9eda74cb6b9a761e9b3463f"
+      },
+      {
+        "file": "frontier-terminal-menu-desktop.png",
+        "bytes": 138267,
+        "width": 1480,
+        "height": 1499,
+        "sha256": "058d572f9f4a2db2f4019d20b9cfd738bac533510aa1fd3787e51d1fbe9edb72"
+      },
+      {
+        "file": "frontier-terminal-mobile.png",
+        "bytes": 104705,
+        "width": 390,
+        "height": 1709,
+        "sha256": "38c608a8bd9fa3e5eb0081c62c5558e3f2c5caac784ee3053031d62cc3a5e6b1"
+      },
+      {
+        "file": "imperial-archive-desktop.png",
+        "bytes": 220927,
+        "width": 1480,
+        "height": 1816,
+        "sha256": "0d7b42bbaa6866af5c4d2e378ab4b94b0b7e0ef61cb19718f7b2b362138d5bc3"
+      },
+      {
+        "file": "imperial-archive-mobile.png",
+        "bytes": 118346,
+        "width": 390,
+        "height": 1672,
+        "sha256": "7ec6714bb583eab5f0277e3263b43180df723f918b9edaff82a47f25c535e1cd"
+      },
+      {
+        "file": "orbital-ring-desktop.png",
+        "bytes": 204040,
+        "width": 1480,
+        "height": 1689,
+        "sha256": "af6d5716c087857a5bfc8953dfc148b2fd132e7ca99cdee1cfaee5279ceb0b7d"
+      },
+      {
+        "file": "orbital-ring-mobile.png",
+        "bytes": 120466,
+        "width": 390,
+        "height": 1670,
+        "sha256": "5aa654c6d2a2d548783163a506c89d32553d850134380679d6571507acaa9c23"
+      },
+      {
+        "file": "space-interface-picker.png",
+        "bytes": 110927,
+        "width": 1312,
+        "height": 850,
+        "sha256": "277ab4e7455f39a14d178fc98d91c26105e2d89c763c0f2f70f5cad3f3ac9099"
+      },
+      {
+        "file": "void-cartography-desktop.png",
+        "bytes": 215672,
+        "width": 1480,
+        "height": 1469,
+        "sha256": "7ccb565f63a47ce37ab6e9f60a1a2c506bc5d5833bf6784b58cf5188dfbe3b21"
+      },
+      {
+        "file": "void-cartography-mobile.png",
+        "bytes": 119262,
+        "width": 390,
+        "height": 1678,
+        "sha256": "fc1718f9ce0e51adc331fac56048f651ef71ccabd8b95500e1ef8d5944490e5f"
+      }
+    ]
   }
 }

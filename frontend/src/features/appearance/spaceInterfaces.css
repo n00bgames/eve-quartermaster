@@ -1,0 +1,237 @@
+/* Four opt-in presentation shells. Operational content/permission gates stay in their pages. */
+.app-shell.space-interface-shell {height:auto;min-height:100dvh;overflow:visible;align-items:start;background:var(--eqm-background);color:var(--eqm-text);isolation:isolate}
+.space-interface-shell .sidebar {height:100dvh;position:sticky;top:0;display:flex;flex-direction:column;min-width:0;overflow:visible;padding:20px 16px;background:var(--eqm-panel);border-color:var(--eqm-border);backdrop-filter:none}
+.space-interface-shell .brand-logo {width:100%;height:70px;max-width:180px;margin:0 auto 12px}
+.space-interface-shell .sidebar>div>h1 {font-size:16px}
+.space-interface-shell .sidebar>div>p {font-size:11px;color:var(--eqm-muted)}
+.space-interface-shell .content {height:auto;overflow:visible;padding:28px;min-width:0;background:transparent}
+.space-interface-shell .content>.hero.compact {background:transparent;color:var(--eqm-text);box-shadow:none;border-color:var(--eqm-border);padding:20px;gap:18px;flex-wrap:wrap;align-items:center}
+.space-interface-shell .hero.compact h2 {font-size:clamp(26px,3vw,38px);line-height:1.15;overflow-wrap:anywhere}
+.space-interface-shell .hero.compact p {max-width:70ch;color:var(--eqm-muted)}
+.space-interface-shell .toolbar {gap:7px;flex-wrap:wrap}
+.space-interface-shell .toolbar :is(button,.status-badge) {font-size:11px;min-height:34px;max-width:100%;white-space:normal}
+.space-interface-shell .content :is(.panel,.status-grid>article,.card-list>article) {border-color:var(--eqm-border);background:var(--eqm-panel);color:var(--eqm-text);box-shadow:none}
+.space-interface-shell .content :is(.panel h3,.panel h4,.status-grid strong) {color:var(--eqm-text)}
+.space-interface-shell .content :is(th,td) {border-color:var(--eqm-border)}
+.space-interface-shell .content :is(.mini-list>div,.table-wrap) {background:color-mix(in srgb,var(--eqm-background) 35%,var(--eqm-panel));border-color:var(--eqm-border)}
+.space-interface-shell :is(button,a,input,select,textarea,summary):focus-visible {outline:2px solid var(--eqm-accent);outline-offset:3px}
+.space-navigation {display:flex;flex:1;min-height:0;min-width:0;flex-direction:column}
+.space-navigation-content {display:flex;flex:1;min-height:0;min-width:0;flex-direction:column}
+.space-interface-shell .sidebar nav {display:flex;flex-direction:column;gap:12px;overflow:auto;max-height:none;flex:1;min-height:0;margin-top:16px;padding:4px;scrollbar-width:thin}
+.space-interface-shell .sidebar .nav-custom-group {display:grid;gap:6px;min-width:0}
+.space-interface-shell .sidebar .nav-group-links {display:grid;gap:5px;min-width:0}
+.space-interface-shell .sidebar .nav-section-label,.space-interface-shell .sidebar .nav-group-summary {color:var(--eqm-muted);font-size:10px;text-transform:uppercase;letter-spacing:.12em;font-weight:600}
+.space-interface-shell .sidebar .nav-group-summary {cursor:pointer;list-style:none;padding:12px 10px;border:1px solid var(--eqm-border);display:flex;align-items:center;gap:8px}
+.space-interface-shell .sidebar .nav-group-summary::-webkit-details-marker {display:none}
+.space-interface-shell .nav-group-summary::after {content:'+';margin-left:auto;font-size:18px;color:var(--eqm-accent)}
+.space-interface-shell details[open]>.nav-group-summary::after {content:'−'}
+.space-interface-shell .sidebar .nav-module>button {display:flex;align-items:center;gap:10px;min-height:46px;padding:8px 10px;width:100%;white-space:normal;border:1px solid transparent;background:transparent;box-shadow:none;color:var(--eqm-text);font-size:12px;line-height:1.4;overflow-wrap:anywhere}
+.space-interface-shell .sidebar .nav-module>button.active {border-color:var(--eqm-accent);background:color-mix(in srgb,var(--eqm-accent) 12%,var(--eqm-panel));color:var(--eqm-text)}
+.space-interface-shell .sidebar .nav-module>button:hover {border-color:var(--eqm-border);background:var(--eqm-background)}
+.space-interface-shell .sidebar .nav-module>button.fittings-wip {color:#ff8c96}
+.space-interface-shell .sidebar .nav-module>button.fittings-wip.active {border-color:#ff6570}
+.space-interface-shell .sidebar .nav-module-controls button {width:auto;min-height:32px}
+.space-interface-shell .sidebar .nav-editing {display:flex!important;flex-direction:column!important;max-height:70dvh;overflow:auto!important}
+.space-interface-shell .sidebar .nav-editing .nav-custom-group {display:block;position:static;flex:none;width:auto}
+.space-interface-shell .sidebar .nav-editing .nav-group-links {display:grid;position:static;max-height:none;overflow:visible}
+.space-interface-shell .sidebar .nav-editing :is(.nav-module,.nav-edit-actions) {width:100%;flex:none}
+.space-menu-toggle {display:none;align-items:center;justify-content:center;gap:9px;min-height:44px;padding:10px 14px;border:1px solid var(--eqm-accent);color:var(--eqm-text);background:var(--eqm-panel);cursor:pointer;font:inherit}
+.module-sigil {width:33px;height:33px;display:inline-flex;flex:none;align-items:center;justify-content:center;color:var(--eqm-accent);border:1px solid currentColor;position:relative;box-sizing:border-box}
+.module-sigil[data-sector=flight] {border-radius:50%}
+.module-sigil[data-sector=crew] {border-radius:15px 15px 5px 5px}
+.module-sigil[data-sector=trade] {border-radius:11px}
+.module-sigil[data-sector=intelligence] {border-radius:2px 12px 2px 12px}
+.module-sigil[data-sector=industry] {border-radius:3px}
+.module-sigil[data-sector=systems] {border-style:dashed;border-radius:5px}
+.module-sigil.large {width:58px;height:58px}
+.interface-page-mark {display:flex;align-items:center;gap:12px;margin-bottom:14px;color:var(--eqm-accent);font-size:11px;text-transform:uppercase;letter-spacing:.13em}
+.interface-page-mark small {display:block;color:var(--eqm-muted);font-size:10px;letter-spacing:.06em;margin-top:6px}
+.interface-scene {display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:24px;margin:0 0 24px;padding:24px;border:1px solid var(--eqm-border);color:var(--eqm-accent);position:relative;min-width:0}
+.scene-kicker {font:10px/1.6 Consolas,monospace;letter-spacing:.16em;color:var(--eqm-accent);margin:0 0 10px}
+.interface-scene h3 {font-size:clamp(25px,3vw,40px);line-height:1.1;margin:0 0 12px;color:var(--eqm-text);letter-spacing:-.025em}
+.interface-scene p:last-child {font-size:12px;line-height:1.6;color:var(--eqm-muted);margin:0}
+.interface-artwork {display:block;width:100%;max-height:180px;opacity:.85}
+.space-interface-shell .layout-handle {border-radius:4px;grid-column:1/-1}
+
+/* Orbital Ring: top dock, curved capsules, circumferential instrument divisions. */
+.app-shell.orbital-ring-shell {grid-template-columns:minmax(0,1fr);background-image:radial-gradient(ellipse at 85% 0,color-mix(in srgb,var(--eqm-accent) 9%,transparent),transparent 45%)}
+.app-shell.orbital-ring-shell .sidebar {height:auto;position:relative;z-index:15;display:grid;grid-template-columns:190px minmax(0,1fr);gap:8px 22px;border:0;border-bottom:1px solid var(--eqm-border);padding:16px 28px}
+.orbital-ring-shell .sidebar .brand-logo {height:56px;margin:0;max-width:180px}
+.orbital-ring-shell .sidebar>div:not(.space-navigation) {align-self:center}
+.orbital-ring-shell .sidebar>div>p {display:none}
+.orbital-ring-shell .space-navigation {grid-column:1/-1}
+.app-shell.orbital-ring-shell .sidebar nav:not(.nav-editing) {display:flex;flex-direction:row;align-items:start;flex-wrap:wrap;gap:8px;overflow:visible;margin:0;padding:5px 0}
+.orbital-ring-shell .sidebar nav>button {border-radius:30px;min-height:42px;font-size:11px}
+.app-shell.orbital-ring-shell .sidebar .nav-custom-group:not(.editing) {display:block;position:relative;flex:1 1 120px}
+.app-shell.orbital-ring-shell .nav-group-summary {border-radius:24px;white-space:normal;letter-spacing:.02em;font-size:11px;text-transform:none;min-height:42px;padding:8px 12px}
+.orbital-ring-shell .nav-custom-group[open]>.nav-group-summary {border-color:var(--eqm-accent)}
+.app-shell.orbital-ring-shell .nav-custom-group:not(.editing)>.nav-group-links {position:absolute;z-index:30;top:calc(100% + 8px);left:0;width:260px;max-width:calc(100vw - 36px);max-height:60dvh;overflow:auto;padding:12px;background:var(--eqm-panel);border:1px solid var(--eqm-accent);border-radius:20px;box-shadow:0 16px 30px #0006}
+.orbital-ring-shell .content {padding:30px clamp(18px,4vw,64px)}
+.orbital-ring-shell .content>.hero.compact {border-radius:32px;border-width:1px}
+.orbital-ring-shell .content .panel {border-radius:26px;padding:24px}
+.orbital-ring-shell .content :is(.status-grid>article,.card-list>article) {border-radius:20px}
+.orbital-ring-shell .content .status-grid>article {border-top:3px solid var(--eqm-accent)}
+.orbital-ring-shell :is(.toolbar button,.button-row button,.blueprint-filter button) {border-radius:24px}
+.orbital-ring-shell .sidebar .nav-module>button {border-radius:24px}
+.orbital-ring-shell .module-sigil {border-radius:50%;outline:1px solid color-mix(in srgb,var(--eqm-accent) 35%,transparent);outline-offset:3px;margin:3px}
+.orbital-ring-shell .module-sigil[data-sector=industry] {border-radius:9px}
+.orbital-ring-shell .module-sigil[data-sector=intelligence] {border-radius:50% 50% 3px 3px}
+.orbital-ring-shell .interface-scene {border-radius:80px 28px 80px 28px;padding:30px 40px;background:color-mix(in srgb,var(--eqm-accent) 4%,var(--eqm-panel))}
+.orbital-ring-shell [data-layout-region=overview-inventory] {grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:24px}
+
+/* Imperial Archive: light stone, engraved emblems, an arched two-column left index. */
+.app-shell.imperial-archive-shell {grid-template-columns:300px minmax(0,1fr)}
+.app-shell.imperial-archive-shell .sidebar {padding:24px 14px;border-right:1px solid var(--eqm-border);box-shadow:8px 0 0 color-mix(in srgb,var(--eqm-border) 18%,transparent)}
+.imperial-archive-shell .sidebar>div>h1 {font-family:Georgia,serif;letter-spacing:.04em;text-align:center}
+.imperial-archive-shell .sidebar>div>p {text-align:center}
+.imperial-archive-shell .sidebar-tagline {display:none}
+.app-shell.imperial-archive-shell .sidebar .nav-group-links {grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.imperial-archive-shell .sidebar .nav-section-label {border-bottom:1px solid var(--eqm-border);padding:10px 0 7px;font-family:Georgia,serif;letter-spacing:.08em}
+.app-shell.imperial-archive-shell .sidebar .nav-module>button {flex-direction:column;text-align:center;justify-content:start;border:1px solid var(--eqm-border);border-radius:28px 28px 3px 3px;font-family:Georgia,serif;padding:12px 5px;gap:6px;min-height:92px;font-size:11px}
+.imperial-archive-shell .module-sigil {border-radius:50% 50% 0 0;border-bottom-width:3px;color:var(--eqm-accent)}
+.imperial-archive-shell .module-sigil[data-sector=trade] {border-radius:50%;border-style:double;border-width:3px}
+.imperial-archive-shell .module-sigil[data-sector=intelligence] {border-radius:40% 40% 50% 50%}
+.imperial-archive-shell .content>.hero.compact {border:0;border-top:3px double var(--eqm-border);border-bottom:3px double var(--eqm-border);border-radius:0;padding-inline:0}
+.imperial-archive-shell :is(.hero h2,.panel h3,.interface-scene h3) {font-family:Georgia,'Times New Roman',serif;font-weight:500;letter-spacing:-.015em}
+.imperial-archive-shell .content .panel {border-radius:28px 28px 3px 3px;border-top:3px double var(--eqm-border);padding:24px}
+.imperial-archive-shell .content :is(.status-grid>article,.card-list>article) {border-radius:24px 24px 3px 3px;border-bottom:3px double var(--eqm-border)}
+.imperial-archive-shell .toolbar>button {border-radius:2px}
+.imperial-archive-shell .interface-scene {border-radius:90px 90px 4px 4px;border:3px double var(--eqm-border);padding:32px;background:var(--eqm-panel)}
+.imperial-archive-shell [data-layout-region=overview-inventory] {grid-template-columns:minmax(0,1fr);gap:24px}
+.imperial-archive-shell .content .status-grid {gap:12px}
+.imperial-archive-shell .content .status-grid>article>strong {font-family:Georgia,serif}
+.imperial-archive-shell .sidebar .nav-module>button.fittings-wip {color:#9f2439}
+
+/* Void Cartography: navigation on the right, diamond nodes and plotted grids. */
+.app-shell.void-cartography-shell {grid-template-columns:minmax(0,1fr) 265px;background-image:radial-gradient(circle at 1px 1px,color-mix(in srgb,var(--eqm-accent) 13%,transparent) 1px,transparent 0);background-size:28px 28px}
+.app-shell.void-cartography-shell>.sidebar {grid-column:2;grid-row:1;border-left:1px solid var(--eqm-border);border-right:0}
+.app-shell.void-cartography-shell>.content {grid-column:1;grid-row:1}
+.void-cartography-shell .sidebar .nav-group-links {border-left:1px dashed var(--eqm-border);margin-left:10px;padding-left:8px}
+.void-cartography-shell .sidebar .nav-section-label {color:var(--eqm-accent);font-family:Consolas,monospace}
+.void-cartography-shell .sidebar .nav-module>button {border-radius:2px;position:relative}
+.void-cartography-shell .module-sigil {border-radius:2px;transform:rotate(45deg);width:29px;height:29px;margin:6px}
+.void-cartography-shell .module-sigil>svg {transform:rotate(-45deg)}
+.void-cartography-shell .module-sigil[data-sector=crew] {border-radius:50%}
+.void-cartography-shell .module-sigil[data-sector=industry] {border-style:double;border-width:3px}
+.void-cartography-shell .module-sigil.large {width:48px;height:48px}
+.void-cartography-shell .content>.hero.compact {border-radius:0;border-width:0 0 1px 3px;padding-left:24px;background:var(--eqm-background)}
+.void-cartography-shell .content .panel {border-radius:3px 26px 3px 3px;border-top-width:2px;position:relative;padding:24px}
+.void-cartography-shell .content .panel::before {content:'';display:block;position:absolute;top:-5px;left:16px;width:8px;height:8px;transform:rotate(45deg);background:var(--eqm-accent);pointer-events:none}
+.void-cartography-shell .content :is(.status-grid>article,.card-list>article) {border-radius:3px 20px 3px 3px;border-left:3px solid var(--eqm-accent)}
+.void-cartography-shell .interface-scene {border-radius:0 40px 0 0;border-style:dashed;background:var(--eqm-background)}
+.void-cartography-shell .scene-kicker {color:var(--eqm-accent)}
+.void-cartography-shell [data-layout-region=overview-inventory] {grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:20px}
+.void-cartography-shell [data-layout-region=overview-inventory]>[data-layout-id=blueprint-library] {border-top-color:var(--eqm-accent)}
+
+/* Frontier Terminal: hamburger drawer, vertical dropdowns and stamped industrial plates. */
+.app-shell.frontier-terminal-shell {grid-template-columns:minmax(0,1fr);background-image:repeating-linear-gradient(0deg,transparent 0 39px,color-mix(in srgb,var(--eqm-border) 12%,transparent) 40px)}
+.app-shell.frontier-terminal-shell>.sidebar {height:auto;min-height:76px;position:relative;z-index:20;display:grid;grid-template-columns:150px 1fr auto;align-items:center;gap:16px;padding:12px 24px;border:0;border-bottom:4px solid var(--eqm-accent)}
+.frontier-terminal-shell .sidebar .brand-logo {height:48px;width:150px;margin:0}
+.frontier-terminal-shell .sidebar>div>p {display:none}
+.frontier-terminal-shell .sidebar>div>h1 {font-family:Consolas,monospace;text-transform:uppercase;font-size:13px;letter-spacing:.15em}
+.frontier-terminal-shell .space-menu-toggle {display:flex;border-radius:0;font-family:Consolas,monospace;text-transform:uppercase;letter-spacing:.12em}
+.frontier-terminal-shell .space-navigation-content {display:none}
+.frontier-terminal-shell .space-navigation.is-open>.space-navigation-content {display:flex;position:absolute;top:calc(100% + 4px);left:0;width:min(360px,100%);max-height:calc(100dvh - 100px);padding:14px;background:var(--eqm-panel);border:1px solid var(--eqm-accent);box-shadow:14px 18px 0 #0004;overflow:auto}
+.frontier-terminal-shell .sidebar nav {margin:0;max-height:none;overflow:visible}
+.frontier-terminal-shell .sidebar .nav-custom-group:not(.editing) {border-bottom:1px solid var(--eqm-border);padding-bottom:8px}
+.frontier-terminal-shell .sidebar .nav-group-summary {font-family:Consolas,monospace;background:var(--eqm-background);border-width:0 0 0 4px;border-left-color:var(--eqm-accent)}
+.frontier-terminal-shell .sidebar .nav-group-links {padding:6px 0 0 10px}
+.frontier-terminal-shell .sidebar .nav-module>button {font-family:Consolas,monospace;border-radius:0;font-size:12px}
+.frontier-terminal-shell .module-sigil {border-radius:0;border-width:0 0 2px 2px;background:color-mix(in srgb,var(--eqm-accent) 8%,transparent)}
+.frontier-terminal-shell .module-sigil[data-sector=industry] {border-width:2px 0 0 2px}
+.frontier-terminal-shell .module-sigil[data-sector=intelligence] {border-width:2px 2px 0 0}
+.frontier-terminal-shell .content {max-width:1680px;width:100%;margin:0 auto;padding:24px 36px;box-sizing:border-box}
+.frontier-terminal-shell .content>.hero.compact {border-radius:0;border-width:0 0 3px;padding:16px 0}
+.frontier-terminal-shell :is(.hero h2,.panel h3,.interface-scene h3) {font-family:Consolas,'Courier New',monospace;text-transform:uppercase;letter-spacing:-.04em}
+.frontier-terminal-shell .content .panel {border-radius:0;border:1px solid var(--eqm-border);border-left:6px solid var(--eqm-accent);padding:20px}
+.frontier-terminal-shell .content :is(.status-grid>article,.card-list>article) {border-radius:0;border-top:3px solid var(--eqm-border)}
+.frontier-terminal-shell .content .status-grid>article>strong {font-family:Consolas,monospace}
+.frontier-terminal-shell :is(.toolbar button,.button-row button,.blueprint-filter button,.blueprint-tech-row select) {border-radius:0}
+.frontier-terminal-shell .interface-scene {border:0;border-left:8px solid var(--eqm-accent);border-bottom:3px solid var(--eqm-border);background:var(--eqm-panel);padding:24px}
+.frontier-terminal-shell [data-layout-region=overview-inventory] {grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px}
+
+/* Edition picker is available in every interface, including Classic. */
+.interface-editions {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:22px 0}
+.interface-edition {border:1px solid var(--eqm-border);border-radius:12px;overflow:hidden;min-width:0;background:var(--eqm-panel)}
+.interface-edition[data-selected=true] {outline:2px solid var(--eqm-accent);outline-offset:3px}
+.edition-preview {position:relative;height:130px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid}
+.edition-preview>svg {width:65%;height:100px}
+.edition-samples {display:flex;gap:8px;position:absolute;right:10px;bottom:10px;color:inherit}
+.edition-samples .module-sigil {color:inherit;width:26px;height:26px;background:inherit}
+.edition-samples svg {width:15px;height:15px}
+.edition-copy {padding:18px}
+.edition-copy h5 {font-size:17px;margin:0 0 10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;color:var(--eqm-text)}
+.edition-copy p {font-size:13px;line-height:1.7;color:var(--eqm-muted);margin:0 0 10px}
+.edition-copy small {font-size:11px;display:block;line-height:1.7;margin-bottom:16px;color:var(--eqm-muted)}
+.edition-selected {font:10px/1.4 Consolas,monospace;color:var(--eqm-accent);text-transform:uppercase;letter-spacing:.07em}
+.edition-orbital-ring .edition-preview {border-radius:0 0 35% 0}
+.edition-imperial-archive .edition-preview {border-radius:50% 50% 0 0;margin:12px 12px 0}
+.edition-void-cartography .edition-preview {background-image:radial-gradient(currentColor .6px,transparent .6px);background-size:18px 18px}
+.edition-frontier-terminal .edition-preview {border-bottom-width:4px}
+
+@media (max-width:1100px) {
+ .app-shell.imperial-archive-shell {grid-template-columns:250px minmax(0,1fr)}
+ .app-shell.void-cartography-shell {grid-template-columns:minmax(0,1fr) 235px}
+ .space-interface-shell .content {padding:20px}
+ .interface-scene {gap:14px;padding:20px}
+ .space-interface-shell [data-layout-region=overview-inventory] {grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:900px) {
+ .app-shell.space-interface-shell {grid-template-columns:minmax(0,1fr)}
+ .app-shell.space-interface-shell>.sidebar {grid-row:1;grid-column:1;height:auto;position:relative;display:grid;grid-template-columns:90px minmax(0,1fr) auto;gap:10px;padding:12px 16px}
+ .app-shell.space-interface-shell>.content {grid-row:2;grid-column:1;padding:16px}
+ .space-interface-shell .sidebar .brand-logo {height:50px;width:90px;margin:0}
+ .space-interface-shell .sidebar>div>h1 {font-size:12px;text-align:left;letter-spacing:0}
+ .space-interface-shell .sidebar>div>p {display:none}
+ .space-interface-shell .space-navigation {display:contents}
+ .space-interface-shell .space-menu-toggle {display:flex;grid-column:3;grid-row:1;padding:10px}
+ .space-interface-shell .space-navigation-content {display:none}
+ .space-interface-shell .space-navigation.is-open>.space-navigation-content {display:flex;grid-column:1/-1;position:static;width:100%;max-height:65dvh;padding:10px 0;border:0;box-shadow:none;overflow:auto;box-sizing:border-box}
+ .app-shell.space-interface-shell .sidebar nav:not(.nav-editing) {display:flex;flex-direction:column;align-items:stretch;flex-wrap:nowrap;gap:10px;overflow:auto;margin:0;padding:4px;max-height:none}
+ .app-shell.space-interface-shell .sidebar .nav-custom-group:not(.editing) {display:block;flex:none;min-width:0}
+ .space-interface-shell .sidebar .nav-section-label {display:block;margin-bottom:8px}
+ .app-shell.space-interface-shell .sidebar .nav-group-links {position:static;width:auto;max-width:100%;max-height:none;border:0;box-shadow:none;overflow:visible;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));padding:8px 0;gap:6px}
+ .space-interface-shell .sidebar .nav-module {min-width:0}
+ .app-shell.space-interface-shell .sidebar .nav-module>button {white-space:normal;width:100%;height:100%;font-size:11px;min-height:48px}
+ .app-shell.space-interface-shell .sidebar .nav-custom-group.editing {display:block;width:auto}
+ .app-shell.space-interface-shell .sidebar .nav-editing .nav-group-links {grid-template-columns:minmax(0,1fr)}
+ .space-interface-shell .interface-scene {grid-template-columns:minmax(0,1fr) .8fr;padding:20px;border-radius:20px}
+ .imperial-archive-shell .interface-scene {border-radius:50px 50px 3px 3px}
+ .void-cartography-shell .interface-scene,.frontier-terminal-shell .interface-scene {border-radius:0}
+ .space-interface-shell .content .panel {padding:18px}
+}
+@media (max-width:600px) {
+ .interface-editions {grid-template-columns:minmax(0,1fr)}
+ .space-interface-shell .interface-scene {grid-template-columns:minmax(0,1fr);gap:18px}
+ .space-interface-shell .interface-artwork {max-height:115px}
+ .space-interface-shell .content>.hero.compact {padding:16px;border-radius:12px}
+ .imperial-archive-shell .content>.hero.compact,.void-cartography-shell .content>.hero.compact,.frontier-terminal-shell .content>.hero.compact {border-radius:0}
+ .space-interface-shell .content .status-grid {grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ .space-interface-shell .content .status-grid>article {min-width:0;padding:14px}
+ .space-interface-shell .content .status-grid>article>strong {font-size:22px;overflow-wrap:anywhere}
+ .space-interface-shell .content>.hero .toolbar {width:100%;justify-content:flex-start}
+ .space-interface-shell .content .panel {padding:14px}
+ .space-interface-shell .interface-page-mark {letter-spacing:.05em;font-size:10px}
+ .space-interface-shell .module-sigil.large {width:45px;height:45px}
+ .app-shell.frontier-terminal-shell .sidebar .nav-group-links {grid-template-columns:minmax(0,1fr)}
+}
+@media (prefers-reduced-motion:reduce) {.space-interface-shell *, .interface-editions * {scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+
+.space-interface-shell details.nav-custom-group:not([open])>.nav-group-links{display:none}
+@media(min-width:901px){.orbital-ring-shell .nav-custom-group:last-child>.nav-group-links{left:auto;right:0}}
+
+/* The edition gallery replaces the old two-column interface-choice row. */
+.appearance-settings .interface-choice{display:block;min-width:0}
+.appearance-settings .interface-choice>label{max-width:420px}
+.appearance-settings .interface-choice>label select{width:100%;min-height:42px}
+.appearance-settings .interface-editions{width:100%;grid-template-columns:repeat(2,minmax(0,1fr))}
+.space-interface-shell [data-layout-region=overview]{display:grid;gap:22px}
+.space-interface-shell [data-layout-region=overview]>.status-grid{margin:0}
+.space-interface-shell .toolbar>button,.space-interface-shell .blueprint-preview>button{background:color-mix(in srgb,var(--eqm-accent) 12%,var(--eqm-panel));color:var(--eqm-text);border:1px solid var(--eqm-border);box-shadow:none}
+.space-interface-shell .toolbar>button:hover,.space-interface-shell .blueprint-preview>button:hover{border-color:var(--eqm-accent)}
+@media(max-width:650px){.appearance-settings .interface-editions{grid-template-columns:minmax(0,1fr)}}
+
+/* Active filters follow the edition accent; light surfaces retain legible semantic colors. */
+.space-interface-shell .blueprint-filter button.active,.space-interface-shell .bp-badge.copy{color:var(--eqm-accent)}
+html[data-eqm-mode=light] .space-interface-shell .context-missing{color:#a1243c}
+html[data-eqm-mode=light] .space-interface-shell :is(.context-owned,.bp-badge.original){color:#1e6547}

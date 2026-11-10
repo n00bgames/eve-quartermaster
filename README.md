@@ -25,6 +25,10 @@ EVE Quartermaster is a containerized, database-first EVE Online quartermaster an
 
 The current application/package version is **v2.4.0** (`2.4.0`). This version adds grouped and prioritized Intel dossiers, automatic Local Scan pilot stubs, searchable character notes, owned Structures and manual POS tracking, and Journey analytics with collapsed analytics panes throughout EQM. See the [v2.4.0 release draft](docs/releases/v2.4.md) and [changelog](CHANGELOG.md). Earlier notes: [v2.3](docs/releases/v2.3.md), [v2.1](docs/releases/v2.1.md), [v2.0](docs/releases/v2.0.md), [v1.0.3](docs/releases/v1.0.3.md) and [v1.0](docs/releases/v1.0.md).
 
+**Four space interfaces:** Orbital Ring, Imperial Archive, Void Cartography and Frontier Terminal add distinct navigation, panel shapes, page pictograms and palettes. Frontier includes a hamburger drawer with vertical dropdowns and Profile/Administration sections. Choose them under Appearance. [Guide and previews](docs/space-interfaces.md).
+
+![Four space interfaces — actual synthetic v2.4.0 development preview](static/ss/v2.4.0/space-interface-picker.png)
+
 **Blueprint tech filters:** Narrow owned blueprints to **T2** or **T3**, then **Ships** or **Modules / subsystems**. Combine with owner, BPO/BPC, subtype and search; filtered CSV/JSON exports follow the selection. [Guide](docs/blueprint-tech-filters.md).
 
 ![Blueprint tech filters — actual synthetic v2.4.0 development preview](static/ss/v2.4.0/blueprint-tech-filters-desktop.png)

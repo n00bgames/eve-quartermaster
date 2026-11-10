@@ -1,6 +1,9 @@
 import {DragHandle} from "./DragHandle";
 import React, {useEffect, useState, type ReactNode} from "react";
-import {useAppearance} from "./AppearanceProvider";
+import {useAppearance,useInterfaceStyle} from "./AppearanceProvider";
+import {ModuleSigil} from "./ModuleSigil";
+import {frontierNavigationGroups,isSpaceInterface} from "./interfaceCatalog";
+import {NavigationGroup} from "./NavigationGroup";
 import {addShortcut, defaultNavigation, move, moveModule, navigationWithDefaults, removeShortcut, type NavGroup} from "./model";
 
 function entryText(node: ReactNode): string {
@@ -11,13 +14,14 @@ function entryText(node: ReactNode): string {
 }
 
 export function CustomNavigation({entries}: {entries: Record<string, ReactNode>}) {
-  const a = useAppearance();
+  const a = useAppearance(), style=useInterfaceStyle();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<NavGroup[]>(() => navigationWithDefaults(a.personal.preferences.navigation));
   useEffect(() => setDraft(navigationWithDefaults(a.personal.preferences.navigation)), [a.personal.preferences.navigation]);
   const visible = (id: string) => !!entries[id];
   const label = (id: string) => entryText(entries[id]) || id.replace(/_/g, " ");
-  const groups = editing ? draft : navigationWithDefaults(a.personal.preferences.navigation);
+  const savedGroups = navigationWithDefaults(a.personal.preferences.navigation);
+  const groups = editing ? draft : style==="frontier_terminal" ? frontierNavigationGroups(savedGroups) : savedGroups;
 
   function drop(e: React.DragEvent, target: string, before?: string) {
     e.preventDefault();
@@ -45,7 +49,7 @@ export function CustomNavigation({entries}: {entries: Record<string, ReactNode>}
       if (!editing && !g.modules.some(visible)) return null;
       const sectionName = g.name || "General";
       const available = defaultNavigation.map(source => ({...source, modules: source.modules.filter(m => visible(m) && !g.modules.includes(m))})).filter(source => source.modules.length);
-      return <div className={editing ? "nav-custom-group editing" : "nav-custom-group"} key={g.id}
+      return <NavigationGroup dropdown={!editing&&(style==="orbital_ring"||style==="frontier_terminal")} label={sectionName} className={editing ? "nav-custom-group editing" : "nav-custom-group"} key={g.id}
         data-drop-nav-group={g.id} data-drop-nav-module={`${g.id}|`}
         onDragOver={editing ? e => e.preventDefault() : undefined} onDrop={editing && !a.busy ? e => drop(e, g.id) : undefined}>
         {editing ? <fieldset disabled={a.busy}>
@@ -68,10 +72,10 @@ export function CustomNavigation({entries}: {entries: Record<string, ReactNode>}
           </label>
           <p className="nav-shortcut-help">Keeps the original link in its section.</p>
           {!g.modules.length && <button onClick={() => setDraft(draft.filter(x => x.id !== g.id))}>Remove empty section</button>}
-        </fieldset> : g.name && <span className="nav-section-label">{g.name}</span>}
-        {g.modules.filter(visible).map(m => <div key={m} data-drop-nav-module={`${g.id}|${m}`} className="nav-module"
+        </fieldset> : !(style==="orbital_ring"||style==="frontier_terminal") && g.name && <span className="nav-section-label">{g.name}</span>}
+        <div className="nav-group-links">{g.modules.filter(visible).map(m => <div key={m} data-module-id={m} data-drop-nav-module={`${g.id}|${m}`} className="nav-module"
           onDragOver={editing ? e => e.preventDefault() : undefined} onDrop={editing && !a.busy ? e => drop(e, g.id, m) : undefined}>
-          {entries[m]}
+          {isSpaceInterface(style) && React.isValidElement<{children?:ReactNode}>(entries[m]) ? React.cloneElement(entries[m] as React.ReactElement<{children?:ReactNode}>, {}, <ModuleSigil module={m}/>, ...React.Children.toArray((entries[m] as React.ReactElement<{children?:ReactNode}>).props.children).slice(1)) : entries[m]}
           {editing && <fieldset disabled={a.busy} className="nav-module-controls">
             <DragHandle label={`Drag ${label(m)} from ${sectionName}`} attribute="data-drop-nav-module" onDrop={target => {
               const [group, before] = target.split("|");
@@ -84,8 +88,8 @@ export function CustomNavigation({entries}: {entries: Record<string, ReactNode>}
             </select>
             {draft.filter(x => x.modules.includes(m)).length > 1 && <button className="nav-remove-shortcut" aria-label={`Remove ${label(m)} shortcut from ${sectionName}`} onClick={() => setDraft(current => removeShortcut(current, m, g.id))}>Remove shortcut</button>}
           </fieldset>}
-        </div>)}
-      </div>;
+        </div>)}</div>
+      </NavigationGroup>;
     })}
   </nav>;
 }

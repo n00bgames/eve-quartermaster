@@ -1,6 +1,6 @@
 # EQM screenshot gallery
 
-**Latest:** [Blueprint tech filters](#blueprint-tech-filters), captured November 10, 2026. Earlier captures remain below.
+**Latest:** [Four space interfaces](#four-space-interfaces), captured November 10, 2026. Earlier captures remain below.
 
 HyperNet and PLEX previews added **October 3, 2026**, from source commit `4ec0931cda1f800afb1d83560e19862809148ccd`. Atlas previews were added September 19 from `f6131a1be18e808c886f75c380c6ebf646323bfb`; the earlier gallery reconciliation was September 11 against the v1.0 candidate `f894f27ad7fb2ef4956e5bef2e97d3865fe8cfd2`. [README](../README.md) · [v1.0.5 release notes](releases/v1.0.5.md) · [Install](../README.md#install)
 
@@ -971,3 +971,45 @@ Unreleased v2.4.0 development captures from November 10, 2026. Actual extracted 
 ![Owned T2 modules with tech, product, subtype and owner controls](../static/ss/v2.4.0/blueprint-tech-filters-desktop.png)
 
 ![T3 subsystem filter on 390px mobile](../static/ss/v2.4.0/blueprint-tech-filters-mobile.png)
+
+## Four space interfaces
+
+Unreleased v2.4.0 development captures from November 10, 2026. Actual appearance/navigation, Overview, blueprint browser and settings components use the real appearance API in a disposable synthetic shell. Fabricated pilots, holdings, metrics, station labels and events; no live accounts/SSO/ESI. Desktop 1480px and mobile 390px; tablet widths checked separately. Shared shell/panel styling extends across existing signed-in modules. [Guide and limits](space-interfaces.md) · [Capture receipt](../static/ss/v2.4.0/capture-receipt.json).
+
+![Selectable space editions and atomic layout/color actions](../static/ss/v2.4.0/space-interface-picker.png)
+
+### Orbital Ring
+
+Teal orbital control deck; top department dropdown dock, curved capsule panels and ring-framed page emblems.
+
+![Orbital Ring desktop Overview](../static/ss/v2.4.0/orbital-ring-desktop.png)
+
+![Orbital Ring mobile Industry with working T2/ship filters](../static/ss/v2.4.0/orbital-ring-mobile.png)
+
+### Imperial Archive
+
+Ivory and bronze station archive; left two-column index, arched panels, serif headings and engraved page seals.
+
+![Imperial Archive desktop Overview](../static/ss/v2.4.0/imperial-archive-desktop.png)
+
+![Imperial Archive mobile Industry with working T2/ship filters](../static/ss/v2.4.0/imperial-archive-mobile.png)
+
+### Void Cartography
+
+Violet/lime star-chart console; right-side navigation atlas, diamond pictograms and plotted panel corners.
+
+![Void Cartography desktop Overview](../static/ss/v2.4.0/void-cartography-desktop.png)
+
+![Void Cartography mobile Industry with working T2/ship filters](../static/ss/v2.4.0/void-cartography-mobile.png)
+
+### Frontier Terminal
+
+Rust-and-bone industrial terminal; hamburger drawer, vertical dropdown sections, Profile/Administration sections and stamped square panels.
+
+![Frontier Terminal desktop Overview](../static/ss/v2.4.0/frontier-terminal-desktop.png)
+
+![Frontier Terminal mobile Industry with working T2/ship filters](../static/ss/v2.4.0/frontier-terminal-mobile.png)
+
+Frontier’s vertical drawer with native expandable Profile and Administration sections; destination links retain ordinary permissions.
+
+![Frontier Profile and Administration dropdown sections](../static/ss/v2.4.0/frontier-terminal-menu-desktop.png)

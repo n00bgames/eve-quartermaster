@@ -6,6 +6,8 @@ Version sections are written as user-facing release notes first, with implementa
 
 ## [2.4.0] - Unreleased
 
+- Add four opt-in **space interfaces**: Orbital Ring (top dock/capsules), Imperial Archive (ivory arched index), Void Cartography (right atlas/diamonds), and Frontier Terminal (industrial hamburger drawer with vertical dropdowns and Profile/Administration sections). Include distinct page pictograms, default palettes and responsive panel styling; retain account-specific colors, banners, shortcuts, panel ordering and permissions. Apply layout/palette together or change only the layout. Matching frontend/API required; no new migration or ESI scope. [Guide](docs/space-interfaces.md).
+
 - Add **T2/T3 tech filters** and **Ships / Modules / subsystems** product filters to the owned blueprint browser. Combine with existing owner/kind/family/subtype/search filters and CSV/JSON exports; classify the manufactured product from SDE Dogma, including active-research blueprints. Unknown metadata remains visible under All. Matching backend/frontend builds required; no migration or new ESI scope. [Guide](docs/blueprint-tech-filters.md).
 
 - Add a dedicated **PI facilities report** with CSV/JSON downloads, installed-building counts and character/group/system/planet-type filtering. Include empty buildings and unconfigured processors, configured recipes/capacity, extractor programs, complete reported routes, and separate observed/projected stock with source freshness. CSV has one row per facility; existing general and supply exports remain available. Frontend-only; no migration or new ESI scope. [Guide](docs/pi-facilities-export.md).

@@ -2,14 +2,16 @@ import type {ReactElement,ReactNode} from "react";
 import {LayoutRegion} from "../appearance/LayoutRegion";
 import {useInterfaceStyle} from "../appearance/AppearanceProvider";
 import {SupportCard} from "../clientLinks/EveClientLinks";
+import {InterfaceArtwork} from "../appearance/InterfaceArtwork";
 import {CargoYardArtwork} from "./CargoYardArtwork";
 
 type Props={metrics:ReactNode;assets:ReactNode;blueprints:ReactNode;events:ReactElement};
 
-// Both interfaces render the same data/actions and stable arrangement IDs.
+// All interfaces render the same data/actions and stable arrangement IDs.
 export function OverviewLayout({metrics,assets,blueprints,events}:Props){
  const command=useInterfaceStyle()==="command_desk";
  return <>
+  <InterfaceArtwork/>
   {command&&<header className="command-desk-intro"><div><p className="command-kicker">YOUR PEOPLE. YOUR STOCK. YOUR NEXT MOVE.</p><h3>A little order<br/><em>in the void.</em></h3><p>The hangar ledger, the blueprint library, and what comes next.</p></div><CargoYardArtwork/></header>}
   <LayoutRegion region="overview">
    <div key="overview-1" data-layout-id="overview-1" data-layout-label="Overview totals" className="status-grid wide">{metrics}</div>

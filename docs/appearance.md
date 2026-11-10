@@ -6,6 +6,10 @@ Available in the unreleased 2.0.0 build. Deploy the matching frontend/API and ap
 
 **EQM-Classic** remains the default. Choose **Command Desk** in Appearance to use the new shell and Overview. This saves per account, independently of palette, uploaded images, custom navigation and panel arrangements. Other modules retain their existing content; signed-out/public pages are unaffected. No new migration beyond the existing appearance schema. [Scope, controls and verification](command-desk.md).
 
+## Four space editions (unreleased 2.4.0)
+
+**Orbital Ring**, **Imperial Archive**, **Void Cartography** and **Frontier Terminal** add four distinct navigation layouts, default palettes, panel geometries and page pictograms. Apply a matching layout/palette from the edition cards, or use Layout only to retain your palette. Frontier Terminal includes a hamburger drawer, vertical dropdown departments and dedicated Profile/Administration sections. All four retain permission-filtered navigation, banners, shortcuts and saved panel positions. Matching frontend/API required; no additional migration or ESI scope. [Layouts, controls and previews](space-interfaces.md).
+
 ## Personal settings
 
 Open **Appearance** in the page header or **Settings → Appearance & layout**. All signed-in roles can use these presentation controls, including utility-only Intel Analysts and Quartermasters. They do not grant module permissions, enable ESI collection, or expose administrative settings.
