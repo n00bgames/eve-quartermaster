@@ -679,5 +679,265 @@
         "sha256": "a29caa8f86ab80135313096276cb81810faaa82b52b2bb73a923de1209def747"
       }
     ]
+  },
+  "release_theme_gallery": {
+    "captured_at_utc": "2026-11-11T04:27:01.965296+00:00",
+    "application_version": "2.4.0",
+    "source_commit": "11cb4292104a14f83b4e496300c8a59e78618310",
+    "release_baseline": {
+      "tag": "v2.3",
+      "commit": "b2cf881acb8cfdc50fd4f998026e2c797d6f057d",
+      "application_version": "2.3.0"
+    },
+    "method": "Headless Edge at 1480\u00d71050 with full-page PNG capture, actual EQM AppearanceProvider, navigation and Overview components, and the appearance API backed by disposable SQLite.",
+    "data_provenance": "Synthetic account, holdings, blueprints and events. The same fixture is rendered for each capture.",
+    "validation": "Verified all seven interface IDs and eleven built-in palettes, saved preference reload, expected shell classes and computed color tokens. All twelve images loaded and were visually reviewed in the gallery. No page errors or horizontal page overflow in the captures.",
+    "limitations": [
+      "The capture shell uses a synthetic preview entry point with actual EQM components and an isolated appearance API.",
+      "One Overview per interface or palette. The gallery shows the six standard palettes on EQM-Classic and each edition with its default palette.",
+      "Production account data and the full authenticated bootstrap were outside the capture scope."
+    ],
+    "images": [
+      {
+        "name": "EQM-Classic",
+        "id": "classic",
+        "slug": "eqm-classic",
+        "palette": "EQM dark",
+        "file": "theme-eqm-classic-overview.png",
+        "colors": {
+          "background": "#101215",
+          "panel": "#191e25",
+          "text": "#f5f7fa",
+          "muted": "#aab4c2",
+          "accent": "#e8b84d",
+          "border": "#3b4654"
+        },
+        "classes": "app-shell",
+        "bytes": 272439,
+        "width": 1480,
+        "height": 1050,
+        "sha256": "ac08e5c64b1e571e66ff117a72106e00c0d123c1490b20f8ba4d708765d7861f"
+      },
+      {
+        "name": "Command Desk",
+        "id": "command_desk",
+        "slug": "command-desk",
+        "palette": "EQM dark",
+        "file": "theme-command-desk-overview.png",
+        "colors": {
+          "background": "#101215",
+          "panel": "#191e25",
+          "text": "#f5f7fa",
+          "muted": "#aab4c2",
+          "accent": "#e8b84d",
+          "border": "#3b4654"
+        },
+        "classes": "app-shell command-desk-shell",
+        "bytes": 188136,
+        "width": 1480,
+        "height": 1379,
+        "sha256": "f0f4efbece74c51597bea4d791dbf36a0e2a470fef06a163e75c6c95ce88b824"
+      },
+      {
+        "name": "Orbital Ring",
+        "id": "orbital_ring",
+        "slug": "orbital-ring",
+        "palette": "Orbital Ring",
+        "file": "theme-orbital-ring-overview.png",
+        "colors": {
+          "background": "#061b24",
+          "panel": "#0b2c36",
+          "text": "#e6fcfa",
+          "muted": "#a0c8cb",
+          "accent": "#6bf0ce",
+          "border": "#37656b"
+        },
+        "classes": "app-shell space-interface-shell orbital-ring-shell",
+        "bytes": 203193,
+        "width": 1480,
+        "height": 1705,
+        "sha256": "5d25a3e3d8611feeb534a80ea697b6575d04de7a575ec687f5d8fe1b9b8a810a"
+      },
+      {
+        "name": "Imperial Archive",
+        "id": "imperial_archive",
+        "slug": "imperial-archive",
+        "palette": "Imperial Archive",
+        "file": "theme-imperial-archive-overview.png",
+        "colors": {
+          "background": "#ece5d5",
+          "panel": "#fffbf1",
+          "text": "#302832",
+          "muted": "#685766",
+          "accent": "#735125",
+          "border": "#a79b86"
+        },
+        "classes": "app-shell space-interface-shell imperial-archive-shell",
+        "bytes": 216874,
+        "width": 1480,
+        "height": 1832,
+        "sha256": "da0162b8b3cfd8cc0d2dc182e0629b8f6b1f6dee0ec67aa496d341ad181e0141"
+      },
+      {
+        "name": "Void Cartography",
+        "id": "void_cartography",
+        "slug": "void-cartography",
+        "palette": "Void Cartography",
+        "file": "theme-void-cartography-overview.png",
+        "colors": {
+          "background": "#170d2b",
+          "panel": "#28183d",
+          "text": "#f4efff",
+          "muted": "#c3b1d8",
+          "accent": "#d3f57b",
+          "border": "#725d8b"
+        },
+        "classes": "app-shell space-interface-shell void-cartography-shell",
+        "bytes": 213753,
+        "width": 1480,
+        "height": 1485,
+        "sha256": "5384aea53ff648a5f7a1a531549975026b22ad719ee49c818543693c53a8ca4a"
+      },
+      {
+        "name": "Frontier Terminal",
+        "id": "frontier_terminal",
+        "slug": "frontier-terminal",
+        "palette": "Frontier Terminal",
+        "file": "theme-frontier-terminal-overview.png",
+        "colors": {
+          "background": "#241811",
+          "panel": "#35261e",
+          "text": "#fff1d7",
+          "muted": "#d3b99d",
+          "accent": "#ffaf78",
+          "border": "#8c6951"
+        },
+        "classes": "app-shell space-interface-shell frontier-terminal-shell",
+        "bytes": 150848,
+        "width": 1480,
+        "height": 1515,
+        "sha256": "c610addb1a45cda1ef12795127ac52cebffdc439ffceda2746d880ceb92d19eb"
+      },
+      {
+        "name": "Dark Mode",
+        "id": "dark_mode",
+        "slug": "dark-mode",
+        "palette": "Dark Mode",
+        "file": "theme-dark-mode-overview.png",
+        "colors": {
+          "background": "#050607",
+          "panel": "#0e1114",
+          "text": "#d5d8dd",
+          "muted": "#9aa4ae",
+          "accent": "#8eb4c9",
+          "border": "#333b44"
+        },
+        "classes": "app-shell command-desk-shell dark-mode-shell",
+        "bytes": 193976,
+        "width": 1480,
+        "height": 1359,
+        "sha256": "9bdb227a53105ee203146deb9623b197796af9b734c4193724a1a65aee468d1d"
+      },
+      {
+        "name": "Weathered brass",
+        "id": "classic",
+        "slug": "weathered-brass",
+        "palette": "Weathered brass",
+        "file": "theme-weathered-brass-overview.png",
+        "colors": {
+          "background": "#111819",
+          "panel": "#182425",
+          "text": "#eeeade",
+          "muted": "#a1afae",
+          "accent": "#d6b779",
+          "border": "#354342"
+        },
+        "classes": "app-shell",
+        "bytes": 210536,
+        "width": 1480,
+        "height": 1050,
+        "sha256": "a90733290989b1cf192c6d807af163be39d2e6cdb657672a480831a32545056e"
+      },
+      {
+        "name": "Deep space",
+        "id": "classic",
+        "slug": "deep-space",
+        "palette": "Deep space",
+        "file": "theme-deep-space-overview.png",
+        "colors": {
+          "background": "#0b1425",
+          "panel": "#15243c",
+          "text": "#eff6ff",
+          "muted": "#a9bedb",
+          "accent": "#72b7ff",
+          "border": "#3c577b"
+        },
+        "classes": "app-shell",
+        "bytes": 211760,
+        "width": 1480,
+        "height": 1050,
+        "sha256": "fe2be074c88c3c002827430f63bcc8ea7bf4f73b7928d489795de25900e8aa0d"
+      },
+      {
+        "name": "Emerald",
+        "id": "classic",
+        "slug": "emerald",
+        "palette": "Emerald",
+        "file": "theme-emerald-overview.png",
+        "colors": {
+          "background": "#0b1814",
+          "panel": "#142b23",
+          "text": "#edf9f2",
+          "muted": "#acd2bf",
+          "accent": "#75dfb3",
+          "border": "#416859"
+        },
+        "classes": "app-shell",
+        "bytes": 212106,
+        "width": 1480,
+        "height": 1050,
+        "sha256": "905cde79f35250b15c302fc8ef4253e6cdc66f201a750a92d642c5e52bfdedd8"
+      },
+      {
+        "name": "Amethyst",
+        "id": "classic",
+        "slug": "amethyst",
+        "palette": "Amethyst",
+        "file": "theme-amethyst-overview.png",
+        "colors": {
+          "background": "#191221",
+          "panel": "#2a2036",
+          "text": "#f8f0ff",
+          "muted": "#c6b2d8",
+          "accent": "#c39bff",
+          "border": "#635071"
+        },
+        "classes": "app-shell",
+        "bytes": 211834,
+        "width": 1480,
+        "height": 1050,
+        "sha256": "f6fcd0d08b2d22c50cd525deff7e6580bc567f1c7bdde54fd5ddefaeeb86699b"
+      },
+      {
+        "name": "Daylight",
+        "id": "classic",
+        "slug": "daylight",
+        "palette": "Daylight",
+        "file": "theme-daylight-overview.png",
+        "colors": {
+          "background": "#edf1f5",
+          "panel": "#ffffff",
+          "text": "#182330",
+          "muted": "#4b6075",
+          "accent": "#245e9e",
+          "border": "#b3c0cd"
+        },
+        "classes": "app-shell",
+        "bytes": 210149,
+        "width": 1480,
+        "height": 1050,
+        "sha256": "da4e963f27b040d9893782bb9d1223700bc31f8913b857c47d460f1ebcb2bec4"
+      }
+    ]
   }
 }

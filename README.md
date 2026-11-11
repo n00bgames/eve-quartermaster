@@ -29,6 +29,8 @@ The current application/package version is **v2.4.0** (`2.4.0`). This version ad
 
 ![Dark Mode — actual synthetic v2.4.0 development preview](static/ss/v2.4.0/dark-mode-desktop.png)
 
+[Compare all seven interfaces and eleven built-in palettes](docs/screenshots.md#theme-gallery-for-v240).
+
 **Four space interfaces:** Orbital Ring, Imperial Archive, Void Cartography and Frontier Terminal add distinct navigation, panel shapes, page pictograms and palettes. Frontier includes a hamburger drawer with vertical dropdowns and Profile/Administration sections. Choose them under Appearance. [Guide and previews](docs/space-interfaces.md).
 
 ![Four space interfaces — actual synthetic v2.4.0 development preview](static/ss/v2.4.0/space-interface-picker.png)

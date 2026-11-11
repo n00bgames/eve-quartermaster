@@ -1,6 +1,6 @@
 # EQM screenshot gallery
 
-**Latest:** [Dark Mode and palette consistency](#dark-mode-and-palette-consistency), captured November 10, 2026. Earlier captures remain below.
+**Latest:** [v2.4.0 theme gallery](#theme-gallery-for-v240), captured November 10, 2026.
 
 HyperNet and PLEX previews added **October 3, 2026**, from source commit `4ec0931cda1f800afb1d83560e19862809148ccd`. Atlas previews were added September 19 from `f6131a1be18e808c886f75c380c6ebf646323bfb`; the earlier gallery reconciliation was September 11 against the v1.0 candidate `f894f27ad7fb2ef4956e5bef2e97d3865fe8cfd2`. [README](../README.md) · [v1.0.5 release notes](releases/v1.0.5.md) · [Install](../README.md#install)
 
@@ -1029,3 +1029,22 @@ Unreleased v2.4.0 captures from November 10, 2026. Actual UI components, real ap
 ![Light skill dogma popover with matching inner fields and readable bonus text](../static/ss/v2.4.0/imperial-skill-palette.png)
 
 ![Seven interface choices, including Dark Mode](../static/ss/v2.4.0/dark-mode-picker.png)
+
+## Theme gallery for v2.4.0
+
+Unreleased development captures of the Overview using the same synthetic account and holdings. Select any image link to view it full size. EQM-Classic and Command Desk share the EQM dark palette in this gallery. [Capture receipt](../static/ss/v2.4.0/capture-receipt.json)
+
+| Interface | Palette | Overview screenshot |
+|---|---|---|
+| EQM-Classic | EQM dark | [View EQM-Classic](../static/ss/v2.4.0/theme-eqm-classic-overview.png) |
+| Command Desk | EQM dark | [View Command Desk](../static/ss/v2.4.0/theme-command-desk-overview.png) |
+| Orbital Ring | Orbital Ring | [View Orbital Ring](../static/ss/v2.4.0/theme-orbital-ring-overview.png) |
+| Imperial Archive | Imperial Archive | [View Imperial Archive](../static/ss/v2.4.0/theme-imperial-archive-overview.png) |
+| Void Cartography | Void Cartography | [View Void Cartography](../static/ss/v2.4.0/theme-void-cartography-overview.png) |
+| Frontier Terminal | Frontier Terminal | [View Frontier Terminal](../static/ss/v2.4.0/theme-frontier-terminal-overview.png) |
+| Dark Mode | Dark Mode | [View Dark Mode](../static/ss/v2.4.0/theme-dark-mode-overview.png) |
+| EQM-Classic | Weathered brass | [View Weathered brass](../static/ss/v2.4.0/theme-weathered-brass-overview.png) |
+| EQM-Classic | Deep space | [View Deep space](../static/ss/v2.4.0/theme-deep-space-overview.png) |
+| EQM-Classic | Emerald | [View Emerald](../static/ss/v2.4.0/theme-emerald-overview.png) |
+| EQM-Classic | Amethyst | [View Amethyst](../static/ss/v2.4.0/theme-amethyst-overview.png) |
+| EQM-Classic | Daylight | [View Daylight](../static/ss/v2.4.0/theme-daylight-overview.png) |
