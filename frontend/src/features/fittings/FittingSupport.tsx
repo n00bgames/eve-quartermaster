@@ -406,7 +406,7 @@ export function FittingStatsPanel({ stats }: { stats?: FittingSimulationStats | 
 
       <h4>Tank</h4>
 
-      <strong>{fittingStatValue(stats.defense.ehp, 0)} EHP</strong>
+      <strong>{fittingStatValue(stats.defense.ehp, 0)} Omni EHP</strong>
 
       <span>{fittingStatValue(stats.defense.shield_peak_recharge, 1)} passive shield HP/s peak</span>
 
