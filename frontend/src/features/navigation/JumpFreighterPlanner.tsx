@@ -20,6 +20,7 @@ import type {
 import { JumpAlternatePicker } from "./JumpAlternatePicker";
 import { droppedReplotWaypoints, orderedReplotConstraints } from "./jumpReplot";
 import { OperationalMap } from "./OperationalMap";
+import "./navigationPanels.css";
 import { SystemSearchField } from "./RouteChecker";
 
 type JumpFreighterPlannerUser = { timezone?: string };
@@ -62,6 +63,7 @@ export function JumpFreighterPlanner({
   CharacterHoverName,
   UedamaScoutLiveLink,
 }: JumpFreighterPlannerProps) {
+  const [open, setOpen] = useState(true);
   const [origin, setOrigin] = useState("Jita");
 
   const [destination, setDestination] = useState("Tama");
@@ -451,7 +453,7 @@ export function JumpFreighterPlanner({
     };
   }, [capitalRouteHasUedama, capitalRouteScoutKey]);
   return (
-    <section className="panel stacked jf-planner">
+    <section className="panel stacked jf-planner collapsible-navigation-panel" data-collapsed={!open}>
       <div className="section-heading">
         <div>
           <h3>Jump Capable Ship Plotter</h3>
@@ -460,16 +462,19 @@ export function JumpFreighterPlanner({
             alternates, fuel math, and live operational intel.
           </p>
         </div>
-        {route && (
-          <span className="version-badge">
-            {route.ship.name} ·{" "}
-            {route.route_mode === "waypoint_assisted"
-              ? "Via required cynos"
-              : "Automatic"}{" "}
-            · {route.max_range_ly} LY
-            {route.route_engine?.used ? ` · ${route.route_engine.used === "rust" ? "Rust route core" : route.route_engine.used}` : ""}
-          </span>
-        )}
+        <div className="navigation-panel-actions">
+          {open && route && (
+            <span className="version-badge">
+              {route.ship.name} ·{" "}
+              {route.route_mode === "waypoint_assisted"
+                ? "Via required cynos"
+                : "Automatic"}{" "}
+              · {route.max_range_ly} LY
+              {route.route_engine?.used ? ` · ${route.route_engine.used === "rust" ? "Rust route core" : route.route_engine.used}` : ""}
+            </span>
+          )}
+          <button type="button" aria-expanded={open} aria-label={open ? "Collapse Jump Capable Ship Plotter" : "Expand Jump Capable Ship Plotter"} onClick={() => setOpen(value => !value)}>{open ? "Collapse" : "Expand"}</button>
+        </div>
       </div>
       <p className="muted">Pochven systems are excluded: cynos cannot be lit there.</p>
       <form

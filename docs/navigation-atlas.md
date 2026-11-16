@@ -1,6 +1,6 @@
 # New Eden Atlas: Star Map and Missions/LP
 
-Navigation now starts with a **Star Map** and **Missions & LP** tab. Both share a route origin and can send a destination directly to the existing Route Checker. The checker retains its safer-route, highsec-only and avoidance settings, except an endpoint cannot remain on its avoid list. The resulting route is drawn on the atlas.
+**New Eden Atlas** has a **Star Map** and **Missions & LP** tab. Both share a route origin and can send a destination to Route Checker, which opens automatically if collapsed. The checker retains its safer-route, highsec-only and avoidance settings, except an endpoint cannot remain on its avoid list. The resulting route is drawn on the atlas.
 
 ## Explore and plan
 

@@ -1040,9 +1040,7 @@ function NavigationPlanner({ currentUser }: { currentUser: UserAccount }) {
   const [atlasRoute, setAtlasRoute] = useState<RouteRequest | null>(null);
   const [mapRoute, setMapRoute] = useState<NavigationRoute | null>(null);
   return <LayoutRegion region="navigation-planner">
-    <JourneyPanel key="navigation-journey" data-layout-id="navigation-journey" data-layout-label="My Journey"/>
-    <NavigationAtlas key="navigation-planner-1" data-layout-id="navigation-planner-1" data-layout-label="Navigation Atlas" route={mapRoute} onRoute={(request) => { setAtlasRoute(request); document.getElementById("atlas-route-planner")?.scrollIntoView({behavior:"smooth",block:"start"}); }} />
-    <div key="navigation-planner-2" data-layout-id="navigation-planner-2" data-layout-label="Section 2" id="atlas-route-planner">
+    <div key="navigation-planner-2" data-layout-id="navigation-planner-2" data-layout-label="Route Checker" id="atlas-route-planner">
     <RouteChecker
       routeRequest={atlasRoute}
       onRouteChange={setMapRoute}
@@ -1055,7 +1053,9 @@ function NavigationPlanner({ currentUser }: { currentUser: UserAccount }) {
       UedamaScoutLiveLink={UedamaScoutLiveLink}
     />
     </div>
-    <JumpFreighterPlanner key="navigation-planner-3" data-layout-id="navigation-planner-3" data-layout-label="Jump Freighter Planner" currentUser={currentUser} api={api} numberFormatter={numberFormatter} Metric={Metric} EveEntityIcon={EveEntityIcon} CharacterHoverName={CharacterHoverName} UedamaScoutLiveLink={UedamaScoutLiveLink} />
+    <JumpFreighterPlanner key="navigation-planner-3" data-layout-id="navigation-planner-3" data-layout-label="Jump Capable Ship Plotter" currentUser={currentUser} api={api} numberFormatter={numberFormatter} Metric={Metric} EveEntityIcon={EveEntityIcon} CharacterHoverName={CharacterHoverName} UedamaScoutLiveLink={UedamaScoutLiveLink} />
+    <JourneyPanel key="navigation-journey" data-layout-id="navigation-journey" data-layout-label="My Journey"/>
+    <NavigationAtlas key="navigation-planner-1" data-layout-id="navigation-planner-1" data-layout-label="Navigation Atlas" route={mapRoute} onRoute={(request) => { setAtlasRoute(request); document.getElementById("atlas-route-planner")?.scrollIntoView({behavior:"smooth",block:"start"}); }} />
     <IndustrialSystemThreatWidget key="navigation-planner-4" data-layout-id="navigation-planner-4" data-layout-label="Industrial System Threat Widget" currentUser={currentUser} api={api} Metric={Metric} />
     <PvpIntelWidget key="navigation-planner-5" data-layout-id="navigation-planner-5" data-layout-label="Pvp Intel Widget" currentUser={currentUser} api={api} Metric={Metric} />
     <div key="navigation-planner-6" data-layout-id="navigation-planner-6" data-layout-label="Section 6" id="local-threat-analyzer" className="threat-analyzer-anchor">

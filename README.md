@@ -101,6 +101,10 @@ See [CHANGELOG.md](CHANGELOG.md) for version-by-version release notes. Applicati
 - Jump Capable Ship Plotter with automatic routing through ordered, required cyno waypoints, JDC/JFC fuel math, mapped alternate jump points, explicit station-risk warnings, nearby operational map context, and kill/activity intel per jump.
 - Sideloadable Android WebView wrapper build script that outputs `EQM.apk`.
 
+## Route tools and maps — v2.4.0 development preview
+
+In the default **Navigation** layout, **Route Checker** and **Jump Capable Ship Plotter** sit above **My Journey** and **New Eden Atlas**. Each panel can be collapsed from its header. [Desktop preview](static/ss/v2.4.0/navigation-panels-collapsed.png) · [Mobile preview](static/ss/v2.4.0/navigation-panels-mobile.png)
+
 ## Shareable Intel Reports — v2.4.0 development preview
 
 Run a report on a system, pilot, corporation or alliance. Inspect common combat hulls, active systems, UTC activity and recent killmails, or explicitly pull recent zKill evidence. System reports also show separate internal sightings and available hourly ESI jumps/deaths/NPC totals. Save privately or create an expiring public combat snapshot that can be revoked. Notes, priority flags, scan/manual observations and private ESI stay out of shares. [Workflow, source coverage and rollout](docs/intel-report-builder.md).

@@ -6,6 +6,7 @@ import { MissionsPanel } from "./MissionsPanel";
 import type { Activity, AtlasCatalog, AtlasDetail, RouteRequest } from "./atlasTypes";
 import { activityValue, securityColor } from "./atlasTypes";
 import "./atlas.css";
+import "./navigationPanels.css";
 
 export function NavigationAtlas({onRoute,route}: {onRoute:(request:RouteRequest)=>void;route:NavigationRoute|null}) {
   const [catalog,setCatalog]=useState<AtlasCatalog|null>(null);const [error,setError]=useState("");
@@ -16,6 +17,7 @@ export function NavigationAtlas({onRoute,route}: {onRoute:(request:RouteRequest)
   const [activity,setActivity]=useState<Activity|null>(null);const [activityError,setActivityError]=useState("");
   const [activityBusy,setActivityBusy]=useState(false);const [corpId,setCorpId]=useState<number|null>(null);
   const [reload,setReload]=useState(0);
+  const [open, setOpen] = useState(true);
   useEffect(()=>{let cancelled=false;setError("");void api<AtlasCatalog>("/navigation/atlas/catalog")
     .then(data=>{if(!cancelled)setCatalog(data);}).catch(e=>{if(!cancelled)setError(String(e));});return()=>{cancelled=true;};},[reload]);
   useEffect(()=>{let cancelled=false;setActivityBusy(true);setActivityError("");void api<Activity>("/navigation/atlas/activity")
@@ -35,9 +37,13 @@ export function NavigationAtlas({onRoute,route}: {onRoute:(request:RouteRequest)
   function showMap(id:number){setSelected(id);setTab("map");setQuery("");
     const s=systems.find(s=>s.system_id===id);if(region!=="all"&&!(region==="known"&&(s?.region_id??Infinity)<11000000)&&String(s?.region_id)!==region)setRegion(s?.region_id?String(s.region_id):"all");}
   function plan(name:string){if(origin){setDestinationName(name);onRoute({origin:origin.name,destination:name,requestId:Date.now()});}}
-  return <section className="panel stacked navigation-atlas">
+  return <section className="panel stacked navigation-atlas collapsible-navigation-panel" data-collapsed={!open}>
     <div className="section-heading"><div><span className="atlas-eyebrow">EXPLORE / PLAN / EARN</span><h3>New Eden Atlas</h3></div>
-      <button disabled={activityBusy} onClick={()=>setReload(r=>r+1)}>Refresh data</button></div>
+      <div className="navigation-panel-actions">
+        {open && <button type="button" disabled={activityBusy} onClick={() => setReload(value => value + 1)}>Refresh data</button>}
+        <button type="button" aria-expanded={open} aria-label={open ? "Collapse New Eden Atlas" : "Expand New Eden Atlas"} onClick={() => setOpen(value => !value)}>{open ? "Collapse" : "Expand"}</button>
+      </div>
+    </div>
     <div className="atlas-tabs" role="tablist" aria-label="Navigation atlas"><button role="tab" aria-selected={tab==="map"} onClick={()=>setTab("map")}>Star Map</button>
       <button role="tab" aria-selected={tab==="missions"} onClick={()=>setTab("missions")}>Missions & LP</button></div>
     {error&&<p role="alert" className="mini-alert">{error}</p>}

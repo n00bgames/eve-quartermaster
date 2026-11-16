@@ -998,5 +998,42 @@
         "sha256": "dd14aa267ce8bb7c5749b67c883cb5a458741571fea05229b568760e5dde0b0b"
       }
     ]
+  },
+  "navigation_panel_disclosures": {
+    "captured_on": "2026-11-16",
+    "application_version": "2.4.0",
+    "source_base_commit": "5fa2af3fbbe6b576d296ae4f0893e25c48a1ecd4",
+    "source_state": "Unreleased working-tree changes",
+    "method": "Actual EQM frontend production bundle in headless Edge and Playwright at desktop and mobile widths.",
+    "data": "Intercepted local API fixtures with a synthetic account and a two-system atlas. No live ESI or account data.",
+    "limitations": "The browser preview uses mocked API responses.",
+    "validation": [
+      "Desktop defaults, four keyboard-toggleable panels, input and route retention, and automatic reopening from Atlas",
+      "390px mobile collapse controls and no horizontal overflow in the collapsed view",
+      "Saved custom panel order remains effective"
+    ],
+    "source_sha256": {
+      "frontend/src/main.tsx": "59922bf233beffbf040accd565134f6509897dcc0ba6c2429a8541edba4c51e2",
+      "frontend/src/features/navigation/RouteChecker.tsx": "5bceb8530da35b61420e1d5c3db6281bc1b3a42ff8e980fa17aa47906d631467",
+      "frontend/src/features/navigation/JumpFreighterPlanner.tsx": "6448469bb46c71e5ce608d4614e0dd8165b32a76fa0a3c20106ebf31d50eff1b",
+      "frontend/src/features/navigation/NavigationAtlas.tsx": "f00c4dc2f0aea793bf625d71854aad5606c4152ac854d3cb50fb2d3040db96cb",
+      "frontend/src/features/navigation/navigationPanels.css": "0eb58b72892041f6ea925908b0cfa6b1c75ce08936d9f3839f23a1296497d88d"
+    },
+    "images": [
+      {
+        "file": "navigation-panels-collapsed.png",
+        "bytes": 227268,
+        "width": 1440,
+        "height": 1000,
+        "sha256": "3be164f55b7fefe7877b3cc7e273354ba8b268cce6d5783b056d593017dbc750"
+      },
+      {
+        "file": "navigation-panels-mobile.png",
+        "bytes": 78173,
+        "width": 390,
+        "height": 844,
+        "sha256": "ac65331b682dc396c618f57a5f87ad82256a818dc0f3461bad766804d8bbea4d"
+      }
+    ]
   }
 }

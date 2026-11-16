@@ -1,0 +1,10 @@
+.collapsible-navigation-panel[data-collapsed="true"] > :not(.section-heading) {
+  display: none;
+}
+
+.navigation-panel-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}

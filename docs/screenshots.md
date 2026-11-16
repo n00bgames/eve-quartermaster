@@ -1060,3 +1060,11 @@ November 16, 2026 unreleased development captures from the Matchups and Fittings
 ![Imported Caracal draft with its source and simulation controls](../static/ss/v2.4.0/matchups-loss-draft.png)
 
 ![Recorded equipment preview on a 390-pixel viewport](../static/ss/v2.4.0/matchups-loss-preview-mobile.png)
+
+## Collapsible Navigation panels — v2.4.0 development preview
+
+The default Navigation layout starts with Route Checker and Jump Capable Ship Plotter, followed by My Journey and New Eden Atlas. These unreleased captures use synthetic data.
+
+![All four Navigation panels collapsed on desktop](../static/ss/v2.4.0/navigation-panels-collapsed.png)
+
+![Navigation collapse controls at 390 pixels](../static/ss/v2.4.0/navigation-panels-mobile.png)
