@@ -890,7 +890,11 @@ function App() {
         {activeTab === "quartermaster" && canView("quartermaster") && <QuartermasterPage api={api} formatDateTime={(value) => formatDateTime(value, preferredTimeZone(user))} />}
 
         {activeTab === "local_scan" && canView("local_scan") && <LocalScanPage api={api} allowDscan={canView("dscan")} />}
-        {activeTab === "matchups" && canView("matchups") && <MatchupsPage key={locationHash} api={api} />}
+        {activeTab === "matchups" && canView("matchups") && <MatchupsPage key={locationHash} api={api}
+          onOpenFitting={canView("fittings") ? (loss) => {
+            setFittingSeed({ loss, nonce: Date.now() });
+            setActiveTab("fittings");
+          } : undefined} />}
         {activeTab === "dscan" && canView("dscan") && <DScanPage api={api} allowMatchups={canView("matchups")} />}
         {activeTab === "intel_reports" && canView("intel_reports") && <IntelReportsWorkspace key={locationHash} api={api} />}
 
@@ -924,7 +928,9 @@ function App() {
 
         {activeTab === "skills" && canView("skills") && <CharacterSkills currentUser={user} api={api} Metric={Metric} CharacterHoverName={CharacterHoverName} selectedPlanId={skillPlanFocusId ?? (locationHash.match(/^#skills\/plans\/(\d+)/)?.[1] ? Number(locationHash.match(/^#skills\/plans\/(\d+)/)?.[1]) : null)} />}
 
-        {activeTab === "fittings" && canView("fittings") && <FittingsPage currentUser={user} assets={data.assets} seed={fittingSeed} api={api} onOpenAssets={(itemName) => { setAssetSeed(itemName ? { key: "item", value: itemName, mode: "exact", nonce: Date.now() } : { key: "item", value: "", mode: "contains", nonce: Date.now() }); setActiveTab("assets"); }} onOpenMarket={(text) => { setMarketSeed({ text, nonce: Date.now() }); setActiveTab("market"); }} />}
+        {activeTab === "fittings" && canView("fittings") && <FittingsPage currentUser={user} assets={data.assets} seed={fittingSeed} api={api}
+          onDismissLoss={(nonce) => setFittingSeed(current => current?.nonce === nonce && "loss" in current ? null : current)}
+          onOpenAssets={(itemName) => { setAssetSeed(itemName ? { key: "item", value: itemName, mode: "exact", nonce: Date.now() } : { key: "item", value: "", mode: "contains", nonce: Date.now() }); setActiveTab("assets"); }} onOpenMarket={(text) => { setMarketSeed({ text, nonce: Date.now() }); setActiveTab("market"); }} />}
 
         {activeTab === "jump_clones" && canView("jump_clones") && <JumpClonesPage api={api} EveEntityIcon={EveEntityIcon} formatDateTime={(value) => formatDateTime(value, preferredTimeZone(user))} />}
 

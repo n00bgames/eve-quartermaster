@@ -1,4 +1,22 @@
-export type FittingSeed = { text: string; nonce: number };
+export type LossFittingItem = {
+  flag: string;
+  type_id: number;
+  quantity: number;
+  charge_type_id: number | null;
+  simulation_state: "online" | "active";
+};
+
+export type RecordedFittingModule = { slot: string; name: string; quantity: number; charge: string | null };
+
+export type LossFittingPreview = {
+  killmail_id: number;
+  ship_type_id: number;
+  ship_name: string;
+  modules: RecordedFittingModule[];
+  items: LossFittingItem[];
+};
+
+export type FittingSeed = { text: string; nonce: number } | { loss: LossFittingPreview; nonce: number };
 
 export type FittingSimulationState = "offline" | "online" | "active" | "overheated";
 

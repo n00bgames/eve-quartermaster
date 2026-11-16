@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import re
 from datetime import datetime, timezone
-from typing import Any
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
@@ -141,6 +142,29 @@ ESI_FITTING_FLAGS = {
 SECTION_SLOT_PREFIXES = ["LoSlot", "MedSlot", "HiSlot", "RigSlot", "SubSystemSlot", "ServiceSlot"]
 QUANTITY_SUFFIX_RE = re.compile(r"\s+x\s*([0-9][0-9,]*)\s*$", re.IGNORECASE)
 EFT_HEADER_RE = re.compile(r"^\[(?P<ship>[^,\]]+),\s*(?P<name>[^\]]+)\]\s*$")
+LOSS_DRAFT_DESCRIPTION = "Reconstructed from zKillboard loss #"
+LOSS_FIT_BAYS = {"DroneBay": 18, "FighterBay": 87}
+LOSS_FIT_RACKS = FITTED_SLOT_PREFIXES - {"ServiceSlot"}
+FittingTypeId = Annotated[int, Field(gt=0, le=2_147_483_647)]
+
+
+class LossFitItem(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    flag: str = Field(max_length=64)
+    type_id: FittingTypeId
+    quantity: int = Field(ge=1, le=500_000_000)
+    charge_type_id: FittingTypeId | None = None
+    simulation_state: Literal["online", "active"]
+
+
+class LossFitImport(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    character_id: FittingTypeId
+    ship_type_id: FittingTypeId
+    killmail_id: int = Field(gt=0, le=9_223_372_036_854_775_807)
+    items: list[LossFitItem] = Field(min_length=1, max_length=500)
 
 
 def token_scopes(token: EsiToken) -> set[str]:
@@ -242,6 +266,9 @@ def next_free_fitting_flag(fitting: CharacterFitting, requested_flag: str, ignor
 
 def normalize_draft_fitting_items(db: Session, fitting: CharacterFitting) -> bool:
     if not fitting.is_draft:
+        return False
+    # Loss drafts carry the recorded rack positions, including gaps.
+    if (fitting.description or "").startswith(LOSS_DRAFT_DESCRIPTION):
         return False
     changed = False
     for item in sorted(fitting.items, key=lambda row: (row.flag, row.id or 0)):
@@ -785,38 +812,88 @@ def fitting_item_catalog(bucket: str = Query("Modules"), limit: int = 8000, curr
 
 
 
-@router.post("/import-text")
-async def import_fitting_text(payload: dict[str, Any], current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
-    require_fittings_view(current_user, db)
-    character_id = int(payload.get("character_id") or 0)
+def require_import_character(db: Session, current_user: User, character_id: int) -> None:
     character = db.get(EveCharacter, character_id)
     if character is None:
         raise HTTPException(status_code=404, detail="Choose a character before importing the fitting")
     if not can_view_all_characters(current_user, db) and character.owner_user_id != current_user.id:
         raise HTTPException(status_code=403, detail="You can only import fittings for your own characters")
+
+
+def save_imported_draft(
+    db: Session, user: User, character_id: int, ship_type_id: int, name: str,
+    description: str, items: list[dict[str, Any]],
+) -> dict[str, Any]:
+    draft = CharacterFitting(
+        character_id=character_id,
+        name=name[:255],
+        description=description,
+        ship_type_id=ship_type_id,
+        is_shared=False,
+        is_draft=True,
+        updated_at=datetime.now(timezone.utc),
+        items=[CharacterFittingItem(**item) for item in items],
+    )
+    db.add(draft)
+    db.commit()
+    return serialize_fitting(load_fitting_or_404(db, draft.id), user, db)
+
+
+@router.post("/import-text")
+async def import_fitting_text(payload: dict[str, Any], current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+    require_fittings_view(current_user, db)
+    character_id = int(payload.get("character_id") or 0)
+    require_import_character(db, current_user, character_id)
     ship_type, fitting_name, parsed_items, warnings = parse_eft_fit(db, str(payload.get("text") or ""))
     refreshed_types = await refresh_public_type_metadata(db, {ship_type.type_id, *(int(item["type_id"]) for item in parsed_items), *(int(item["charge_type_id"]) for item in parsed_items if item.get("charge_type_id") is not None)})
     if refreshed_types:
         db.flush()
-        ship_type = db.get(EveType, ship_type.type_id) or ship_type
-    now = datetime.now(timezone.utc)
-    draft = CharacterFitting(
-        character_id=character.id,
-        eve_fitting_id=None,
-        source_fitting_id=None,
-        name=fitting_name[:255],
-        description="Imported from EFT clipboard text.",
-        ship_type_id=ship_type.type_id,
-        is_shared=False,
-        is_draft=True,
-        updated_at=now,
+    fitting = save_imported_draft(
+        db, current_user, character_id, ship_type.type_id, fitting_name,
+        "Imported from EFT clipboard text.", parsed_items,
     )
-    db.add(draft)
-    db.flush()
-    for item in parsed_items:
-        db.add(CharacterFittingItem(fitting_id=draft.id, **item))
-    db.commit()
-    return {"fitting": serialize_fitting(load_fitting_or_404(db, draft.id), current_user, db), "warnings": warnings}
+    return {"fitting": fitting, "warnings": warnings}
+
+
+@router.post("/import-loss")
+def import_loss_fit(payload: LossFitImport, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+    require_fittings_view(current_user, db)
+    if not can_view_section(current_user, "matchups", db):
+        raise HTTPException(status_code=403, detail="Matchups permission is required")
+    require_import_character(db, current_user, payload.character_id)
+
+    type_ids = {payload.ship_type_id, *(item.type_id for item in payload.items)}
+    type_ids.update(item.charge_type_id for item in payload.items if item.charge_type_id is not None)
+    types = {row.type_id: row for row in db.execute(
+        select(EveType.type_id, EveType.name, EveGroup.category_id)
+        .join(EveGroup, EveGroup.group_id == EveType.group_id)
+        .where(EveType.type_id.in_(type_ids))
+    )}
+    if set(types) != type_ids or types[payload.ship_type_id].category_id != 6:
+        raise HTTPException(status_code=422, detail="The loss contains a hull or item missing from the imported EVE data")
+
+    occupied = set()
+    for item in payload.items:
+        category = types[item.type_id].category_id
+        if item.flag in LOSS_FIT_BAYS:
+            if category != LOSS_FIT_BAYS[item.flag] or item.charge_type_id is not None:
+                raise HTTPException(status_code=422, detail=f"Invalid equipment in {item.flag}")
+            continue
+        if (
+            item.flag not in DRAFT_FLAGS or slot_prefix(item.flag) not in LOSS_FIT_RACKS
+            or item.quantity != 1 or item.flag in occupied or category not in {7, 32, 66}
+        ):
+            raise HTTPException(status_code=422, detail=f"Invalid or duplicate fitted slot: {item.flag}")
+        if item.charge_type_id is not None and types[item.charge_type_id].category_id != 8:
+            raise HTTPException(status_code=422, detail=f"Invalid loaded charge for {item.flag}")
+        occupied.add(item.flag)
+
+    return save_imported_draft(
+        db, current_user, payload.character_id, payload.ship_type_id,
+        f"{types[payload.ship_type_id].name} · zKillboard loss #{payload.killmail_id}",
+        f"{LOSS_DRAFT_DESCRIPTION}{payload.killmail_id}. Recorded charges are copied where available. Module and drone states are estimates.",
+        [item.model_dump() for item in payload.items],
+    )
 
 
 @router.patch("/{fitting_id}")

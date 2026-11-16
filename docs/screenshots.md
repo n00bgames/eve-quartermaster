@@ -1,6 +1,6 @@
 # EQM screenshot gallery
 
-**Latest:** [v2.4.0 theme gallery](#theme-gallery-for-v240), captured November 10, 2026.
+**Latest:** [zKillboard loss fits in Fittings](#zkillboard-loss-fits-in-fittings), captured November 16, 2026. [v2.4.0 theme gallery](#theme-gallery-for-v240).
 
 HyperNet and PLEX previews added **October 3, 2026**, from source commit `4ec0931cda1f800afb1d83560e19862809148ccd`. Atlas previews were added September 19 from `f6131a1be18e808c886f75c380c6ebf646323bfb`; the earlier gallery reconciliation was September 11 against the v1.0 candidate `f894f27ad7fb2ef4956e5bef2e97d3865fe8cfd2`. [README](../README.md) · [v1.0.5 release notes](releases/v1.0.5.md) · [Install](../README.md#install)
 
@@ -1048,3 +1048,15 @@ Unreleased development captures of the Overview using the same synthetic account
 | EQM-Classic | Emerald | [View Emerald](../static/ss/v2.4.0/theme-emerald-overview.png) |
 | EQM-Classic | Amethyst | [View Amethyst](../static/ss/v2.4.0/theme-amethyst-overview.png) |
 | EQM-Classic | Daylight | [View Daylight](../static/ss/v2.4.0/theme-daylight-overview.png) |
+
+## zKillboard loss fits in Fittings
+
+November 16, 2026 unreleased development captures from the Matchups and Fittings components backed by a disposable local database. The Caracal loss and pilot are synthetic. [Matchups workflow](matchups.md#ship-catalog-and-example-fits) · [Capture receipt](../static/ss/v2.4.0/capture-receipt.json)
+
+![Open in Fittings on a Matchups loss example](../static/ss/v2.4.0/matchups-open-in-fittings.png)
+
+![Preview of recorded Caracal equipment, loaded missiles, and drones](../static/ss/v2.4.0/matchups-loss-preview.png)
+
+![Imported Caracal draft with its source and simulation controls](../static/ss/v2.4.0/matchups-loss-draft.png)
+
+![Recorded equipment preview on a 390-pixel viewport](../static/ss/v2.4.0/matchups-loss-preview-mobile.png)

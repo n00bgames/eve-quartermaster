@@ -273,6 +273,7 @@ def render_examples(db, type_id, context, sample):
     for row, items, observed, ambiguous in selected:
         fitting = CharacterFitting(ship_type_id=type_id)
         modules = []
+        fitting_items = []
         for index, (flag, item_type, quantity, charge) in enumerate(items, 1):
             group = groups.get(item_type, "")
             state = "online" if group in {"Propulsion Module", "Siege Module", "Bastion Module", "Triage Module", "Industrial Core", "Damage Control"} else "active"
@@ -283,6 +284,10 @@ def render_examples(db, type_id, context, sample):
             modules.append({
                 "slot": flag, "name": names.get(item_type, f"Unknown type {item_type}"),
                 "quantity": quantity, "charge": names.get(charge, f"Unknown type {charge}") if charge else None,
+            })
+            fitting_items.append({
+                "flag": flag, "type_id": item_type, "quantity": quantity,
+                "charge_type_id": charge, "simulation_state": state,
             })
         fitted_types = {item_type for _, item_type, _, _ in items}
         missing = {type_id} | fitted_types | {charge for _, _, _, charge in items if charge}
@@ -307,6 +312,10 @@ def render_examples(db, type_id, context, sample):
         examples.append({
             **{key: row[key] for key in ("killmail_id", "killmail_time", "estimated_loss_isk")},
             "modules": modules,
+            "fitting_items": fitting_items if not ambiguous and all(
+                item_type in types and (charge is None or charge in types)
+                for _, item_type, _, charge in items
+            ) else None,
             "weapon_families": sorted(observed),
             "stats": stats,
             "counter_fits": fit_counters(observed, {groups.get(k, "") for k in fitted_types}, context, groups.get(type_id)),

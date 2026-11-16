@@ -939,5 +939,64 @@
         "sha256": "da4e963f27b040d9893782bb9d1223700bc31f8913b857c47d460f1ebcb2bec4"
       }
     ]
+  },
+  "matchups_loss_fittings": {
+    "captured_on": "2026-11-16",
+    "application_version": "2.4.0",
+    "source_base_commit": "092efa0137ce45c402592afb0233feeeae0b6d8f",
+    "source_state": "Unreleased working-tree changes",
+    "method": "Headless Edge and Playwright, actual EQM Matchups and Fittings components and styles with the local FastAPI examples, import, and simulation endpoints.",
+    "data": "Synthetic Caracal loss and linked pilot in disposable SQLite, with CCP types and Dogma from the existing Pyfa All-V fitting reference catalog.",
+    "validation": [
+      "Read-only preview shows exact charges, fit items and drone quantities",
+      "Private draft opens in the normal simulator with recorded loaded charges",
+      "Mobile fit preview stays within its width and closes without a draft"
+    ],
+    "backend_validation": "42 targeted Matchups, EFT import, and fitting fleet tests passed.",
+    "frontend_validation": "TypeScript and production Vite build passed.",
+    "limitations": "The browser harness loaded the feature components in a local demo shell. Public loss requests and external ship images used fixture responses. The capture used the Python stats engine.",
+    "source_sha256": {
+      "backend/app/api/fittings.py": "24e9c8955314a74f9978c804f63b303c13b634a8a226589b1749f03fca216731",
+      "backend/app/services/matchup_examples.py": "c6cbdb7ca5287d183110badf3997d04a9d7fc2b73eb56a304d2252fba5dbbb45",
+      "backend/tests/test_matchups.py": "23443a02d3f84d8f76532fe21b577a876ba9e2084530f949bda9ca5033758cc3",
+      "frontend/src/features/fittings/FittingShellPanels.tsx": "10e7c0c63a2c6eb40fda776ea69b39950721139f00f84d089214e591f3dea01f",
+      "frontend/src/features/fittings/FittingSupport.tsx": "9e1e6be92f113cdc320acd6f3ece636867c91953b84fab93f87f83cf574db1bc",
+      "frontend/src/features/fittings/FittingsPage.tsx": "8678f507f515f8ecf1c62d04af84429f64cbc0423f1027725be8408907723cfa",
+      "frontend/src/features/matchups/FitExamples.tsx": "5df1cd926e7b46278f3d30f3c815699cb38cf1fcb447858241fc5814eb196c98",
+      "frontend/src/features/matchups/MatchupsPage.tsx": "036539287e9ca8b985566cf059ee6fbe4c4c7acd6a972275ec52800fd1310119",
+      "frontend/src/features/matchups/types.ts": "856e949e2512151bf032e1262631c4704480251cf99476b22037eb07a51b6fd7",
+      "frontend/src/main.tsx": "2e44a1c1e738b24c0fae0e3580598595e136565dd586e9d5eefa46d75e22f0ac",
+      "frontend/src/types/fittings.ts": "73f95fd59c71e36c3a3769a08ae248e926a0a77ed8f0ceeee4fd406a2d6631a0"
+    },
+    "images": [
+      {
+        "file": "matchups-open-in-fittings.png",
+        "bytes": 65785,
+        "width": 1036,
+        "height": 481,
+        "sha256": "f8e2ff17f8f4546d649a691e1bc6f8dfb2517327df085a77e384798751043003"
+      },
+      {
+        "file": "matchups-loss-preview.png",
+        "bytes": 275864,
+        "width": 1354,
+        "height": 626,
+        "sha256": "a2f2223edc4427f0ac0fbb48aa220fa0cab89dac52bff8a1541965497b3d2608"
+      },
+      {
+        "file": "matchups-loss-draft.png",
+        "bytes": 75668,
+        "width": 952,
+        "height": 340,
+        "sha256": "3e180121ed4f2742fdf4d351091fbe22adf9b7145376fa422a7f6b7312f0acbd"
+      },
+      {
+        "file": "matchups-loss-preview-mobile.png",
+        "bytes": 193803,
+        "width": 344,
+        "height": 954,
+        "sha256": "dd14aa267ce8bb7c5749b67c883cb5a458741571fea05229b568760e5dde0b0b"
+      }
+    ]
   }
 }

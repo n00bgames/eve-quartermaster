@@ -1101,6 +1101,8 @@ Pick the characters you want to track, log observed system visits at a 15-second
 
 Open **Intel → Matchups** to browse published ships by CCP subclass and name or start from a D-Scan. Hull cards show weapon bonuses and base shield, armor and hull resistances. Research public zKillboard loss fits to see fitted modules and charges, estimated stats and possible counter hulls with suggested equipment. [Matchups guide](docs/matchups.md).
 
+Use **Open in Fittings** to preview a loss fit and create an editable private draft with its recorded slots, charges, and drones. [Fittings preview](static/ss/v2.4.0/matchups-loss-preview.png) · [Imported draft](static/ss/v2.4.0/matchups-loss-draft.png)
+
 ![Onyx base resistances and the sorted heavy interdictor subclass](static/ss/v2.2.1/matchups-ship-catalog.jpg)
 
 [Example fit and counters](static/ss/v2.2.1/matchups-loss-fit.jpg) · [Mobile catalog](static/ss/v2.2.1/matchups-catalog-mobile.jpg).

@@ -1,6 +1,7 @@
 import {useEffect,useState} from 'react';
 import {BookOpen,Crosshair,Shield,Target} from 'lucide-react';
 import type {ApiClient} from '../localScan/types';
+import type {LossFittingPreview} from '../../types/fittings';
 import {EveItemName} from '../clientLinks/EveClientLinks';
 import type {Card,Catalog,Composition,Hull} from './types';
 import {LayoutRegion} from '../appearance/LayoutRegion';
@@ -12,7 +13,7 @@ function HullIcon({id}:{id:number}){
  const [bad,setBad]=useState(false);
  return bad?<span className="matchup-hull-icon" aria-hidden="true">◇</span>:<img className="matchup-hull-icon" src={`https://images.evetech.net/types/${id}/icon?size=64`} alt="" referrerPolicy="no-referrer" onError={()=>setBad(true)}/>;
 }
-export function MatchupsPage({api}:{api:ApiClient}){
+export function MatchupsPage({api, onOpenFitting}: {api: ApiClient; onOpenFitting?: (fit: LossFittingPreview) => void}){
  const params=new URLSearchParams(window.location.hash.split('?')[1]??'');
  const initial=Number(params.get('ship'))||0,scan=params.get('scan');
  const [catalog,setCatalog]=useState<Catalog|null>(null),[query,setQuery]=useState(''),[results,setResults]=useState<Hull[]>([]),[searching,setSearching]=useState(false);
@@ -66,7 +67,7 @@ export function MatchupsPage({api}:{api:ApiClient}){
      </div>}
      <h3><Shield size={18}/> Base resistance map</h3><div className="matchup-resist-grid">{card.layers.map(layer=><article key={layer.name}><h4>{layer.name}</h4>{Object.entries(layer.resists).map(([damage,value])=><div key={damage} className={`matchup-resist ${damage}`}><span>{damage==='em'?'EM':damage}</span><div className="matchup-resist-track"><i style={{width:`${value??0}%`}}/></div><strong>{value===null?'Unknown':`${value}%`}</strong></div>)}<p className="muted">{layer.weakest.length?`Lowest base: ${layer.weakest.join(' / ').toUpperCase()}`:'Incomplete SDE values; no hole inferred.'}</p></article>)}</div><p className="muted">{card.resist_note} <a href={card.fact_source.url} target="_blank" rel="noopener noreferrer">CCP data ↗</a></p>
     </section>
-    <FitExamples key={card.type_id} hull={card} context={context} api={api} chooseCounter={chooseCounter}/>
+    <FitExamples key={card.type_id} hull={card} context={context} api={api} chooseCounter={chooseCounter} onOpenFitting={onOpenFitting}/>
     {card.variants.length>0&&<section className="panel matchup-variants"><header><div><span className="matchup-eyebrow">FIT-DEPENDENT / EDITORIAL SCENARIOS</span><h3>What might it be fitted for?</h3></div><label>Observed fit clue<select aria-label="Observed fit clue" value={variant} onChange={e=>setVariant(e.target.value)}><option value="unknown">Unknown · show all alternatives</option>{card.variants.map(v=><option key={v.key} value={v.key}>{v.name}</option>)}</select></label></header>
      {variant==='unknown'&&card.variants.length>0&&<p className="muted">These are alternatives to investigate. None was detected by the scan. Choosing a clue narrows the guidance; it does not verify the fit.</p>}
      {profiles.map(v=><article className="matchup-variant" key={v.key}><h3>{v.name}</h3><div className="matchup-tags">{v.tags.map(t=><span key={t}>{t}</span>)}</div><dl><dt>Range / control envelope</dt><dd>{v.range_note}</dd><dt>Tank hypothesis</dt><dd>{v.tank}</dd><dt>Incoming damage</dt><dd>{v.damage}</dd><dt>Look for</dt><dd>{v.confirm.join(' · ')}</dd></dl><p className="matchup-plan"><strong>{context==='fleet'?'FC focus':'Pilot focus'}:</strong> {v.plan}</p><h4>Counter tools & example hulls</h4><div className="matchup-counter-grid">{v.counter_tools.map(c=><section key={c.name}><h4>{c.name}</h4><strong>{c.examples.join(' / ')}</strong><p>{c.plan}</p><small className="muted">{c.condition}</small></section>)}</div><footer><a href={v.source.url} target="_blank" rel="noopener noreferrer">{v.source.title} ↗</a><span>Source checked {v.reviewed_at} · counter plans are EQM judgments, not statistical win rates</span></footer></article>)}

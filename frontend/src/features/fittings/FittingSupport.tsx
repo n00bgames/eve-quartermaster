@@ -398,7 +398,7 @@ export function FittingStatsPanel({ stats }: { stats?: FittingSimulationStats | 
 
       <div className="fitting-stat-pair"><span>Drones</span><b>{fittingStatValue(stats.offense.drone_dps, 1)}</b></div>
 
-      {stats.offense.weapons.length > 0 && <details><summary>Weapon estimates</summary><div className="mini-list fitting-weapon-list">{stats.offense.weapons.map((weapon) => <div key={`${weapon.name}-${weapon.charge_name ?? "native"}`}><strong><EveItemName name={weapon.name} typeId={weapon.type_id}/></strong><span>{fittingStatValue(weapon.dps, 1)} DPS{weapon.charge_name ? ` · ${weapon.charge_name}` : ""}</span></div>)}</div></details>}
+      {stats.offense.weapons.length > 0 && <details><summary>Weapon estimates</summary><div className="mini-list fitting-weapon-list">{stats.offense.weapons.map((weapon, index) => <div key={weapon.item_id ?? `row-${index}`}><strong><EveItemName name={weapon.name} typeId={weapon.type_id}/></strong><span>{fittingStatValue(weapon.dps, 1)} DPS{weapon.charge_name ? ` · ${weapon.charge_name}` : ""}</span></div>)}</div></details>}
 
     </article>
 
@@ -469,7 +469,7 @@ export function FittingStatsPanel({ stats }: { stats?: FittingSimulationStats | 
 
       <div className="fitting-stat-pair"><span>Peak recharge</span><b>{fittingStatValue(stats.capacitor.peak_recharge, 2, " GJ/s")}</b></div>
 
-      {(stats.capacitor.modules?.length ?? 0) > 0 && <details><summary>Cap flow</summary><div className="mini-list fitting-weapon-list">{stats.capacitor.modules?.map((mod) => <div key={mod.name}><strong>{mod.name}</strong><span>{fittingStatValue(mod.gj_per_second, 2, " GJ/s")} · {durationValue(mod.cycle_seconds)} cycle</span></div>)}</div></details>}
+      {(stats.capacitor.modules?.length ?? 0) > 0 && <details><summary>Cap flow</summary><div className="mini-list fitting-weapon-list">{stats.capacitor.modules?.map((mod, index) => <div key={`${mod.name}-${index}`}><strong>{mod.name}</strong><span>{fittingStatValue(mod.gj_per_second, 2, " GJ/s")} · {durationValue(mod.cycle_seconds)} cycle</span></div>)}</div></details>}
 
       <div className="fitting-stat-pair"><span>Scan res</span><b>{fittingStatValue(stats.targeting.scan_resolution, 0, " mm")}</b></div>
 

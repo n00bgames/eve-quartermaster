@@ -1,7 +1,8 @@
 import {EveItemName} from "../clientLinks/EveClientLinks";
 import { ClipboardList } from "lucide-react";
+import { useEffect, useRef } from "react";
 
-import type { CharacterFittingRecord, FittingSyncToken } from "../../types/fittings";
+import type { CharacterFittingRecord, FittingSyncToken, LossFittingPreview } from "../../types/fittings";
 
 type FittingSyncControlsProps = {
   tokens: FittingSyncToken[];
@@ -42,6 +43,47 @@ export function FittingImportPanel({ importCharacterId, importText, importBusy, 
       <label className="fitting-import-text">EFT fitting text<textarea value={importText} onChange={(event) => onImportTextChange(event.target.value)} placeholder={"[Caracal, Fleet Caracal]\nBallistic Control System II\n..."} /></label>
     </div>
   </details>;
+}
+
+type LossFittingImportPanelProps = {
+  loss: LossFittingPreview;
+  characterId: number | "";
+  characterOptions: FittingSyncToken[];
+  busy: boolean;
+  onCharacterChange: (characterId: number | "") => void;
+  onCreate: () => void;
+  onDismiss: () => void;
+};
+
+export function LossFittingImportPanel({ loss, characterId, characterOptions, busy, onCharacterChange, onCreate, onDismiss }: LossFittingImportPanelProps) {
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => { heading.current?.focus(); }, [loss]);
+
+  return <section className="fitting-import-panel stacked" aria-labelledby="loss-fitting-title">
+    <div className="section-heading compact">
+      <div>
+        <h3 id="loss-fitting-title" ref={heading} tabIndex={-1}>{loss.ship_name} loss fit</h3>
+        <a href={`https://zkillboard.com/kill/${loss.killmail_id}/`} target="_blank" rel="noopener noreferrer">zKillboard loss #{loss.killmail_id} ↗</a>
+      </div>
+      <div className="button-row compact"><button type="button" disabled={busy} onClick={onDismiss}>Close preview</button></div>
+    </div>
+    <p className="muted">Loaded charges follow the killmail. Check ammo, drones and module states before comparing simulator results.</p>
+    {characterOptions.length > 0 ? <div className="fitting-import-grid">
+      <label>Draft owner<select value={characterId} disabled={busy} onChange={event => onCharacterChange(event.target.value ? Number(event.target.value) : "")}>
+        <option value="">Choose character</option>
+        {characterOptions.map(character => <option key={character.character_id} value={character.character_id}>{character.character_name}</option>)}
+      </select></label>
+      <div className="button-row compact"><button type="button" disabled={busy || characterId === ""} onClick={onCreate}>{busy ? "Creating draft…" : "Create private draft"}</button></div>
+    </div> : <p className="muted">Link a character to save this fit as a private draft.</p>}
+    <details open>
+      <summary>Recorded equipment ({loss.modules.length})</summary>
+      <ul>{loss.modules.map((module, index) => <li key={index}>
+        <small className="muted">{module.slot}</small>{" · "}
+        {module.quantity > 1 ? `${module.quantity} × ` : ""}{module.name}
+        {module.charge ? ` · ${module.charge}` : ""}
+      </li>)}</ul>
+    </details>
+  </section>;
 }
 
 type FittingListPanelProps = {

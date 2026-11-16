@@ -1,3 +1,5 @@
+import type {LossFittingItem, RecordedFittingModule} from '../../types/fittings';
+
 export type Hull={type_id:number;name:string;class_name:string;curated:boolean};
 export type Source={title:string;url:string};
 export type Weapon={key:string;name:string;cue:string;behavior:string;pair:string};
@@ -10,7 +12,8 @@ export type FitExample = {
   killmail_id:number;
   killmail_time:string;
   estimated_loss_isk:number|null;
-  modules:{slot:string;name:string;quantity:number;charge:string|null}[];
+  modules:RecordedFittingModule[];
+  fitting_items?:LossFittingItem[]|null;
   weapon_families:string[];
   stats:null|{
     offense:{total_dps:number|null;volley:number|null;weapons:WeaponStats[]};

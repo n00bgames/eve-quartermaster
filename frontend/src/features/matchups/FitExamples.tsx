@@ -1,18 +1,28 @@
 import {useEffect, useState} from 'react';
+import type {LossFittingPreview} from '../../types/fittings';
 import type {ApiClient} from '../localScan/types';
 import type {FitExample, FitResearch, Hull} from './types';
 
 const value = (n: number | null | undefined, unit = '') =>
   n == null || !Number.isFinite(n) ? 'Unknown' : n.toLocaleString(undefined, {maximumFractionDigits: 1}) + unit;
 
-function Example({example, chooseCounter}: {example: FitExample; chooseCounter: (name: string) => void}) {
+function Example({example, hull, chooseCounter, onOpenFitting}: {
+  example: FitExample; hull: Hull; chooseCounter: (name: string) => void;
+  onOpenFitting?: (fit: LossFittingPreview) => void;
+}) {
   const stats = example.stats;
+  const items = example.fitting_items;
   return <article className="matchup-example">
     <header><h4><a href={`https://zkillboard.com/kill/${example.killmail_id}/`} target="_blank" rel="noopener noreferrer">
       zKillboard loss #{example.killmail_id} ↗
     </a></h4><time dateTime={example.killmail_time}>{example.killmail_time.slice(0, 10)} UTC</time></header>
     <p className="muted">{example.weapon_families.join(' · ') || 'No identified combat weapon system'}
       {example.estimated_loss_isk != null && ` · ${value(example.estimated_loss_isk)} ISK estimated loss`}</p>
+    {onOpenFitting && items?.length ? <button type="button" onClick={() => onOpenFitting({
+      killmail_id: example.killmail_id, ship_type_id: hull.type_id, ship_name: hull.name,
+      modules: example.modules, items,
+    })}>Open in Fittings</button> : null}
+    {onOpenFitting && items === null && <p className="muted">Some equipment could not be matched to a fitted slot or an imported item.</p>}
     {stats ? <>
       <dl className="matchup-fit-stats">
         <div><dt>Cycle DPS</dt><dd>{value(stats.offense.total_dps)}</dd></div>
@@ -53,8 +63,9 @@ function Example({example, chooseCounter}: {example: FitExample; chooseCounter: 
   </article>;
 }
 
-export function FitExamples({hull, context, api, chooseCounter}: {
+export function FitExamples({hull, context, api, chooseCounter, onOpenFitting}: {
   hull: Hull; context: string; api: ApiClient; chooseCounter: (name: string) => void;
+  onOpenFitting?: (fit: LossFittingPreview) => void;
 }) {
   const [attempt, setAttempt] = useState(0);
   const [result, setResult] = useState<FitResearch | null>(null);
@@ -88,7 +99,7 @@ export function FitExamples({hull, context, api, chooseCounter}: {
       </div>}
       {result.examples.length ? <>
         <p className="muted">{result.assumptions}</p>
-        {result.examples.map(example => <Example key={example.killmail_id} example={example} chooseCounter={chooseCounter}/>)}
+        {result.examples.map(example => <Example key={example.killmail_id} example={example} hull={hull} chooseCounter={chooseCounter} onOpenFitting={onOpenFitting}/>)}
       </> : <p>No usable public fit in this sample for {hull.name}.</p>}
     </>}
     <p><a href={`https://zkillboard.com/ship/${hull.type_id}/losses/`} target="_blank" rel="noopener noreferrer">Browse this hull’s losses on zKillboard ↗</a></p>

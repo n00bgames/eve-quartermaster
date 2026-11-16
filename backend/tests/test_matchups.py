@@ -153,28 +153,35 @@ def test_full_catalog_uses_subclass_and_name_order(matchup):
 
 
 def test_loss_examples_keep_slot_charges_and_release_db_during_fetch(matchup, monkeypatch):
-    from app.models import AppSetting
+    from app.api import fittings
+    from app.models import AppSetting, EveCharacter
     from app.services import matchup_examples
 
     e = matchup
+    e.app.include_router(fittings.router, prefix='/api')
     e.db.add_all([
         AppSetting(key='killboard_enabled', value='true'),
         EveCategory(category_id=8, name='Charge'),
+        EveCategory(category_id=18, name='Drone'),
         EveGroup(group_id=74, category_id=7, name='Hybrid Weapon'),
     ])
     e.db.flush()
     e.db.add(EveGroup(group_id=374, category_id=8, name='Advanced Railgun Charge'))
+    e.db.add(EveGroup(group_id=100, category_id=18, name='Combat Drone'))
     e.db.flush()
     e.db.add_all([
         EveType(type_id=3082, name='250mm Railgun II', group_id=74),
         EveType(type_id=12801, name='Javelin M', group_id=374),
+        EveType(type_id=2456, name='Hobgoblin II', group_id=100),
     ])
     e.db.commit()
     row = {
         'killmail_id': 1, 'killmail_time': '2026-11-06T12:00:00Z',
         'victim': {'ship_type_id': 12023, 'character_id': 98765, 'items': [
-            {'flag': 27, 'item_type_id': 3082, 'quantity_dropped': 1},
-            {'flag': 27, 'item_type_id': 12801, 'quantity_destroyed': 18},
+            {'flag': 29, 'item_type_id': 3082, 'quantity_dropped': 1},
+            {'flag': 29, 'item_type_id': 12801, 'quantity_destroyed': 18},
+            {'flag': 30, 'item_type_id': 3082, 'quantity_destroyed': 1},
+            {'flag': 87, 'item_type_id': 2456, 'quantity_dropped': 2, 'quantity_destroyed': 1},
             {'flag': 5, 'item_type_id': 987654, 'quantity_destroyed': 999},
         ]},
         'zkb': {'npc': False, 'hash': 'fixture-secret'},
@@ -195,12 +202,54 @@ def test_loss_examples_keep_slot_charges_and_release_db_during_fetch(matchup, mo
     assert response.status_code == 200, response.text
     assert response.headers['cache-control'] == 'private, no-store'
     example = response.json()['examples'][0]
-    assert example['modules'] == [{'slot': 'HiSlot0', 'name': '250mm Railgun II', 'quantity': 1, 'charge': 'Javelin M'}]
+    assert example['modules'] == [
+        {'slot': 'HiSlot2', 'name': '250mm Railgun II', 'quantity': 1, 'charge': 'Javelin M'},
+        {'slot': 'HiSlot3', 'name': '250mm Railgun II', 'quantity': 1, 'charge': None},
+        {'slot': 'DroneBay', 'name': 'Hobgoblin II', 'quantity': 3, 'charge': None},
+    ]
     assert example['counter_fits'][0]['hull'] == 'Arbitrator'
     assert example['stats'] is None
     assert all(secret not in response.text for secret in ('fixture-secret', '98765', 'character_id'))
+
+    owner = e.db.scalar(select(EveCharacter).where(EveCharacter.owner_user_id == e.users['member'].id))
+    payload = {'character_id': owner.id, 'killmail_id': 1, 'ship_type_id': 12023, 'items': example['fitting_items']}
+    imported = e.client.post('/api/fittings/import-loss', json=payload)
+    assert imported.status_code == 200, imported.text
+    draft = imported.json()
+    assert draft['is_draft'] and not draft['is_shared']
+    assert draft['name'] == 'Deimos · zKillboard loss #1'
+
+    def slots(fitting):
+        return {item['flag']: (item['type_id'], item['quantity'], item['charge_type_id']) for item in fitting['items']}
+
+    expected_slots = {'HiSlot2': (3082, 1, 12801), 'HiSlot3': (3082, 1, None), 'DroneBay': (2456, 3, None)}
+    assert slots(draft) == expected_slots
+    simulation = e.client.get(f"/api/fittings/{draft['id']}/simulation")
+    assert simulation.status_code == 200, simulation.text
+    assert simulation.json()['character_id'] == owner.id
+    assert slots(e.client.get('/api/fittings').json()['fittings'][0]) == expected_slots
+    assert e.client.post('/api/fittings/import-loss', json={**payload, 'items': [payload['items'][0]] * 2}).status_code == 422
+    assert e.client.post('/api/fittings/import-loss', json={**payload, 'items': [
+        {**payload['items'][0], 'charge_type_id': 2456},
+    ]}).status_code == 422
+
+    e.current[0] = e.users['other']
+    assert e.client.post('/api/fittings/import-loss', json=payload).status_code == 403
+    assert e.client.get('/api/fittings').json()['fittings'] == []
     e.current[0] = e.users['applicant']
     assert e.client.get('/api/matchups/ships/12023/examples').status_code == 403
+
+
+def test_ambiguous_loss_slots_are_viewable_without_an_import_payload(matchup):
+    from app.services.matchup_examples import render_examples
+
+    sample = {'checked_at': '2026-11-06', 'scanned_count': 1, 'samples': [{
+        'killmail_id': 1, 'killmail_time': '2026-11-06', 'estimated_loss_isk': None,
+        'equipment': [(27, 113, 1), (27, 987654, 1)],
+    }]}
+    example = render_examples(matchup.db, 12023, 'small_gang', sample)['examples'][0]
+    assert len(example['modules']) == 2
+    assert example['fitting_items'] is None
 
 
 def test_loss_research_rechecks_permissions_after_network(matchup, monkeypatch):

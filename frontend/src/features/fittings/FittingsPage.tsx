@@ -1,10 +1,10 @@
 import {EveItemName} from "../clientLinks/EveClientLinks";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { DragEvent } from "react";
 
 import { formatDateTime, preferredTimeZone } from "../../lib/time";
 import { FittingChargeGroups } from "./FittingChargeGroups";
-import { FittingImportPanel, FittingListPanel, FittingSyncControls } from "./FittingShellPanels";
+import { FittingImportPanel, FittingListPanel, FittingSyncControls, LossFittingImportPanel } from "./FittingShellPanels";
 import { cargoBayLabel, chargeMatchesModule, eveTypeImageUrl, fallbackShipImage, FittingContextPanel, FittingStatsPanel, fittingItemTooltip, fittingSkillPlanText, fittingSlotKey, fittingStateLabel, formatVolumeM3, hideBrokenImage, isCargoBayKey, nextFittingState, romanLevel } from "./FittingSupport";
 import { FITTING_PICKER_TABS, fittingPickerBucket } from "../../types/fittings";
 import type { CharacterFittingRecord, FittingCargoBay, FittingImportResult, FittingItem, FittingPickerTab, FittingSearchType, FittingSeed, FittingSimulation, FittingSyncToken, FittingsPayload, FittingWeaponEstimate } from "../../types/fittings";
@@ -57,11 +57,12 @@ type FittingsPageProps = {
   currentUser: FittingsUser;
   assets: FittingsAsset[];
   seed?: FittingSeed | null;
+  onDismissLoss?: (nonce: number) => void;
   onOpenAssets: (itemName?: string) => void;
   onOpenMarket: (text: string) => void;
   api: ApiClient;
 };
-export function FittingsPage({ currentUser, assets, seed, onOpenAssets, onOpenMarket, api }: FittingsPageProps) {
+export function FittingsPage({ currentUser, assets, seed, onDismissLoss, onOpenAssets, onOpenMarket, api }: FittingsPageProps) {
 
   const [payload, setPayload] = useState<FittingsPayload>({ fittings: [], sync_tokens: [], send_tokens: [], editable_flags: [] });
 
@@ -78,6 +79,7 @@ export function FittingsPage({ currentUser, assets, seed, onOpenAssets, onOpenMa
   const [jumpClonePayload, setJumpClonePayload] = useState<JumpClonePayload>({ characters: [], clones: [], custom_sets: [], sync_tokens: [] });
 
   const [simulation, setSimulation] = useState<FittingSimulation | null>(null);
+  const simulationRequest = useRef(0);
 
   const [contextAssetSummaries, setContextAssetSummaries] = useState<FittingAssetSummary[]>([]);
 
@@ -112,6 +114,8 @@ export function FittingsPage({ currentUser, assets, seed, onOpenAssets, onOpenMa
   const [importText, setImportText] = useState("");
 
   const [importBusy, setImportBusy] = useState(false);
+
+  const lossSeed = seed && "loss" in seed ? seed : null;
 
   const [message, setMessage] = useState<string | null>(null);
 
@@ -620,9 +624,12 @@ export function FittingsPage({ currentUser, assets, seed, onOpenAssets, onOpenMa
 
   async function loadSimulation(fitting: CharacterFittingRecord | null, characterId: number | "", heat = simulationHeat, implantChoice = simulationImplantChoice) {
 
+    const request = ++simulationRequest.current;
+
     if (!fitting || characterId === "") {
 
       setSimulation(null);
+      setSimulationBusy(false);
 
       return;
 
@@ -637,9 +644,12 @@ export function FittingsPage({ currentUser, assets, seed, onOpenAssets, onOpenMa
       if (implantChoice.startsWith("clone:")) params.set("jump_clone_id", implantChoice.slice("clone:".length));
       if (implantChoice.startsWith("set:")) params.set("implant_set_id", implantChoice.slice("set:".length));
 
-      setSimulation(await api<FittingSimulation>(`/fittings/${fitting.id}/simulation?${params.toString()}`));
+      const next = await api<FittingSimulation>(`/fittings/${fitting.id}/simulation?${params.toString()}`);
+      if (request === simulationRequest.current) setSimulation(next);
 
     } catch (err) {
+
+      if (request !== simulationRequest.current) return;
 
       setSimulation(null);
 
@@ -647,7 +657,7 @@ export function FittingsPage({ currentUser, assets, seed, onOpenAssets, onOpenMa
 
     } finally {
 
-      setSimulationBusy(false);
+      if (request === simulationRequest.current) setSimulationBusy(false);
 
     }
 
@@ -659,7 +669,7 @@ export function FittingsPage({ currentUser, assets, seed, onOpenAssets, onOpenMa
 
   useEffect(() => {
 
-    if (!seed?.text) return;
+    if (!seed || !("text" in seed) || !seed.text) return;
 
     setFilter(seed.text);
 
@@ -824,6 +834,32 @@ export function FittingsPage({ currentUser, assets, seed, onOpenAssets, onOpenMa
     return [...byId.values()].sort((left, right) => left.character_name.localeCompare(right.character_name));
 
   }, [payload.sync_tokens]);
+
+  const lossCharacterId = importCharacterId || (simulationCharacterOptions.length === 1 ? simulationCharacterOptions[0].character_id : "");
+
+  async function importLossFitting() {
+    if (!lossSeed || lossCharacterId === "" || importBusy) return;
+    const {killmail_id, ship_type_id, items} = lossSeed.loss;
+    setImportBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const fitting = await api<CharacterFittingRecord>("/fittings/import-loss", {
+        method: "POST",
+        body: JSON.stringify({ character_id: lossCharacterId, killmail_id, ship_type_id, items }),
+      });
+      setFilter("");
+      setSimulation(null);
+      setSimulationCharacterId(lossCharacterId);
+      replaceFitting(fitting);
+      onDismissLoss?.(lossSeed.nonce);
+      setMessage(`Created private draft ${fitting.name}.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to import the loss fit");
+    } finally {
+      setImportBusy(false);
+    }
+  }
 
   const sendToken = useMemo(() => payload.send_tokens.find((token) => token.token_id === sendTokenId) ?? null, [payload.send_tokens, sendTokenId]);
 
@@ -1070,6 +1106,10 @@ export function FittingsPage({ currentUser, assets, seed, onOpenAssets, onOpenMa
     {error && <div className="mini-alert">{error}</div>}
 
     <p className="scope-warn"><strong>Fitting Simulator: For Informational Purposes Only.</strong> Still in development and not PYFA-complete; it does not yet provide full feature or calculation parity with PYFA.</p>
+
+    {lossSeed && <LossFittingImportPanel loss={lossSeed.loss} characterId={lossCharacterId} characterOptions={simulationCharacterOptions}
+      busy={importBusy} onCharacterChange={setImportCharacterId} onCreate={() => void importLossFitting()}
+      onDismiss={() => onDismissLoss?.(lossSeed.nonce)} />}
 
     <FittingSyncControls tokens={payload.sync_tokens} syncToken={syncToken} syncTokenId={syncTokenId} busyTokenId={busyTokenId} onSyncTokenChange={setSyncTokenId} onSync={() => void syncFittings()} />
 
