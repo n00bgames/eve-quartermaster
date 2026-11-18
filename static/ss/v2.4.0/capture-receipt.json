@@ -1035,5 +1035,50 @@
         "sha256": "ac65331b682dc396c618f57a5f87ad82256a818dc0f3461bad766804d8bbea4d"
       }
     ]
+  },
+  "pilot_dossiers": {
+    "captured_on": "2026-11-18",
+    "application_version": "2.4.0",
+    "source_base_commit": "ce6e22ba9ddb1bb4c903922931089de91b5ffa77",
+    "source_state": "Uncommitted local Intel follow-up. Prior unrelated release-draft changes preserved. Not deployed.",
+    "method": "Actual React components in ChatGPT in-app browser; real build_report output from disposable synthetic SQLite served through fixture API. JPEG full-page desktop and 390x844 viewport. No repainting.",
+    "data": "Synthetic Demo Pilot, Demo Regular Wingmate and one-day large-fight participants. No target-operation or production data.",
+    "images": [
+      {
+        "filename": "intel-pilot-associations-mobile.jpg",
+        "sha256": "1fdaf1f3e1246c0dc755f0c908c814ee7abbb137bde7afc59b12a8964039895c",
+        "bytes": 203622
+      },
+      {
+        "filename": "intel-pilot-associations.jpg",
+        "sha256": "2b89771898577f096a03165ed88d1a4d34d90d716f05c8d6020c17334f39edd2",
+        "bytes": 224248
+      }
+    ],
+    "source_sha256": {
+      "backend/app/domain/intel.py": "70c69e7600acab7c852d6b8b35bc25b631bc9ae2c213e25507b78a20baf9187e",
+      "backend/app/api/intel.py": "66f9ec940416bb06f314bb60a9493db72be97625926edd064b76b7ef24cd8afd",
+      "backend/app/services/intel_reports.py": "59235d34ec2e30cfbf28b01482d9ca2b22744c022e73de5b918f425f40668d45",
+      "frontend/src/features/intel/IntelReportsPage.tsx": "d7c4500685aba324cdace6fcc32c1af8872de772af36e1d96e6e15297765f204",
+      "frontend/src/features/intel/IntelAssociates.tsx": "1569561c4179642f0d439fab93b687777d0bf58f01b60eee471d59ba45998672",
+      "frontend/src/features/intel/IntelEvidenceNotice.tsx": "33a266068c409642b043ac9c9bfc3eab5e8a5ed411c026f974ac398a1d62427e",
+      "frontend/src/features/intel/combatDossier.ts": "53d4558ef221c2c26209485d0154c59aa45152987d1804c114af76ab12ff90d4",
+      "frontend/src/features/intel/types.ts": "544f210c7760e8f3587766dea8bc915e2db2728d84caf7cc4a8bef3fe303f09d",
+      "frontend/src/features/intelReports/IntelReportView.tsx": "c9ce57ad6572b208985837faa1e35cd7bbda36d4ff03b4dd332da558ab79f100"
+    },
+    "validation": {
+      "backend_tests": 65,
+      "frontend_export_tests": 2,
+      "typescript": "passed",
+      "production_build": "passed, existing chunk advisory",
+      "browser": [
+        "Visible limitation notice",
+        "Fight-size and shared-day filtering",
+        "Applied day ranking and one surviving character row",
+        "Actual downloaded Markdown inspected",
+        "390px viewport with document width 375px"
+      ],
+      "limits": "Standalone Edge automation could not launch; verification used supported in-app browser. No live API/DB/deployment test."
+    }
   }
 }

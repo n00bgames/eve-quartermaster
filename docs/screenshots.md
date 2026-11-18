@@ -1068,3 +1068,11 @@ The default Navigation layout starts with Route Checker and Jump Capable Ship Pl
 ![All four Navigation panels collapsed on desktop](../static/ss/v2.4.0/navigation-panels-collapsed.png)
 
 ![Navigation collapse controls at 390 pixels](../static/ss/v2.4.0/navigation-panels-mobile.png)
+
+## Pilot dossiers and recurring associations
+
+Captured **18 November 2026** from unreleased EQM v2.4.0 source. Actual React dossier UI in the in-app browser, with synthetic SQLite evidence processed by the real report service and served through a fixture API. No production records or private gameplay data. The applied filters exclude a one-day large-fight participant while preserving the repeated wingmate. The notice and download control remain visible. Browser download and 390px mobile layout verified.
+
+![Pilot dossier association filters and evidence limitations](../static/ss/v2.4.0/intel-pilot-associations.jpg)
+
+![Mobile pilot dossier with visible limitations and association controls](../static/ss/v2.4.0/intel-pilot-associations-mobile.jpg)

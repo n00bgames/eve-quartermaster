@@ -1223,3 +1223,9 @@ Journey analytics on Analytics and Journey now ranks and graphs **Recorded hulls
 Intel Reports can explicitly pull up to **10 zKill pages** (up to 2,000 distinct references) for any supported target, with overlap deduplication, visible coverage counts and retryable partial results. [Pull details](docs/intel-report-builder.md#pull-recent-zkill-evidence).
 
 ![Intel Reports ten-page pull coverage — synthetic v2.4.0 preview](static/ss/v2.4.0/intel-reports-ten-pages.png)
+
+### Pilot combat dossiers and association filters
+
+Unreleased v2.4.0: saved Intel dossiers can filter recurring co-attackers by fight size and shared UTC days, rank repeated-day associations, and download a combat-only Markdown dossier. A visible notice distinguishes public combat observations from online hours, absent records from inactivity and associations from proven relationships. [Guide](docs/intel-reports.md#association-filters-and-combat-dossier-downloads).
+
+![Synthetic development preview of pilot association filters and visible evidence limitations](static/ss/v2.4.0/intel-pilot-associations.jpg)

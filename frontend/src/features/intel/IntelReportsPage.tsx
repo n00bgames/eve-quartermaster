@@ -10,6 +10,9 @@ import {IntelShipLabel} from "./IntelShipLabel";
 import {IntelMembership} from "./IntelMembership";
 import {AllianceCorporations} from "./AllianceCorporations";
 import {IntelSubjectBrowser} from "./IntelSubjectBrowser";
+import {IntelAssociates} from "./IntelAssociates";
+import {IntelEvidenceNotice} from "./IntelEvidenceNotice";
+import {downloadCombatDossier} from "./combatDossier";
 import "./intel.css";
 const base="/intel";
 const number=new Intl.NumberFormat(undefined,{maximumFractionDigits:1});
@@ -31,6 +34,7 @@ export function IntelReportsPage({api}:{api:ApiClient}) {
  const [busy,setBusy]=useState(false),[loading,setLoading]=useState(false),[error,setError]=useState(""),[message,setMessage]=useState("");
  const [from,setFrom]=useState(dateUTC(new Date(Date.now()-90*86400000))),[to,setTo]=useState(dateUTC(new Date())),[pages,setPages]=useState(10);
  const [associateKind,setAssociateKind]=useState("character"),[evidenceIds,setEvidenceIds]=useState<number[]|null>(null),[evidenceTitle,setEvidenceTitle]=useState("");
+ const [associateMax,setAssociateMax]=useState(0),[associateDays,setAssociateDays]=useState(1),[associateSort,setAssociateSort]=useState("kills");
  const [privateData,setPrivateData]=useState<PrivateData|null>(null),[notes,setNotes]=useState<Note[]>([]);
  const [sighting,setSighting]=useState<SightingDraft>({...emptySighting});
  const pendingSighting=useRef<{signature:string;request_id:string}|null>(null);
@@ -39,7 +43,7 @@ export function IntelReportsPage({api}:{api:ApiClient}) {
  const latest=report?.latest_collection;
  function fail(err:unknown){setError(err instanceof Error?err.message:"Request failed");}
  async function lists(){setRevision(value=>value+1);}
- function windowQuery(){return new URLSearchParams({from_at:`${from}T00:00:00Z`,to_at:new Date(new Date(`${to}T00:00:00Z`).getTime()+86400000).toISOString()});}
+ function windowQuery(){return new URLSearchParams({association_min_days:String(associateDays),association_sort:associateSort,...(associateMax?{association_max_attackers:String(associateMax)}:{}),from_at:`${from}T00:00:00Z`,to_at:new Date(new Date(`${to}T00:00:00Z`).getTime()+86400000).toISOString()});}
  async function loadReport(id=selectedId){
   if(!id)return;const seq=++sequence.current;setLoading(true);
   try{const data=await api<IntelReport>(`${base}/subjects/${id}/report?${windowQuery()}`);if(seq===sequence.current&&currentSubject.current===id){setReport(data);if(data.subject.archived)setTab("Notes");}}
@@ -47,7 +51,7 @@ export function IntelReportsPage({api}:{api:ApiClient}) {
  }
  async function run(action:()=>Promise<void>){setBusy(true);setError("");setMessage("");try{await action();}catch(err){fail(err);}finally{setBusy(false);}}
  useEffect(()=>{setConfirmDelete(false);setReport(null);setPrivateData(null);setNotes([]);setEvidenceIds(null);setTab("Overview");if(selectedId)void loadReport(selectedId).catch(fail);},[selectedId]);
- useEffect(()=>{if(selectedId)void loadReport(selectedId).catch(fail);},[from,to]);
+ useEffect(()=>{if(selectedId)void loadReport(selectedId).catch(fail);},[from,to,associateMax,associateDays,associateSort]);
  useEffect(()=>{
   if(!latest||!isActive(latest))return;
   let stopped=false;
@@ -57,7 +61,7 @@ export function IntelReportsPage({api}:{api:ApiClient}) {
     if(!isActive(job)){await loadReport(job.subject_id);await lists();}
   }).catch(err=>{if(!stopped)fail(err);});},3000);
   return()=>{stopped=true;clearInterval(timer);};
- },[latest?.id,latest?.status]);
+ },[latest?.id,latest?.status,from,to,associateMax,associateDays,associateSort]);
  useEffect(()=>{
   if(!selectedId)return;
   if(tab==="Authorized ESI"){setPrivateData(null);void api<PrivateData>(`${base}/subjects/${selectedId}/authorized`).then(data=>{if(currentSubject.current===selectedId)setPrivateData(data);}).catch(fail);}
@@ -111,8 +115,9 @@ export function IntelReportsPage({api}:{api:ApiClient}) {
    <IntelSubjectBrowser api={api} revision={revision} selectedId={selectedId} busy={busy} onOpen={candidate=>void track(candidate)} onPilot={pilot=>void runReport(pilot)}/>
   </aside>
   <div className="intel-main">{report?<>
+   <IntelEvidenceNotice/>
    <section className="panel stacked">{report.subject.archived?<h3>{report.subject.name} · Preserved notes</h3>:<IntelIdentityHeader report={report} api={api} badges={badges}/>}
-    {report.subject.archived?<div className="notice inline">This report was deleted. Notes are preserved. A new Local Scan or adding this entity again will re-create its dossier.</div>:<div className="intel-dossier-actions"><a href={`#intel/build?kind=${report.subject.kind}&id=${report.subject.eve_id}`}>Run / share combat report</a><label><input type="checkbox" checked={!!report.subject.priority} disabled={busy} onChange={event=>void changePriority(event.target.checked)}/> Priority Target</label><button disabled={busy} onClick={()=>setConfirmDelete(true)}>Delete report</button></div>}
+    {report.subject.archived?<div className="notice inline">This report was deleted. Notes are preserved. A new Local Scan or adding this entity again will re-create its dossier.</div>:<div className="intel-dossier-actions"><button disabled={loading||busy} onClick={()=>downloadCombatDossier(report)}>Download combat dossier</button><a href={`#intel/build?kind=${report.subject.kind}&id=${report.subject.eve_id}`}>Run / share combat report</a><label><input type="checkbox" checked={!!report.subject.priority} disabled={busy} onChange={event=>void changePriority(event.target.checked)}/> Priority Target</label><button disabled={busy} onClick={()=>setConfirmDelete(true)}>Delete report</button></div>}
     {confirmDelete&&<div className="mini-alert intel-delete-confirm" role="alert"><strong>Delete {report.subject.kind} report for {report.subject.name}?</strong><p>Clears this entity’s collected profile, collection history, membership monitoring and manual sightings. Notes are preserved. Other pilots/corporations, shared killmails and Local Scan records remain available.</p><button disabled={busy} onClick={()=>void run(async()=>{await api(`${base}/subjects/${selectedId}`,request("DELETE"));sequence.current++;currentSubject.current=0;setSelectedId(0);setReport(null);setLoading(false);setConfirmDelete(false);window.history.replaceState({},"",window.location.pathname+window.location.search+"#intel");await lists();setMessage("Report deleted. Notes preserved; scanning or adding the entity again can re-create its report from shared evidence.");})}>Confirm delete report</button><button disabled={busy} onClick={()=>setConfirmDelete(false)}>Keep report</button></div>}
     {!report.subject.archived&&<><div className="intel-controls"><label>From (UTC)<input type="date" value={from} onChange={event=>{if(event.target.value)setFrom(event.target.value);}}/></label><label>Through (UTC)<input type="date" value={to} onChange={event=>{if(event.target.value)setTo(event.target.value);}}/></label><div className="intel-presets">{[7,30,90,365].map(days=><button key={days} onClick={()=>{setFrom(dateUTC(new Date(Date.now()-days*86400000)));setTo(dateUTC(new Date()));}}>{days}d</button>)}<button onClick={()=>{setFrom("2003-05-06");setTo(dateUTC(new Date()));}}>All retained</button></div><button disabled={busy||loading} onClick={()=>void runReport(report.subject)}><RefreshCw size={15}/> {sighting.system&&report.subject.kind==="character"?"Record sighting / refresh report":"Refresh report"}</button></div>
     <div className="intel-collection-controls"><label>Collection depth: pages per kills/losses feed<input type="number" min={1} max={100} value={pages} onChange={event=>setPages(Number(event.target.value))}/></label><button className="intel-primary" disabled={busy||isActive(latest)||pages<1||pages>100||!Number.isInteger(pages)} onClick={()=>void collect()}><Database size={15}/> Collect public history</button><small>Collects from the selected start date through now; up to 200 entries per page. Report dates filter retained evidence independently.</small></div>
@@ -135,7 +140,7 @@ export function IntelReportsPage({api}:{api:ApiClient}) {
     <section className="panel stacked"><h3><Clock size={17}/> Recorded UTC activity</h3><HourBars rows={summary.utc_hours}/><p className="muted">Combat appearances, not online time. Times are UTC.</p></section>
    </>}
    {tab==="Geography"&&summary&&<><div className="intel-two"><RankingTable title="Systems: combat and sightings" rows={summary.systems} onEvidence={drill}/><RankingTable title="Regions" rows={summary.regions} onEvidence={drill}/></div><section className="panel stacked"><h3>Activity timeline</h3><div className="intel-table-wrap"><table><thead><tr><th>UTC date</th><th>Kills</th><th>Losses</th><th>Sightings</th></tr></thead><tbody>{summary.timeline.map(day=><tr key={day.date}><td>{day.date}</td><td>{day.kills}</td><td>{day.losses}</td><td>{day.sightings??0}</td></tr>)}</tbody></table></div><p className="muted">Combat locations and reported sightings are shown separately. Local Scan systems are manually selected. Home systems, travel paths, and current location are not established by these records.</p></section></>}
-   {tab==="Associates"&&summary&&<section className="panel stacked"><div className="section-heading"><h3><Network size={17}/> Recurring co-attackers</h3><label>Entity type<select value={associateKind} onChange={event=>setAssociateKind(event.target.value)}><option value="character">Characters</option><option value="corporation">Corporations</option><option value="alliance">Alliances</option></select></label></div><p className="muted">{report.definitions.associates} Affiliations are those recorded at the time of each kill.</p><div className="intel-table-wrap"><table><thead><tr><th>Entity</th><th>Shared kills</th><th>Est. engagements</th><th>Days</th><th>Subject's kills</th><th>Evidence</th></tr></thead><tbody>{summary.associates.filter(row=>row.kind===associateKind).map(row=><tr key={`${row.kind}:${row.id}`}><td><button className="intel-text-button" disabled={busy} onClick={()=>void track({kind:row.kind,eve_id:row.id,name:row.name})}>{row.name}</button></td><td>{row.kills}</td><td>{row.estimated_engagements}</td><td>{row.distinct_days}</td><td>{row.share_of_subject_kills_percent}%</td><td><button onClick={()=>drill(row.evidence,`Co-attacker: ${row.name}`)}>Inspect</button></td></tr>)}</tbody></table></div><p className="muted">Top 50 per entity type. {report.total_associates} associations found in the loaded sample. An association is not a spy verdict or proof of a coalition agreement.</p></section>}
+   {tab==="Associates"&&summary&&<IntelAssociates report={report} kind={associateKind} setKind={setAssociateKind} max={associateMax} setMax={setAssociateMax} min={associateDays} setMin={setAssociateDays} sort={associateSort} setSort={setAssociateSort} disabled={busy||loading} onTrack={candidate=>void track(candidate)} onEvidence={drill}/>}
    {tab==="Evidence"&&<section className="panel stacked"><div className="section-heading"><h3>Evidence ledger</h3>{evidenceIds&&<button onClick={()=>{setEvidenceIds(null);setEvidenceTitle("");}}>Clear sample filter</button>}</div>{evidenceIds&&<p className="muted">{evidenceTitle} · showing available sample IDs from the report's 200 most recent evidence records.</p>}<div className="intel-table-wrap"><table><thead><tr><th>Killmail</th><th>Time</th><th>System</th><th>Subject's side</th></tr></thead><tbody>{evidence.map(row=><tr key={row.id}><td><a href={killLink(row.id)} target="_blank" rel="noreferrer">{row.id} <ExternalLink size={11}/></a></td><td>{stamp(row.time)}</td><td>{summary?.systems.find(system=>system.id===row.system_id)?.name??row.system_id}</td><td>{row.side}{row.npc_only?" · NPC-only":""}</td></tr>)}</tbody></table></div>{evidenceIds&&<div className="intel-samples">{evidenceIds.map(id=><a key={id} href={killLink(id)} target="_blank" rel="noreferrer">Kill {id} <ExternalLink size={11}/></a>)}</div>}<p className="muted">{report.definitions.evidence}</p></section>}
    {tab==="History"&&<>
     {report.subject.kind==="alliance"&&<AllianceCorporations api={api} subjectId={selectedId} revision={report.latest_collection?.updated_at} onOpen={candidate=>void track(candidate)}/>}

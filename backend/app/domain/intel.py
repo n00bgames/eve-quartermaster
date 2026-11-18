@@ -95,7 +95,9 @@ def sample_evidence(row: dict, killmail_id: int) -> None:
     if len(row["evidence"]) > 10: row["evidence"].pop(0)
 
 
-def summarize_evidence(kind: str, eve_id: int, facts: list[dict], from_at: datetime, to_at: datetime) -> dict:
+def summarize_evidence(kind: str, eve_id: int, facts: list[dict], from_at: datetime, to_at: datetime,
+                       *, association_max_attackers: int | None = None,
+                       association_min_days: int = 1, association_sort: str = "kills") -> dict:
     """Facts are unique killmails with compact participant rows and type metadata.
 
     Associations are co-attacker appearances, never inferred identity or fleet
@@ -134,6 +136,10 @@ def summarize_evidence(kind: str, eve_id: int, facts: list[dict], from_at: datet
         if fact.get("solo"): solo_ids.add(kid)
         if any(p.get("weapon_known") for p in mine): known_weapon_ids.add(kid)
         if any(p.get("smartbomb") for p in mine): smart_ids.add(kid)
+        # Only relationship evidence is filtered. Combat totals, hulls and UTC
+        # activity retain the whole requested sample, including larger battles.
+        if association_max_attackers is not None and len(player_attackers) > association_max_attackers:
+            continue
         # At most one count per other entity per kill, even when a corp fields
         # many pilots. Historical affiliation comes from this killmail.
         others = set()
@@ -154,8 +160,8 @@ def summarize_evidence(kind: str, eve_id: int, facts: list[dict], from_at: datet
             last_by_system[system_id] = at
         row["distinct_days"] = len(row.pop("days_set")); row["estimated_engagements"] = engagements
         row["share_of_subject_kills_percent"] = round(100 * row["kills"] / len(kill_ids), 1) if kill_ids else None
-        relationships.append(row)
-    relationships.sort(key=lambda row: (-row["kills"], -row["distinct_days"], row["kind"], row["id"]))
+        if row["distinct_days"] >= association_min_days: relationships.append(row)
+    relationships.sort(key=lambda row: ((-row["distinct_days"], -row["kills"]) if association_sort == "days" else (-row["kills"], -row["distinct_days"])) + (row["kind"], row["id"]))
     return {"kills": len(kill_ids), "losses": len(loss_ids), "solo_kills": len(solo_ids),
             "smartbomb": {"confirmed_kills": len(smart_ids), "observed_kills": len(kill_ids), "weapon_known_kills": len(known_weapon_ids),
                           "confirmed_percent": round(100 * len(smart_ids) / len(kill_ids), 1) if kill_ids else None,

@@ -1,4 +1,5 @@
 import {useState} from "react";
+import {IntelEvidenceNotice} from "../intel/IntelEvidenceNotice";
 import {AnalyticsPane} from "../../components/AnalyticsPane";
 import type {Hour,PublicReport,Sightings} from "./types";
 import "./intelReports.css";
@@ -10,6 +11,7 @@ export function IntelReportView({report,sightings}:{report:PublicReport;sighting
  const target=report.target;
  return <div className="intel-report-results">
   <header className="panel"><span className="eyebrow">Intel Report · {target.kind}</span><h2>{target.name}</h2><p>{utc(report.window.from_at)} — {utc(report.window.to_at)}</p><p className="muted">Generated {utc(report.generated_at)} · <a href={zkill(target.kind,target.eve_id)} target="_blank" rel="noreferrer">Open target on zKillboard</a></p></header>
+  <IntelEvidenceNotice/>
   <p className="notice inline">{report.coverage.notice}{report.coverage.analysis_limited&&` Analysis capped at ${n(report.coverage.killmail_limit)} killmails / the participant budget.`}</p>
   <div className="intel-report-metrics">{[["Retained killmails",report.summary.killmails],["PvP killmails",report.summary.pvp_killmails],["Combat pilots",report.summary.combat_pilots],["Active systems",report.summary.systems]].map(([label,value])=><div className="panel" key={label}><small>{label}</small><strong>{n(Number(value))}</strong></div>)}</div>
   {target.kind==="system"&&<p className="muted">{report.esi_activity.notice} Latest reported hour end: {report.esi_activity.latest_reported_at?utc(report.esi_activity.latest_reported_at):"Unavailable"}. {report.esi_activity.samples} retained feed samples.</p>}

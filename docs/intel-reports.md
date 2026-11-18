@@ -207,3 +207,15 @@ Validation uses synthetic databases/sources: scan creation/idempotency/rollback,
 ![Expanded saved subjects and a pilot Priority Target checkbox — synthetic preview](../static/ss/v2.3.0/intel-subjects-priority.png)
 
 ![Explicit report deletion confirmation preserving notes — synthetic preview](../static/ss/v2.3.0/intel-report-delete.png)
+
+## Association filters and combat dossier downloads
+
+In **Intel Reports → Saved dossiers and notes → Associates**, choose **Maximum named attackers**, **Minimum shared UTC days** and **Rank associations by**. Defaults preserve all fight sizes, at least one day and shared-kill order. Smaller-fight limits count distinct named character attackers; duplicate attacker rows do not increase fight size. Day ranking prioritizes distinct UTC days, then shared kills. Filters apply before the top 50 per entity type is selected.
+
+Filters change relationship evidence only. Combat totals, hull/system rankings, UTC activity and recent evidence retain the full selected sample. Shared-kill percentages keep all of the subject's observed PvP kills as their denominator. The applied filter line describes the actual returned report. Co-attacker appearances and approximate same-system engagements do not prove fleet membership, agreements or common ownership.
+
+**Download combat dossier** saves a Markdown file containing the displayed target/window, public combat counts, UTC distribution, applied character-association ranking and recent evidence links. It uses an explicit public-combat projection and excludes notes, sightings, account identity, authorized ESI and Journey history. It does not upload a file, create a public share, collect new evidence or import an external research dossier.
+
+A visible **Public killmail observations only** notice appears above the saved dossier and in the report/share view. It states that combat times are not online hours, no records does not mean inactive, associations do not prove relationships, and collection gaps/page limits can omit activity. The same limitations are included in downloads. Existing collection coverage and caps remain visible.
+
+Matching backend/frontend builds are required. No new migration, ESI scope, enrollment or background collector is introduced.

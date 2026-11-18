@@ -106,9 +106,11 @@ def evidence_facts(db: Session, subject: IntelSubject, from_at: datetime, to_at:
     return list(facts.values()),types,limited
 
 
-def build_report(db: Session, subject: IntelSubject, from_at: datetime, to_at: datetime, viewer_user_id: int | None = None):
+def build_report(db: Session, subject: IntelSubject, from_at: datetime, to_at: datetime, viewer_user_id: int | None = None,
+                 *, association_max_attackers: int | None = None, association_min_days: int = 1, association_sort: str = "kills"):
     facts,types,limited=([],{},False) if subject.archived else evidence_facts(db,subject,from_at,to_at)
-    summary=summarize_evidence(subject.kind,subject.eve_id,facts,from_at,to_at)
+    summary=summarize_evidence(subject.kind,subject.eve_id,facts,from_at,to_at,
+        association_max_attackers=association_max_attackers,association_min_days=association_min_days,association_sort=association_sort)
     for row in summary["ships"]:row["name"]=types.get(row["id"],{}).get("name") or f"Type {row['id']}"
     for kind in ("character","corporation","alliance"):
         ids={row["id"] for row in summary["associates"] if row["kind"]==kind}
@@ -147,6 +149,6 @@ def build_report(db: Session, subject: IntelSubject, from_at: datetime, to_at: d
         profile["corporations"]=[{"id":eid,"name":corporations.get(eid,f"Corporation {eid}")} for eid in profile["corporation_ids"]]
     from app.services.intel_affiliations import read as affiliations
     from app.services.intel_membership_report import read as membership_report
-    return {"membership":membership_report(db,subject,from_at,to_at),"affiliations":affiliations(db,subject),"schema_version":SCHEMA_VERSION,"subject":subject_info,"window":{"from_at":from_at,"to_at":to_at},"summary":summary,"sightings":sightings,"coverage":coverage,"total_associates":total_associates,
+    return {"association_filters":{"max_attackers":association_max_attackers,"min_days":association_min_days,"sort":association_sort},"membership":membership_report(db,subject,from_at,to_at),"affiliations":affiliations(db,subject),"schema_version":SCHEMA_VERSION,"subject":subject_info,"window":{"from_at":from_at,"to_at":to_at},"summary":summary,"sightings":sightings,"coverage":coverage,"total_associates":total_associates,
             "latest_collection":collection_payload(latest) if latest else None,"observations":[{"source":row.source,"observed_at":row.observed_at,"payload":row.payload} for row in history],
             "definitions":{"associates":"Shared attacker appearances; not proof of same fleet or intent. Engagements use same-system gaps of at most 30 minutes.","smartbomb":"Subject's own attacker weapon is a smartbomb (SDE group 72). Confirmed share uses all observed PvP kills; missing weapon metadata remains unknown. Frequent means at least five confirmed kills and at least 20% of observed kills.","badges":"Upstream badges keep their own rolling windows and are not recalculated for the selected report dates.","evidence":"Up to 200 recent records; ranking evidence links are samples (up to 10 per row)."}}

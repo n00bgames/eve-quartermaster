@@ -201,11 +201,16 @@ def retry(job_id: str,user: User=Depends(get_current_user),db: Session=Depends(g
 
 
 @router.get("/subjects/{subject_id}/report")
-def report(subject_id: int,from_at: datetime|None=None,to_at: datetime|None=None,user: User=Depends(get_current_user),db: Session=Depends(get_db)):
+def report(subject_id: int,from_at: datetime|None=None,to_at: datetime|None=None,
+           association_max_attackers: int|None=Query(None,ge=1,le=10000),
+           association_min_days: int=Query(1,ge=1,le=20000),
+           association_sort: Literal["kills","days"]=Query("kills"),
+           user: User=Depends(get_current_user),db: Session=Depends(get_db)):
     subject=subject_or_404(db,subject_id,include_archived=True)
     end=utc(to_at) if to_at else datetime.now(timezone.utc);start=utc(from_at) if from_at else end-timedelta(days=90)
     if start>=end or end-start>timedelta(days=20000):raise HTTPException(422,"Choose a positive report window of at most 20,000 days")
-    return build_report(db,subject,start,end,viewer_user_id=user.id)
+    return build_report(db,subject,start,end,viewer_user_id=user.id,
+        association_max_attackers=association_max_attackers,association_min_days=association_min_days,association_sort=association_sort)
 
 
 @router.get("/subjects/{subject_id}/affiliations")

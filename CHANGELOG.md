@@ -6,6 +6,8 @@ Version sections are written as user-facing release notes first, with implementa
 
 ## [2.4.0] - Unreleased
 
+- Add **pilot dossier association filters** for named-attacker fight size, minimum shared UTC days and day-based ranking, plus a combat-only Markdown dossier download. Keep full-window combat totals and activity separate from filtered relationships. Display public-evidence limitations in dossiers, report/share windows and downloads. Matching backend/frontend required; no migration or new ESI scope. [Guide](docs/intel-reports.md#association-filters-and-combat-dossier-downloads).
+
 - Move **Route Checker** and **Jump Capable Ship Plotter** above **My Journey** and **New Eden Atlas** in the default layout. All four panels can be collapsed. Sending a route from the Atlas reopens Route Checker.
 
 - Add **Dark Mode**, a seventh interface using Command Desk’s layout with near-black surfaces, soft gray text and muted blue links. Correct blueprint/skill/character/implant/event popover and in-game-link dialog palette mismatches, shared inbox surfaces and inline table-label backgrounds. Keep blueprint interaction help in the themed card instead of a duplicate native title tooltip. Validate sampled overlay colors/contrast across all eleven built-in palettes. Matching frontend/API required; no new migration or ESI scope. [Guide](docs/dark-mode-and-palette.md).

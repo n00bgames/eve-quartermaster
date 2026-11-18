@@ -53,3 +53,9 @@ Validation covers all four scopes, bounded pulls/caches/leases/partial failures,
 ![System report charts — synthetic EQM v2.4.0 preview](../static/ss/v2.4.0/intel-reports-system-charts.png)
 
 ![Public combat snapshot — synthetic EQM v2.4.0 preview](../static/ss/v2.4.0/intel-reports-public.png)
+
+## Evidence limitations and pilot dossier tools
+
+The report window and public snapshot view show a visible **Public killmail observations only** notice, distinguishing combat times from online hours and absent records from inactivity. It also explains that co-attacker associations do not prove fleet membership, agreements or common ownership, and that collection gaps/page limits can omit activity.
+
+For fight-size/day association filters and Markdown combat dossier downloads, open **Saved dossiers and notes**. These tools use that dossier's selected window; they do not change public snapshot schemas or turn a bounded recent pull into complete 90-day coverage. See [Association filters and combat dossier downloads](intel-reports.md#association-filters-and-combat-dossier-downloads).
