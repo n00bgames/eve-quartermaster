@@ -300,32 +300,13 @@ def normalize_draft_fitting_items(db: Session, fitting: CharacterFitting) -> boo
 
 
 async def refresh_public_type_metadata(db: Session, type_ids: set[int], max_fetch: int = 80) -> int:
-    client = EsiClient()
-    refreshed = 0
+    # Imported types already contain metadata. Keep the existing missing-ID label.
     for type_id in sorted(type_ids):
-        if refreshed >= max_fetch:
-            break
-        item_type = db.get(EveType, type_id)
-        if item_type is None:
-            item_type = EveType(type_id=type_id, name=f"Type {type_id}")
-            db.add(item_type)
-            db.flush()
-        if item_type.group_id is not None and item_type.capacity is not None and item_type.volume is not None:
-            continue
-        try:
-            payload = await client.get(f"/universe/types/{type_id}/", params={"language": "en"})
-        except HTTPException:
-            continue
-        item_type.name = payload.get("name", item_type.name)
-        item_type.description = payload.get("description")
-        item_type.group_id = payload.get("group_id")
-        item_type.volume = payload.get("volume")
-        item_type.packaged_volume = payload.get("packaged_volume")
-        item_type.capacity = payload.get("capacity")
-        item_type.market_group_id = payload.get("market_group_id")
-        item_type.published = bool(payload.get("published", True))
-        refreshed += 1
-    return refreshed
+        if db.get(EveType, type_id) is None:
+            db.add(EveType(type_id=type_id, name=f"Type {type_id}"))
+    db.flush()
+    return 0
+
 
 def clean_eft_name(value: str) -> str:
     return " ".join(str(value or "").strip().split())

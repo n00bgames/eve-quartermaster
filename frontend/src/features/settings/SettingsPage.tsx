@@ -365,7 +365,7 @@ function PermissionsAdmin({ api, ManagedForm, accountLabel }: { api: ApiClient; 
 
 const SDE_COUNT_GROUPS: {label:string;rows:[string,string,boolean?][]}[] = [
   {label:"Inventory",rows:[["categories","Categories"],["groups","Groups",true],["types","Types",true]]},
-  {label:"Universe",rows:[["regions","Regions"],["constellations","Constellations",true],["systems","Solar systems",true],["stargates","Stargates",true],["stations","Stations",true],["celestials","Celestials"],["celestial_planets","Planets",true],["celestial_moons","Moons",true],["celestial_belts","Asteroid belts",true],["agents","NPC agents"]]},
+  {label:"Universe",rows:[["regions","Regions"],["constellations","Constellations",true],["systems","Solar systems",true],["stargates","Stargates",true],["stations","Stations",true],["celestials","Celestials"],["celestial_planets","Planets",true],["celestial_moons","Moons",true],["celestial_belts","Asteroid belts",true],["celestial_stars","Stars",true],["agents","NPC agents"]]},
   {label:"Dogma",rows:[["dogma_attributes","Attribute definitions"],["dogma_effects","Effect definitions"],["dogma_modifiers","Effect modifiers",true],["type_dogma_attributes","Type attribute values"],["type_dogma_effects","Type effect mappings"],["type_dogma_default_effects","Default effect mappings",true]]},
   {label:"Blueprints",rows:[["blueprint_activities","Activities / recipes"],["blueprint_products","Product rows",true],["activity_inputs","Material input rows",true],["skipped_activities","Unsupported activities skipped"]]},
   {label:"Planetary industry",rows:[["planet_schematics","Schematics"],["planet_schematic_inputs","Input rows",true],["planet_schematic_outputs","Output rows",true]]},

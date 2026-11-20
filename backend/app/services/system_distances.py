@@ -83,46 +83,21 @@ def system_objects(db: Session, system_id: int, user_id: int) -> dict:
     return {"system_id": system_id, "system_name": system.name,
             "objects": sorted(rows.values(), key=lambda r: (ORDER.get(r["kind"], 9), r["name"].casefold(), r["object_id"])),
             "checked_at": utc(cache.checked_at).isoformat() if cache else None,
-            "message": cache.message if cache else "SDE positions loaded. Refresh ESI objects to fill missing celestial data.",
+            "message": cache.message if cache else "SDE positions loaded. Reimport the SDE for missing celestial data.",
             "coverage_note": "Static objects and known accessible Upwell structures only. ESI does not enumerate every anchored object. Private structure positions are cached for up to one hour; access and docking are not guaranteed."}
 
 
-async def refresh_public(db: Session, system_id: int, client: EsiClient) -> str:
+async def refresh_public(db: Session, system_id: int, client: EsiClient | None = None) -> str:
     now = datetime.now(timezone.utc)
     cache = db.get(SystemObjectSync, system_id)
-    if cache and utc(cache.expires_at) > now:
+    if cache and utc(cache.expires_at) > now and cache.message.startswith("Static objects loaded"):
         return cache.message
-    manifest = await client.get(f"/universe/systems/{system_id}/")
-    tasks: list[tuple[int, str, str]] = []
-    for key, kind, endpoint in (("stargates", "gate", "stargates"), ("stations", "station", "stations")):
-        tasks.extend((int(i), kind, endpoint) for i in manifest.get(key, []))
-    for planet in manifest.get("planets", []):
-        tasks.append((int(planet["planet_id"]), "planet", "planets"))
-        tasks.extend((int(i), "moon", "moons") for i in planet.get("moons", []))
-        tasks.extend((int(i), "belt", "asteroid_belts") for i in planet.get("asteroid_belts", []))
-    # A star's local origin is zero; do not use the system's galaxy coordinates.
-    if manifest.get("star_id"):
-        store_public(db, int(manifest["star_id"]), system_id, "star", f"{manifest['name']} — Sun", dict(x=0., y=0., z=0.), "esi")
-    semaphore = asyncio.Semaphore(6)
-    async def fetch(entry):
-        object_id, kind, endpoint = entry
-        async with semaphore:
-            try:
-                return entry, await client.get(f"/universe/{endpoint}/{object_id}/")
-            except (HTTPException, httpx.HTTPError):
-                return entry, None
-    results = await asyncio.gather(*(fetch(entry) for entry in tasks))
-    failures = 0
-    for (object_id, kind, _), payload in results:
-        if payload is None or int(payload.get("system_id", payload.get("solar_system_id", system_id))) != system_id or any(v is None for v in position(payload).values()):
-            failures += 1
-            continue
-        store_public(db, object_id, system_id, kind, payload.get("name", f"{kind.title()} {object_id}"), position(payload), "esi")
-    message = f"ESI checked {len(tasks)} static objects; {failures} unavailable."
+    # Static data is refreshed by the ZIP SDE importer, never by ESI.
+    message = "Static objects loaded from local SDE. Reimport the SDE for missing celestial data."
     if cache is None:
         cache = SystemObjectSync(system_id=system_id)
         db.add(cache)
-    cache.checked_at, cache.expires_at, cache.message = now, now + timedelta(minutes=5 if failures else 1440), message
+    cache.checked_at, cache.expires_at, cache.message = now, now + timedelta(days=1), message
     db.flush()
     return message
 

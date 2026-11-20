@@ -13,13 +13,13 @@ import httpx
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app.models import EveGroup, EveStargate, EveSystem, EveType, SystemIndustrialKillObservation, SystemKillFetchCache, SystemPvpKillObservation
+from app.models import EveStation, EveGroup, EveStargate, EveSystem, EveType, SystemIndustrialKillObservation, SystemKillFetchCache, SystemPvpKillObservation
 from app.services.navigation import plan_gate_route, resolve_system, serialize_system
 from app.services.threat_analytics_engine import evaluate_threat_analytics_with_engine
 
 ZKILLBOARD_BASE_URL = "https://zkillboard.com/api"
 ESI_BASE_URL = "https://esi.evetech.net/latest"
-USER_AGENT = "EVE-Quartermaster/2.4.0 navigation-intel"
+USER_AGENT = "EVE-Quartermaster/2.4.1 navigation-intel"
 INDUSTRIAL_CACHE_FEED = "zkill_industrial"
 PVP_CACHE_FEED = "zkill_pvp"
 INDUSTRIAL_CACHE_RETENTION_DAYS = 90
@@ -167,15 +167,9 @@ async def resolve_esi_names(client: httpx.AsyncClient, ids: set[int]) -> dict[in
     return resolved
 
 
-async def station_name(client: httpx.AsyncClient, station_id: int) -> str | None:
-    try:
-        response = await client.get(f"{ESI_BASE_URL}/universe/stations/{station_id}/?datasource=tranquility")
-        response.raise_for_status()
-        payload = response.json()
-        name = payload.get("name") if isinstance(payload, dict) else None
-        return str(name) if name else None
-    except httpx.HTTPError:
-        return None
+async def station_name(db: Session, station_id: int) -> str | None:
+    station = db.get(EveStation, station_id)
+    return station.name if station else None
 
 
 async def kill_location(db: Session, client: httpx.AsyncClient, kill: dict[str, Any]) -> dict[str, Any]:
@@ -193,7 +187,7 @@ async def kill_location(db: Session, client: httpx.AsyncClient, kill: dict[str, 
             "location_name": f"Stargate to {destination.name}" if destination else f"Stargate {location_id}",
         }
 
-    station = await station_name(client, location_id)
+    station = await station_name(db, location_id)
     if station:
         return {"location_id": location_id, "location_kind": "station", "location_name": station}
 

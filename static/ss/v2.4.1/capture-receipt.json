@@ -1,0 +1,95 @@
+{
+  "application_version": "2.4.1",
+  "captured_at_utc": "2026-11-19T20:36:38.020560+00:00",
+  "source_commit": "8e7ca71ce91315474b30899e621861d79a3ae80e",
+  "source_status": "Uncommitted Mining Report feature on pending local v2.4.1 version bump",
+  "method": "Actual MiningLedgerPage React component in local Vite preview; headless Microsoft Edge desktop and 390px mobile capture, visually inspected",
+  "data_provenance": "Fabricated miners, systems, operations and extraction records over 40 ledger dates; synthetic local API adapter; no user screenshot or production account data",
+  "limitations": [
+    "Not a full authenticated App bootstrap or production-server screenshot",
+    "No live ESI sync, database mutation or market-price appraisal",
+    "Screenshot dates and metrics are synthetic fixture values"
+  ],
+  "checks": [
+    "5 focused frontend export tests passed",
+    "TypeScript and production Vite build passed",
+    "Actual MiningLedgerPage JSON downloads include 40 days, all 14 ores and all 1680 rows on both ledger pages",
+    "Date changes disable stale export; inclusive three-day scope and real CSV/JSON download contents agree",
+    "Character, system, operation and date selections compose in the actual request and exported report",
+    "390px report wraps both export actions, remains inside the page and downloads successfully",
+    "Reversed dates block exporting; valid empty periods export zero totals with null efficiency and empty breakdowns",
+    "Failed refresh blocks stale export until a successful reload",
+    "Late earlier response cannot overwrite the latest applied date period",
+    "No browser page errors; 390px page has no horizontal overflow"
+  ],
+  "source_sha256": {
+    "frontend/src/features/mining/MiningLedgerPage.tsx": "bd0463f689fa1feb2b67a399583c8dc3d6d8de2b040dd1fbf6989f9f45615b81",
+    "frontend/src/features/mining/MiningReportExport.tsx": "1049372f5240e0ad2b9d82ecbdc190843ae156fce81a00eff06c5daa2544f062",
+    "frontend/src/features/mining/miningReport.ts": "68ec6bf5ae27e60c5a487a1ab0fc0fa706ec454e953174fdf6abf161d80a81c0",
+    "frontend/src/features/mining/mining.css": "109dbf265680f2a7c795d38c7729ca4dbdc5527ba0910e09e036cdf62f3dfbd8",
+    "frontend/tests/miningReport.test.ts": "f23f39903acfcd2fcaf1ae1d559b6908f743a7c8624ad51e71e4cedb6410113f"
+  },
+  "browser_harness_sha256": "a18b1eafbe117de38d91334d779e1d63927a586e2e4c68384e02702cd6394c26",
+  "screenshots": [
+    {
+      "filename": "mining-report-desktop.png",
+      "width": 1480,
+      "height": 1100,
+      "bytes": 138356,
+      "sha256": "2b204323c7f7e0e7da50f1f586c6b2d9c8d18fb11ae9d16f8c3e1111a26b65fd"
+    },
+    {
+      "filename": "mining-report-mobile.png",
+      "width": 332,
+      "height": 346,
+      "bytes": 33062,
+      "sha256": "ee999a9843f1e586a6d5eae3556fb9232ca5ce5b687185f41109bdc75cf2f2a6"
+    }
+  ],
+  "local_universe": {
+    "application_version": "2.4.1",
+    "captured_at_utc": "2026-11-20T22:46:30.943448+00:00",
+    "source_commit": "8e7ca71ce91315474b30899e621861d79a3ae80e",
+    "source_status": "Reviewed Dot patch merged with existing v2.4.1 and Mining Report work; uncommitted at capture",
+    "method": "Actual SystemDistanceCalculator and PiScout React components in isolated Vite; headless Microsoft Edge at 1480px and 390px; visually inspected",
+    "data_provenance": "Synthetic local API adapter; fabricated system/station/planet labels and coordinates; no live account, token or production data",
+    "limitations": [
+      "Component preview, not full authenticated App or production screenshot",
+      "Backend migration/import/API behavior tested separately with disposable SQLite and mocked ESI",
+      "Docker engine unavailable; no PostgreSQL/container upgrade, production SDE import, live ESI authentication or deployment exercised"
+    ],
+    "checks": [
+      "SDE coordinates produce 1 AU; unknown star positions cannot be selected",
+      "Refresh rereads local catalog and labels the timestamp without claiming a static ESI fetch",
+      "PI Scout uses local-data loading label, renders diameter conversion and explicit missing-data guidance",
+      "390px page containment and desktop/mobile actual-component captures"
+    ],
+    "source_sha256": {
+      "frontend/src/features/navigation/SystemDistanceCalculator.tsx": "d272cf0420fd6b737f438d3be23975474dd0d8bb5029837a16373aa8959bf5ae",
+      "frontend/src/features/industry/PiPlannerTools.tsx": "bb3c05f4e9a370ba5129ba1c92be3a8f1d134d384898b047073aeebac56620a5",
+      "frontend/src/features/settings/SettingsPage.tsx": "e86feee4bf215a1457f8703b312aabcccfc6ccbaad1077b81eaea82ac916b9ba",
+      "backend/app/api/pi_planner.py": "2934c61c55266c517b46add57dcea14bf35139639f0b59b65651ead657a15cfd",
+      "backend/app/services/system_distances.py": "7ba1ee84becc9d08da04a38e85c5a5749c85b0b8a26f0ab0375f683711caf09a",
+      "backend/app/services/sde_importer.py": "06bdccba3dfb57586b77e28431c18d2ae7cdb2ccfbb1ddfa7a7feb5c2a94aaeb",
+      "backend/app/db/wait_for_schema.py": "0f7bf78280297d43620b62a57b8f0fa7e9cd014cb49f6b187d256b338da12e1e",
+      "backend/alembic/versions/0111_local_universe.py": "dc7a3c369c1f8dc8952050de77ee0cf166ee794e15fc84ca7d2bf5874ddf060b"
+    },
+    "browser_harness_sha256": "22134ed2abcca5759603567d7abc4eeb4f4a7ef409806a286c604e8b5d54c0f1",
+    "screenshots": [
+      {
+        "filename": "local-universe-desktop.png",
+        "width": 1480,
+        "height": 1834,
+        "bytes": 202240,
+        "sha256": "9cd29b570509062947ae90e830699efa96decc0da9575289755380e2baf26358"
+      },
+      {
+        "filename": "local-universe-mobile.png",
+        "width": 350,
+        "height": 1534,
+        "bytes": 127356,
+        "sha256": "bc6de33aa0706ff1a2aeed5d5461a0a23270b53d16fa570bc30752c3b0d860b9"
+      }
+    ]
+  }
+}

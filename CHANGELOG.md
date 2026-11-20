@@ -4,6 +4,15 @@ All notable changes to EVE Quartermaster are tracked here.
 
 Version sections are written as user-facing release notes first, with implementation detail included where it helps operators understand deployment or testing impact.
 
+## [2.4.1] - Unreleased
+
+- Add **Mining Report CSV/JSON exports** for the applied inclusive date period and character/system/operation filters. Include full-period totals and every day, ore, pilot and system breakdown across ledger pages, with units, selection metadata, measured-efficiency limits and stored-value provenance. Prevent stale exports while filters change, requests load/fail or older responses finish late. Frontend-only; no migration or new ESI scope. [Guide](docs/mining-report.md).
+
+- Read static universe metadata locally for PI Scout and colony naming, fittings, manual imports, Intel fallback, Gatecheck station labels, and distance refresh. Preserve live ESI resolvers/activity/structures and the `2026-07-22` compatibility date.
+- Add migration `0111_local_universe` and import planet type/radius plus stars through the existing SDE ZIP workflow. **Run a full SDE reimport after upgrading**; a download alone is insufficient. Missing metadata stays explicit. New stars have unknown coordinates because CCP supplies no position; existing cached star coordinates survive reimport. [Operator guide](docs/local-universe.md).
+- Hold the queue worker until the API has applied this build's Alembic migration head; on failure it exits without processing jobs.
+- Prepare application/package/API/export/user-agent version **2.4.1**, Android **versionName 2.4.1 / versionCode 33**. No APK or release is published by this source-only version bump.
+
 ## [2.4.0] - Unreleased
 
 - Add **pilot dossier association filters** for named-attacker fight size, minimum shared UTC days and day-based ranking, plus a combat-only Markdown dossier download. Keep full-window combat totals and activity separate from filtered relationships. Display public-evidence limitations in dossiers, report/share windows and downloads. Matching backend/frontend required; no migration or new ESI scope. [Guide](docs/intel-reports.md#association-filters-and-combat-dossier-downloads).

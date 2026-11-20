@@ -1,6 +1,15 @@
 # EQM screenshot gallery
 
-**Latest:** [zKillboard loss fits in Fittings](#zkillboard-loss-fits-in-fittings), captured November 16, 2026. [v2.4.0 theme gallery](#theme-gallery-for-v240).
+**Latest:** [Mining Report exports](#mining-report-exports), captured November 19, 2026. Earlier: [zKillboard loss fits in Fittings](#zkillboard-loss-fits-in-fittings), captured November 16, 2026. [v2.4.0 theme gallery](#theme-gallery-for-v240).
+
+## Mining Report exports
+
+Unreleased **v2.4.1**. Actual MiningLedgerPage rendered locally with synthetic extraction history, pilots and operations. CSV/JSON downloads follow the applied inclusive date period and character/system/operation filters, include full-period analytics across ledger pages, and keep measured-efficiency limitations explicit. Synthetic API adapter; not a live server, authenticated account or complete App bootstrap. No user gameplay image was copied. [Guide](mining-report.md) · [Capture receipt](../static/ss/v2.4.1/capture-receipt.json).
+
+| Preview | Screenshot |
+| --- | --- |
+| Desktop: inclusive three-day report scope, CSV/JSON actions and matching summary cards | [mining-report-desktop.png](../static/ss/v2.4.1/mining-report-desktop.png) |
+| Mobile: combined character/system/operation/date scope, wrapped export actions at 390px viewport width | [mining-report-mobile.png](../static/ss/v2.4.1/mining-report-mobile.png) |
 
 HyperNet and PLEX previews added **October 3, 2026**, from source commit `4ec0931cda1f800afb1d83560e19862809148ccd`. Atlas previews were added September 19 from `f6131a1be18e808c886f75c380c6ebf646323bfb`; the earlier gallery reconciliation was September 11 against the v1.0 candidate `f894f27ad7fb2ef4956e5bef2e97d3865fe8cfd2`. [README](../README.md) · [v1.0.5 release notes](releases/v1.0.5.md) · [Install](../README.md#install)
 
@@ -1076,3 +1085,12 @@ Captured **18 November 2026** from unreleased EQM v2.4.0 source. Actual React do
 ![Pilot dossier association filters and evidence limitations](../static/ss/v2.4.0/intel-pilot-associations.jpg)
 
 ![Mobile pilot dossier with visible limitations and association controls](../static/ss/v2.4.0/intel-pilot-associations-mobile.jpg)
+
+
+## Local universe data — v2.4.1 development captures
+
+Actual Navigation and PI Scout components with synthetic local API responses. Static coordinates and missing-data guidance are shown; these are not production screenshots. Existing Mining Report capture provenance is preserved in the additive [receipt](../static/ss/v2.4.1/capture-receipt.json).
+
+![Local catalog navigation and PI Scout](../static/ss/v2.4.1/local-universe-desktop.png)
+
+![Local catalog navigation at 390px](../static/ss/v2.4.1/local-universe-mobile.png)

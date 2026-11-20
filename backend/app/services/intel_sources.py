@@ -9,7 +9,7 @@ import httpx
 from app.services.esi_client import EsiClient
 from app.domain.intel import zkill_badges
 
-USER_AGENT = "EVE-Quartermaster/2.4.0 Intel (+https://github.com/n00bgames/eve-quartermaster)"
+USER_AGENT = "EVE-Quartermaster/2.4.1 Intel (+https://github.com/n00bgames/eve-quartermaster)"
 _gates = weakref.WeakKeyDictionary()
 ENTITY_MODIFIER = {"character":"characterID", "corporation":"corporationID", "alliance":"allianceID"}
 
@@ -29,7 +29,9 @@ def plain(value: Any, limit: int = 4000) -> str:
 
 
 class PublicSource:
-    def __init__(self):
+    def __init__(self, session_factory=None):
+        from app.db.session import SessionLocal
+        self.session_factory = session_factory or SessionLocal
         self.esi = EsiClient()  # Public transport only.
         self.http = httpx.AsyncClient(headers={"User-Agent":USER_AGENT,"Accept":"application/json","Accept-Encoding":"gzip"},timeout=30,follow_redirects=True)
 
@@ -121,11 +123,20 @@ class PublicSource:
         return await self.esi.post("/universe/names/",ids)
 
     async def type_info(self, type_id: int) -> dict:
-        payload = await self.esi.get(f"/universe/types/{type_id}/")
-        return {"id":type_id,"name":payload.get("name"),"group_id":payload.get("group_id")}
+        from app.models import EveType
+        with self.session_factory() as db:
+            row = db.get(EveType, type_id)
+            if row is None:
+                raise IntelSourceError("Type missing from local SDE; reimport the SDE")
+            return {"id": type_id, "name": row.name, "group_id": row.group_id}
 
     async def system_info(self, system_id: int) -> dict:
-        payload=await self.esi.get(f"/universe/systems/{system_id}/")
-        constellation=await self.esi.get(f"/universe/constellations/{payload['constellation_id']}/")
-        region=await self.esi.get(f"/universe/regions/{constellation['region_id']}/")
-        return {"id":system_id,"name":payload.get("name"),"security_status":payload.get("security_status"),"region_id":constellation["region_id"],"region_name":region.get("name")}
+        from app.models import EveSystem
+        with self.session_factory() as db:
+            row = db.get(EveSystem, system_id)
+            if row is None:
+                raise IntelSourceError("System missing from local SDE; reimport the SDE")
+            constellation = row.constellation
+            region = constellation.region if constellation else None
+            return {"id": system_id, "name": row.name, "security_status": row.security_status,
+                    "region_id": region.region_id if region else None, "region_name": region.name if region else None}

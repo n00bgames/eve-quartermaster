@@ -85,28 +85,14 @@ class SystemDistanceTests(unittest.TestCase):
             self.assertEqual(self.db.get(EveSystemObject, 41).name, "Test IV - Moon 2")
             self.assertEqual(self.db.get(EveSystemObject, 41).x, 101)
 
-    def test_public_esi_nested_manifest_and_cache(self):
-        client = AsyncMock()
-        async def get(path):
-            if path == "/universe/systems/1/":
-                return {"name": "Test", "star_id": 99, "stargates": [10], "stations": [20], "planets": [{"planet_id": 40, "moons": [50], "asteroid_belts": [60]}]}
-            return {"name": path, "system_id": 1, "position": {"x": 10, "y": 20, "z": 30}}
-        client.get.side_effect = get
-        asyncio.run(refresh_public(self.db, 1, client))
-        self.db.commit()
-        self.assertEqual(len(system_objects(self.db, 1, 1)["objects"]), 6)
-        self.assertEqual(self.db.get(EveSystemObject, 99).x, 0)
-        self.assertEqual(client.get.await_count, 6)
-        asyncio.run(refresh_public(self.db, 1, client))
-        self.assertEqual(client.get.await_count, 6)
-
-    def test_partial_esi_preserves_existing_position(self):
+    def test_public_refresh_is_local_and_preserves_positions(self):
         store_public(self.db, 40, 1, "planet", "Test I", dict(x=2,y=3,z=4), "sde")
         self.db.commit()
         client = AsyncMock()
-        client.get.side_effect = [{"name": "Test", "planets": [{"planet_id": 40}]}, HTTPException(503)]
-        message = asyncio.run(refresh_public(self.db, 1, client))
-        self.assertIn("1 unavailable", message)
+        client.get.side_effect = AssertionError("No static ESI requests")
+        for _ in range(2):
+            self.assertIn("local SDE", asyncio.run(refresh_public(self.db, 1, client)))
+        client.get.assert_not_awaited()
         self.assertEqual(self.db.get(EveSystemObject, 40).x, 2)
 
     def test_resolver_uses_only_own_token_and_rejects_other_system(self):
@@ -123,6 +109,7 @@ class SystemDistanceTests(unittest.TestCase):
         with patch("app.api.esi.refresh_access_token", new_callable=AsyncMock, return_value="private"), patch("app.services.system_distances.EsiClient") as factory:
             factory.return_value.get = AsyncMock(return_value={"name": "My structure", "solar_system_id": 1, "position": {"x": 1, "y": 2, "z": 3}})
             self.assertEqual(asyncio.run(refresh_structures(self.db, 1, 1, 123)), 1)
+            factory.return_value.get.assert_awaited_once_with("/universe/structures/123/")
             self.assertEqual(len(system_objects(self.db, 1, 1)["objects"]), 1)
             self.assertEqual(system_objects(self.db, 1, 2)["objects"], [])
             factory.return_value.get.side_effect = HTTPException(403)
@@ -134,15 +121,6 @@ class SystemDistanceTests(unittest.TestCase):
         with patch("app.api.esi.refresh_access_token", new_callable=AsyncMock) as refresh:
             self.assertEqual(asyncio.run(refresh_structures(self.db, 1, 1)), 0)
             refresh.assert_not_awaited()
-
-    def test_missing_esi_coordinates_preserve_valid_sde_data(self):
-        store_public(self.db, 40, 1, "planet", "Test I", dict(x=2,y=3,z=4), "sde")
-        self.db.commit()
-        client = AsyncMock()
-        client.get.side_effect = [{"name": "Test", "planets": [{"planet_id": 40}]}, {"name": "Test I"}]
-        message = asyncio.run(refresh_public(self.db, 1, client))
-        self.assertIn("1 unavailable", message)
-        self.assertEqual(self.db.get(EveSystemObject, 40).x, 2)
 
     def test_navigation_permission_applies_to_new_routes(self):
         from app.api.auth import get_current_user

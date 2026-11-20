@@ -1,5 +1,5 @@
 import { BarChart3, Database, Download, Gauge, Pickaxe, RefreshCw, Trash2, Upload } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { pollCharacterSyncJob } from "../../lib/characterSyncPolling";
 
@@ -7,6 +7,8 @@ import type { CharacterSyncJob, MiningLedgerEntry, MiningLedgerPayload } from ".
 import { MiningBarChart, MiningEfficiencyRanking, MiningTimeline } from "./MiningCharts";
 import { MiningOperations } from "./MiningOperations";
 import { MiningSettlements } from "./MiningSettlements";
+import { MiningReportExport } from "./MiningReportExport";
+import { allMiningHistory, sameMiningScope, type MiningReportScope } from "./miningReport";
 import "./mining.css";
 
 type ApiClient = <T>(path: string, options?: RequestInit) => Promise<T>;
@@ -31,6 +33,12 @@ export function MiningLedgerPage({ api }: { api: ApiClient }) {
   const [syncJob, setSyncJob] = useState<CharacterSyncJob | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortAsc, setSortAsc] = useState(false);
+  const [appliedScope, setAppliedScope] = useState<MiningReportScope>(allMiningHistory);
+  const [loadedAt, setLoadedAt] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const latestLoad = useRef(0);
+  const draftScope = { character_id: characterId, system_id: systemId, operation_id: operationId, date_from: dateFrom, date_to: dateTo };
 
   function queryPath(nextPage = page) {
     const params = new URLSearchParams({ page: String(nextPage), page_size: "100" });
@@ -43,9 +51,32 @@ export function MiningLedgerPage({ api }: { api: ApiClient }) {
   }
 
   async function load(nextPage = page) {
+    const request = ++latestLoad.current;
+    const scope = { ...draftScope };
     setError(null);
-    setData(await api<MiningLedgerPayload>(queryPath(nextPage)));
-    setPage(nextPage);
+    if (scope.date_from && scope.date_to && scope.date_from > scope.date_to) {
+      setLoading(false);
+      setLoadFailed(true);
+      setError("From must be on or before To.");
+      return;
+    }
+    setLoading(true);
+    setLoadFailed(false);
+    try {
+      const payload = await api<MiningLedgerPayload>(queryPath(nextPage));
+      if (request !== latestLoad.current) return;
+      setData(payload);
+      setAppliedScope(scope);
+      setLoadedAt(new Date().toISOString());
+      setPage(nextPage);
+    } catch (caught) {
+      if (request === latestLoad.current) {
+        setLoadFailed(true);
+        setError(caught instanceof Error ? caught.message : "Unable to load mining ledger");
+      }
+    } finally {
+      if (request === latestLoad.current) setLoading(false);
+    }
   }
 
   async function syncAll() {
@@ -135,6 +166,7 @@ export function MiningLedgerPage({ api }: { api: ApiClient }) {
     {syncJob && <div className={syncJob.failed_count ? "research-sync-status has-errors" : "research-sync-status"}><div><strong>{syncJob.processed_count} / {syncJob.total_count}</strong><span>{syncJob.current_character_name ? `Syncing ${syncJob.current_character_name}` : `Mining sync ${syncJob.status}`}</span></div><progress max={100} value={syncPercent} /><small>{syncJob.success_count} synced · {syncJob.failed_count} failed · {syncJob.skipped_count} skipped</small></div>}
     {showImport && <form className="mining-import-form" onSubmit={(event) => void importLedger(event)}><div className="form-grid"><label>Character<select name="character_id" required defaultValue=""><option value="" disabled>Select character</option>{data?.characters.filter((row) => !row.sync_opt_out).map((row) => <option value={row.character_id} key={row.character_id}>{row.name}</option>)}</select></label><label>Mining operation<select name="operation_id" defaultValue=""><option value="">No named operation</option>{data?.operations.map((row) => <option value={row.id} key={row.id}>{row.name}</option>)}</select></label></div><label>Mining ledger export<textarea name="text" required rows={8} placeholder="Paste tab-separated or CSV ledger data, including the header row." /></label><div className="button-row compact"><button type="submit" disabled={busy}><Upload size={16} />Import rows</button></div></form>}
     <div className="mining-filter-bar"><label>Character<select value={characterId} onChange={(event) => setCharacterId(event.target.value)}><option value="">All characters</option>{data?.characters.map((row) => <option key={row.character_id} value={row.character_id}>{row.name}</option>)}</select></label><label>System<select value={systemId} onChange={(event) => setSystemId(event.target.value)}><option value="">All systems</option>{data?.systems.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label><label>Operation<select value={operationId} onChange={(event) => setOperationId(event.target.value)}><option value="">All history</option>{data?.operations.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label><label>From<input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} /></label><label>To<input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} /></label><div className="button-row compact mining-filter-actions"><button type="button" onClick={() => void load(1)}>Apply</button><button type="button" className="danger" disabled={busy || !characterId} onClick={() => void clearSelectedCharacter()} title={characterId ? "Clear this character's complete mining ledger" : "Select a character to clear its ledger"}><Trash2 size={15} />Clear selected</button></div></div>
+    <MiningReportExport data={data} scope={appliedScope} loadedAt={loadedAt} loading={loading || busy} pending={!sameMiningScope(draftScope, appliedScope)} failed={loadFailed} />
     <div className="status-grid mining-summary-grid"><article><Pickaxe size={19} /><span>Recovered</span><strong>{number.format(totals?.volume ?? 0)} m3</strong></article><article><BarChart3 size={19} /><span>Gross extraction</span><strong>{number.format(totals?.gross_volume ?? 0)} m3</strong></article><article className="residue-stat"><span>Residue loss</span><strong>{number.format(totals?.residue_volume ?? 0)} m3</strong></article><article><span>Net value</span><strong>{isk.format(totals?.estimated_price ?? 0)} ISK</strong></article><article><Gauge size={19} /><span>Measured efficiency</span><strong>{totals?.efficiency == null ? "Not reported" : `${totals.efficiency}%`}</strong><small>{totals?.efficiency == null ? "Import residue data to measure" : `${number.format(totals.measured_volume)} m3 measured`}</small></article></div>
     <div className="mining-chart-grid"><MiningTimeline rows={data?.analytics.by_day ?? []} /><MiningBarChart title="Ore composition" subtitle="Recovered volume by ore" rows={data?.analytics.by_ore ?? []} value={(row) => row.volume} format={(value) => `${number.format(value)} m3`} /><MiningBarChart title="Most mined" subtitle="Recovered volume by character" rows={data?.analytics.by_character ?? []} value={(row) => row.volume} format={(value) => `${number.format(value)} m3`} /><MiningBarChart title="Largest gross extraction" subtitle="Recovered plus residue volume by character" rows={data?.analytics.by_character ?? []} value={(row) => row.gross_volume} format={(value) => `${number.format(value)} m3`} /><MiningBarChart title="Highest net value" subtitle="Estimated recovered ISK by character" rows={valueRanking} value={(row) => row.estimated_price} format={(value) => `${isk.format(value)} ISK`} /><MiningEfficiencyRanking rows={data?.analytics.by_character ?? []} /><MiningBarChart title="System extraction" subtitle="Gross volume by solar system" rows={data?.analytics.by_system ?? []} value={(row) => row.gross_volume} format={(value) => `${number.format(value)} m3`} /></div>
     {data && <MiningOperations api={api} characters={data.characters} systems={data.systems} operations={data.operations} onChanged={() => load(1)} />}

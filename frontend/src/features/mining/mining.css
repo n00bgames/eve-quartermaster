@@ -1,4 +1,10 @@
 .mining-ledger-page { gap: 18px; }
+.mining-report { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; padding: 16px; min-width: 0; border: 1px solid var(--eqm-border, #29333e); background: var(--eqm-panel, #0d141b); }
+.mining-report > div:first-child { flex: 1 1 360px; min-width: 0; overflow-wrap: anywhere; }
+.mining-report h4 { margin: 0 0 6px; }
+.mining-report p { margin: 4px 0; }
+.mining-report small { display: block; margin-top: 5px; color: var(--eqm-muted, #8192a8); }
+.mining-report .button-row { flex-wrap: wrap; }
 .mining-data-note { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border: 1px solid #24515b; background: #0b171c; color: #aebbc8; }
 .mining-data-note svg { color: #52c4d4; flex: 0 0 auto; }
 .mining-import-form, .mining-operation-form { display: grid; gap: 12px; padding: 16px; border: 1px solid #2c5660; background: #0c151b; }

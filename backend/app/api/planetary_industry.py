@@ -588,11 +588,7 @@ async def sync_planetary_industry_for_token(
         async def fetch_layout_detail(summary):
             planet_id = int(summary["planet_id"])
             detail = await client.get(f"/characters/{character.character_id}/planets/{planet_id}/") or {}
-            try:
-                planet = await EsiClient().get(f"/universe/planets/{planet_id}/")
-                planet_name = str(planet.get("name") or f"Planet {planet_id}")
-            except Exception:
-                planet_name = f"Planet {planet_id}"
+            planet_name = local_planet_name(db, planet_id)
             return summary, detail, planet_name
 
         # Fetch independent planets concurrently; all ORM work stays in this
@@ -777,3 +773,9 @@ def get_planetary_sync_job(
     if job["user_id"] != current_user.id and current_user.role not in {"host", "admin"}:
         raise HTTPException(status_code=403, detail="You cannot view this PI sync job")
     return planetary_sync_job_payload(job)
+
+
+def local_planet_name(db: Session, planet_id: int) -> str:
+    from app.models.system_objects import EveSystemObject
+    planet = db.get(EveSystemObject, planet_id)
+    return planet.name if planet and planet.kind == "planet" else f"Planet {planet_id}"

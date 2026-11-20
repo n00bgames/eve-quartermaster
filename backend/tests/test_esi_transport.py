@@ -77,6 +77,20 @@ class EsiTransportTests(unittest.IsolatedAsyncioTestCase):
         await self.request("/universe/categories/16/", bearer=token(2))
         self.assertEqual(len(calls), 1)
 
+    async def test_live_universe_routes_and_compatibility_pin_remain(self):
+        seen = []
+        self.mock(lambda request: (seen.append(request), httpx.Response(200, json=[]))[1])
+        with patch("app.services.esi_client.get_esi_transport", return_value=self.transport):
+            public = EsiClient()
+            await public.post("/universe/ids/", ["Pilot"])
+            await public.post("/universe/names/", [90000001])
+            await public.get("/universe/system_jumps/")
+            await public.get("/universe/system_kills/")
+            await EsiClient(token(1)).get("/universe/structures/123/")
+        self.assertEqual(len(seen), 5)
+        self.assertTrue(all(r.headers["X-Compatibility-Date"] == "2026-07-22" for r in seen))
+        self.assertEqual(seen[-1].headers["authorization"], "Bearer " + token(1))
+
     async def test_no_cache_and_expired_age_refetch(self):
         for headers in ({"Cache-Control": "no-store, max-age=60"}, {"Cache-Control": "max-age=2", "Age": "3"}, {"Cache-Control": "no-cache, max-age=60"}):
             calls = []

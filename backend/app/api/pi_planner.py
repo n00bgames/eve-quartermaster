@@ -17,7 +17,7 @@ from app.api.planetary_industry import require_planetary_view
 from app.db.session import SessionLocal, get_db
 from app.models import EveConstellation, EveRegion, EveSystem, PiPlanningJob, PiPlanningScenario, User
 from app.schemas.pi_planner import PlanningRequest, RecipeRequest, ScenarioWrite, ScoutRequest, TemplateInspect, TemplateRequest
-from app.services.esi_client import EsiClient
+from app.models.system_objects import EveSystemObject
 from app.services.pi_catalog import PLANET_TYPES
 from app.services.pi_market import market_snapshot
 from app.services.pi_planner import operation_slots, recipe_report, run_planner
@@ -28,7 +28,6 @@ router = APIRouter(prefix="/planetary-industry/planner", tags=["planetary-planne
 logger = logging.getLogger(__name__)
 _tasks: set[asyncio.Task] = set()
 _cancel: dict[str, threading.Event] = {}
-_public_cache: dict[str, tuple[datetime, dict]] = {}
 ACTIVE = ("queued", "pricing", "solving")
 
 
@@ -276,17 +275,6 @@ def systems(region_id: int, q: str = "", user: User = Depends(get_current_user),
     return [{"id": s.system_id, "name": s.name, "security": s.security_status} for s in db.scalars(query.order_by(EveSystem.name).limit(500)).all()]
 
 
-async def public_detail(client, path):
-    cached = _public_cache.get(path)
-    if cached and cached[0] > now():
-        return cached[1]
-    value = await client.get(path)
-    if len(_public_cache) >= 3000:
-        _public_cache.pop(next(iter(_public_cache)))
-    _public_cache[path] = (now() + timedelta(days=1), value)
-    return value
-
-
 @router.post("/scout")
 async def scout(body: ScoutRequest, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     value = build_context(db, authorize(user, db))
@@ -295,27 +283,25 @@ async def scout(body: ScoutRequest, user: User = Depends(get_current_user), db: 
     system_rows = db.scalars(select(EveSystem).where(EveSystem.system_id.in_(set(body.system_ids)))).all()
     if len(system_rows) != len(set(body.system_ids)):
         raise HTTPException(422, "Unknown system in current SDE")
-    client, semaphore = EsiClient(), asyncio.Semaphore(4)
-    async def one(system):
-        async with semaphore:
-            try:
-                detail = await public_detail(client, f"/universe/systems/{system.system_id}/")
-                found = []
-                for ref in detail.get("planets", [])[:50]:
-                    planet = await public_detail(client, f"/universe/planets/{ref['planet_id']}/")
-                    kind = PLANET_TYPES.get(planet["type_id"])
-                    if not kind:
-                        continue
-                    resources = [t for t, item in value["catalog"].items() if kind in item["planet_types"]]
-                    found.append({"key": str(ref["planet_id"]), "planet_id": ref["planet_id"], "name": planet["name"], "planet_type": kind, "system_id": system.system_id, "diameter_km": planet["radius"] * 2 / 1000, "security": system.security_status or 0, "customs_percent": 10, "npc_tax_percent": 10, "yields": [], "resource_type_ids": resources})
-                covered = set(t for p in found for t in p["resource_type_ids"])
-                return {"system_id": system.system_id, "name": system.name, "security": system.security_status, "planets": found, "covered_resources": sorted(covered & set(body.resource_type_ids)), "missing_resources": sorted(set(body.resource_type_ids) - covered), "score": len(covered & set(body.resource_type_ids)) if body.resource_type_ids else len(found)}
-            except Exception:
-                return {"system_id": system.system_id, "name": system.name, "planets": [], "score": -1, "error": "ESI universe data unavailable"}
-    try:
-        results = await asyncio.wait_for(asyncio.gather(*(one(s) for s in system_rows)), timeout=120)
-    except TimeoutError as exc:
-        raise HTTPException(504, "Scouting timed out. Select fewer systems and retry.") from exc
+    results = []
+    for system in system_rows:
+        planets = db.scalars(select(EveSystemObject).where(EveSystemObject.system_id == system.system_id, EveSystemObject.kind == "planet").order_by(EveSystemObject.object_id)).all()
+        found = []
+        incomplete = not planets
+        for planet in planets:
+            kind = PLANET_TYPES.get(planet.type_id)
+            if planet.type_id is None or (kind and (planet.radius is None or planet.radius <= 0)):
+                incomplete = True
+                continue
+            if not kind:
+                continue
+            resources = [t for t, item in value["catalog"].items() if kind in item["planet_types"]]
+            found.append({"key": str(planet.object_id), "planet_id": planet.object_id, "name": planet.name, "planet_type": kind, "system_id": system.system_id, "diameter_km": planet.radius * 2 / 1000, "security": system.security_status or 0, "customs_percent": 10, "npc_tax_percent": 10, "yields": [], "resource_type_ids": resources})
+        covered = set(t for p in found for t in p["resource_type_ids"])
+        result = {"system_id": system.system_id, "name": system.name, "security": system.security_status, "planets": found, "covered_resources": sorted(covered & set(body.resource_type_ids)), "missing_resources": sorted(set(body.resource_type_ids) - covered), "score": len(covered & set(body.resource_type_ids)) if body.resource_type_ids else len(found)}
+        if incomplete:
+            result.update(score=-1, error="Local SDE planet data incomplete. Reimport the SDE.")
+        results.append(result)
     return {"systems": sorted(results, key=lambda s: (-s["score"], s["name"])), "as_of": now().isoformat(), "note": "Ranked by planet/resource coverage only. ESI exposes no resource-density scan, customs ownership/rate or local competition."}
 
 

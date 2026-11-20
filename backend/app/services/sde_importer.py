@@ -42,6 +42,7 @@ SDE_FILES = {
     "constellations": ("mapConstellations.yaml",),
     "systems": ("mapSolarSystems.yaml",),
     "stargates": ("mapStargates.yaml",),
+    "stars": ("mapStars.yaml",),
     "planets": ("mapPlanets.yaml",),
     "moons": ("mapMoons.yaml",),
     "belts": ("mapAsteroidBelts.yaml",),
@@ -85,6 +86,7 @@ class SdeImportStats:
     celestial_planets: int = 0
     celestial_moons: int = 0
     celestial_belts: int = 0
+    celestial_stars: int = 0
     dogma_modifiers: int = 0
     type_dogma_default_effects: int = 0
     blueprint_products: int = 0
@@ -824,12 +826,13 @@ def import_sde(
             mark("systems complete")
 
         if "systems" in wanted or "celestials" in wanted:
+            from app.models.system_objects import EveSystemObject
             from app.services.system_distances import store_public, position
-            for logical_name, kind in (("planets", "planet"), ("moons", "moon"), ("belts", "belt")):
+            for logical_name, kind in (("stars", "star"), ("planets", "planet"), ("moons", "moon"), ("belts", "belt")):
                 try:
                     objects = source.load_yaml(logical_name)
                 except FileNotFoundError:
-                    mark(f"{logical_name} absent in this SDE; ESI refresh can fill them")
+                    mark(f"{logical_name} absent in this SDE; reimport a complete SDE to fill them")
                     continue
                 mark(f"loading {logical_name}")
                 for raw_id, payload in objects.items():
@@ -846,7 +849,25 @@ def import_sde(
                     fallback = f"{system.name} {roman}" if roman else f"{system.name} — {kind.title()} {raw_id}"
                     if kind in ("moon", "belt"):
                         fallback += f" - {'Moon' if kind == 'moon' else 'Asteroid Belt'} {payload.get('orbitIndex', raw_id)}"
-                    store_public(db, int(raw_id), system_id, kind, localized_text(payload.get("name"), fallback), position(payload), "sde")
+                    if kind == "star":
+                        fallback = system.name
+                    # Respect named orbit exceptions (e.g. named planets/moons).
+                    orbit_id = optional_int(payload.get("orbitID"))
+                    orbit = db.get(EveSystemObject, orbit_id) if orbit_id else None
+                    if orbit and kind == "planet":
+                        fallback = f"{orbit.name} {roman}"
+                    elif orbit and kind in ("moon", "belt"):
+                        fallback = f"{orbit.name} - {'Moon' if kind == 'moon' else 'Asteroid Belt'} {payload.get('orbitIndex', raw_id)}"
+                    # mapStars has no position. Preserve historical coordinates if
+                    # present, but never invent a position for a new star.
+                    coords, source_name = position(payload), "sde"
+                    previous = db.get(EveSystemObject, int(raw_id)) if kind == "star" else None
+                    if previous and all(value is None for value in coords.values()):
+                        coords = {axis: getattr(previous, axis) for axis in ("x", "y", "z")}
+                        source_name = previous.source
+                    row = store_public(db, int(raw_id), system_id, kind, localized_text(payload.get("name"), fallback), coords, source_name)
+                    row.type_id = optional_int(payload.get("typeID"))
+                    row.radius = optional_float(payload.get("radius"))
                     stats.celestials += 1
                     setattr(stats, f"celestial_{logical_name}", getattr(stats, f"celestial_{logical_name}") + 1)
                     if stats.celestials % 2500 == 0:

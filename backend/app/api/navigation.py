@@ -387,17 +387,16 @@ def distance_objects(system_id: int, user: User = Depends(require_navigation), d
 @router.post("/systems/{system_id}/objects/sync")
 async def sync_distance_objects(system_id: int, user: User = Depends(require_navigation), db: Session = Depends(get_db)):
     import httpx
-    from app.services.esi_client import EsiClient
     from app.services.system_distances import refresh_public, refresh_structures, system_objects
     from sqlalchemy.exc import IntegrityError
     system_objects(db, system_id, user.id)  # Validate system before external requests.
     messages = []
     try:
-        messages.append(await refresh_public(db, system_id, EsiClient()))
+        messages.append(await refresh_public(db, system_id))
         db.commit()
     except (HTTPException, httpx.HTTPError, IntegrityError):
         db.rollback()
-        messages.append("Public ESI refresh unavailable or another refresh finished first; showing stored positions.")
+        messages.append("Local object refresh unavailable or another refresh finished first; showing stored positions.")
     count = await refresh_structures(db, system_id, user.id)
     result = system_objects(db, system_id, user.id)
     result["message"] = " ".join(messages) + f" {count} accessible structures resolved."

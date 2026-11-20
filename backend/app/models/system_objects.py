@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import BigInteger, DateTime, Float, ForeignKey, String
+from sqlalchemy import BigInteger, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 from app.models.base import Base
 
@@ -14,6 +14,8 @@ class EveSystemObject(Base):
     x: Mapped[float | None] = mapped_column(Float)
     y: Mapped[float | None] = mapped_column(Float)
     z: Mapped[float | None] = mapped_column(Float)
+    type_id: Mapped[int | None] = mapped_column(Integer)
+    radius: Mapped[float | None] = mapped_column(Float)
     source: Mapped[str] = mapped_column(String(12), default="sde")
 
 

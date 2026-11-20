@@ -35,9 +35,10 @@ def sde_status(_: User = Depends(require_admin), db: Session = Depends(get_db)) 
     return {
         "default_source_path": get_settings().sde_source_path,
         "agents": db.scalar(select(func.count()).select_from(EveAgent)) or 0,
-        "celestials": db.scalar(select(func.count()).select_from(EveSystemObject).where(EveSystemObject.kind.in_(["planet", "moon", "belt"]))) or 0,
+        "celestials": db.scalar(select(func.count()).select_from(EveSystemObject).where(EveSystemObject.kind.in_(["planet", "moon", "belt", "star"]))) or 0,
         "celestial_planets": db.scalar(select(func.count()).select_from(EveSystemObject).where(EveSystemObject.kind == "planet")) or 0,
         "celestial_moons": db.scalar(select(func.count()).select_from(EveSystemObject).where(EveSystemObject.kind == "moon")) or 0,
+        "celestial_stars": db.scalar(select(func.count()).select_from(EveSystemObject).where(EveSystemObject.kind == "star")) or 0,
         "celestial_belts": db.scalar(select(func.count()).select_from(EveSystemObject).where(EveSystemObject.kind == "belt")) or 0,
         "dogma_modifiers": sum(len(value or []) for value in db.scalars(select(EveDogmaEffect.modifier_info))),
         "type_dogma_default_effects": db.scalar(select(func.count()).select_from(EveTypeDogmaEffect).where(EveTypeDogmaEffect.is_default.is_(True))) or 0,

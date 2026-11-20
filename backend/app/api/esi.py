@@ -315,106 +315,17 @@ async def apply_type_names(client: EsiClient, db: Session, type_ids: set[int]) -
 
 
 async def apply_type_metadata(client: EsiClient, db: Session, type_ids: set[int], max_fetch: int | None = None) -> int:
-    updated = 0
-    fetched = 0
+    # Metadata is maintained by SDE import. Do not overwrite it with placeholders.
     for type_id in sorted(type_ids):
-        if max_fetch is not None and fetched >= max_fetch:
-            break
-        item_type = ensure_type(db, type_id)
-        if item_type.group_id is not None and item_type.group is not None and item_type.capacity is not None:
-            continue
-        try:
-            payload = await client.get(f"/universe/types/{type_id}/", params={"language": "en"})
-        except HTTPException:
-            continue
-        item_type.name = payload.get("name", item_type.name)
-        item_type.description = payload.get("description")
-        item_type.group_id = payload.get("group_id")
-        item_type.volume = payload.get("volume")
-        item_type.packaged_volume = payload.get("packaged_volume")
-        item_type.capacity = payload.get("capacity")
-        item_type.market_group_id = payload.get("market_group_id")
-        item_type.published = bool(payload.get("published", True))
-        if item_type.group_id is not None:
-            group = db.get(EveGroup, item_type.group_id)
-            if group is None or group.category_id is None:
-                try:
-                    group_payload = await client.get(f"/universe/groups/{item_type.group_id}/", params={"language": "en"})
-                except HTTPException:
-                    group_payload = None
-                if group_payload:
-                    group = group or EveGroup(group_id=item_type.group_id, name=group_payload.get("name", f"Group {item_type.group_id}"))
-                    db.add(group)
-                    group.name = group_payload.get("name", group.name)
-                    group.category_id = group_payload.get("category_id")
-                    group.published = bool(group_payload.get("published", True))
-                    if group.category_id is not None:
-                        category = db.get(EveCategory, group.category_id)
-                        if category is None:
-                            try:
-                                category_payload = await client.get(f"/universe/categories/{group.category_id}/", params={"language": "en"})
-                            except HTTPException:
-                                category_payload = None
-                            category = EveCategory(category_id=group.category_id, name=(category_payload or {}).get("name", f"Category {group.category_id}"), published=bool((category_payload or {}).get("published", True)))
-                            db.add(category)
-                        elif category.name.startswith("Category "):
-                            try:
-                                category_payload = await client.get(f"/universe/categories/{group.category_id}/", params={"language": "en"})
-                                category.name = category_payload.get("name", category.name)
-                                category.published = bool(category_payload.get("published", category.published))
-                            except HTTPException:
-                                pass
-        updated += 1
+        ensure_type(db, type_id)
     db.flush()
-    return updated
+    return 0
+
 
 async def apply_skill_metadata(client: EsiClient, db: Session, type_ids: set[int]) -> int:
-    if not type_ids:
-        return 0
-    try:
-        category_payload = await client.get("/universe/categories/16/", params={"language": "en"})
-    except HTTPException:
-        return 0
+    return await apply_type_metadata(client, db, type_ids)
 
-    category = db.get(EveCategory, 16)
-    if category is None:
-        category = EveCategory(category_id=16, name=category_payload.get("name", "Skill"), published=bool(category_payload.get("published", True)))
-        db.add(category)
-    else:
-        category.name = category_payload.get("name", category.name)
-        category.published = bool(category_payload.get("published", category.published))
 
-    pending_type_ids = set(type_ids)
-    updated = 0
-    for group_id in category_payload.get("groups", []) or []:
-        if not pending_type_ids:
-            break
-        try:
-            group_payload = await client.get(f"/universe/groups/{group_id}/", params={"language": "en"})
-        except HTTPException:
-            continue
-        group_type_ids = {int(type_id) for type_id in group_payload.get("types", []) or []}
-        matched_type_ids = pending_type_ids.intersection(group_type_ids)
-        if not matched_type_ids:
-            continue
-
-        group = db.get(EveGroup, int(group_id))
-        if group is None:
-            group = EveGroup(group_id=int(group_id), name=group_payload.get("name", f"Group {group_id}"))
-            db.add(group)
-        group.name = group_payload.get("name", group.name)
-        group.category_id = 16
-        group.published = bool(group_payload.get("published", True))
-
-        for type_id in matched_type_ids:
-            item_type = ensure_type(db, type_id)
-            if item_type.group_id != int(group_id):
-                item_type.group_id = int(group_id)
-                updated += 1
-        pending_type_ids.difference_update(matched_type_ids)
-
-    db.flush()
-    return updated
 async def apply_location_names(client: EsiClient, db: Session, location_ids: set[int], location_types: dict[int, str]) -> int:
     updated = 0
     ids = sorted(location_ids)
@@ -693,21 +604,9 @@ async def resolve(payload: dict[str, Any]) -> dict[str, Any]:
 
 @router.post("/import/type/{type_id}")
 async def import_type(type_id: int, db: Session = Depends(get_db)) -> dict[str, Any]:
-    client = EsiClient()
-    payload = await client.get(f"/universe/types/{type_id}/", params={"language": "en"})
     item_type = db.get(EveType, type_id)
     if item_type is None:
-        item_type = EveType(type_id=type_id, name=payload["name"])
-        db.add(item_type)
-    item_type.name = payload["name"]
-    item_type.description = payload.get("description")
-    item_type.group_id = payload.get("group_id")
-    item_type.volume = payload.get("volume")
-    item_type.packaged_volume = payload.get("packaged_volume")
-    item_type.capacity = payload.get("capacity")
-    item_type.market_group_id = payload.get("market_group_id")
-    item_type.published = bool(payload.get("published", True))
-    db.commit()
+        raise HTTPException(404, "Type not found in local SDE. Reimport the SDE.")
     return {"status": "imported", "type_id": type_id, "name": item_type.name}
 
 
@@ -766,15 +665,9 @@ async def import_alliance(alliance_id: int, db: Session = Depends(get_db)) -> di
 
 @router.post("/import/system/{system_id}")
 async def import_system(system_id: int, db: Session = Depends(get_db)) -> dict[str, Any]:
-    client = EsiClient()
-    payload = await client.get(f"/universe/systems/{system_id}/", params={"language": "en"})
     system = db.get(EveSystem, system_id)
     if system is None:
-        system = EveSystem(system_id=system_id, name=payload["name"])
-        db.add(system)
-    system.name = payload["name"]
-    system.constellation_id = payload.get("constellation_id")
-    system.security_status = payload.get("security_status")
+        raise HTTPException(404, "System not found in local SDE. Reimport the SDE.")
     location = db.scalar(select(Location).where(Location.location_kind == LocationKind.SYSTEM, Location.eve_location_id == system_id))
     if location is None:
         location = Location(location_kind=LocationKind.SYSTEM, eve_location_id=system_id, name=system.name, source=AssetSource.ESI)
@@ -787,14 +680,17 @@ async def import_system(system_id: int, db: Session = Depends(get_db)) -> dict[s
 
 @router.post("/import/station/{station_id}")
 async def import_station(station_id: int, db: Session = Depends(get_db)) -> dict[str, Any]:
-    client = EsiClient()
-    payload = await client.get(f"/universe/stations/{station_id}/")
+    from app.models import EveStation
+    station = db.get(EveStation, station_id)
+    if station is None:
+        raise HTTPException(404, "Station not found in local SDE. Reimport the SDE.")
+    name = station.name or f"Station {station_id}"
     location = db.scalar(select(Location).where(Location.location_kind == LocationKind.STATION, Location.eve_location_id == station_id))
     if location is None:
-        location = Location(location_kind=LocationKind.STATION, eve_location_id=station_id, name=payload["name"], source=AssetSource.ESI)
+        location = Location(location_kind=LocationKind.STATION, eve_location_id=station_id, name=name, source=AssetSource.ESI)
         db.add(location)
-    location.name = payload["name"]
-    location.system_id = payload.get("system_id")
+    location.name = name
+    location.system_id = station.system_id
     db.commit()
     return {"status": "imported", "station_id": station_id, "name": location.name, "location_id": location.id}
 
@@ -2999,7 +2895,7 @@ async def auth_callback(code: str | None = None, state: str | None = None, db: S
             headers={
                 "Accept": "application/json",
                 "Content-Type": "application/x-www-form-urlencoded",
-                "User-Agent": "eve-quartermaster/2.4.0 (+https://github.com/n00bgames/eve-quartermaster)",
+                "User-Agent": "eve-quartermaster/2.4.1 (+https://github.com/n00bgames/eve-quartermaster)",
             },
         )
     if response.status_code >= 400:

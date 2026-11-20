@@ -103,7 +103,7 @@ services:
       dockerfile: backend/Dockerfile
     labels:
       com.n00bgames.eqm.revision: ${EQM_UPDATE_REVISION:-}
-    command: rq worker --url redis://redis:6379/0 eve-quartermaster
+    command: ["sh", "-c", "python -m app.db.wait_for_db && python -m app.db.wait_for_schema && exec rq worker --url redis://redis:6379/0 eve-quartermaster"]
     environment:
       APP_NAME: eve-quartermaster
       DATABASE_URL: postgresql+psycopg://eve:eve@postgres:5432/eve_quartermaster
