@@ -25,6 +25,10 @@ EVE Quartermaster is a containerized, database-first EVE Online quartermaster an
 
 The current application/package version is **v2.4.1** (`2.4.1`). Mining Ledger adds full-period **Mining Report CSV/JSON exports**, and static universe lookups now read imported SDE data locally. Deploy matching API, worker and frontend builds, apply migration `0111_local_universe`, then run a **full SDE import** for planet type/radius and stars. See the [v2.4.1 release draft](docs/releases/v2.4.1.md), [upgrade instructions](docs/local-universe.md), and [changelog](CHANGELOG.md). Earlier notes: [v2.4.0](docs/releases/v2.4.md), [v2.3](docs/releases/v2.3.md), [v2.1](docs/releases/v2.1.md), [v2.0](docs/releases/v2.0.md), [v1.0.3](docs/releases/v1.0.3.md) and [v1.0](docs/releases/v1.0.md).
 
+**Unreleased follow-up — Ore Split Calculator:** Paste ore names and quantities in Mining Ledger, type a percentage or move the slider, and use 5/10/15/20/25/50% presets. Copy whole-unit cuts or remainders. This source feature follows the published v2.4.1 release. [Guide](docs/ore-split-calculator.md) · [Next release draft](docs/releases/next.md).
+
+![Ore Split Calculator — unreleased synthetic development preview](static/ss/v2.4.1/ore-split-desktop.png)
+
 **Local universe data:** PI Scout and static object/type lookups use imported SDE data; unknown star positions stay unavailable. Apply migration `0111_local_universe`, then run a full SDE import. [Operator guide and validation](docs/local-universe.md).
 
 ![Local universe data — actual synthetic v2.4.1 development preview](static/ss/v2.4.1/local-universe-desktop.png)

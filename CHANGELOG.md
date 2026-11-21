@@ -4,6 +4,10 @@ All notable changes to EVE Quartermaster are tracked here.
 
 Version sections are written as user-facing release notes first, with implementation detail included where it helps operators understand deployment or testing impact.
 
+## [Unreleased]
+
+- Add **Mining Ledger → Ore Split Calculator** for pasted ore quantities, a linked percentage field and slider, and 5/10/15/20/25/50% presets. Show exact whole-unit cuts and conserving remainders; combine repeated names before rounding while keeping compressed/uncompressed names separate. Flag malformed rows and copy cut/remainder lists with a selectable clipboard fallback. Browser-only; no new API, migration or ESI scope. [Guide](docs/ore-split-calculator.md).
+
 ## [2.4.1] - Unreleased
 
 - Add **Mining Report CSV/JSON exports** for the applied inclusive date period and character/system/operation filters. Include full-period totals and every day, ore, pilot and system breakdown across ledger pages, with units, selection metadata, measured-efficiency limits and stored-value provenance. Prevent stale exports while filters change, requests load/fail or older responses finish late. Frontend-only; no migration or new ESI scope. [Guide](docs/mining-report.md).

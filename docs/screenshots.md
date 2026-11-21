@@ -1094,3 +1094,12 @@ Actual Navigation and PI Scout components with synthetic local API responses. St
 ![Local catalog navigation and PI Scout](../static/ss/v2.4.1/local-universe-desktop.png)
 
 ![Local catalog navigation at 390px](../static/ss/v2.4.1/local-universe-mobile.png)
+
+
+## Ore Split Calculator — unreleased follow-up after v2.4.1
+
+Actual MiningLedgerPage/OreSplitCalculator component with fabricated quantities. Desktop shows the percentage field, slider, all presets, rounded cut/remainder table and copy actions. At 390px, each ore presents all three quantities together in a card without horizontal scrolling. These captures show source after the published v2.4.1 tag, not a deployed feature. Original Mining Report/local-universe receipt fields and image hashes remain unchanged. [Guide](ore-split-calculator.md) · [Additive provenance](../static/ss/v2.4.1/capture-receipt.json).
+
+![Ore split desktop](../static/ss/v2.4.1/ore-split-desktop.png)
+
+![Ore split mobile](../static/ss/v2.4.1/ore-split-mobile.png)

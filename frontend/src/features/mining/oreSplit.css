@@ -1,0 +1,34 @@
+.ore-split-calculator { border: 1px solid var(--eqm-border, #29333e); background: var(--eqm-panel, #0d141b); min-width: 0; }
+.ore-split-calculator > summary { padding: 14px 16px; cursor: pointer; overflow-wrap: anywhere; }
+.ore-split-calculator > summary strong { margin-right: 12px; }
+.ore-split-calculator > summary span { color: var(--eqm-muted, #8192a8); font-size: .86rem; }
+.ore-split-content { display: grid; gap: 12px; padding: 0 16px 16px; min-width: 0; }
+.ore-split-content p { margin: 0; overflow-wrap: anywhere; }
+.ore-split-content label { display: grid; gap: 6px; min-width: 0; }
+.ore-split-content textarea { width: 100%; min-width: 0; box-sizing: border-box; resize: vertical; font-family: "Cascadia Mono", Consolas, monospace; font-size: .86rem; }
+.ore-split-content small { color: var(--eqm-muted, #8192a8); }
+.ore-split-percent-controls { display: grid; grid-template-columns: minmax(150px, 220px) minmax(0, 1fr); gap: 18px; align-items: end; }
+.ore-split-percent-controls input { min-width: 0; width: 100%; box-sizing: border-box; }
+.ore-split-percent-controls input[type="range"] { height: 40px; margin: 0; padding: 0; accent-color: var(--eqm-accent, #e8b84d); }
+.ore-split-presets { display: flex; flex-wrap: wrap; gap: 8px; }
+.ore-split-presets button[aria-pressed="true"] { outline: 2px solid var(--eqm-accent, #e8b84d); outline-offset: 1px; }
+.ore-split-rounding { color: var(--eqm-muted, #8192a8); font-size: .85rem; }
+.ore-split-table-wrap { overflow-x: auto; min-width: 0; }
+.ore-split-calculator .ore-split-table-wrap table { width: 100%; min-width: 0; font-variant-numeric: tabular-nums; }
+.ore-split-table-wrap caption { text-align: left; padding: 6px 0 12px; }
+.ore-split-table-wrap th, .ore-split-table-wrap td { padding: 10px; vertical-align: top; }
+.ore-split-table-wrap th:first-child { text-align: left; min-width: 140px; overflow-wrap: anywhere; }
+.ore-split-table-wrap th:not(:first-child), .ore-split-table-wrap td { text-align: right; white-space: nowrap; }
+.ore-split-actions { flex-wrap: wrap; }
+@media (max-width: 560px) {
+  .ore-split-calculator > summary span { display: block; margin: 5px 0 0 18px; }
+  .ore-split-percent-controls { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .ore-split-table-wrap th, .ore-split-table-wrap td { padding: 8px; }
+  .ore-split-table-wrap table, .ore-split-table-wrap caption, .ore-split-table-wrap tbody { display: block; width: 100%; }
+  .ore-split-table-wrap thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .ore-split-table-wrap tbody { display: grid; gap: 10px; }
+  .ore-split-table-wrap tbody tr { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--eqm-border, #29333e); }
+  .ore-split-table-wrap tbody th { grid-column: 1 / -1; min-width: 0; white-space: normal; }
+  .ore-split-table-wrap tbody td { display: flex; flex-direction: column; gap: 5px; min-width: 0; white-space: normal; overflow-wrap: anywhere; text-align: left; border-bottom: 0; }
+  .ore-split-table-wrap tbody td::before { content: attr(data-label); font-size: .74rem; color: var(--eqm-muted, #8192a8); }
+}

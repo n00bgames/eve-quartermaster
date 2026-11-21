@@ -91,5 +91,50 @@
         "sha256": "bc6de33aa0706ff1a2aeed5d5461a0a23270b53d16fa570bc30752c3b0d860b9"
       }
     ]
+  },
+  "ore_split_calculator": {
+    "application_version": "2.4.1",
+    "captured_at_utc": "2026-11-21T11:02:14.877099+00:00",
+    "source_commit": "e627f0b80116dae48cc5e138fa29560a341cd2e0",
+    "source_status": "Uncommitted and unreleased frontend follow-up after the published v2.4.1 tag; no version bump",
+    "method": "Actual MiningLedgerPage containing OreSplitCalculator in isolated Vite, headless Microsoft Edge at 1480px and 390px; visually inspected",
+    "data_provenance": "Public ore names and fabricated quantities; synthetic empty-ledger API adapter; no private user input or production data in screenshots",
+    "limitations": [
+      "Not a full authenticated App bootstrap or production screenshot",
+      "Clipboard actions checked with a controlled writeText adapter and explicit denied-write fallback",
+      "No SDE/ESI requests, persistence, live prices or reprocessing valuation added"
+    ],
+    "checks": [
+      "Actual MiningLedgerPage calculator defaults collapsed, opens by keyboard and gives/copies the requested cut and remainder",
+      "All six presets plus typed decimal percentages and range-slider changes stay linked and recalculate immediately",
+      "Invalid percentages/rows hide partial results and block copying; duplicates aggregate; compressed ore, 0%, 100% and half-unit rounding remain correct",
+      "Denied clipboard writes expose selectable fallback text; changing values clears feedback; calculator interaction makes no API requests",
+      "390px page containment, mobile copy, collapsed-state retention, clear button and desktop/mobile actual-component captures",
+      "The independent calculator still works when the ledger fetch fails"
+    ],
+    "source_sha256": {
+      "frontend/src/features/mining/OreSplitCalculator.tsx": "7328dbe236e4290c92ea69bb0c2d6b4dcae2566c9f7ad7932543c195b5a7ffd0",
+      "frontend/src/features/mining/oreSplit.ts": "e34cc9dfb807c391611cbee755bf981ca3be26912ebce5bad129413be10a5492",
+      "frontend/src/features/mining/oreSplit.css": "f9ac2cd0d38d03994cdf83dbd22caecb82bd176a1ed90751330ba7730cc36900",
+      "frontend/src/features/mining/MiningLedgerPage.tsx": "6265c280864de68a5892049acd786157d1faf2e5c1d0d7e822aaf2b79599be9f",
+      "frontend/tests/oreSplit.test.ts": "4d5f266a4d29ab7a3344a914ff13e064acdbe48019d4ee2346a420730008c127"
+    },
+    "browser_harness_sha256": "35027e3f16414b4ee99c61b89a78b802ef21c07bfc79577db3837e2308b894fe",
+    "screenshots": [
+      {
+        "filename": "ore-split-desktop.png",
+        "width": 1410,
+        "height": 650,
+        "bytes": 86952,
+        "sha256": "a77c647e27d15c906394785788d91f0771cf1d84660cf5753ee7581c550ef063"
+      },
+      {
+        "filename": "ore-split-mobile.png",
+        "width": 332,
+        "height": 1190,
+        "bytes": 91957,
+        "sha256": "27cf6a68c9465de26058b5fb084bd96bd1ec037c494d86b0314a623b9d589f06"
+      }
+    ]
   }
 }
