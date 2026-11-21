@@ -1,6 +1,6 @@
 # SDE maintenance from Settings
 
-Unreleased EQM 2.0.0 feature. Available to administrators and hosts, including aggregate roles whose base grants administrator access.
+Available in EQM; HTTP JSONL source added in 2.4.2. Available to administrators and hosts, including aggregate roles whose base grants administrator access.
 
 ## Controls
 
@@ -38,4 +38,32 @@ Application/server upgrades are a separate privilege boundary and are not implem
 
 Tests use small synthetic ZIP archives and mocked HTTP/queue delivery, executing the actual worker function and importer. They cover admin/host boundaries, forbidden URL/path/command inputs, global overlap, duplicate delivery, download-only/import modes, bad ZIP/missing dataset/traversal/oversize/HTTP failure, preservation of existing archives, cleanup, queue uncertainty, failed-worker reconciliation/callbacks, agents-only failure, migration round trip and existing stored/processed totals. TypeScript and production build pass.
 
-Actual browser checks use synthetic accounts and a mocked worker/CCP transport: queue/busy controls, progress polling, persisted completion after reload, filename/checksum receipt, selecting a downloaded archive, and automatic-import checkbox. No live SDE import, full production download, real Redis worker integration or host update was performed. CCP's current metadata and archive HEAD response were checked read-only. [Screenshots](screenshots.md#sde-maintenance) use build 1234567 and a tiny test ZIP; the progress fixture deliberately pauses to make the running state visible.
+The original YAML ZIP browser checks used synthetic accounts and a mocked worker/CCP transport: queue/busy controls, progress polling, persisted completion after reload, filename/checksum receipt, selecting a downloaded archive, and automatic-import checkbox. That original ZIP validation did not perform a live SDE import, full production download, real Redis worker integration or host update; the separate HTTP-source validation is documented below. CCP's current metadata and archive HEAD response were checked read-only. [Screenshots](screenshots.md#sde-maintenance) use build 1234567 and a tiny test ZIP; the progress fixture deliberately pauses to make the running state visible.
+
+## CCP HTTP SDE source (v2.4.2)
+
+Under **Settings → SDE Maintenance**, choose **CCP SDE API (JSONL)**, then **Fetch and import full HTTP SDE**. This always queues a full fetch plus import through the established Redis/RQ worker. The API accepts no URL, release, destination or partial-section override (`POST /api/sde/http-import`, empty JSON object). The same administrator/host grant and one-operation database lock apply to HTTP, ZIP download and manual import alike. Selecting a source never silently queues work. YAML ZIP remains the initial/default choice; switch back for existing mounted paths and agents-only imports.
+
+The worker reads `https://sde.evetech.net/tranquility/latest/` once per job, follows the expected release redirect, pins the manifest release ID and uses its exact JSONL links. CCP redirects those links to content-addressed blobs; only the same HTTPS origin and the exact blob version named by that manifest are permitted. Redirects to other releases, hosts, schemes or arbitrary paths are rejected before requesting them. TLS verification stays on. `httpx` decodes gzip once; wire Content-Length is not confused with decoded size. Per-table SHA-256 receipts describe staged decoded bytes, not a CCP signature.
+
+Only 20 tables currently consumed by the full importer are fetched, with at most two concurrent requests. Required tables are validated before database writes: explicit named ID keys, duplicate fields/IDs, positions and importer-required types, blueprint inputs/products, dogma attributes/effects and PI inputs/outputs. PI's named `types` array is adapted to the existing keyed input. Large map tables remain file-backed streams rather than all being loaded into memory. Optional stars/planets/moons/belts/NPC-character tables retain the existing absent-table semantics; absent optional tables are disclosed. Named celestial exceptions and cached star positions survive; new stars with no position remain unknown.
+
+Settings displays **job source, pinned release, build, validated-table progress, final totals, failure stage and last successful HTTP import**. Release IDs are tracked separately from builds: two releases sharing a build are distinct. A later failed job never advances the last-success receipt, though its pinned release is still shown for diagnosis. That receipt is historical and does not imply a later partial failure left the database fully consistent.
+
+### HTTP limits, storage and recovery
+
+`SDE_HTTP_MAX_BYTES` defaults to **4GiB decoded across all tables**, configurable from 1024 bytes to 16 GiB. Each table is capped at 1 GiB, each JSONL record at 8 MiB, the manifest at 2 MiB, redirects at four requests, connect timeout at 15 seconds and read timeout at 60 seconds. The existing RQ `SDE_JOB_TIMEOUT_SECONDS` bounds the whole job. Give the worker sufficient space under `SDE_DOWNLOAD_PATH` for staging and permit outbound HTTPS to `sde.evetech.net`; the API needs no new network path or write privilege.
+
+Staged HTTP files are operation-specific and removed after ordinary success/failure; persisted job receipts retain release, table counts, sizes and hashes. Force-killing the worker may leave its private temporary directory: confirm that job has stopped before removing that specific directory. Existing ZIP archives are untouched. A release that expires mid-fetch fails as one batch; retry a **new full HTTP job**, which reads a fresh manifest. Files from different releases are never combined.
+
+**Imports retain batch commits.** A failure during database import can leave partial data, so inspect the stage/logs and rerun the full import. Validation before writes protects against failed downloads and malformed inputs, not every possible database/storage failure. Never mark a failed release current or assume ZIP/download success updates a remote host.
+
+### Upgrade and verification
+
+Deploy matching **2.4.2 API, worker and frontend** after current maintenance jobs finish. This change needs no additional migration; installations coming from before 2.4.1 still need `0111_local_universe`. Select the new HTTP source explicitly and wait for a successful **import**, then check stored planet/star/type/recipe totals, a PI Scout planet and Navigation distance data. The existing local runtime SDE reads, live ESI routes and `2026-07-22` ESI compatibility date are unchanged.
+
+Regression tests exercise real shared import upserts with paired schema-derived YAML/JSONL fixtures from selected fields of the pinned public CCP release `20261120T165826Z`; they cover hierarchy, planet type/radius, stars/cached positions, gates, stations, dogma, blueprints, PI and rerun stability. These fixtures are not a claim of full independent ZIP-release parity. Mocked transport/queue tests cover redirect/gzip/size/schema failures, expiry, same-build releases, permissions, overlap, retry and retained success receipts. Synthetic browser checks cover the actual Settings component, durable status display and 390px containment. [Release notes](releases/v2.4.2.md) record the separate real Redis/RQ/PostgreSQL validation and its limits. Production host rollout remains a separate operator step.
+
+Reference: [CCP's HTTP SDE announcement](https://developers.eveonline.com/blog/the-sde-over-http-static-data-dynamically).
+
+Real isolated integration passed on **20261120T165826Z / build 3724492**: two full live CCP HTTP imports through Redis/RQ into disposable PostgreSQL 16, with identical processed/stored totals on rerun and clean staging. A deliberate live fetch-size failure before writes left the database unchanged and did not advance the imported release. Verified Rifter, Jita station, gate destination, unknown star coordinates, PI Scout's Tanoo I diameter (10,120 km) and a Navigation distance from imported positions, with ESI access blocked during runtime checks. Imported 68,407 planets and 8,089 stars; processed 53,941 types, 658,480 type-dogma attributes and 19,303 blueprint activities. This validates the HTTP release and repeatability; it is not a full independent ZIP-release parity claim or a production-host rollout.

@@ -1103,3 +1103,11 @@ Actual MiningLedgerPage/OreSplitCalculator component with fabricated quantities.
 ![Ore split desktop](../static/ss/v2.4.1/ore-split-desktop.png)
 
 ![Ore split mobile](../static/ss/v2.4.1/ore-split-mobile.png)
+
+## HTTP SDE import — v2.4.2
+
+Actual Settings component captures with synthetic administrator/API/worker fixtures; release 20261121T123456Z, build 1234567 and all displayed counts are fabricated. The cropped images retain the complete source controls and release receipt. They demonstrate the UI, not a production import. [Capture receipt](../static/ss/v2.4.2/capture-receipt.json).
+
+![HTTP SDE source and pinned release — desktop synthetic preview](../static/ss/v2.4.2/http-sde-desktop.png)
+
+![HTTP SDE controls and receipt — 390px synthetic preview](../static/ss/v2.4.2/http-sde-mobile.png)

@@ -60,12 +60,17 @@ export type SdeImportResult = SdeStatus & {
 
 export type SdeImportProgress = {
   id?: string;
-  action?: "download" | "import";
+  action?: "download" | "import" | "http_import";
+  source?: "yaml" | "ccp_http";
+  failure_stage?: string | null;
+  tables_completed?: number | null;
+  tables_total?: number | null;
+  last_successful_http_import?: {release: string; build: string; completed_at: string} | null;
   created_at?: string;
   bytes_received?: number;
   total_bytes?: number | null;
   import_after_download?: boolean;
-  download?: {build?:string; released_at?:string; bytes?:number; sha256?:string; path?:string; source_url?:string};
+  download?: {source?:string; release?:string; build?:string; released_at?:string; bytes?:number; sha256?:string; path?:string; source_url?:string; missing_optional_tables?:string[]};
   running: boolean;
   status: string;
   stage?: string | null;

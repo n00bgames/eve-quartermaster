@@ -1,6 +1,6 @@
 # Ore Split Calculator
 
-Unreleased source follow-up after v2.4.1. No application version bump or published release is included.
+Released in v2.4.2. The original implementation followed v2.4.1; the historical development captures below retain their original versioned paths.
 
 Open **Mining Ledger → Ore Split Calculator**, paste one ore name and quantity per line, then choose a percentage. The panel starts collapsed. This is independent of Mining Ledger's dates, character filters, stored analytics and Mining Report exports.
 

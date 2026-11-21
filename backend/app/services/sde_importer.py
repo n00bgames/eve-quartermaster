@@ -709,8 +709,15 @@ def import_sde(
     db: Session,
     sections: set[str] | None = None,
     progress: Callable[[SdeImportStats, str], None] | None = None,
+    source_format: str = "yaml",
 ) -> dict[str, Any]:
-    source = SdeSource(source_path)
+    if source_format == "http_jsonl":
+        from app.services.sde_http import JsonlSource
+        source = JsonlSource(source_path)
+    elif source_format == "yaml":
+        source = SdeSource(source_path)
+    else:
+        raise ValueError("Unknown SDE source format")
     stats = SdeImportStats(source_path=source_path)
     wanted = sections or {"categories", "groups", "types", "dogma", "blueprints", "planet_schematics", "regions", "constellations", "systems", "stargates", "stations"}
 

@@ -1,0 +1,276 @@
+{
+  "release": "20261120T165826Z",
+  "provenance": "Selected importer fields from public CCP record endpoints; English localization only. Paired YAML fixtures are generated explicitly in tests.",
+  "tables": {
+    "categories": {
+      "categoryID": 0,
+      "name": {
+        "en": "#System"
+      },
+      "published": false
+    },
+    "groups": {
+      "groupID": 0,
+      "categoryID": 0,
+      "name": {
+        "en": "#System"
+      },
+      "published": false
+    },
+    "types": {
+      "typeID": 0,
+      "groupID": 0,
+      "mass": 1,
+      "name": {
+        "en": "#System"
+      },
+      "published": false
+    },
+    "blueprints": {
+      "blueprintTypeID": 681,
+      "activities": {
+        "copying": {
+          "time": 480
+        },
+        "manufacturing": {
+          "materials": [
+            {
+              "quantity": 86,
+              "typeID": 38
+            }
+          ],
+          "products": [
+            {
+              "quantity": 1,
+              "typeID": 165
+            }
+          ],
+          "time": 600
+        },
+        "research_material": {
+          "time": 210
+        },
+        "research_time": {
+          "time": 210
+        }
+      }
+    },
+    "dogmaAttributes": {
+      "attributeID": 2,
+      "defaultValue": 0,
+      "highIsGood": true,
+      "name": "isOnline",
+      "published": false,
+      "stackable": true
+    },
+    "dogmaEffects": {
+      "effectID": 4,
+      "effectCategoryID": 1,
+      "name": "shieldBoosting",
+      "published": false
+    },
+    "typeDogma": {
+      "typeID": 18,
+      "dogmaAttributes": [
+        {
+          "attributeID": 182,
+          "value": 3386
+        },
+        {
+          "attributeID": 277,
+          "value": 1
+        },
+        {
+          "attributeID": 790,
+          "value": 60377
+        },
+        {
+          "attributeID": 1980,
+          "value": 0.5
+        },
+        {
+          "attributeID": 2115,
+          "value": 0
+        },
+        {
+          "attributeID": 2699,
+          "value": 1
+        },
+        {
+          "attributeID": 2711,
+          "value": 18
+        }
+      ],
+      "dogmaEffects": []
+    },
+    "planetSchematics": {
+      "schematicID": 65,
+      "cycleTime": 3600,
+      "name": {
+        "en": "Superconductors"
+      },
+      "types": [
+        {
+          "typeID": 2389,
+          "isInput": true,
+          "quantity": 40
+        },
+        {
+          "typeID": 3645,
+          "isInput": true,
+          "quantity": 40
+        },
+        {
+          "typeID": 9838,
+          "isInput": false,
+          "quantity": 5
+        }
+      ]
+    },
+    "mapRegions": {
+      "regionID": 10000001,
+      "factionID": 500007,
+      "name": {
+        "en": "Derelik"
+      },
+      "position": {
+        "x": -7.736195192277693e+16,
+        "y": 5.087803266430193e+16,
+        "z": -6.44331012661154e+16
+      }
+    },
+    "mapConstellations": {
+      "constellationID": 20000001,
+      "factionID": 500007,
+      "name": {
+        "en": "San Matar"
+      },
+      "position": {
+        "x": -9.404655970099134e+16,
+        "y": 4.952015315379885e+16,
+        "z": -4.273873181840197e+16
+      },
+      "regionID": 10000001
+    },
+    "mapSolarSystems": {
+      "solarSystemID": 30000001,
+      "constellationID": 20000001,
+      "name": {
+        "en": "Tanoo"
+      },
+      "position": {
+        "x": -8.851079259998058e+16,
+        "y": 4.236944396687888e+16,
+        "z": -4.451352534647966e+16
+      },
+      "radius": 1323338301440,
+      "regionID": 10000001,
+      "securityClass": "B",
+      "securityStatus": 0.858324,
+      "starID": 40000001
+    },
+    "mapStars": {
+      "starID": 40000001,
+      "radius": 63350000,
+      "solarSystemID": 30000001,
+      "typeID": 45041
+    },
+    "mapPlanets": {
+      "planetID": 40000002,
+      "celestialIndex": 1,
+      "orbitID": 40000001,
+      "position": {
+        "x": 161891117336,
+        "y": 21288951986,
+        "z": -73529712226
+      },
+      "radius": 5060000,
+      "solarSystemID": 30000001,
+      "typeID": 11
+    },
+    "mapMoons": {
+      "moonID": 40000004,
+      "celestialIndex": 1,
+      "orbitID": 40000002,
+      "orbitIndex": 1,
+      "position": {
+        "x": 162088094286,
+        "y": 21314854783,
+        "z": -73598621491
+      },
+      "radius": 270000,
+      "solarSystemID": 30000001,
+      "typeID": 14
+    },
+    "mapAsteroidBelts": {
+      "asteroidBeltID": 40000003,
+      "celestialIndex": 1,
+      "orbitID": 40000002,
+      "orbitIndex": 1,
+      "position": {
+        "x": 161967513600,
+        "y": 21288837120,
+        "z": -73505464320
+      },
+      "radius": 27043.400391,
+      "solarSystemID": 30000001,
+      "typeID": 15
+    },
+    "mapStargates": {
+      "stargateID": 50000001,
+      "destination": {
+        "solarSystemID": 30000778,
+        "stargateID": 50000482
+      },
+      "position": {
+        "x": 390565601280,
+        "y": 41190481920,
+        "z": -893183385600
+      },
+      "solarSystemID": 30000777,
+      "typeID": 29633
+    },
+    "npcStations": {
+      "stationID": 60000004,
+      "celestialIndex": 10,
+      "operationID": 26,
+      "orbitID": 40176406,
+      "orbitIndex": 3,
+      "ownerID": 1000002,
+      "position": {
+        "x": 1723680890880,
+        "y": 256414064640,
+        "z": -60755435520
+      },
+      "solarSystemID": 30002780,
+      "typeID": 1531
+    },
+    "stationOperations": {
+      "operationID": 26,
+      "operationName": {
+        "en": "Storage"
+      }
+    },
+    "npcCorporations": {
+      "corporationID": 1000002,
+      "factionID": 500001,
+      "name": {
+        "en": "CBD Corporation"
+      }
+    },
+    "npcCharacters": {
+      "characterID": 3008416,
+      "agent": {
+        "agentTypeID": 2,
+        "divisionID": 22,
+        "isLocator": false,
+        "level": 1
+      },
+      "corporationID": 1000002,
+      "locationID": 60000004,
+      "name": {
+        "en": "Antaken Kamola"
+      }
+    }
+  }
+}

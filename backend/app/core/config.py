@@ -47,6 +47,7 @@ class Settings(BaseSettings):
     sde_download_path: str = "/sde/downloads"
     sde_job_timeout_seconds: int = Field(default=7200, ge=60, le=21600)
     sde_download_max_bytes: int = Field(default=536870912, ge=1024)
+    sde_http_max_bytes: int = Field(default=4294967296, ge=1024, le=17179869184)
 
     killboard_enabled_default: bool = True
     killboard_sync_period_hours_default: int = 6

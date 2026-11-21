@@ -23,6 +23,10 @@ class ImportRequest(BaseModel):
     sections: list[str] | None = None
 
 
+class HttpImportRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
 router = APIRouter(prefix="/sde", tags=["sde"])
 
 def require_admin(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> User:
@@ -65,7 +69,13 @@ def sde_status(_: User = Depends(require_admin), db: Session = Depends(get_db)) 
 
 @router.get("/import-status")
 def sde_import_status(_: User = Depends(require_admin), db: Session = Depends(get_db)) -> dict[str, Any]:
-    return maintenance.serialize(maintenance.latest(db))
+    return {**maintenance.serialize(maintenance.latest(db)),
+            "last_successful_http_import": maintenance.last_http_import(db)}
+
+
+@router.post("/http-import", status_code=202)
+def import_http_static_data(payload: HttpImportRequest, user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    return maintenance.submit(db, user, "http_import")
 
 
 @router.post("/download", status_code=202)

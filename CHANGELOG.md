@@ -4,11 +4,16 @@ All notable changes to EVE Quartermaster are tracked here.
 
 Version sections are written as user-facing release notes first, with implementation detail included where it helps operators understand deployment or testing impact.
 
-## [Unreleased]
+## [2.4.2] - 2026-11-21
+
+- Add **CCP SDE API (JSONL)** as an explicit full-import source in **Settings → SDE Maintenance**. Pin one release, validate named record keys and importer-required shapes before writes, follow only approved CCP release/content-blob redirects, and fetch only the tables EQM consumes with bounded streaming and concurrency. Existing YAML ZIP/directory and agents-only imports stay available; YAML remains the default. [Operator guide](docs/sde-maintenance.md#ccp-http-sde-source-v242).
+- Reuse the existing worker queue, admin/host permission boundary, operation lock, upserts and totals. Show source, pinned release/build, validated-table progress, failure stage and the last successful HTTP release independently of build number. Failed or partial imports never advance that receipt; retry with a full import. Preserve cached star positions and missing optional-table behavior.
+- Keep the Settings SDE controls within narrow screens and scroll the totals table inside its panel.
+- Set app/API/package/export/user-agent version **2.4.2** and Android **versionName 2.4.2 / versionCode 34**. Fresh matching APK and checksum accompany the GitHub release. Matching API/worker/frontend required; no new migration or ESI scope. Live ESI behavior and compatibility date unchanged.
 
 - Add **Mining Ledger → Ore Split Calculator** for pasted ore quantities, a linked percentage field and slider, and 5/10/15/20/25/50% presets. Show exact whole-unit cuts and conserving remainders; combine repeated names before rounding while keeping compressed/uncompressed names separate. Flag malformed rows and copy cut/remainder lists with a selectable clipboard fallback. Browser-only; no new API, migration or ESI scope. [Guide](docs/ore-split-calculator.md).
 
-## [2.4.1] - Unreleased
+## [2.4.1] - 2026-11-20
 
 - Add **Mining Report CSV/JSON exports** for the applied inclusive date period and character/system/operation filters. Include full-period totals and every day, ore, pilot and system breakdown across ledger pages, with units, selection metadata, measured-efficiency limits and stored-value provenance. Prevent stale exports while filters change, requests load/fail or older responses finish late. Frontend-only; no migration or new ESI scope. [Guide](docs/mining-report.md).
 

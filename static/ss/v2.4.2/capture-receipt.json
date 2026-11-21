@@ -1,0 +1,41 @@
+{
+  "captured_at": "2026-11-21T14:08:48.213815+00:00",
+  "application_version": "2.4.2",
+  "source_base_commit": "65a75383765885b5109048ba8b4e8d371e76ee25",
+  "source_state": "working tree for authorized v2.4.2 release",
+  "method": "Actual SettingsPage and AppearanceProvider rendered by Vite in headless Microsoft Edge; cropped screenshot of the maintenance controls and receipt.",
+  "data_provenance": "Synthetic administrator, empty character list, mocked API/worker status. Release 20261121T123456Z, build1234567 and all displayed totals are fabricated. No private account data.",
+  "viewports": {
+    "desktop": [
+      1440,
+      1100
+    ],
+    "mobile": [
+      390,
+      1000
+    ]
+  },
+  "validation": "Six browser scenario groups: YAML default, explicit HTTP queue payload, shared busy controls, release/build/table progress, persisted success/failure and same-build release distinction, member restriction, and no page overflow at390px.",
+  "limitations": "Component integration with synthetic API responses; screenshots do not prove a production import, full authentication or Android device behavior. Real transport/RQ/PostgreSQL verification is separately documented in release/operator notes.",
+  "source_sha256": {
+    "frontend/src/features/settings/SettingsPage.tsx": "874254d16480f5e042dcb244a570b284ed30f6b5ed7480dd25be461fe871fa82",
+    "frontend/src/features/settings/sdeMaintenance.css": "4a60562e100b3e83367d92e5495c2d022cc6913cfc3539d69f85b343b319cf7e",
+    "frontend/src/types/settings.ts": "b43564156ea141174ee796988afe005dd31c3cf5447eeec31491fb3995748910",
+    "backend/app/services/sde_http.py": "9a80cfde9e319f575ea2556372ddf63a68907f563b1c7772c399ccedce5f6535",
+    "backend/app/services/sde_maintenance.py": "41b3365bead028c99827ca825abc66038ed3196ca6158ea2853490322ac6f185",
+    "backend/app/services/sde_importer.py": "b33a231beea36be24263f163b9b3f87e295733160740e0d5cc72ad9e78b4e410",
+    "backend/app/api/sde.py": "285f004702fb647f52938e1d9e77d5c22f1f1171fc25cd07a6afcf71acb81896"
+  },
+  "images": [
+    {
+      "filename": "http-sde-desktop.png",
+      "bytes": 77414,
+      "sha256": "1033e7c51b52c930c0443491e8e2117601634de53e850e0cedbdb80d0a29cbbe"
+    },
+    {
+      "filename": "http-sde-mobile.png",
+      "bytes": 74757,
+      "sha256": "773e70c251c6caafdb8efdd6c15ecd264734480bf0975f29f78eb1ff7bd4b591"
+    }
+  ]
+}

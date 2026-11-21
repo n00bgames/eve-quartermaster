@@ -7,6 +7,7 @@ import os
 from pathlib import Path, PurePosixPath
 import re
 import time
+from tempfile import TemporaryDirectory
 from uuid import uuid4
 import zipfile
 
@@ -39,6 +40,14 @@ def enqueue_worker(job_id):
         on_failure="app.services.sde_maintenance.rq_failed",
         on_stopped="app.services.sde_maintenance.rq_stopped")
 
+def last_http_import(db):
+    job = db.scalar(select(SdeMaintenanceJob).where(
+        SdeMaintenanceJob.action == "http_import", SdeMaintenanceJob.status == "success"
+    ).order_by(SdeMaintenanceJob.completed_at.desc(), SdeMaintenanceJob.id.desc()).limit(1))
+    return {"release": job.archive.get("release"), "build": job.archive.get("build"),
+            "completed_at": job.completed_at.isoformat()} if job else None
+
+
 def serialize(job):
     if job is None:
         return {"running":False,"status":"idle","stage":"idle","stats":None}
@@ -48,6 +57,9 @@ def serialize(job):
         "completed_at":job.completed_at.isoformat() if job.completed_at else None,
         "error":job.error,"stats":job.progress.get("stats"),"download":job.archive,
         "bytes_received":job.progress.get("bytes_received",0),"total_bytes":job.progress.get("total_bytes"),
+        "source": "ccp_http" if job.action == "http_import" else "yaml",
+        "failure_stage": job.progress.get("failure_stage"),
+        "tables_completed": job.progress.get("tables_completed"), "tables_total": job.progress.get("tables_total"),
         "import_after_download":job.options.get("import_after_download",False)}
 
 def finish(job_id,status,error=None):
@@ -55,6 +67,8 @@ def finish(job_id,status,error=None):
         job=db.get(SdeMaintenanceJob,job_id)
         if job is None or job.status not in ACTIVE:
             return
+        if status != "success":
+            job.progress = {**job.progress, "failure_stage": job.stage}
         job.status=status;job.stage="complete" if status=="success" else "failed"
         job.error=error;job.completed_at=now();job.updated_at=now();job.active_key=None
         db.add(AuditEvent(event_kind="sde_maintenance_finished",title=f"SDE {job.action}: {status}",actor_user_id=job.created_by_user_id))
@@ -156,7 +170,7 @@ def download(job_id):
     root.mkdir(parents=True,exist_ok=True)
     temporary=root/f".{job_id}.partial"
     try:
-        with httpx.Client(timeout=httpx.Timeout(60,connect=15),follow_redirects=False,headers={"User-Agent":"EVE-Quartermaster/2.4.1 SDE Maintenance"}) as client:
+        with httpx.Client(timeout=httpx.Timeout(60,connect=15),follow_redirects=False,headers={"User-Agent":"EVE-Quartermaster/2.4.2 SDE Maintenance"}) as client:
             build,released=metadata(client)
             url=f"{ARCHIVE_BASE}eve-online-static-data-{build}-yaml.zip"
             target=root/f"eve-online-static-data-{build}-{job_id}-yaml.zip"
@@ -196,6 +210,32 @@ def run_job(job_id):
             return
         job=db.get(SdeMaintenanceJob,job_id);action=job.action;source_path=job.source_path;options=dict(job.options)
     try:
+        if action == "http_import":
+            from app.services.sde_http import fetch_release
+            root = Path(get_settings().sde_download_path).resolve()
+            root.mkdir(parents=True, exist_ok=True)
+
+            def save_receipt(details):
+                with SessionLocal() as db:
+                    job = db.get(SdeMaintenanceJob, job_id)
+                    job.archive = dict(details)
+                    job.updated_at = now()
+                    db.commit()
+
+            with TemporaryDirectory(prefix=f".{job_id}-http-", dir=root) as staged:
+                fetch_release(staged, get_settings().sde_http_max_bytes,
+                              lambda stage, **updates: progress(job_id, stage, **updates), save_receipt)
+                progress(job_id, "starting HTTP import")
+                with SessionLocal() as db:
+                    stats = import_sde(staged, db, source_format="http_jsonl",
+                                       progress=lambda stats, stage: progress(job_id, stage, stats=stats.to_dict()))
+                # The staging directory is ephemeral; retain the pinned release as provenance.
+                with SessionLocal() as db:
+                    release = db.get(SdeMaintenanceJob, job_id).archive["release"]
+                stats["source_path"] = f"ccp-http:{release}"
+                progress(job_id, "HTTP import complete", stats=stats)
+            finish(job_id, "success")
+            return
         if action=="download":
             source_path=download(job_id)
         if action=="import" or options.get("import_after_download"):
@@ -205,7 +245,12 @@ def run_job(job_id):
                     progress=lambda stats,stage:progress(job_id,stage,stats=stats.to_dict()))
             progress(job_id,"import complete",stats=stats)
         finish(job_id,"success")
-    except Exception:
+    except Exception as exc:
         logging.getLogger(__name__).exception("SDE maintenance job failed: %s",job_id)
-        finish(job_id,"failed","SDE maintenance failed. Check worker logs and storage permissions. Existing archives are preserved; a partial import may need to be rerun.")
+        message = "SDE maintenance failed. Check worker logs and storage permissions. Existing archives are preserved; a partial import may need to be rerun."
+        if action == "http_import":
+            from app.services.sde_http import SdeHttpError
+            reason = str(exc)[:400] if isinstance(exc, SdeHttpError) else "Check worker logs and storage permissions."
+            message = f"HTTP SDE import failed. {reason} The release was not marked imported. Imports commit in batches; retry the full HTTP import to repair any partial changes."
+        finish(job_id,"failed",message)
         raise

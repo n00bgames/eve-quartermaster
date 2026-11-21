@@ -7,6 +7,7 @@ import type { EqmCharacter } from "../../types/characters";
 import type { PermissionMatrix, RoleDefinition, SectionSettings, SdeImportProgress, SdeStatus } from "../../types/settings";
 import { DatabaseAdministration } from "./DatabaseAdministration";
 import { AppUpdatePanel, type useAppUpdate } from "./AppUpdate";
+import "./sdeMaintenance.css";
 
 type ApiClient = <T>(path: string, options?: RequestInit) => Promise<T>;
 type UserAccount = { id: number; email: string; display_name: string; role: string; timezone?: string; created_at?: string };
@@ -37,6 +38,7 @@ export function SettingsPage({ currentUser, api, Metric, ManagedForm, accountLab
   const [sdePath, setSdePath] = useState("/sde");
   const lastCompletedSdeJob = useRef<string | null>(null);
   const [sdeImportAfterDownload, setSdeImportAfterDownload] = useState(false);
+  const [sdeSource, setSdeSource] = useState<"yaml" | "ccp_http">("yaml");
   const [sdeBusy, setSdeBusy] = useState(false);
   const [sdeImportState, setSdeImportState] = useState<SdeImportProgress | null>(null);
 
@@ -100,8 +102,8 @@ export function SettingsPage({ currentUser, api, Metric, ManagedForm, accountLab
   async function downloadSde() {
     setSdeBusy(true);setSettingsError(null);setMessage(null);
     try {
-      const state=await api<SdeImportProgress>("/sde/download",{method:"POST",body:JSON.stringify({import_after_download:sdeImportAfterDownload})});
-      setSdeImportState(state);setMessage("SDE download queued. Progress stays available if you leave this page.");
+      const state=await api<SdeImportProgress>(sdeSource === "ccp_http" ? "/sde/http-import" : "/sde/download",{method:"POST",body:JSON.stringify(sdeSource === "ccp_http" ? {} : {import_after_download:sdeImportAfterDownload})});
+      setSdeImportState(state);setMessage(sdeSource === "ccp_http" ? "Full HTTP SDE import queued. Progress stays available if you leave this page." : "SDE download queued. Progress stays available if you leave this page.");
     } catch(err) {
       setSettingsError(err instanceof Error?err.message:"Unable to queue download");
       await loadSdeImportState().catch(()=>setSdeBusy(false));
@@ -178,29 +180,35 @@ export function SettingsPage({ currentUser, api, Metric, ManagedForm, accountLab
       {adminAccess && (
         <div className="stacked" data-layout-label="Maintenance">
         {hostAccess && <AppUpdatePanel update={appUpdate} />}
-        <section className="panel stacked">
+        <section className="panel stacked sde-maintenance-panel">
           <div className="section-heading">
             <div><h3>SDE Maintenance</h3><p>Download CCP’s latest static data and import it through the background worker.</p></div>
             <button type="button" onClick={() => { void loadSdeStatus(); void loadSdeImportState(); }}>Refresh</button>
           </div>
           <div className="sde-maintenance-actions stacked">
             <h4>Get the latest SDE</h4>
-            <p className="muted">Download and validate CCP’s YAML archive. Downloading alone leaves the imported data as it is.</p>
-            <label className="check"><input type="checkbox" checked={sdeImportAfterDownload} disabled={sdeBusy} onChange={event=>setSdeImportAfterDownload(event.target.checked)}/>Import automatically after a successful download</label>
-            <button type="button" disabled={sdeBusy} onClick={()=>void downloadSde()}>{sdeBusy?"SDE maintenance in progress":"Download latest SDE"}</button>
+            <label>SDE source<select value={sdeSource} disabled={sdeBusy} onChange={event=>setSdeSource(event.target.value as "yaml" | "ccp_http")}><option value="yaml">YAML ZIP (default / fallback)</option><option value="ccp_http">CCP SDE API (JSONL)</option></select></label>
+            <p className="muted">{sdeSource === "ccp_http" ? "Fetch and validate the tables EQM uses from one pinned CCP release, then run a full background import." : "Download and validate CCP’s YAML archive. Downloading alone leaves the imported data as it is."}</p>
+            {sdeSource === "yaml" && <label className="check"><input type="checkbox" checked={sdeImportAfterDownload} disabled={sdeBusy} onChange={event=>setSdeImportAfterDownload(event.target.checked)}/>Import automatically after a successful download</label>}
+            <button type="button" disabled={sdeBusy} onClick={()=>void downloadSde()}>{sdeBusy?"SDE maintenance in progress":sdeSource === "ccp_http" ? "Fetch and import full HTTP SDE" : "Download latest SDE"}</button>
             <p className="muted" role="status">{sdeProgressLabel}{sdeImportState?.status === "queued" ? " — waiting for the worker" : ""}</p>
+            {sdeImportState?.source && <p className="muted">Job source: {sdeImportState.source === "ccp_http" ? "CCP SDE API (JSONL)" : "YAML ZIP / mounted directory"}</p>}
             {sdeImportState?.action === "download" && <p className="muted">Downloaded {sdeSize(sdeImportState.bytes_received??0)}{sdeImportState.total_bytes?` of ${sdeSize(sdeImportState.total_bytes)}`:""}</p>}
-            {sdeImportState?.download?.build && <div className="notice inline"><strong>SDE build {sdeImportState.download.build}</strong><p>{sdeImportState.download.path?.split(/[\\/]/).pop()}</p><p>Archive SHA-256: <code style={{overflowWrap:"anywhere"}}>{sdeImportState.download.sha256}</code></p>
+            {sdeImportState?.action === "http_import" && <div className="notice inline" style={{overflowWrap:"anywhere"}}><strong>HTTP release: {sdeImportState.download?.release ?? "Awaiting manifest"}</strong><p>Build: {sdeImportState.download?.build ?? "—"} · Tables validated: {sdeImportState.tables_completed ?? 0} / {sdeImportState.tables_total ?? "—"} · {sdeSize(sdeImportState.bytes_received ?? 0)} decoded</p>{Boolean(sdeImportState.download?.missing_optional_tables?.length) && <p>Optional tables absent: {sdeImportState.download?.missing_optional_tables?.join(", ")}. Existing optional-data behavior is preserved.</p>}</div>}
+            {sdeImportState?.download?.build && sdeImportState.action === "download" && <div className="notice inline"><strong>SDE build {sdeImportState.download.build}</strong><p>{sdeImportState.download.path?.split(/[\\/]/).pop()}</p><p>Archive SHA-256: <code style={{overflowWrap:"anywhere"}}>{sdeImportState.download.sha256}</code></p>
               {sdeImportState.source_path && <button type="button" disabled={sdeBusy} onClick={()=>setSdePath(sdeImportState.source_path!)}>Use downloaded archive for import</button>}</div>}
+            <p className="muted" style={{overflowWrap:"anywhere"}}>Last successful HTTP import: {sdeImportState?.last_successful_http_import ? `${sdeImportState.last_successful_http_import.release} · build ${sdeImportState.last_successful_http_import.build}` : "None recorded"}</p>
+            {sdeImportState?.failure_stage && <p className="mini-alert">Failed during: {sdeImportState.failure_stage}</p>}
             {sdeImportState?.status === "failed" && <p className="mini-alert" role="alert">{sdeImportState.error}</p>}
+            {sdeSource === "ccp_http" && <p className="muted">Imports commit in stages. If an import fails, retry a full HTTP import; the failed release is never marked successfully imported. Switch back to YAML ZIP to use a mounted archive or directory.</p>}
           </div>
           <p className="muted">Stored totals show all current rows. This import shows rows processed in the current or last run; zero may mean that dataset was not selected. Indented rows show related detail counts.</p>
           <div className="table-scroll"><table className="sde-counts-table"><thead><tr><th>Imported dataset</th><th>Stored total</th><th>{sdeBusy ? "This import (so far)" : "Last import"}</th></tr></thead><tbody>
             {SDE_COUNT_GROUPS.map(group => <Fragment key={group.label}><tr><th colSpan={3}>{group.label}</th></tr>{group.rows.map(([key,label,nested]) => <tr key={key}><td>{nested ? "↳ " : ""}{label}</td><td>{typeof sdeStatus?.[key] === "number" ? Number(sdeStatus[key]).toLocaleString() : "—"}</td><td>{typeof sdeProgressStats?.[key] === "number" ? Number(sdeProgressStats[key]).toLocaleString() : "—"}</td></tr>)}</Fragment>)}
           </tbody></table></div>
-          <label>SDE path<input value={sdePath} onChange={(event) => setSdePath(event.target.value)} placeholder="/sde or /sde/sde.zip" /></label>
+          {sdeSource === "yaml" && <><label>SDE path<input value={sdePath} onChange={(event) => setSdePath(event.target.value)} placeholder="/sde or /sde/sde.zip" /></label>
           <button type="button" disabled={sdeBusy} onClick={() => void importSde()}><RefreshCw size={18} /> {sdeBusy ? "Maintenance in progress" : "Queue SDE import"}</button>
-          <button type="button" disabled={sdeBusy} onClick={() => void importSde(true)}>Queue agents-only import</button>
+          <button type="button" disabled={sdeBusy} onClick={() => void importSde(true)}>Queue agents-only import</button></>}
         </section>
         </div>
       )}
