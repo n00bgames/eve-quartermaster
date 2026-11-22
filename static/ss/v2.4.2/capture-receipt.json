@@ -37,5 +37,98 @@
       "bytes": 74757,
       "sha256": "773e70c251c6caafdb8efdd6c15ecd264734480bf0975f29f78eb1ff7bd4b591"
     }
-  ]
+  ],
+  "my_fleet": {
+    "application_version": "2.4.2",
+    "captured_at_utc": "2026-11-22T15:52:42.483428+00:00",
+    "source_base_commit": "88cb3a5011601416bccaa6b08eaa8a8672c7498e",
+    "source_status": "Uncommitted, unreleased frontend follow-up after published v2.4.2; no deployment",
+    "method": "Actual JourneyPanel/MyFleetPanel/JourneyClipStitcher rendered in isolated Vite/headless Edge; movie frame extracted from actual production-worker MP4 at 3.5 seconds",
+    "data_provenance": "Fictional Demo Aurora/Meridian/Paused pilots, fabricated system IDs and coordinates, synthetic stored Journey/appearance/combat API responses and placeholder image icons; no private data or production API/SSO/ESI",
+    "limitations": [
+      "Synthetic component preview, no production SSO/ESI/database calls",
+      "Native folder/save dialogs replaced by actual origin-private file handles",
+      "No large multi-hour memory benchmark"
+    ],
+    "frontend_tests_passed": 45,
+    "browser_checks": [
+      "Actual JourneyPanel My Fleet shows every enabled pilot, excludes paused pilots, and keeps per-pilot routes/roster",
+      "Timestamp replay/scrub switches camera focus between pilots, starts follow, and never shows a not-yet-observed pilot",
+      "390px fleet map, roster and export controls fit without horizontal overflow",
+      "MP4 music is opt-in, volume-adjustable, and unavailable for silent GIFs",
+      "Actual loaded-fleet export UI gathers both pilots\u2019 combat context and encodes a music-enabled MP4",
+      "Actual production worker also creates a silent 1920\u00d71080 fleet GIF",
+      "Actual production export worker creates 1920\u00d71080 fleet MP4s both silent and with generated AAC music",
+      "Streaming remux preserves music, refuses incompatible tracks, and cancellation aborts the output file transaction",
+      "Actual stitcher UI selects, naturally sorts, reorders and saves compatible local MP4s through a real OPFS writable handle",
+      "A failed pilot remains an explicit error and blocks incomplete loaded-fleet exports",
+      "Actual segmented fleet export uses both owned pilot streams, creates a real MP4, waits for download confirmation and completes all visits",
+      "Single-pilot Journey remains available after fleet export and view switching"
+    ],
+    "production_worker": {
+      "name": "export.worker-BoUKa2nR.js",
+      "sha256": "ccaad8e4b22cb1c1b81fa946e2b13118f51850c66c3b9f020f03732b84ab0830"
+    },
+    "media_validation": {
+      "compressed_video_packet_hashes_unchanged": true,
+      "joined_video_packets": 510,
+      "joined_duration_seconds": 17.024,
+      "dimensions_unchanged": true,
+      "audio_retained": true,
+      "full_decode": "all six files passed"
+    },
+    "source_sha256": {
+      "frontend/package.json": "b666a27f6bffad24ac870120441f1485fec294d713125cf0524b6f6af21e29db",
+      "frontend/src/features/journey/JourneyClipStitcher.tsx": "6e3a99837782f928c6f88aa090f7b5c4fce17b177e279692f43b12cf54a9353d",
+      "frontend/src/features/journey/JourneyExport.tsx": "2c3ac8c6bfe0cdfa357a9fb42fd1e838f3a0a3a33ea4f2e5a76c619331273068",
+      "frontend/src/features/journey/JourneyExportBatch.tsx": "28d0c3e00f879201a0502643b169269d478cec4ff34a8d0dbee76f31c144e25e",
+      "frontend/src/features/journey/JourneyMap.tsx": "9d05affdb7443ca49170077df543b9126c7fa8c8e27895440c5c9f6af87f879b",
+      "frontend/src/features/journey/JourneyMusicControls.tsx": "9970ddad2cec757ab18f1483c54bf3e4064d3a2f38fa5213a689b36aa7046210",
+      "frontend/src/features/journey/JourneyPanel.tsx": "ae3103c7b419e42d9e8d278bcf1dc2fce1a2dde53794baf47c1e56f1fc44c881",
+      "frontend/src/features/journey/MyFleetPanel.tsx": "ae308792e5ce1bccb1be3329d5e8c5aa7948c42389d488cc0ece1ac6ec75b88f",
+      "frontend/src/features/journey/clipOrder.ts": "ede5fba16918b9f025d9b7af57ad966442b84e1764991e6c5829bdbdb283a9a6",
+      "frontend/src/features/journey/clipStitch.ts": "caff113769d0d49da0963d1cf1519c0bfdde89b11899d897918fb354db7e61c3",
+      "frontend/src/features/journey/export.worker.ts": "ae99be53b0e66e5a3275e30c61c53c822fe51898ca71d512271274d66fe11dd8",
+      "frontend/src/features/journey/exportModel.ts": "21c8b4ef723a1719c23e0f6c9d0cb8f5a65b0854c7e95fb98dcdd8a4c667a4f5",
+      "frontend/src/features/journey/exportRenderer.ts": "63bc57e35a06dd89d095d8c21a69c0857ae65cd7b0ad99909e611d5db2b045c3",
+      "frontend/src/features/journey/fleetExportHistory.ts": "ee3bc1c3c6e0dbb59abf3768d7e24674f08964f20cadce8e55e95612875d92bf",
+      "frontend/src/features/journey/fleetGeometry.ts": "602a67e32710640798836e2b95bf5fbff0ef1313286bfd68586924e821a90bf7",
+      "frontend/src/features/journey/fleetModel.ts": "c2e9137dfcab24ce5ef6687cdd9750f7823444a368277f1733bd0415ed1e10de",
+      "frontend/src/features/journey/journey.css": "2b78c157f2b89e71a15d83ef4e7853e166a43744628e57c3385e63285967b264",
+      "frontend/src/features/journey/spaceAmbience.ts": "16b937e8a6fffbf7d626a10f786c9b3ee8ce02a92b5c505d5d98b5568262a65c",
+      "frontend/src/features/journey/types.ts": "e6524967fde0f3de37f446ee58ae3d142ae004fd2f395288b4884a34cd02e2b2",
+      "frontend/tests/journeyFleet.test.ts": "eb09f8876b205b469a0ae32a519f5cb8da4ef792bf24fcb958b5ed6b278d6c11",
+      "frontend/tests/journeyMedia.test.ts": "fee8d5fd8e74d6a97060e56bf7894f1cfa24060dafc96373928889f119a48c29"
+    },
+    "screenshots": [
+      {
+        "filename": "my-fleet-desktop.png",
+        "width": 1410,
+        "height": 1226,
+        "bytes": 317406,
+        "sha256": "3924a276a52d233fdf705b0446a55519f52dbb19782d713ae6c4fed48bada4c6"
+      },
+      {
+        "filename": "my-fleet-mobile.png",
+        "width": 390,
+        "height": 1619,
+        "bytes": 145224,
+        "sha256": "662b9219bf56e2ba1fd392d3aa9b27d1ffa8fb789c2263c889a133de3500580d"
+      },
+      {
+        "filename": "journey-stitcher.png",
+        "width": 1410,
+        "height": 398,
+        "bytes": 50178,
+        "sha256": "772180830ebda99ee2a155dcee3018a61994dc7cd0b94b5ae1bc558e2dadf8de"
+      },
+      {
+        "filename": "fleet-movie-frame.png",
+        "width": 1920,
+        "height": 1080,
+        "bytes": 314979,
+        "sha256": "67a048f244223b0fd3191a9e43d52b337f606743a081d5b98873b5a2dbbbf2ec"
+      }
+    ]
+  }
 }

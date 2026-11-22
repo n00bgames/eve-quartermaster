@@ -59,6 +59,11 @@ The current application/package version is **v2.4.2** (`2.4.2`). **Settings → 
 
 See [CHANGELOG.md](CHANGELOG.md) for version-by-version release notes. Application Update now checks checkout permissions before merging; see [ownership repair and helper rollout](docs/application-updates.md#checkout-permissions).
 
+**Unreleased follow-up — My Fleet:** Navigation’s Journey module can show every enabled tracked pilot on one private map and replay the next pilot movement in timestamp order. Export the fleet with the existing segmented 1080p GIF/MP4 mechanics, optionally add original space ambience, and join compatible saved MP4 parts directly to disk. [Guide](docs/my-fleet.md) · [Next release draft](docs/releases/next.md). Frontend rollout is still required; this is not in the published v2.4.2 tag.
+
+![My Fleet — synthetic unreleased desktop preview](static/ss/v2.4.2/my-fleet-desktop.png)
+
+
 ## Install Time
 
 **Planning estimates, not benchmark guarantees:**

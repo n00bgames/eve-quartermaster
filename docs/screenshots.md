@@ -1111,3 +1111,16 @@ Actual Settings component captures with synthetic administrator/API/worker fixtu
 ![HTTP SDE source and pinned release — desktop synthetic preview](../static/ss/v2.4.2/http-sde-desktop.png)
 
 ![HTTP SDE controls and receipt — 390px synthetic preview](../static/ss/v2.4.2/http-sde-mobile.png)
+
+
+## My Fleet, MP4 stitching and space ambience — unreleased after v2.4.2
+
+Actual JourneyPanel/MyFleetPanel with fictional enabled and paused pilots, fabricated system coordinates and local mocked Journey APIs. No private account or production data. Desktop and 390px captures retain the map and full roster; the movie frame is extracted from actual 1080p encoded output. File-save tests use real origin-private writable handles rather than native picker dialogs. See [guide](my-fleet.md) and additive [capture provenance](../static/ss/v2.4.2/capture-receipt.json).
+
+![My Fleet desktop](../static/ss/v2.4.2/my-fleet-desktop.png)
+
+![My Fleet mobile](../static/ss/v2.4.2/my-fleet-mobile.png)
+
+![Journey MP4 stitcher](../static/ss/v2.4.2/journey-stitcher.png)
+
+![Fleet movie frame](../static/ss/v2.4.2/fleet-movie-frame.png)

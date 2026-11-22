@@ -1,0 +1,3 @@
+export function JourneyMusicControls({enabled,volume,onEnabled,onVolume,disabled,gif}:{enabled:boolean;volume:number;onEnabled:(v:boolean)=>void;onVolume:(v:number)=>void;disabled:boolean;gif:boolean}){
+ return <div className="journey-music-controls"><label><input type="checkbox" checked={enabled} disabled={disabled||gif} onChange={e=>onEnabled(e.target.checked)}/> Space ambience · original synthesized soundtrack</label><label>Music volume · {Math.round(volume*100)}%<input aria-label="Journey music volume" type="range" min={0} max={30} step={1} value={Math.round(volume*100)} disabled={disabled||gif||!enabled} onChange={e=>onVolume(Number(e.target.value)/100)}/></label>{gif&&<small>GIF has no audio; music is available for MP4.</small>}</div>;
+}

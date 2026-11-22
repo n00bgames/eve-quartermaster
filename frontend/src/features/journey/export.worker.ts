@@ -1,4 +1,5 @@
 import {EXPORT_WIDTH,EXPORT_HEIGHT,MAX_EXPORT_BYTES,type ExportRequest,type ExportMessage} from './exportModel';
+import {ambienceSamples} from './spaceAmbience';
 import {renderExportFrame} from './exportRenderer';
 
 const MAX_BYTES=MAX_EXPORT_BYTES;
@@ -10,7 +11,7 @@ for(const hex of ['060e18','0d1b29','294359','e4f2fa','8dabbc','55c8ef','203447'
 for(let n=0;n<16;n++){const v=Math.round(n*255/15);palette.push([v,v,v]);}
 
 onmessage=async(event:MessageEvent<ExportRequest>)=>{
- const {plan,format,logo,version}=event.data;
+ const {plan,format,logo,version,music}=event.data;
  let cancel:(()=>Promise<void>)|undefined;
  try{
   const canvas=new OffscreenCanvas(EXPORT_WIDTH,EXPORT_HEIGHT),ctx=canvas.getContext('2d',{alpha:false,willReadFrequently:format==='gif'});
@@ -22,17 +23,22 @@ onmessage=async(event:MessageEvent<ExportRequest>)=>{
    add=async i=>{const rgba=ctx.getImageData(0,0,EXPORT_WIDTH,EXPORT_HEIGHT).data;encoder.writeFrame(applyPalette(rgba,palette,'rgb444'),EXPORT_WIDTH,EXPORT_HEIGHT,{palette,delay:100,repeat:0});if(encoder.bytesView().byteLength>MAX_BYTES)throw new SizeLimitError('GIF exceeds 128 MiB. Choose a shorter visit range.');};
    finish=async()=>{encoder.finish();return encoder.bytesView().slice().buffer as ArrayBuffer;};
   }else{
-   const {Output,Mp4OutputFormat,BufferTarget,CanvasSource,Quality,canEncodeVideo}=await import('mediabunny');
+   const {Output,Mp4OutputFormat,BufferTarget,CanvasSource,Quality,canEncodeVideo,AudioSample,AudioSampleSource,canEncodeAudio}=await import('mediabunny');
    const quality=new Quality({bitrate:6_000_000});
    if(!await canEncodeVideo('avc',{width:EXPORT_WIDTH,height:EXPORT_HEIGHT,quality,frameRate:fps}))throw new Error('1080p H.264 encoding is unavailable. Try current desktop Chrome or Edge, or export GIF.');
    const target=new BufferTarget(),output=new Output({format:new Mp4OutputFormat({fastStart:false}),target});
    cancel=()=>output.cancel();
    target.on('write',({end})=>{if(end>MAX_BYTES)throw new SizeLimitError('MP4 exceeds 128 MiB. Choose a shorter visit range.');});
+   let audio:InstanceType<typeof AudioSampleSource>|undefined;
+   if(music){if(!await canEncodeAudio('aac',{sampleRate:48000,numberOfChannels:1,bitrate:96000}))throw new Error('AAC music encoding is unavailable. Turn off space ambience or use a current desktop browser.');audio=new AudioSampleSource({codec:'aac',bitrate:96000});output.addAudioTrack(audio);}
    const source=new CanvasSource(canvas,{codec:'avc',quality});output.addVideoTrack(source,{frameRate:fps});
-   output.setMetadataTags({title:`My Journey · ${plan.history.character.name}`,artist:`EVE Quartermaster ${version}`,date:new Date(plan.exportedAt)});
+   output.setMetadataTags({title:plan.history.fleet?'My Fleet':`My Journey · ${plan.history.character.name}`,artist:`EVE Quartermaster ${version}`,date:new Date(plan.exportedAt)});
    await output.start();
-   add=i=>source.add(i/fps,Math.min(1/fps,plan.duration-i/fps));
-   finish=async()=>{source.close();await output.finalize();if(!target.buffer)throw new Error('No encoded MP4 data was produced.');return target.buffer;};
+   add=async i=>{const start=i/fps,duration=Math.min(1/fps,plan.duration-start);
+    const sample=audio?new AudioSample({data:ambienceSamples(start,Math.round(duration*48000),48000,plan.duration,music!.volume),format:'f32',numberOfChannels:1,sampleRate:48000,timestamp:start}):undefined;
+    try{await Promise.all([source.add(start,duration),sample?audio!.add(sample):Promise.resolve()]);}finally{sample?.close();}
+   };
+   finish=async()=>{source.close();audio?.close();await output.finalize();if(!target.buffer)throw new Error('No encoded MP4 data was produced.');return target.buffer;};
   }
   for(let i=0;i<frames;i++){
    renderExportFrame(ctx,plan,i/fps,logo,version);await add(i);

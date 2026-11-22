@@ -196,3 +196,10 @@ The new read-only/private/no-store `GET /journey/characters/{character_id}/expor
 Verification: **25 frontend journey tests**, **51 backend journey/export tests** (50 broad cases plus the added permission/snapshot case, with the final five pagination cases rerun), production TypeScript/Vite build, and seven actual production-worker browser cases plus final download/cancellation/mobile refinements. The real 500-visit H.264 MP4 is 1920×1080, 30 fps, 15,135 frames, **504.5 seconds**, 78,723,306 bytes. The continuation MP4 is 11.5 seconds/345 frames. A real GIF limit test reduced only the test worker’s threshold to 6 MiB; all 15 visits and their engagement pages were automatically split into valid files, and the sampled GIF is 1920×1080 at 10 fps. The production limit remains 128 MiB.
 
 Browser folder tests used real origin-private directory/file handles in an isolated Edge profile instead of automating the native user-folder picker. Individual downloads were saved and probed; no actual user folder, account, live SSO or EVE activity was used. Captures show actual JourneyPanel/export components with synthetic history and coordinates. [Capture provenance and checksums](../static/ss/v2.2.1/capture-receipt.json).
+
+
+## Unreleased My Fleet and movie tools
+
+Select **My Fleet** to combine all currently enabled Journey pilots on one private map. Replay/export switches focus by the next UTC observation across pilots; colors, roster entries and paths retain pilot identity. Existing single-pilot Journey, tracking consent and owner checks remain in place. Segmented exports read each pilot’s complete paged snapshot, while the map remains bounded and explicitly reports incomplete data.
+
+Journey movies also offer optional original space ambience for MP4 and a compatible-MP4 packet stitcher that writes directly to disk. GIF stays silent. See [My Fleet and Journey movies](my-fleet.md) for privacy, independent snapshot boundaries, recorded-position limits, continuation, cancellation and browser support. These source changes are unreleased after v2.4.2 and require an updated frontend.

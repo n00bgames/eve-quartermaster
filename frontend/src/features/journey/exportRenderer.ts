@@ -1,3 +1,4 @@
+import {fleetPositions,fleetLinks} from './fleetGeometry';
 import {ENGAGEMENT_PAGE_SIZE,exportFrame,hullAt,utcStamp,type ExportPlan} from './exportModel';
 
 type Ctx=OffscreenCanvasRenderingContext2D;
@@ -11,12 +12,13 @@ export function renderExportFrame(c:Ctx,plan:ExportPlan,time:number,logo:ImageBi
  const {phase,progress,camera}=exportFrame(plan,time),index=phase.index,visit=plan.visits[index],system=plan.history.systems.find(s=>s.system_id===visit.system_id);
  const overview=phase.kind==='overview'||phase.kind==='end';
  const rows=plan.engagements[index],page=phase.page??0,pageRows=rows.slice(page*ENGAGEMENT_PAGE_SIZE,(page+1)*ENGAGEMENT_PAGE_SIZE);
- const stamp=phase.kind==='engagement'?pageRows[0].time:phase.kind==='overview'||phase.kind==='zoom'?plan.clipStartAt??visit.first_seen_at:phase.kind==='end'||phase.kind==='outro'?plan.clipEndAt??visit.last_seen_at:new Date(Date.parse(visit.first_seen_at)+(Date.parse(visit.last_seen_at)-Date.parse(visit.first_seen_at))*progress).toISOString();
+ const fleet=plan.history.fleet,pilot=fleet?.pilots.find(p=>p.character_id===fleet.owners[visit.id]);
+ const stamp=phase.kind==='engagement'?pageRows[0].time:phase.kind==='overview'||phase.kind==='zoom'?plan.clipStartAt??visit.first_seen_at:phase.kind==='end'||phase.kind==='outro'?plan.clipEndAt??visit.last_seen_at:fleet?visit.first_seen_at:new Date(Date.parse(visit.first_seen_at)+(Date.parse(visit.last_seen_at)-Date.parse(visit.first_seen_at))*progress).toISOString();
  const hull=hullAt(plan,index,stamp);
  c.fillStyle='#060e18';c.fillRect(0,0,W,H);
  // The supplied EQM banner is rendered intact; no remote images can taint the canvas.
  c.drawImage(logo,45,18,300,150);
- text(c,plan.partNumber?`MY JOURNEY · PART ${plan.partNumber}`:'MY JOURNEY',385,72,38);text(c,plan.history.character.name,385,112,25,muted,900);
+ text(c,plan.partNumber?`${fleet?'MY FLEET':'MY JOURNEY'} · PART ${plan.partNumber}`:fleet?'MY FLEET':'MY JOURNEY',385,72,38);text(c,fleet?`${fleet.pilots.length} pilots · ${pilot?.name??'Recorded fleet'}`:plan.history.character.name,385,112,25,muted,900);
  text(c,`EXPORTED ${utcStamp(plan.exportedAt)}`,1335,68,21,muted,540);
  text(c,`EVE QUARTERMASTER v${version}`,1335,107,19,muted);
  panel(c,MX,MY,MW,MH);
@@ -25,6 +27,13 @@ export function renderExportFrame(c:Ctx,plan:ExportPlan,time:number,logo:ImageBi
  const points=new Map(plan.points.map(p=>[p.system.system_id,p]));
  const reached=phase.kind==='overview'?0:phase.kind==='end'||phase.kind==='outro'?plan.visits.length-1:index;
  const route=(active:boolean)=>{
+  if(fleet){
+   const shown=active?plan.visits.filter(v=>Date.parse(v.first_seen_at)<=Date.parse(stamp)):plan.visits;
+   for(const link of fleetLinks(shown,fleet.owners,fleetPositions(plan.history,Date.parse(plan.clipStartAt!)))){
+    const a=points.get(link.a),b=points.get(link.b);if(!a||!b)continue;
+    const ap=screen(a),bp=screen(b);c.beginPath();c.moveTo(ap.x,ap.y);c.lineTo(bp.x,bp.y);c.strokeStyle=active?fleet.pilots.find(p=>p.character_id===link.pilot_id)?.color??cyan:'#203447';c.lineWidth=active?3:2;c.setLineDash(link.gap?[8,10]:[]);c.stroke();
+   }c.setLineDash([]);return;
+  }
   for(let i=1;i<plan.visits.length;i++){
    if(active&&i>reached)break;
    const a=points.get(plan.visits[i-1].system_id),b=points.get(plan.visits[i].system_id);if(!a||!b)continue;
@@ -40,6 +49,13 @@ export function renderExportFrame(c:Ctx,plan:ExportPlan,time:number,logo:ImageBi
   const labelX=Math.max(MX+10,Math.min(p.x+19,MX+MW-width-10)),labelY=Math.max(MY+30,Math.min(p.y-3,MY+MH-10));
   c.fillStyle='#060e18';c.fillRect(labelX-5,labelY-24,width+10,31);text(c,label,labelX,labelY,current?26:20,current?ink:muted);
  }
+ if(fleet){
+  const positions=fleetPositions(plan.history,Date.parse(stamp));
+  positions.forEach(position=>{const point=points.get(position.visit.system_id),owner=fleet.pilots.find(p=>p.character_id===position.pilot_id);if(!point||!owner)return;
+   const p=screen(point),near=positions.filter(v=>v.visit.system_id===position.visit.system_id),slot=near.findIndex(v=>v.pilot_id===position.pilot_id),x=p.x+(slot-(near.length-1)/2)*18;
+   c.fillStyle=owner.color;c.beginPath();c.arc(x,p.y+24,6,0,Math.PI*2);c.fill();text(c,owner.name,x+10,p.y+45+slot*20,17,owner.color,240);
+  });
+ }
  c.restore();
  text(c,`${Math.round(camera.scale*100)}% · ${overview?'FULL JOURNEY':phase.kind==='engagement'?'ENGAGEMENT PAUSE':'OBSERVED ROUTE'}`,MX+20,MY+MH+40,20,muted);
  text(c,'Dashed links mark observation gaps. Lines do not imply a verified gate route.',MX+20,MY+MH+72,18,muted);
@@ -48,7 +64,7 @@ export function renderExportFrame(c:Ctx,plan:ExportPlan,time:number,logo:ImageBi
  text(c,system?.name??`System ${visit.system_id}`,1340,299,36,ink,500);
  text(c,plan.partNumber?`Journey visit ${plan.visitNumbers?.[index]}${plan.continued&&index===0?' · continued':''}`:`Visit ${index+1} of ${plan.visits.length}`,1340,340,22,muted);
  text(c,utcStamp(stamp),1340,385,22);
- text(c,'RECORDED SHIP TYPE',1340,428,17,muted);
+ text(c,pilot?`RECORDED SHIP · ${pilot.name}`:'RECORDED SHIP TYPE',1340,428,17,muted);
  text(c,hull?.ship_name??'Unknown hull',1340,465,29,ink,500);
  const located=points.has(visit.system_id);
  if(!located)text(c,'Coordinates unavailable · camera held',1340,500,19,muted,500);
@@ -60,12 +76,13 @@ export function renderExportFrame(c:Ctx,plan:ExportPlan,time:number,logo:ImageBi
  }else{
   text(c,overview?`${plan.visits.length} visits · ${plan.points.length} mapped systems`:'One second per recorded system visit',1340,550,22,muted,500);
   text(c,overview?'Whole journey at 100%':'Ship changes stay inside the same visit',1340,590,21,muted,500);
+  if(fleet)fleet.pilots.slice(0,6).forEach((p,i)=>{const position=fleetPositions(plan.history,Date.parse(stamp)).find(v=>v.pilot_id===p.character_id);const location=plan.history.systems.find(v=>v.system_id===position?.visit.system_id)?.name??(position?'Coordinates unavailable':'Not yet observed');text(c,`${p.name} · ${location}`,1340,660+i*27,17,p.color,500);});
   if(rows.length&&!overview&&phase.kind!=='outro')text(c,`${rows.length} combat records · pause follows`,1340,633,22,cyan,500);
  }
- text(c,'Imported records only · selected pilot involvement',1340,848,17,muted,500);
+ text(c,fleet?'Last observed positions · not a live tactical feed':'Imported records only · selected pilot involvement',1340,848,17,muted,500);
  c.fillStyle='#21394a';c.fillRect(50,964,1820,5);c.fillStyle=cyan;c.fillRect(50,964,1820*Math.min(1,time/plan.duration),5);
  text(c,`${utcStamp(plan.clipStartAt??plan.visits[0].first_seen_at)}  →  ${utcStamp(plan.clipEndAt??plan.visits[plan.visits.length-1].last_seen_at)}`,50,1010,21,muted,1400);
  text(c,`${Math.min(plan.duration,time).toFixed(1)} / ${plan.duration.toFixed(1)} s`,1630,1010,21,muted,240);
- const note=!plan.combatAvailable?'Combat layer unavailable with current permissions.':plan.unmatched?`${plan.unmatched} imported records outside confirmed / continuous visits are not assigned.`:'Combat pauses show existing imports; missing records do not establish no engagement.';
+ const note=!plan.combatAvailable?(fleet?'Some pilot combat unavailable; accessible imported records remain included.':'Combat layer unavailable with current permissions.'):plan.unmatched?`${plan.unmatched} imported records outside confirmed / continuous visits are not assigned.`:'Combat pauses show existing imports; missing records do not establish no engagement.';
  text(c,note,50,1045,18,muted);
 }

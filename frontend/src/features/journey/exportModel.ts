@@ -1,5 +1,6 @@
 import type {JourneyHistory,Context,ShipSegment,Visit} from './types.ts';
 import {projectSystems} from './replay.ts';
+import {fleetPositions} from './fleetGeometry.ts';
 
 export const EXPORT_WIDTH=1920, EXPORT_HEIGHT=1080, MAX_EXPORT_VISITS=500, MAX_EXPORT_SECONDS=600, MAX_EXPORT_BYTES=128*1024*1024;
 export const EXPORT_OVERHEAD=4.5;
@@ -16,6 +17,7 @@ export const utcStamp=(s:string)=>new Date(s).toISOString().replace('T',' ').sli
 // Continuous observations extend until the next system sample. Across pauses or
 // gaps only the confirmed span is eligible; never attach a gap kill to a revisit.
 export function matchEngagements(history:JourneyHistory,rows:CombatRow[]):CombatRow[][]{
+ if(history.fleet)return history.visits.map(v=>history.fleet!.engagements[v.id]??[]);
  const groups=history.visits.map(()=>[] as CombatRow[]),seen=new Set<number>();
  const from=Date.parse(history.from_at),to=Date.parse(history.to_at);
  for(const row of rows.slice().sort((a,b)=>Date.parse(a.time)-Date.parse(b.time)||a.id-b.id)){
@@ -36,7 +38,9 @@ export function exportTimeline(history:JourneyHistory,combat:ExportCombat,first=
  const rows=combat.available?combat.rows:[],engagements=matchEngagements(history,rows),units:TimelineUnit[]=[];
  for(let i=first-1;i<last;i++){units.push({kind:'visit',visitIndex:i});for(let page=0;page<Math.ceil(engagements[i].length/ENGAGEMENT_PAGE_SIZE);page++)units.push({kind:'engagement',visitIndex:i,page});}
  const matched=new Set(engagements.flat().map(r=>r.id));
- return {history,combat,engagements,units,unmatched:new Set(rows.filter(r=>!matched.has(r.id)).map(r=>r.id)).size};
+ if(history.fleet?.units){units.splice(0,units.length,...history.fleet.units);}
+ else if(history.fleet)units.sort((a,b)=>{const at=(u:TimelineUnit)=>Date.parse(u.kind==='visit'?history.visits[u.visitIndex].first_seen_at:engagements[u.visitIndex][(u.page??0)*ENGAGEMENT_PAGE_SIZE].time);return at(a)-at(b)||history.fleet!.owners[history.visits[a.visitIndex].id]-history.fleet!.owners[history.visits[b.visitIndex].id]||a.visitIndex-b.visitIndex;});
+ return {history,combat,engagements,units,unmatched:history.fleet?.unmatched??new Set(rows.filter(r=>!matched.has(r.id)).map(r=>r.id)).size};
 }
 export const unitSeconds=(unit:TimelineUnit)=>unit.kind==='visit'?1:ENGAGEMENT_HOLD;
 export function segmentTimeline(units:TimelineUnit[]):TimelineUnit[][]{
@@ -58,16 +62,20 @@ export function planTimelineClip(timeline:ExportTimeline,units:TimelineUnit[],ex
  const {history,combat}=timeline,indices=[...new Set(units.map(u=>u.visitIndex))];
  if(indices.length>MAX_EXPORT_VISITS)throw new Error(`Choose at most ${MAX_EXPORT_VISITS} visits per clip.`);
  const visits=indices.map(i=>history.visits[i]).map(v=>{const first=Math.max(Date.parse(v.first_seen_at),Date.parse(history.from_at)),last=Math.max(first,Math.min(Date.parse(v.last_seen_at),Date.parse(history.to_at)-1));return {...v,first_seen_at:new Date(first).toISOString(),last_seen_at:new Date(last).toISOString(),observed_span_seconds:(last-first)/1000};});
- const engagements=indices.map(i=>timeline.engagements[i]),ids=new Set(visits.map(v=>v.system_id)),points=projectSystems(history.systems.filter(s=>ids.has(s.system_id)),1220,650);
+ const engagements=indices.map(i=>timeline.engagements[i]),ids=new Set(visits.map(v=>v.system_id));
+ const firstUnit=units[0],firstIndex=indices.indexOf(firstUnit.visitIndex);
+ const startAt=firstUnit.kind==='engagement'?engagements[firstIndex][firstUnit.page!*ENGAGEMENT_PAGE_SIZE].time:visits[firstIndex].first_seen_at;
+ if(history.fleet)for(const p of fleetPositions(history,Date.parse(startAt)))ids.add(p.visit.system_id);
+ const points=projectSystems(history.systems.filter(s=>ids.has(s.system_id)),1220,650);
  const phases:ExportPhase[]=[];let duration=0;
  const add=(kind:ExportPhase['kind'],seconds:number,index:number,page?:number)=>{phases.push({kind,start:duration,duration:seconds,index,page});duration+=seconds;};
  add('overview',1,0);add('zoom',1,0);
  units.forEach(u=>add(u.kind,unitSeconds(u),indices.indexOf(u.visitIndex),u.page));
- add('outro',1.5,visits.length-1);add('end',1,visits.length-1);
+ const finalIndex=indices.indexOf(units[units.length-1].visitIndex);add('outro',1.5,finalIndex);add('end',1,finalIndex);
  if(duration>MAX_EXPORT_SECONDS)throw new Error('This clip exceeds ten minutes including engagement pauses. Choose fewer visits.');
- const eventStamp=(unit:TimelineUnit,end:boolean)=>{const index=indices.indexOf(unit.visitIndex);if(unit.kind==='visit')return end?visits[index].last_seen_at:visits[index].first_seen_at;const rows=engagements[index].slice(unit.page!*ENGAGEMENT_PAGE_SIZE,(unit.page!+1)*ENGAGEMENT_PAGE_SIZE);return rows[end?rows.length-1:0].time;};
+ const eventStamp=(unit:TimelineUnit,end:boolean)=>{const index=indices.indexOf(unit.visitIndex);if(unit.kind==='visit')return end&&!history.fleet?visits[index].last_seen_at:visits[index].first_seen_at;const rows=engagements[index].slice(unit.page!*ENGAGEMENT_PAGE_SIZE,(unit.page!+1)*ENGAGEMENT_PAGE_SIZE);return rows[end&&!history.fleet?rows.length-1:0].time;};
  return {history,visits,engagements,phases,duration,exportedAt,unmatched:timeline.unmatched,combatAvailable:combat.available,points,partNumber,
-  visitNumbers:indices.map(i=>((history as JourneyHistory&{visit_offset?:number}).visit_offset??0)+i+1),continued:units[0].kind==='engagement',
+  visitNumbers:indices.map(i=>history.fleet?.visitNumbers[history.visits[i].id]??((history as JourneyHistory&{visit_offset?:number}).visit_offset??0)+i+1),continued:units[0].kind==='engagement',
   clipStartAt:eventStamp(units[0],false),clipEndAt:eventStamp(units[units.length-1],true)};
 }
 export function makeExportPlan(history:JourneyHistory,combat:ExportCombat,first:number,last:number,exportedAt=new Date().toISOString()):ExportPlan{
@@ -95,5 +103,5 @@ export function hullAt(plan:ExportPlan,index:number,time:string):ShipSegment|nul
  const visit=plan.visits[index],at=Date.parse(time);
  return plan.history.ship_segments.find(s=>s.visit_id===visit.id&&s.system_id===visit.system_id&&at>=Date.parse(s.first_seen_at)&&at<=Date.parse(s.last_seen_at))??null;
 }
-export type ExportRequest={format:'gif'|'mp4';plan:ExportPlan;logo:ImageBitmap;version:string};
+export type ExportRequest={format:'gif'|'mp4';plan:ExportPlan;logo:ImageBitmap;version:string;music?:{volume:number}};
 export type ExportMessage={type:'progress';progress:number}|{type:'done';buffer:ArrayBuffer;mime:string}|{type:'error';message:string;code?:'size_limit'};

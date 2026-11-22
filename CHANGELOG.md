@@ -4,6 +4,13 @@ All notable changes to EVE Quartermaster are tracked here.
 
 Version sections are written as user-facing release notes first, with implementation detail included where it helps operators understand deployment or testing impact.
 
+## [Unreleased]
+
+- Add **Navigation → My Journey → My Fleet**: show all enabled Journey pilots on one private map, with colored markers, recorded hulls, last-confirmed times and separate pilot paths. Merge replay observations by UTC timestamp and follow whichever pilot moves next. Keep missing coordinates, sampling gaps, capped history and unavailable pilots explicit.
+- Extend existing loaded, selected-date and entire-history GIF/MP4 exports to the tracked fleet. Merge bounded authenticated pilot streams in timestamp order, retain other pilots' known positions, and continue long journeys/engagements across 500-visit, ten-minute and 128-MiB clips without duplicate visit events. Per-pilot snapshots remain independent rather than an atomic fleet snapshot.
+- Add a desktop-browser **Combine Journey MP4 clips** tool: natural part ordering, review/reorder/remove, compatible H.264/AAC validation and direct-to-disk packet remuxing. Preserve dimensions and compressed video; abort an unfinished output file on cancellation. No full combined Blob or frame re-encoding. Optional original synthesized **space ambience** with volume control is available for MP4; GIF stays silent.
+- Frontend-only; no migration, new dependency, ESI scope or automatic tracking enrollment. [My Fleet and movies guide](docs/my-fleet.md). Source remains v2.4.2; no release or deployment is performed by these changes.
+
 ## [2.4.2] - 2026-11-21
 
 - Add **CCP SDE API (JSONL)** as an explicit full-import source in **Settings → SDE Maintenance**. Pin one release, validate named record keys and importer-required shapes before writes, follow only approved CCP release/content-blob redirects, and fetch only the tables EQM consumes with bounded streaming and concurrency. Existing YAML ZIP/directory and agents-only imports stay available; YAML remains the default. [Operator guide](docs/sde-maintenance.md#ccp-http-sde-source-v242).
