@@ -130,5 +130,56 @@
         "sha256": "67a048f244223b0fd3191a9e43d52b337f606743a081d5b98873b5a2dbbbf2ec"
       }
     ]
+  },
+  "journey_insights": {
+    "captured_at": "2026-11-23T13:28:43.117283+00:00",
+    "application_version": "2.4.2",
+    "source_base_commit": "2b54a3491d332a0fa52a5ecce833b104dcdc689a",
+    "source_state": "uncommitted Journey analytics and aggregate sharing follow-up",
+    "method": "Actual new React components in headless Edge against the implemented FastAPI endpoints with an isolated SQLite database; 1440x1100 desktop and 390x1000 mobile.",
+    "data_provenance": "Fictional Demo Aurora/Meridian pilots, Scout/Dreadnought/Titan hulls and Aster/Borealis/Cygnus systems; no live accounts or ESI.",
+    "validation": {
+      "backend_tests": 91,
+      "frontend_tests": 45,
+      "browser_groups": 10,
+      "typescript": "passed",
+      "production_build": "passed"
+    },
+    "limitations": "Synthetic local API/auth override; no production PostgreSQL, live SSO/ESI or Android runtime verification. No deployment performed.",
+    "source_sha256": {
+      "backend/app/services/journey_insights.py": "d06e44c46a1ceb11da4b580f958687fcba766d3606685e084a462787a7ab9d40",
+      "backend/app/api/journey_insights.py": "617619ee5ba03b0f6ffe807309b1b369dd33a3e49cfd9b5ef5986a4b0f4a99c8",
+      "backend/app/models/journey_views.py": "e53c4c450237536f555a5caae8aaff4a77d084d80430e0a23c57b8ac0f0bcb92",
+      "frontend/src/features/journey/JourneyInsights.tsx": "4205dadfec98bca008708ade9845c53b2095324b8c4e974280b19666df93aedf",
+      "frontend/src/features/journey/InsightReport.tsx": "642cd9dbe2ca4d27fbacffdfb435f5fc7a447df265a1aed109e7341368cad959",
+      "frontend/src/features/journey/PublicJourneyView.tsx": "91505649c922082e47edd8a424a1a9e0787370afca16045cfa1edb03aa81fa51",
+      "frontend/src/features/journey/insightsModel.ts": "ed627b6e3887e9cf30cdf2033cbf54a952eaf79239b50507d546d4a0eb569112",
+      "frontend/src/features/journey/insights.css": "77b071bd86e3853c6dea77bfff1e7eea535ddde3f6e399a960aae4272536e4fe",
+      "frontend/src/features/journey/JourneyAnalytics.tsx": "9838f0bc4797cfeb2a54e2354d28960f5ccb241f429acc5c2e817f0b6ef0d3c5",
+      "frontend/src/features/journey/MyFleetPanel.tsx": "e7149d413ffcffaa41b795c28fc45413719b83fdd098bf72c962fdb4c699e903",
+      "frontend/src/main.tsx": "778cf633b763822c865c3a170b7df85afaaa427149d32a5273e49187d618dd70"
+    },
+    "images": {
+      "journey-insights-desktop.png": {
+        "bytes": 205378,
+        "sha256": "418a39d8fe73933acc4ffb2baf026ced47b53103453dd8537753c9befaa8a9b2"
+      },
+      "journey-insights-mobile.png": {
+        "bytes": 300332,
+        "sha256": "80e7d24f9f337cfd6958593f54dd0d2a3b7eac7357ce3d1c122c196567ab2072"
+      },
+      "journey-public-desktop.png": {
+        "bytes": 74570,
+        "sha256": "5aa7a5331dc66991307deddccd7aa21cf9e1204690582e4ce26db95b1d9da826"
+      },
+      "journey-public-mobile.png": {
+        "bytes": 68970,
+        "sha256": "ce20a6a4834bb2245fbfd57b0368c209a2dccd428766b91c79026c9dec9ddbcc"
+      },
+      "journey-sharing-preview.png": {
+        "bytes": 64945,
+        "sha256": "76aaef2b8a364676b800c31a3afdf7137b50195db0dffd8ea107c35d55b61cd5"
+      }
+    }
   }
 }

@@ -1,3 +1,4 @@
+import {JourneyInsights} from './JourneyInsights';
 import {useEffect,useMemo,useState} from 'react';
 import {Pause,Play} from 'lucide-react';
 import {api} from '../../lib/api';
@@ -39,6 +40,7 @@ export function MyFleetPanel({settings,query,refresh}:{settings:Settings|null;qu
  useEffect(()=>{if(!playing||!steps.length)return;const timer=window.setInterval(()=>setCursor(old=>{const next=(old??-1)+1;if(next>=steps.length-1){setPlaying(false);return steps.length-1;}return next;}),1000/speed);return()=>window.clearInterval(timer);},[playing,speed,steps.length]);
  return <section className="journey-fleet" aria-label="My Fleet"><h4>My Fleet · {pilots.length} tracked pilots</h4>
   <p className="muted">Private recorded positions for your enabled Journey pilots. Replay switches focus to the next pilot’s observation in UTC timestamp order. Positions are last observed, not a live tactical feed; gaps and sampling delays still apply.</p>
+  <JourneyInsights query={query} defaultFleet onSystem={setSelected}/>
   {loading&&<p role="status">Loading fleet histories…</p>}{!pilots.length&&<p>Enable Journey tracking for your linked pilots above to populate My Fleet. No pilot is enrolled automatically.</p>}
   {errors.map(error=><p className="mini-alert" role="alert" key={error}>{error}</p>)}
   {history&&<>

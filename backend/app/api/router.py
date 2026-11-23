@@ -148,3 +148,7 @@ from app.api.app_update import router as app_update_router
 api_router.include_router(app_update_router)
 from app.api.structure_timers import router as structure_timers_router
 api_router.include_router(structure_timers_router)
+
+from app.api.journey_insights import router as journey_insights_router, public_router as journey_views_router
+api_router.include_router(journey_insights_router)
+api_router.include_router(journey_views_router)

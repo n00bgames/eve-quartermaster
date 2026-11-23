@@ -61,3 +61,8 @@ These are isolated synthetic component checks, not production SSO/ESI, native fi
 ![My Fleet desktop — synthetic unreleased preview](../static/ss/v2.4.2/my-fleet-desktop.png)
 
 ![Fleet movie frame — actual synthetic encoded output](../static/ss/v2.4.2/fleet-movie-frame.png)
+
+
+## Hull and fleet analytics and sharing
+
+Open **Hull and fleet insights** within My Fleet to analyze all stored rows for the currently tracked cohort, an explicit owned-pilot selection, or all owned pilots. Select hull/system rows to narrow the analysis; system selection can focus the fleet map. Private exports include all qualifying groups. Optional public snapshots have a separate filtered preview, hull/class exclusions and revocable links; private raw histories/maps/movies remain private. This backend/frontend follow-up requires migration **0112_journey_analytics_views**. [Full workflow and privacy boundaries](journey-insights.md).

@@ -1,3 +1,4 @@
+import {PublicJourneyView} from "./features/journey/PublicJourneyView";
 import {EveClientProvider, EveItemName, useClientLinksAccount} from "./features/clientLinks/EveClientLinks";
 import {EveSsoButton} from "./features/auth/EveSsoButton";
 import {PasswordRecovery} from "./features/profile/PasswordRecovery";
@@ -553,7 +554,7 @@ function App() {
         : ["waypoint", "destination", "structures", "navigation"].includes(esiMode ?? "") ? "navigation" : "esi";
 
     const esiError = params.get("esi_error");
-    if (window.location.hash.startsWith("#intel-report/") || window.location.hash.startsWith("#receipt/") || window.location.hash.startsWith("#local-scan/") || window.location.hash.startsWith("#d-scan/") || window.location.hash.startsWith("#industry-report/")) { setAuthReady(true); return; }
+    if (window.location.hash.startsWith("#journey-view/") || window.location.hash.startsWith("#intel-report/") || window.location.hash.startsWith("#receipt/") || window.location.hash.startsWith("#local-scan/") || window.location.hash.startsWith("#d-scan/") || window.location.hash.startsWith("#industry-report/")) { setAuthReady(true); return; }
 
     if (window.location.hash === "#navigation") setActiveTab("navigation");
     else if (window.location.hash === "#structures") setActiveTab("structures");
@@ -702,6 +703,7 @@ function App() {
 
   const publicRecruiting = locationHash === "#recruiting" || locationHash === "#apply";
   const publicExchangeId = locationHash.startsWith("#exchange/") ? locationHash.slice("#exchange/".length) : null;
+  const publicJourneyToken = locationHash.startsWith("#journey-view/") ? locationHash.slice("#journey-view/".length) : null;
   const publicReceiptToken = locationHash.startsWith("#receipt/") ? locationHash.slice("#receipt/".length) : null;
   const publicIndustryReportToken = locationHash.startsWith("#industry-report/") ? locationHash.slice("#industry-report/".length) : null;
   const publicIntelToken = locationHash.startsWith("#intel-report/") ? locationHash.slice("#intel-report/".length) : null;
@@ -713,6 +715,7 @@ function App() {
 
   if (locationHash === "#forgot-password" || locationHash.startsWith("#reset-password")) return <PasswordRecovery key={locationHash} token={locationHash.startsWith("#reset-password/") ? locationHash.slice("#reset-password/".length) : undefined}/>;
 
+  if (publicJourneyToken) return <PublicJourneyView token={publicJourneyToken} onBack={()=>{window.location.hash="";window.location.reload();}}/>;
   if (publicReceiptToken) return <PublicReceiptPage api={api} token={publicReceiptToken} onBack={()=>{window.location.hash="";window.location.reload();}}/>;
 
   if (publicIndustryReportToken) return <PublicIndustryReportPage api={api} token={publicIndustryReportToken} onBack={()=>{window.location.hash="";window.location.reload();}}/>;

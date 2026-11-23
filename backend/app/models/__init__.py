@@ -190,3 +190,5 @@ from app.models.manual_pos import ManualPos
 
 from app.models.intel_activity import IntelActivitySample
 from app.models.structure_timer import StructureTimerConfig, StructureTimer, StructureTimerDelivery
+
+from app.models.journey_views import JourneyAnalyticsView

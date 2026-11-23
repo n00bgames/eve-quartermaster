@@ -63,6 +63,11 @@ See [CHANGELOG.md](CHANGELOG.md) for version-by-version release notes. Applicati
 
 ![My Fleet — synthetic unreleased desktop preview](static/ss/v2.4.2/my-fleet-desktop.png)
 
+**Hull and fleet insights (unreleased):** Analyze all owned, currently tracked or explicitly selected pilots by hull, system and imported combat. Export complete private rankings, or save a private filtered aggregate preview and explicitly publish it with hull/class exclusions, optional names, expiration and revocation. Requires matching backend/frontend and migration **0112_journey_analytics_views**. [Guide and privacy boundaries](docs/journey-insights.md).
+
+![Private Journey hull and fleet insights — synthetic unreleased preview](static/ss/v2.4.2/journey-insights-desktop.png)
+
+
 
 ## Install Time
 

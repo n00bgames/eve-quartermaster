@@ -1,3 +1,4 @@
+import {JourneyInsights} from "./JourneyInsights";
 import {AnalyticsPane} from "../../components/AnalyticsPane";
 import {useEffect,useState,type ReactNode} from "react";
 import {RefreshCw} from "lucide-react";
@@ -11,7 +12,7 @@ export function JourneyAnalytics({character,query,refresh,onSelectCharacter,chil
   const [scope,setScope]=useState<"account"|"character">("account"),[period,setPeriod]=useState<"all"|"range">("all");
   const [order,setOrder]=useState<"visits"|"span">("visits"),[limit,setLimit]=useState(10);
   const request=analyticsQuery(scope,character,period,query,order,limit);
-  return <AnalyticsPane title="Journey analytics" description="Stored travel and imported combat · private to your account" id={id} className="journey-analytics stacked" unmountOnClose>
+  return <><AnalyticsPane title="Journey analytics" description="Stored travel and imported combat · private to your account" id={id} className="journey-analytics stacked" unmountOnClose>
     {children}<div className="journey-analytics-controls">
       <label>Pilot scope<select aria-label="Analytics pilot scope" value={scope} onChange={event=>setScope(event.target.value as typeof scope)}><option value="account">All my pilots</option><option value="character" disabled={!character}>Selected journey pilot</option></select></label>
       <label>History scope<select aria-label="Analytics history scope" value={period} onChange={event=>setPeriod(event.target.value as typeof period)}><option value="all">All stored history</option><option value="range">Selected dates (UTC)</option></select></label>
@@ -19,7 +20,7 @@ export function JourneyAnalytics({character,query,refresh,onSelectCharacter,chil
       <label>Rows per ranking<select aria-label="Rows per analytics ranking" value={limit} onChange={event=>setLimit(Number(event.target.value))}>{[10,25,50].map(value=><option key={value} value={value}>Top {value}</option>)}</select></label>
     </div>
     {request?<AnalyticsResults key={`${request}:${refresh}`} query={request} onChoose={id=>{setScope("character");onSelectCharacter(id);}}/>:<p>Select a linked journey pilot to view their analytics.</p>}
-  </AnalyticsPane>;
+  </AnalyticsPane><JourneyInsights query={query}/></>;
 }
 
 function AnalyticsResults({query,onChoose}:{query:string;onChoose:(id:number)=>void}) {

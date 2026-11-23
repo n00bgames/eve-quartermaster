@@ -1124,3 +1124,18 @@ Actual JourneyPanel/MyFleetPanel with fictional enabled and paused pilots, fabri
 ![Journey MP4 stitcher](../static/ss/v2.4.2/journey-stitcher.png)
 
 ![Fleet movie frame](../static/ss/v2.4.2/fleet-movie-frame.png)
+
+
+## Hull and fleet insights — unreleased after v2.4.2
+
+Actual components in headless Microsoft Edge, backed by the implemented API and an isolated synthetic SQLite database. Pilots, ships and systems are fictional. Includes private full-scope hull/system/pilot drill-downs, a private filtered sharing preview, and the anonymous aggregate view. No production login/data or Android runtime is represented. Additive provenance is in `static/ss/v2.4.2/capture-receipt.json` under `journey_insights`.
+
+![Private insights desktop](../static/ss/v2.4.2/journey-insights-desktop.png)
+
+![Private insights mobile](../static/ss/v2.4.2/journey-insights-mobile.png)
+
+![Filtered sharing preview](../static/ss/v2.4.2/journey-sharing-preview.png)
+
+![Published aggregate desktop](../static/ss/v2.4.2/journey-public-desktop.png)
+
+![Published aggregate mobile](../static/ss/v2.4.2/journey-public-mobile.png)
