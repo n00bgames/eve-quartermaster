@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/n00bgames/eve-quartermaster"><img alt="Project" src="https://img.shields.io/badge/project-eve--quartermaster-e8b84d?style=for-the-badge"></a>
-  <img alt="Version" src="https://img.shields.io/badge/version-2.4.2-4fb3c7?style=for-the-badge">
+  <img alt="Version" src="https://img.shields.io/badge/version-2.4.3-4fb3c7?style=for-the-badge">
   <img alt="License" src="https://img.shields.io/badge/license-AGPL--3.0--or--later-70c894?style=for-the-badge">
 </p>
 
@@ -23,7 +23,7 @@
 
 EVE Quartermaster is a containerized, database-first EVE Online quartermaster and alliance operations tool. It tracks characters, corporations, assets, blueprints, recipes, skills, standings/contact sync, wallet snapshots, permissions, audit events, and long-term analytics from EVE ESI plus imported SDE data.
 
-The current application/package version is **v2.4.2** (`2.4.2`). **Settings → SDE Maintenance** can fetch and import CCP’s new HTTP JSONL SDE, with a pinned release, validated tables, background progress and retained ZIP fallback. **Mining Ledger → Ore Split Calculator** adds pasted quantities, percentage presets and copyable cuts/remainders. Deploy matching API, worker and frontend builds; this update adds no new migration or ESI scope. [Release and APK](https://github.com/n00bgames/eve-quartermaster/releases/tag/v2.4.2) · [Release notes](docs/releases/v2.4.2.md) · [SDE operator guide](docs/sde-maintenance.md) · [Changelog](CHANGELOG.md). Coming from before 2.4.1? Apply migration `0111_local_universe` and run a full SDE import for planet type/radius and stars. Earlier releases: [v2.4.1](docs/releases/v2.4.1.md), [v2.4.0](docs/releases/v2.4.md), [v2.3](docs/releases/v2.3.md).
+The current application/package version is **v2.4.3** (`2.4.3`). **My Fleet** brings your tracked Journey pilots onto one private map with timestamp-ordered replay and fleet movies. **Hull and fleet insights** adds ship/system/combat rankings, complete private exports and deliberately published aggregate snapshots with hull exclusions. Deploy matching API, worker and frontend builds; upgrading from v2.4.2 applies migration `0112_journey_analytics_views`, with no new ESI scope. [Version notes](docs/releases/v2.4.3.md) · [Journey insights guide](docs/journey-insights.md) · [Changelog](CHANGELOG.md). The latest published Android APK remains [v2.4.2](https://github.com/n00bgames/eve-quartermaster/releases/tag/v2.4.2); Android source is now versionName 2.4.3 / versionCode 35. Coming from before 2.4.1? Also apply migration `0111_local_universe` and run a full SDE import for planet type/radius and stars. Earlier notes: [v2.4.2](docs/releases/v2.4.2.md), [v2.4.1](docs/releases/v2.4.1.md), [v2.4.0](docs/releases/v2.4.md).
 
 **CCP HTTP SDE import (v2.4.2):** Choose **CCP SDE API (JSONL)** in Settings and queue a full fetch/import. YAML ZIP remains the default/fallback. [Guide](docs/sde-maintenance.md#ccp-http-sde-source-v242).
 
@@ -59,11 +59,11 @@ The current application/package version is **v2.4.2** (`2.4.2`). **Settings → 
 
 See [CHANGELOG.md](CHANGELOG.md) for version-by-version release notes. Application Update now checks checkout permissions before merging; see [ownership repair and helper rollout](docs/application-updates.md#checkout-permissions).
 
-**Unreleased follow-up — My Fleet:** Navigation’s Journey module can show every enabled tracked pilot on one private map and replay the next pilot movement in timestamp order. Export the fleet with the existing segmented 1080p GIF/MP4 mechanics, optionally add original space ambience, and join compatible saved MP4 parts directly to disk. [Guide](docs/my-fleet.md) · [Next release draft](docs/releases/next.md). Frontend rollout is still required; this is not in the published v2.4.2 tag.
+**My Fleet (v2.4.3):** Navigation’s Journey module can show every enabled tracked pilot on one private map and replay the next pilot movement in timestamp order. Export the fleet with the existing segmented 1080p GIF/MP4 mechanics, optionally add original space ambience, and join compatible saved MP4 parts directly to disk. [Guide](docs/my-fleet.md) · [Version notes](docs/releases/v2.4.3.md). Included in v2.4.3; the screenshot below retains its original development-capture provenance.
 
 ![My Fleet — synthetic unreleased desktop preview](static/ss/v2.4.2/my-fleet-desktop.png)
 
-**Hull and fleet insights (unreleased):** Analyze all owned, currently tracked or explicitly selected pilots by hull, system and imported combat. Export complete private rankings, or save a private filtered aggregate preview and explicitly publish it with hull/class exclusions, optional names, expiration and revocation. Requires matching backend/frontend and migration **0112_journey_analytics_views**. [Guide and privacy boundaries](docs/journey-insights.md).
+**Hull and fleet insights (v2.4.3):** Analyze all owned, currently tracked or explicitly selected pilots by hull, system and imported combat. Export complete private rankings, or save a private filtered aggregate preview and explicitly publish it with hull/class exclusions, optional names, expiration and revocation. Requires matching backend/frontend and migration **0112_journey_analytics_views**. [Guide and privacy boundaries](docs/journey-insights.md).
 
 ![Private Journey hull and fleet insights — synthetic unreleased preview](static/ss/v2.4.2/journey-insights-desktop.png)
 

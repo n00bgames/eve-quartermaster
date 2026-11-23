@@ -6,6 +6,8 @@ Version sections are written as user-facing release notes first, with implementa
 
 ## [Unreleased]
 
+## [2.4.3] - 2026-11-23
+
 - Add **Hull and fleet insights** to Journey, Analytics and My Fleet: explicit owned-pilot cohorts, hull/system/pilot drill-downs, complete imported-combat hull rankings, clipped confirmed spans and full-group CSV/JSON exports. All stored rows contribute independently of replay and ranking caps.
 - Add private-by-default saved Journey aggregate views with a filtered public preview, deliberate publication, expiration, link rotation and revocation. Enforce exact hull/class/capital exclusions before server-side aggregation; exclude unknown public hulls. Pilot/system names are opt-in. Recheck owner/cohort/combat permissions for public access and downloads; raw journeys, positions, exact visit times and killmail links stay private.
 - These insights require matching backend/frontend and new migration **0112_journey_analytics_views**; no new ESI scope or collection. [Guide and privacy boundaries](docs/journey-insights.md).
@@ -13,7 +15,9 @@ Version sections are written as user-facing release notes first, with implementa
 - Add **Navigation → My Journey → My Fleet**: show all enabled Journey pilots on one private map, with colored markers, recorded hulls, last-confirmed times and separate pilot paths. Merge replay observations by UTC timestamp and follow whichever pilot moves next. Keep missing coordinates, sampling gaps, capped history and unavailable pilots explicit.
 - Extend existing loaded, selected-date and entire-history GIF/MP4 exports to the tracked fleet. Merge bounded authenticated pilot streams in timestamp order, retain other pilots' known positions, and continue long journeys/engagements across 500-visit, ten-minute and 128-MiB clips without duplicate visit events. Per-pilot snapshots remain independent rather than an atomic fleet snapshot.
 - Add a desktop-browser **Combine Journey MP4 clips** tool: natural part ordering, review/reorder/remove, compatible H.264/AAC validation and direct-to-disk packet remuxing. Preserve dimensions and compressed video; abort an unfinished output file on cancellation. No full combined Blob or frame re-encoding. Optional original synthesized **space ambience** with volume control is available for MP4; GIF stays silent.
-- The My Fleet map/movie additions above are frontend-only; no migration, new dependency, ESI scope or automatic tracking enrollment. [My Fleet and movies guide](docs/my-fleet.md). Source remains v2.4.2; no release or deployment is performed by these changes.
+- The My Fleet map/movie additions above are frontend-only; no migration, new dependency, ESI scope or automatic tracking enrollment. [My Fleet and movies guide](docs/my-fleet.md). The accompanying insights backend requires migration 0112 as noted above.
+
+- Set app/API/package/export/user-agent version **2.4.3** and Android **versionName 2.4.3 / versionCode 35**. This metadata bump adds no further migration; publishing a GitHub release/tag or rebuilding the APK is a separate step.
 
 ## [2.4.2] - 2026-11-21
 

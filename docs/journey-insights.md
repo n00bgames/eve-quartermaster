@@ -1,6 +1,6 @@
 # Hull and fleet insights
 
-Unreleased follow-up after v2.4.2. Source stays at 2.4.2 until a separately requested version bump. This feature requires matching backend/frontend builds and migration `0112_journey_analytics_views`; it adds no ESI scope or collection.
+Available in v2.4.3. This feature requires matching backend/frontend builds and migration `0112_journey_analytics_views`; it adds no ESI scope or collection.
 
 ## Analyze your stored fleet
 

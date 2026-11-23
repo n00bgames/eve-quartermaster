@@ -1,6 +1,6 @@
 # My Fleet and Journey movies
 
-**Unreleased source follow-up after v2.4.2.** These changes need an updated frontend. They add no database migration, server collection, ESI permission, or new tracking enrollment.
+**Available in v2.4.3.** The My Fleet map and movie tools need an updated frontend and add no database migration, server collection, ESI permission, or new tracking enrollment. The accompanying Hull and fleet insights feature needs matching backend/frontend and migration `0112_journey_analytics_views`.
 
 ## One map for your tracked pilots
 

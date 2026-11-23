@@ -221,7 +221,7 @@ def fetch_release(path, max_bytes, report, receipt, client=None):
     """Fetch one manifest and at most two tables at once; all validation precedes import."""
     if client is None:
         with httpx.Client(timeout=httpx.Timeout(60, connect=15), follow_redirects=False,
-                          headers={"User-Agent": "EVE-Quartermaster/2.4.2 SDE Maintenance"},
+                          headers={"User-Agent": "EVE-Quartermaster/2.4.3 SDE Maintenance"},
                           limits=httpx.Limits(max_connections=2)) as owned:
             return fetch_release(path, max_bytes, report, receipt, owned)
     path = Path(path)
