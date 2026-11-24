@@ -6,6 +6,8 @@ Version sections are written as user-facing release notes first, with implementa
 
 ## [Unreleased]
 
+- Add a private PLEX wallet screenshot importer for purchases and sales: browser-local OCR, crop and text fallback, editable UTC/quantity/unit-price/fee review, explicit directions and confirmation, possible duplicate checks, and atomic chronological FIFO batch saving. Requires matching frontend/backend; no new migration, dependency or ESI scope. [Guide](docs/plex-tracker.md#wallet-screenshot-import-v243-update).
+
 ## [2.4.3] - 2026-11-23
 
 - Add **Hull and fleet insights** to Journey, Analytics and My Fleet: explicit owned-pilot cohorts, hull/system/pilot drill-downs, complete imported-combat hull rankings, clipped confirmed spans and full-group CSV/JSON exports. All stored rows contribute independently of replay and ranking caps.

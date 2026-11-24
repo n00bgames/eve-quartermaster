@@ -22,3 +22,12 @@ class PlexTransactionInput(BaseModel):
         if self.kind == "consume" and (self.unit_price is not None or self.fees != 0):
             raise ValueError("Consumption removes PLEX at its tracked cost; omit price and fees.")
         return self
+
+
+class PlexImportTrade(PlexTransactionInput):
+    kind: Literal["buy", "sell"]
+    allow_duplicate: bool = False
+
+
+class PlexImportInput(BaseModel):
+    transactions: list[PlexImportTrade] = Field(min_length=1, max_length=200)

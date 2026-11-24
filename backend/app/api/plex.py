@@ -6,10 +6,10 @@ from app.api.auth import get_current_user
 from app.db.session import get_db
 from app.models import User
 from app.models.plex import PlexTransaction
-from app.schemas.plex import PlexTransactionInput
+from app.schemas.plex import PlexImportInput, PlexTransactionInput
 from app.services.audit import record_audit_event
 from app.services.permissions import can_view_section
-from app.services.plex import ledger, market_data
+from app.services.plex import ledger, market_data, utc
 
 router = APIRouter(prefix="/plex", tags=["plex"])
 
@@ -70,6 +70,42 @@ def save_transaction(db, user, payload=None, transaction_id=None, deleting=False
 @router.post("/transactions")
 def create_transaction(payload: PlexTransactionInput, user: User = Depends(require_plex), db: Session = Depends(get_db)):
     return save_transaction(db, user, payload)
+
+
+@router.post("/transactions/import")
+def import_transactions(payload: PlexImportInput, user: User = Depends(require_plex), db: Session = Depends(get_db)):
+    """Save a reviewed screenshot batch atomically under the normal account lock."""
+    db.scalar(select(User).where(User.id == user.id).with_for_update())
+    rows = owned_rows(db, user)
+
+    def key(row):
+        # Wallet screenshots may omit seconds. Fees/notes aren't trade identity.
+        return (utc(row.occurred_at).replace(second=0, microsecond=0), row.kind, row.quantity, row.unit_price)
+
+    keys = {key(row) for row in rows}
+    try:
+        # Preserve the user's review order for equal timestamps, as for manual entries.
+        for index, item in sorted(enumerate(payload.transactions), key=lambda pair: utc(pair[1].occurred_at)):
+            identity = key(item)
+            if identity in keys and not item.allow_duplicate:
+                raise HTTPException(409, f"Import row {index + 1} is a possible duplicate. Nothing was imported. Refresh the ledger, or explicitly allow this duplicate after review.")
+            keys.add(identity)
+            row = PlexTransaction(owner_user_id=user.id, **item.model_dump(exclude={"allow_duplicate"}))
+            rows.append(row)
+            db.add(row)
+        ledger(rows)
+        # Allocate IDs in reviewed chronological order before final FIFO validation.
+        db.flush()
+        ledger(rows)
+        record_audit_event(db, event_kind="plex_transaction_changed", title="PLEX ledger updated",
+                           body=f"Imported {len(payload.transactions)} private wallet trades", actor_user=user)
+        db.commit()
+    except (ValueError, HTTPException) as exc:
+        db.rollback()
+        if isinstance(exc, HTTPException):
+            raise
+        raise HTTPException(400, str(exc)) from None
+    return {"ledger": ledger(owned_rows(db, user)), "imported": len(payload.transactions)}
 
 
 @router.put("/transactions/{transaction_id}")

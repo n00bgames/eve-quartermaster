@@ -124,6 +124,55 @@ def test_owner_isolation_even_for_admin_records(client, db):
     assert db.get(PlexTransaction, foreign.id).quantity == 500
 
 
+def test_wallet_import_sorts_mixed_batch_and_preserves_decimal_fees(client):
+    buy = {**payload(quantity=500), "unit_price": "4000000.01", "fees": "1000.25"}
+    sell = {**payload("sell", 100, 2), "unit_price": "4200000.99", "fees": "20.50"}
+    response = client.post("/plex/transactions/import", json={"transactions": [sell, buy]})
+    assert response.status_code == 200, response.text
+    assert response.json()["imported"] == 2
+    result = response.json()["ledger"]
+    assert result["quantity"] == 400
+    assert result["realized_profit"] == 19999877.45
+
+
+def test_wallet_import_rolls_back_whole_batch_on_oversell(client):
+    response = client.post("/plex/transactions/import", json={"transactions": [payload(quantity=50), payload("sell", 100, 2)]})
+    assert response.status_code == 400
+    assert client.get("/plex/ledger").json()["transactions"] == []
+
+
+def test_wallet_import_duplicate_retry_is_atomic_and_override_explicit(client):
+    assert client.post("/plex/transactions", json=payload()).status_code == 200
+    duplicate = {**payload(), "fees": "0", "note": "different note"}
+    response = client.post("/plex/transactions/import", json={"transactions": [payload(day=0), duplicate]})
+    assert response.status_code == 409
+    assert client.get("/plex/ledger").json()["quantity"] == 100
+    duplicate["allow_duplicate"] = True
+    assert client.post("/plex/transactions/import", json={"transactions": [duplicate]}).status_code == 200
+    assert client.get("/plex/ledger").json()["quantity"] == 200
+    assert client.post("/plex/transactions/import", json={"transactions": [payload(day=3), payload(day=3)]}).status_code == 409
+    assert client.get("/plex/ledger").json()["quantity"] == 200
+
+
+def test_wallet_import_owner_isolation_and_minute_duplicate_check(client, db):
+    foreign = PlexTransaction(owner_user_id=2, occurred_at=NOW + timedelta(days=1), kind="buy", quantity=100, unit_price=4000000, fees=0, note="private")
+    db.add(foreign); db.commit()
+    assert client.post("/plex/transactions/import", json={"transactions": [payload()]}).status_code == 200
+    later_second = {**payload(), "occurred_at": (NOW + timedelta(days=1, seconds=59)).isoformat()}
+    assert client.post("/plex/transactions/import", json={"transactions": [later_second]}).status_code == 409
+    assert db.get(PlexTransaction, foreign.id).quantity == 100
+
+
+def test_wallet_import_limits_kinds_and_retains_equal_time_review_order(client):
+    assert client.post("/plex/transactions/import", json={"transactions": []}).status_code == 422
+    assert client.post("/plex/transactions/import", json={"transactions": [payload()] * 201}).status_code == 422
+    assert client.post("/plex/transactions/import", json={"transactions": [payload("opening")]}).status_code == 422
+    buy, sell = payload(), payload("sell", 50)
+    assert client.post("/plex/transactions/import", json={"transactions": [sell, buy]}).status_code == 400
+    assert client.post("/plex/transactions/import", json={"transactions": [buy, sell]}).status_code == 200
+    assert client.get("/plex/ledger").json()["quantity"] == 50
+
+
 def test_permission_denial(db):
     with patch.object(plex, "can_view_section", return_value=False), pytest.raises(HTTPException) as exc:
         plex.require_plex(db.get(User, 1), db)

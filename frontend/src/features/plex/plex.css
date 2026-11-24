@@ -26,3 +26,18 @@
 .plex-page td.plex-note { white-space: pre-wrap; min-width: 160px; max-width: 300px; overflow-wrap: anywhere; }
 .plex-page summary { cursor: pointer; padding: 10px 0; }
 @media (max-width: 600px) { .plex-panel { padding: 14px; } .plex-metrics, .plex-fields { grid-template-columns: 1fr; } .plex-heading { align-items: stretch; } }
+
+.plex-wallet-import { display: grid; gap: 14px; }
+.plex-wallet-import p { margin: 6px 0; }
+.plex-wallet-image { border: 1px dashed #71869a; border-radius: 8px; padding: 12px; min-width: 0; }
+.plex-wallet-crop { position: relative; margin: 12px 0; touch-action: none; cursor: crosshair; user-select: none; }
+.plex-wallet-crop img { display: block; width: 100%; max-height: none; }
+.plex-wallet-crop > div { position: absolute; box-sizing: border-box; border: 2px solid #ebbd4a; background: #ebbd4a20; pointer-events: none; }
+.plex-wallet-table { min-width: 1120px; }
+.plex-wallet-table td { vertical-align: top; white-space: normal; }
+.plex-wallet-table input:not([type=checkbox]), .plex-wallet-table select { min-width: 110px; }
+.plex-wallet-table td:nth-child(2) input { min-width: 210px; }
+.plex-wallet-table td:last-child { min-width: 235px; overflow-wrap: anywhere; }
+.plex-wallet-table input[type=checkbox], .plex-wallet-confirm input { width: auto; }
+.plex-wallet-import .plex-wallet-confirm { display: flex; align-items: center; gap: 10px; }
+.plex-wallet-image:focus-visible { outline: 2px solid #64d7e5; }

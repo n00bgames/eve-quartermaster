@@ -1,0 +1,26 @@
+{
+  "captured_at": "2026-11-24T22:45:36.579161+00:00",
+  "application_version": "2.4.3 + unreleased PLEX wallet importer",
+  "source_base_commit": "d92929c92109d5efbd013e46acf864b2e5d69192",
+  "working_tree": "Uncommitted importer source changes; no version bump",
+  "method": "Headless Microsoft Edge / Playwright; actual React PLEX page and AppearanceProvider; real self-hosted Tesseract worker/WASM/English OCR; actual PLEX API against isolated SQLite",
+  "data_provenance": "Synthetic wallet image, account and market quotes. No user wallet, live ESI or real game screenshots.",
+  "limitations": [
+    "Component harness, not complete App bootstrap or production authentication",
+    "English synthetic screenshot only; real wallet layouts and OCR may need correction",
+    "No PostgreSQL concurrency test or deployment",
+    "Mobile table scrolls horizontally; capture shows its initial scroll position"
+  ],
+  "files": [
+    {
+      "filename": "plex-wallet-import-desktop.png",
+      "size_bytes": 202756,
+      "sha256": "50c9b7671dff6ab527fad77c502c97de8c444a00a7aa87b9c650d21224378898"
+    },
+    {
+      "filename": "plex-wallet-import-mobile.png",
+      "size_bytes": 135260,
+      "sha256": "7b0ada6e1a3ea49938f38e5020b3da8bd0ebcf390b47ce48c0c4b5ca2d34d165"
+    }
+  ]
+}

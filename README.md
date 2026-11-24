@@ -179,6 +179,10 @@ Intel corporation/alliance dossiers now show **Organization strength**: characte
 
 ## Screenshots
 
+**PLEX wallet screenshot import:** scan purchases and sales locally, review directions and prices, then save a checked batch. Actual UI captured with synthetic data. [Guide](docs/plex-tracker.md#wallet-screenshot-import-v243-update).
+
+[![PLEX wallet screenshot review](static/ss/v2.4.3/plex-wallet-import-desktop.png)](static/ss/v2.4.3/plex-wallet-import-desktop.png)
+
 **[Open the complete gallery](docs/screenshots.md)** · [v2.0 development previews](docs/screenshots.md#v20-development-previews) · [v1.0.3 Atlas previews](docs/screenshots.md#v103-navigation-atlas) · [v1.0 highlights](docs/screenshots.md#v10-highlights) · [Suite/module coverage](docs/screenshots.md#suite-gallery) · [All 63 historical images](docs/screenshots.md#historical-image-index)
 
 New images show current components with synthetic demo data. Older screenshots and reconstructed examples are preserved in the gallery with explicit status and replacement notes; they are not represented as current UX.

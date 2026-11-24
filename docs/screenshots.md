@@ -1,6 +1,15 @@
 # EQM screenshot gallery
 
-**Latest:** [Mining Report exports](#mining-report-exports), captured November 19, 2026. Earlier: [zKillboard loss fits in Fittings](#zkillboard-loss-fits-in-fittings), captured November 16, 2026. [v2.4.0 theme gallery](#theme-gallery-for-v240).
+**Latest:** [PLEX wallet screenshot import](#plex-wallet-screenshot-import), captured November 24, 2026. Earlier: [Mining Report exports](#mining-report-exports), captured November 19, 2026. Earlier: [zKillboard loss fits in Fittings](#zkillboard-loss-fits-in-fittings), captured November 16, 2026. [v2.4.0 theme gallery](#theme-gallery-for-v240).
+
+## PLEX wallet screenshot import
+
+Captured November 24, 2026 from **2.4.3 plus the wallet importer changes**. Actual PlexTrackerPage, appearance provider and importer in desktop Edge, using a synthetic wallet image, real self-hosted Tesseract and the actual PLEX API with an isolated SQLite account. No real wallet data, live ESI or complete application bootstrap. Capture predates rollout. [Guide](plex-tracker.md#wallet-screenshot-import-v243-update) · [Capture receipt](../static/ss/v2.4.3/capture-receipt.json).
+
+| Preview | Screenshot |
+| --- | --- |
+| Desktop: mixed purchase/sale OCR rows, UTC prices and editable fees before confirmation | [plex-wallet-import-desktop.png](../static/ss/v2.4.3/plex-wallet-import-desktop.png) |
+| Mobile: complete importer panel at 390px, with horizontally scrolling review table | [plex-wallet-import-mobile.png](../static/ss/v2.4.3/plex-wallet-import-mobile.png) |
 
 ## Mining Report exports
 

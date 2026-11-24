@@ -17,7 +17,8 @@
     "test:sync": "node --test --experimental-strip-types tests/characterSyncPolling.test.ts tests/apiErrors.test.ts",
     "preview": "vite preview --host 0.0.0.0",
     "test:journey": "node --test --experimental-strip-types tests/journeyReplay.test.ts tests/journeyShipTimeline.test.ts tests/journeyMapView.test.ts tests/journeyExport.test.ts tests/journeySegments.test.ts tests/journeyAnalytics.test.ts tests/journeyFleet.test.ts tests/journeyMedia.test.ts",
-    "test:structures": "node --test --experimental-strip-types tests/structures.test.ts"
+    "test:structures": "node --test --experimental-strip-types tests/structures.test.ts",
+    "test:plex": "node --test --experimental-strip-types tests/plexWalletImport.test.ts"
   },
   "dependencies": {
     "@tesseract.js-data/eng": "1.0.0",

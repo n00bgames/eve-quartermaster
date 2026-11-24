@@ -2,6 +2,7 @@ import {LayoutRegion} from "../appearance/LayoutRegion";
 import { useCallback, useEffect, useState } from "react";
 import { Coins, Download, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 import "./plex.css";
+import { PlexWalletImport } from "./PlexWalletImport";
 
 type Api = <T>(path: string, options?: RequestInit) => Promise<T>;
 type Kind = "buy" | "opening" | "sell" | "consume";
@@ -31,6 +32,7 @@ export function PlexTrackerPage({ api }: { api: Api }) {
   const [editing, setEditing] = useState<Transaction | "new" | null>(null);
   const [deleting, setDeleting] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [notice, setNotice] = useState("");
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -59,7 +61,7 @@ export function PlexTrackerPage({ api }: { api: Api }) {
   }
 
   return <LayoutRegion region="plex-tracker" className="plex-page">
-    <header key="plex-tracker-1" data-layout-id="plex-tracker-1" data-layout-label="header" className="plex-heading"><div><h2><Coins size={24} /> PLEX Tracker</h2><p>Your private PLEX holdings, trades, and global market prices.</p></div><div className="plex-actions"><button disabled={loading || busy || editing !== null} onClick={() => void refresh()}><RefreshCw size={16} /> {loading ? "Refreshing…" : "Refresh"}</button><button disabled={!ledger || busy || editing !== null} onClick={() => { setEditing("new"); setNotice(""); }}><Plus size={16} /> Record transaction</button></div></header>
+    <header key="plex-tracker-1" data-layout-id="plex-tracker-1" data-layout-label="header" className="plex-heading"><div><h2><Coins size={24} /> PLEX Tracker</h2><p>Your private PLEX holdings, trades, and global market prices.</p></div><div className="plex-actions"><button disabled={loading || busy || editing !== null || importing} onClick={() => void refresh()}><RefreshCw size={16} /> {loading ? "Refreshing…" : "Refresh"}</button><button disabled={!ledger || busy || editing !== null || importing} onClick={() => { setEditing("new"); setNotice(""); }}><Plus size={16} /> Record transaction</button><button disabled={!ledger || loading || busy || editing !== null || importing || deleting !== null} onClick={() => { setImporting(true); setNotice(""); }}>Import wallet screenshot</button></div></header>
     {error && <div className="plex-warning" role="alert">{error}</div>}
     {notice && <p role="status">{notice}</p>}
     <section key="plex-tracker-2" data-layout-id="plex-tracker-2" data-layout-label="Global market · PLEX" className="plex-panel" aria-label="Global PLEX market"><h3>Global market · PLEX</h3>
@@ -77,13 +79,14 @@ export function PlexTrackerPage({ api }: { api: Api }) {
       <Metric label="Realized trading profit" value={isk(ledger.realized_profit)} detail={ledger.unknown_cost_sales ? `${ledger.unknown_cost_sales} sales have unknown cost; known portion ${isk(ledger.known_realized_profit)}` : "After recorded acquisition and sale fees"} />
       <Metric label="Value at highest bid · before fees" value={market?.best_bid != null ? isk(ledger.quantity * market.best_bid) : "Unavailable"} detail="Indicative value; not a quote to fill your whole holding" />
     </div>{ledger.unknown_cost_quantity > 0 && <p className="plex-warning">{count(ledger.unknown_cost_quantity)} PLEX have unknown acquisition cost. Known holdings cost {isk(ledger.known_cost_basis)}. Total profit and break-even remain unknown until those costs are entered.</p>}
-    <p className="plex-muted">FIFO uses the oldest acquisitions first across this account. Opening holdings can retain an unknown ISK basis; add a note if you use an estimated or replacement value. Trades are entered manually and do not place EVE market orders.</p></section>
+    <p className="plex-muted">FIFO uses the oldest acquisitions first across this account. Opening holdings can retain an unknown ISK basis; add a note if you use an estimated or replacement value. Record trades manually or import reviewed wallet screenshots. This does not place EVE market orders.</p></section>
     {editing !== null && <TransactionForm key={editing === "new" ? "new" : editing.id} transaction={editing === "new" ? null : editing} api={api} onCancel={() => setEditing(null)} onSaved={value => { setLedger(value); setEditing(null); setNotice("Transaction saved; holdings and FIFO costs updated."); }} />}
+    {importing && <PlexWalletImport<Ledger> api={api} existing={ledger.transactions} onCancel={() => setImporting(false)} onSaved={(value, count) => { setLedger(value); setImporting(false); setNotice(`${count} wallet trades imported; FIFO costs updated.`); }} />}
     <TradeScenario ledger={ledger} market={market} />
     </>}
     <PriceHistory key="plex-tracker-3" data-layout-id="plex-tracker-3" data-layout-label="Price History" data={history} error={historyError} loading={loading} />
     {ledger && <section className="plex-panel"><div className="plex-heading"><h3>Transaction ledger</h3><button onClick={exportCsv} disabled={!ledger.transactions.length}><Download size={16} /> Export CSV</button></div>
-      {!ledger.transactions.length ? <p>No transactions yet. Record a purchase, or add opening holdings for PLEX you already own.</p> : <div className="plex-table-wrap"><table><thead><tr><th>Date</th><th>Type</th><th>PLEX</th><th>ISK / PLEX</th><th>Fees</th><th>Realized profit</th><th>Notes</th><th>Actions</th></tr></thead><tbody>{ledger.transactions.map(t => <tr key={t.id}><td>{new Date(t.occurred_at).toLocaleString()}</td><td>{labels[t.kind]}</td><td>{count(t.quantity)}</td><td>{t.kind === "consume" ? "—" : isk(t.unit_price)}</td><td>{isk(t.fees)}</td><td>{t.kind === "sell" ? isk(t.realized_profit) : "—"}</td><td className="plex-note">{t.note}</td><td><div className="plex-actions">{deleting === t.id ? <><span>Delete?</span><button disabled={busy} onClick={() => void remove(t.id)}>Confirm</button><button disabled={busy} onClick={() => setDeleting(null)}>Cancel</button></> : <><button aria-label={`Edit transaction ${t.id}`} disabled={busy || editing !== null || loading} onClick={() => { setEditing(t); setNotice(""); }}><Pencil size={14} /></button><button aria-label={`Delete transaction ${t.id}`} disabled={busy || editing !== null || loading} onClick={() => setDeleting(t.id)}><Trash2 size={14} /></button></>}</div></td></tr>)}</tbody></table></div>}
+      {!ledger.transactions.length ? <p>No transactions yet. Record a purchase, or add opening holdings for PLEX you already own.</p> : <div className="plex-table-wrap"><table><thead><tr><th>Date</th><th>Type</th><th>PLEX</th><th>ISK / PLEX</th><th>Fees</th><th>Realized profit</th><th>Notes</th><th>Actions</th></tr></thead><tbody>{ledger.transactions.map(t => <tr key={t.id}><td>{new Date(t.occurred_at).toLocaleString()}</td><td>{labels[t.kind]}</td><td>{count(t.quantity)}</td><td>{t.kind === "consume" ? "—" : isk(t.unit_price)}</td><td>{isk(t.fees)}</td><td>{t.kind === "sell" ? isk(t.realized_profit) : "—"}</td><td className="plex-note">{t.note}</td><td><div className="plex-actions">{deleting === t.id ? <><span>Delete?</span><button disabled={busy} onClick={() => void remove(t.id)}>Confirm</button><button disabled={busy} onClick={() => setDeleting(null)}>Cancel</button></> : <><button aria-label={`Edit transaction ${t.id}`} disabled={busy || editing !== null || loading || importing} onClick={() => { setEditing(t); setNotice(""); }}><Pencil size={14} /></button><button aria-label={`Delete transaction ${t.id}`} disabled={busy || editing !== null || loading || importing} onClick={() => setDeleting(t.id)}><Trash2 size={14} /></button></>}</div></td></tr>)}</tbody></table></div>}
     </section>}
   </LayoutRegion>;
 }
