@@ -144,3 +144,8 @@ No migration beyond 0105 and no new dependency/scope. Rebuild backend/frontend t
 ## Receipts module follow-up (2.0.1 development)
 
 Rebuild matching backend/frontend. Receipts reuses saved-report JSON storage with kind `receipt`; no new migration/dependency/scope. Prior pending membership work still requires 0105. Existing Market permission gates personal generation/list/exports/deletion, and Navigation additionally gates local route planning/lookups. Verify paste → exclusions → credit/fee/fuel → route → preview/save, private owner isolation, explicit public share, main-character/anonymous attribution, PDF/CSV and expiry/deletion. Existing personal navigation gets Receipts added to Finance & Trade; custom shortcut layouts recognize it. Source paste/counterparties remain owner-only and are absent from all exports/public payloads. No live server restart or deployment performed. [Guide](receipts.md).
+
+
+## Fighter-tube simulation (unreleased 2.4.3 addition)
+
+Rebuild matching backend, frontend and Rust core. No migration, new dependency or ESI scope. EQM draft items retain FighterTube positions/states; exports map them to FighterBay stock. Verify a carrier's light/support limits, a mixed supercarrier wing, the Caiman's two light tubes and role bonus, reserve transfers, primary versus ammunition-limited salvo burst, target-class reductions, recall/redeploy and reload persistence. The fighter layer enriches both base-stats engines once; older Rust base engines must also be rebuilt to exclude fighters from the ordinary drone path. [Behavior and validation](fitting-fighters.md). Verify the served revision and readiness after the rollout.

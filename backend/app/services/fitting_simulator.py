@@ -11,6 +11,7 @@ from app.services.fitting_math_engine import evaluate_fitting_math_with_engine
 from app.services.fitting_resources_engine import evaluate_fitting_resources_with_engine
 from app.services.fitting_stats_engine import evaluate_fitting_stats_with_engine
 from app.services.ship_capacity import resolved_ship_capacity
+from app.services.fitting_fighters import add_fighter_stats
 
 FITTED_SLOT_PREFIXES = {"HiSlot", "MedSlot", "LoSlot", "RigSlot", "SubSystemSlot", "ServiceSlot"}
 CPU_MANAGEMENT_TYPE_ID = 3426
@@ -818,7 +819,7 @@ def is_turret_group(group_name: str) -> bool:
 
 def is_drone_group(group_name: str) -> bool:
     normalized = group_name.lower()
-    return normalized.endswith("drone") or "fighter" in normalized
+    return normalized.endswith("drone") and "fighter" not in normalized
 
 
 def charge_kind(name: str, group_name: str) -> str:
@@ -1502,7 +1503,7 @@ def compute_fitting_stats(
         else fitted_items_within_slot_capacity(fitted_items, ship_attrs)
     )
     active_fitted_items = [item for item in effect_fitted_items if item_is_online(item)]
-    bay_items = [item for item in fitting.items if slot_prefix(item.flag) in {"DroneBay", "FighterBay"}]
+    bay_items = [item for item in fitting.items if slot_prefix(item.flag) == "DroneBay"]
     cargo_items = [item for item in fitting.items if slot_prefix(item.flag) == "Cargo"]
 
     shield_hp_pct_mods: list[float] = []
@@ -2207,7 +2208,7 @@ def compute_fitting_stats(
         ],
     }
 
-def simulate_fitting(db: Session, fitting: CharacterFitting, character: EveCharacter, heat: bool = False, implant_type_ids: set[int] | None = None, implant_context: dict[str, Any] | None = None) -> dict[str, Any]:
+def simulate_fitting(db: Session, fitting: CharacterFitting, character: EveCharacter, heat: bool = False, implant_type_ids: set[int] | None = None, implant_context: dict[str, Any] | None = None, fighter_salvos: bool = False, fighter_target: str = "capital") -> dict[str, Any]:
     implant_type_ids = implant_type_ids or set()
     skill_levels = character_skill_levels(db, character.id)
     skill_name_levels = character_skill_levels_by_name(db, character.id)
@@ -2418,6 +2419,20 @@ def simulate_fitting(db: Session, fitting: CharacterFitting, character: EveChara
         ),
         python_result=python_stats,
     ) if python_stats else None
+    if stats is not None:
+        add_fighter_stats(stats, fitting, dogma, names, dogma_effects, skill_levels, skill_name_levels,
+                          include_salvos=fighter_salvos, target_kind=fighter_target, stats_item_ids=stats_item_ids, implant_type_ids=implant_type_ids)
+        fighter_issues = len(stats.get("fighters", {}).get("warnings", []))
+        if fighter_issues:
+            status = "warning"
+        # Loaded squadrons are carried stock as well as hangar reserves.
+        loaded_volume = sum(float(volumes.get(item.type_id, 0)) * int(item.quantity or 0)
+                            for item in fitting.items if item.flag.startswith("FighterTube"))
+        for bay in stats.get("cargo_bays", []):
+            if bay["key"] == "FighterBay":
+                bay["used"] += loaded_volume
+                bay["ok"] = bay.get("capacity") is None or bay["used"] <= bay["capacity"]
+                bay["percent"] = bay["used"] / bay["capacity"] * 100 if bay.get("capacity") else None
 
     return {
         "fitting_id": fitting.id,

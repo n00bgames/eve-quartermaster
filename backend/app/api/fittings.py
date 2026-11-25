@@ -14,7 +14,8 @@ from app.api.esi import refresh_access_token
 from app.db.session import get_db
 from app.models import CharacterFitting, CharacterFittingItem, CharacterJumpClone, Doctrine, DoctrineFitting, EsiToken, EveCategory, EveCharacter, EveDogmaAttribute, EveGroup, EveType, EveTypeDogmaAttribute, ImplantSet, ImplantSetImplant, JumpCloneImplant, User
 from app.services.esi_client import EsiClient
-from app.services.fitting_simulator import load_fitting_for_simulation, simulate_fitting
+from app.services.fitting_simulator import load_fitting_for_simulation, simulate_fitting, dogma_for_types
+from app.services.fitting_fighters import TUBE_FLAGS, fighter_class, fighter_limits, attributes, value
 from app.services.permissions import can_view_section
 from app.services.ship_capacity import resolved_ship_capacity
 
@@ -43,6 +44,7 @@ FLAG_LABELS = {
     "ServiceSlot": "Services",
     "DroneBay": "Drones",
     "FighterBay": "Fighters",
+    "FighterTube": "Fighter tubes",
     "Cargo": "Cargo",
 }
 SIMULATION_STATES = {"offline", "online", "active", "overheated"}
@@ -125,6 +127,7 @@ DRAFT_FLAGS = [
     "ServiceSlot2",
     "ServiceSlot3",
     *BAY_FLAGS,
+    *TUBE_FLAGS,
 ]
 
 ESI_FITTING_FLAGS = {
@@ -146,6 +149,13 @@ LOSS_DRAFT_DESCRIPTION = "Reconstructed from zKillboard loss #"
 LOSS_FIT_BAYS = {"DroneBay": 18, "FighterBay": 87}
 LOSS_FIT_RACKS = FITTED_SLOT_PREFIXES - {"ServiceSlot"}
 FittingTypeId = Annotated[int, Field(gt=0, le=2_147_483_647)]
+
+
+class FighterTubeLoad(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    type_id: FittingTypeId | None = None
+    source_item_id: FittingTypeId | None = None
+    quantity: int | None = Field(default=None, ge=1, le=100)
 
 
 class LossFitItem(BaseModel):
@@ -198,7 +208,7 @@ def require_manageable_draft(user: User, fitting: CharacterFitting, db: Session)
 
 def slot_prefix(flag: str) -> str:
     normalized = flag.lower()
-    for prefix in [*FLAG_ORDER, *BAY_FLAGS]:
+    for prefix in ["FighterTube", *FLAG_ORDER, *BAY_FLAGS]:
         if flag.startswith(prefix):
             return prefix
     if "cargo" in normalized:
@@ -210,6 +220,8 @@ def normalize_flag(flag: str) -> str:
     candidate = str(flag or "").strip()
     if candidate in DRAFT_FLAGS:
         return candidate
+    if candidate.startswith("FighterTube"):
+        raise HTTPException(status_code=400, detail="Unknown fighter tube")
     prefix = slot_prefix(candidate)
     if prefix in set(BAY_FLAGS):
         return prefix
@@ -240,6 +252,8 @@ def fitting_item_quantity_for_flag(flag: str, quantity: int) -> int:
 def normalize_item_flag_for_type(item_type: EveType, requested_flag: str) -> str:
     flag = normalize_flag(requested_flag)
     requested_prefix = slot_prefix(flag)
+    if requested_prefix == "FighterTube":
+        return flag
     if requested_prefix in set(BAY_FLAGS):
         return flag
     if requested_prefix in FITTED_SLOT_PREFIXES:
@@ -247,6 +261,30 @@ def normalize_item_flag_for_type(item_type: EveType, requested_flag: str) -> str
         if inferred_prefix in FITTED_SLOT_PREFIXES:
             return normalize_flag(f"{inferred_prefix}{fitting_slot_index(flag)}")
     return flag
+
+
+def validate_fighter_tube(db: Session, fitting: CharacterFitting, flag: str, type_id: int,
+                          quantity: int, state: str, ignore_item_id: int | None = None) -> None:
+    dogma = dogma_for_types(db, {fitting.ship_type_id, type_id})
+    limits = fighter_limits(dogma.get(fitting.ship_type_id, {}))
+    attrs = attributes(dogma.get(type_id, {}))
+    kind = fighter_class(attrs)
+    if flag not in TUBE_FLAGS or int(flag.removeprefix("FighterTube")) >= limits["tubes"]:
+        raise HTTPException(status_code=400, detail="This hull has no such fighter tube")
+    if kind is None or not limits[kind] or 23069 not in {int(value(attrs, f"requiredSkill{i}")) for i in range(1, 7)}:
+        raise HTTPException(status_code=400, detail="This fighter class is not supported by the hull")
+    maximum = int(value(attrs, "fighterSquadronMaxSize"))
+    if not 1 <= quantity <= maximum:
+        raise HTTPException(status_code=400, detail=f"Squadron size must be between 1 and {maximum}")
+    if state not in {"offline", "online", "active"}:
+        raise HTTPException(status_code=400, detail="Fighters cannot overheat")
+    if state == "active":
+        others = [item for item in fitting.items if item.id != ignore_item_id and item.flag.startswith("FighterTube") and item.simulation_state == "active"]
+        other_attrs = dogma_for_types(db, {item.type_id for item in others})
+        if sum(fighter_class(other_attrs.get(item.type_id, {})) == kind for item in others) >= limits[kind]:
+            raise HTTPException(status_code=400, detail=f"The {kind} fighter squadron limit is exceeded")
+    if any(item.flag == flag and item.id != ignore_item_id for item in fitting.items):
+        raise HTTPException(status_code=400, detail="That fighter tube is already occupied")
 
 
 def next_free_fitting_flag(fitting: CharacterFitting, requested_flag: str, ignore_item_id: int | None = None) -> str:
@@ -459,7 +497,8 @@ def fitting_copy_text(fitting: CharacterFitting) -> str:
     lines = [f"[{ship_name}, {fitting.name}]", ""]
     grouped: dict[str, list[CharacterFittingItem]] = {}
     for item in fitting.items:
-        grouped.setdefault(slot_prefix(item.flag), []).append(item)
+        group = "FighterBay" if item.flag.startswith("FighterTube") else slot_prefix(item.flag)
+        grouped.setdefault(group, []).append(item)
 
     for group in [*FLAG_ORDER, *[flag for flag in BAY_FLAGS if flag not in FLAG_ORDER], "Other"]:
         items = grouped.get(group, [])
@@ -501,7 +540,7 @@ def esi_fitting_payload(fitting: CharacterFitting) -> dict[str, Any]:
     charge_counts: dict[int, int] = {}
 
     for item in fitting.items:
-        flag = item.flag if item.flag in ESI_FITTING_FLAGS else "Cargo"
+        flag = "FighterBay" if item.flag.startswith("FighterTube") else item.flag if item.flag in ESI_FITTING_FLAGS else "Cargo"
         quantity = 1 if slot_prefix(flag) in FITTED_SLOT_PREFIXES else max(1, int(item.quantity or 1))
         key = (flag, int(item.type_id))
         rows[key] = rows.get(key, 0) + quantity
@@ -557,7 +596,7 @@ def fitting_charge_metadata(db: Session, type_ids: set[int]) -> dict[int, dict[s
         .join(EveDogmaAttribute, EveDogmaAttribute.attribute_id == EveTypeDogmaAttribute.attribute_id)
         .where(
             EveTypeDogmaAttribute.type_id.in_(type_ids),
-            EveDogmaAttribute.name.in_((CHARGE_SIZE_ATTRIBUTE, *CHARGE_GROUP_ATTRIBUTES)),
+            EveDogmaAttribute.name.in_((CHARGE_SIZE_ATTRIBUTE, *CHARGE_GROUP_ATTRIBUTES, "fighterSquadronMaxSize", "fighterSquadronIsLight", "fighterSquadronIsSupport", "fighterSquadronIsHeavy")),
         )
     ).all()
     result: dict[int, dict[str, Any]] = {}
@@ -567,6 +606,10 @@ def fitting_charge_metadata(db: Session, type_ids: set[int]) -> dict[int, dict[s
             metadata["charge_size"] = int(value)
         elif attribute_name in CHARGE_GROUP_ATTRIBUTES:
             metadata["compatible_charge_group_ids"].append(int(value))
+        elif attribute_name == "fighterSquadronMaxSize":
+            metadata["fighter_max_size"] = int(value)
+        elif value > 0:
+            metadata["fighter_class"] = attribute_name.removeprefix("fighterSquadronIs").lower()
     for metadata in result.values():
         metadata["compatible_charge_group_ids"] = sorted(set(metadata["compatible_charge_group_ids"]))
     return result
@@ -634,6 +677,8 @@ def serialize_fitting(
                 "type_id": item.type_id,
                 "type_name": item.item_type.name if item.item_type else f"Type {item.type_id}",
                 "group_id": item.item_type.group_id if item.item_type else None,
+                "fighter_max_size": charge_metadata.get(item.type_id, {}).get("fighter_max_size"),
+                "fighter_class": charge_metadata.get(item.type_id, {}).get("fighter_class"),
                 "charge_size": charge_metadata.get(item.type_id, {}).get("charge_size"),
                 "compatible_charge_group_ids": charge_metadata.get(item.type_id, {}).get("compatible_charge_group_ids", []),
                 "charge_type_id": item.charge_type_id,
@@ -741,6 +786,8 @@ def serialize_fitting_picker_type(row: EveType, charge_metadata: dict[int, dict[
         "category_name": row.group.category.name if row.group and row.group.category else None,
         "volume": row.volume,
         "published": row.published,
+        "fighter_max_size": metadata.get("fighter_max_size"),
+        "fighter_class": metadata.get("fighter_class"),
         "charge_size": metadata.get("charge_size"),
         "compatible_charge_group_ids": metadata.get("compatible_charge_group_ids", []),
     }
@@ -950,10 +997,50 @@ def add_fitting_item(fitting_id: int, payload: dict[str, Any], current_user: Use
     if charge_type_id is not None:
         charge_type_id = int(charge_type_id)
         require_compatible_charge(db, item_type, charge_type_id)
-    simulation_state = str(payload.get("simulation_state") or "online").strip().lower()
+    simulation_state = str(payload.get("simulation_state") or ("active" if flag.startswith("FighterTube") else "online")).strip().lower()
     if simulation_state not in SIMULATION_STATES:
         raise HTTPException(status_code=400, detail="Unknown simulation state")
+    if flag.startswith("FighterTube"):
+        if "quantity" not in payload:
+            quantity = int(value(dogma_for_types(db, {type_id}).get(type_id, {}), "fighterSquadronMaxSize"))
+        validate_fighter_tube(db, fitting, flag, type_id, quantity, simulation_state)
     db.add(CharacterFittingItem(fitting_id=fitting.id, type_id=type_id, charge_type_id=charge_type_id, flag=flag, quantity=quantity, simulation_state=simulation_state))
+    fitting.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    return serialize_fitting(load_fitting_or_404(db, fitting.id), current_user, db)
+
+
+@router.post("/{fitting_id}/fighter-tubes/{tube_index}")
+def load_fighter_tube(fitting_id: int, tube_index: int, payload: FighterTubeLoad,
+                      current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+    require_fittings_view(current_user, db)
+    fitting = load_fitting_or_404(db, fitting_id)
+    require_manageable_draft(current_user, fitting, db)
+    payload = FighterTubeLoad.model_validate(payload).model_dump(exclude_none=True) if isinstance(payload, dict) else payload.model_dump(exclude_none=True)
+    if bool(payload.get("source_item_id")) == bool(payload.get("type_id")):
+        raise HTTPException(status_code=400, detail="Choose either reserve stock or a new fighter type")
+    # Serialize competing tube/stock loads within this fitting on PostgreSQL.
+    db.execute(select(CharacterFitting.id).where(CharacterFitting.id == fitting.id).with_for_update())
+    db.expire(fitting, ["items"])
+    source_id = int(payload.get("source_item_id") or 0)
+    source = next((item for item in fitting.items if item.id == source_id and item.flag == "FighterBay"), None) if source_id else None
+    if source_id and source is None:
+        raise HTTPException(status_code=400, detail="Choose a reserve stack in this fitting's fighter hangar")
+    type_id = source.type_id if source else int(payload.get("type_id") or 0)
+    attrs = dogma_for_types(db, {type_id}).get(type_id, {})
+    maximum = int(value(attrs, "fighterSquadronMaxSize"))
+    default_quantity = min(maximum, source.quantity) if source else maximum
+    quantity = int(payload.get("quantity", default_quantity))
+    if source and quantity > source.quantity:
+        raise HTTPException(status_code=400, detail="Not enough reserve fighters in that stack")
+    flag = f"FighterTube{tube_index}"
+    validate_fighter_tube(db, fitting, flag, type_id, quantity, "active")
+    db.add(CharacterFittingItem(fitting_id=fitting.id, type_id=type_id, flag=flag, quantity=quantity, simulation_state="active"))
+    if source:
+        if source.quantity == quantity:
+            db.delete(source)
+        else:
+            source.quantity -= quantity
     fitting.updated_at = datetime.now(timezone.utc)
     db.commit()
     return serialize_fitting(load_fitting_or_404(db, fitting.id), current_user, db)
@@ -998,6 +1085,8 @@ def update_fitting_item(fitting_id: int, item_id: int, payload: dict[str, Any], 
         if simulation_state not in SIMULATION_STATES:
             raise HTTPException(status_code=400, detail="Unknown simulation state")
         item.simulation_state = simulation_state
+    if item.flag.startswith("FighterTube"):
+        validate_fighter_tube(db, fitting, item.flag, item.type_id, item.quantity, item.simulation_state, item.id)
     fitting.updated_at = datetime.now(timezone.utc)
     db.commit()
     return serialize_fitting(load_fitting_or_404(db, fitting.id), current_user, db)
@@ -1068,7 +1157,7 @@ def simulation_implant_context(db: Session, current_user: User, target_character
     return set(), None
 
 @router.get("/{fitting_id}/simulation")
-def simulate_saved_fitting(fitting_id: int, character_id: int | None = None, heat: bool = False, implant_set_id: int | None = None, jump_clone_id: int | None = None, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+def simulate_saved_fitting(fitting_id: int, character_id: int | None = None, heat: bool = False, implant_set_id: int | None = None, jump_clone_id: int | None = None, fighter_salvos: bool = False, fighter_target: Literal["subcapital", "capital", "fighter", "structure"] = "capital", current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
     require_fittings_view(current_user, db)
     fitting = load_fitting_for_simulation(db, fitting_id)
     if fitting is None:
@@ -1087,4 +1176,4 @@ def simulate_saved_fitting(fitting_id: int, character_id: int | None = None, hea
     if not can_view_all_characters(current_user, db) and target_character.owner_user_id != current_user.id:
         raise HTTPException(status_code=403, detail="You can only simulate against your own characters")
     implant_type_ids, implant_context = simulation_implant_context(db, current_user, target_character, implant_set_id=implant_set_id, jump_clone_id=jump_clone_id)
-    return simulate_fitting(db, fitting, target_character, heat=heat, implant_type_ids=implant_type_ids, implant_context=implant_context)
+    return simulate_fitting(db, fitting, target_character, heat=heat, implant_type_ids=implant_type_ids, implant_context=implant_context, fighter_salvos=fighter_salvos, fighter_target=fighter_target)

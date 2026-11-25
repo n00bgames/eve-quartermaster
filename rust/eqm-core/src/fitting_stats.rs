@@ -903,7 +903,7 @@ fn is_turret(group: &str) -> bool {
 
 fn is_drone(group: &str) -> bool {
     let group = group.to_lowercase();
-    group.ends_with("drone") || group.contains("fighter")
+    group.ends_with("drone") && !group.contains("fighter")
 }
 
 fn charge_kind(name: &str, group: &str) -> &'static str {

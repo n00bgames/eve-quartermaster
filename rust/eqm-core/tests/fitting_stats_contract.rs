@@ -1,5 +1,26 @@
 use eqm_core::fitting_stats::{evaluate_fitting_stats, FittingStatsInput};
 
+#[test]
+fn fighter_inventory_is_not_ordinary_drone_damage() {
+    // Fighter damage is added by the shared squadron layer after either base
+    // stats engine. Even legacy fighters with drone-like attributes must not
+    // receive Drone Interfacing or damage from undeployed hangar reserves.
+    let input: FittingStatsInput = serde_json::from_value(serde_json::json!({
+        "schema_version": "eqm.fitting-stats-input.v1", "ship_type_id": 24483,
+        "items": [
+            {"id":1,"type_id":40558,"flag":"FighterBay","quantity":60,"simulation_state":"active"},
+            {"id":2,"type_id":40558,"flag":"FighterTube0","quantity":6,"simulation_state":"active"}
+        ],
+        "dogma":{"40558":{"thermalDamage":100,"damageMultiplier":1,"speed":5000}},
+        "group_names":{"40558":"Light Fighter"},
+        "skill_name_levels":{"Drone Interfacing":5}
+    })).unwrap();
+    let result = evaluate_fitting_stats(input).unwrap();
+    assert_eq!(result.offense.drone_dps, 0.0);
+    assert_eq!(result.offense.total_dps, 0.0);
+    assert!(result.offense.weapons.is_empty());
+}
+
 fn close(actual: f64, expected: f64) {
     assert!(
         (actual - expected).abs() <= 0.000000001,

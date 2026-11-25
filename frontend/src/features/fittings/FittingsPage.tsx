@@ -1,3 +1,4 @@
+import { FighterTubesPanel } from "./FighterTubesPanel";
 import {EveItemName} from "../clientLinks/EveClientLinks";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { DragEvent } from "react";
@@ -7,7 +8,7 @@ import { FittingChargeGroups } from "./FittingChargeGroups";
 import { FittingImportPanel, FittingListPanel, FittingSyncControls, LossFittingImportPanel } from "./FittingShellPanels";
 import { cargoBayLabel, chargeMatchesModule, eveTypeImageUrl, fallbackShipImage, FittingContextPanel, FittingStatsPanel, fittingItemTooltip, fittingSkillPlanText, fittingSlotKey, fittingStateLabel, formatVolumeM3, hideBrokenImage, isCargoBayKey, nextFittingState, romanLevel } from "./FittingSupport";
 import { FITTING_PICKER_TABS, fittingPickerBucket } from "../../types/fittings";
-import type { CharacterFittingRecord, FittingCargoBay, FittingImportResult, FittingItem, FittingPickerTab, FittingSearchType, FittingSeed, FittingSimulation, FittingSyncToken, FittingsPayload, FittingWeaponEstimate } from "../../types/fittings";
+import type { CharacterFittingRecord, FighterTarget, FittingCargoBay, FittingImportResult, FittingItem, FittingPickerTab, FittingSearchType, FittingSeed, FittingSimulation, FittingSyncToken, FittingsPayload, FittingWeaponEstimate } from "../../types/fittings";
 import type { JumpClonePayload } from "../../types/jumpClones";
 
 type ApiClient = <T>(path: string, options?: RequestInit) => Promise<T>;
@@ -29,7 +30,7 @@ function cargoBayUsageText(bay: Pick<FittingCargoBay, "used" | "capacity">): str
 function fittingEngineLabel(simulation: FittingSimulation | null): string {
   if (!simulation) return "Hybrid engine";
   if (simulation.stats_engine_used === "rust") {
-    return "Rust fitting engine";
+    return simulation.stats?.fighters ? "Rust base stats + Python fighter model" : "Rust fitting engine";
   }
   if (simulation.stats_engine_used === "python-fallback") {
     return "Rust fitting fallback · Python served";
@@ -73,6 +74,8 @@ export function FittingsPage({ currentUser, assets, seed, onDismissLoss, onOpenA
   const [simulationCharacterId, setSimulationCharacterId] = useState<number | "">("");
 
   const [simulationHeat, setSimulationHeat] = useState(false);
+  const [fighterSalvos, setFighterSalvos] = useState(false);
+  const [fighterTarget, setFighterTarget] = useState<FighterTarget>("capital");
 
   const [simulationImplantChoice, setSimulationImplantChoice] = useState("");
 
@@ -443,6 +446,21 @@ export function FittingsPage({ currentUser, assets, seed, onDismissLoss, onOpenA
 
 
 
+  async function loadFighterTube(index: number, typeId: number, sourceItemId?: number) {
+    if (!selected?.is_draft || !selected.can_manage) return;
+    setEditorBusy(true);
+    setError(null);
+    try {
+      const updated = await api<CharacterFittingRecord>(`/fittings/${selected.id}/fighter-tubes/${index}`, {
+        method: "POST", body: JSON.stringify(sourceItemId ? { source_item_id: sourceItemId } : { type_id: typeId }),
+      });
+      replaceFitting(updated);
+      void loadSimulation(updated, simulationCharacterId, simulationHeat);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Unable to load fighter squadron");
+    } finally { setEditorBusy(false); }
+  }
+
   async function addDraftItem(fitting: CharacterFittingRecord | null) {
 
     await addDraftItemToFlag(fitting, selectedItemTypeId, draftFlag, draftQuantity, true);
@@ -639,7 +657,7 @@ export function FittingsPage({ currentUser, assets, seed, onDismissLoss, onOpenA
 
     try {
 
-      const params = new URLSearchParams({ character_id: String(characterId), heat: heat ? "true" : "false" });
+      const params = new URLSearchParams({ character_id: String(characterId), heat: heat ? "true" : "false", fighter_salvos: fighterSalvos ? "true" : "false", fighter_target: fighterTarget });
 
       if (implantChoice.startsWith("clone:")) params.set("jump_clone_id", implantChoice.slice("clone:".length));
       if (implantChoice.startsWith("set:")) params.set("implant_set_id", implantChoice.slice("set:".length));
@@ -773,6 +791,15 @@ export function FittingsPage({ currentUser, assets, seed, onDismissLoss, onOpenA
     return [...cloneOptions, ...setOptions];
 
   }, [jumpClonePayload, simulationCharacterId]);
+  useEffect(() => {
+    if (!selected?.is_draft || !selected.can_manage || !simulation?.stats?.fighters?.tube_count || itemCatalog.Drones.length) return;
+    let cancelled = false;
+    void api<FittingSearchType[]>("/fittings/item-catalog?bucket=Drones&limit=12000").then(rows => {
+      if (!cancelled) setItemCatalog(current => ({ ...current, Drones: rows.map(row => ({ ...row, bucket: fittingPickerBucket(row) })) }));
+    }).catch(error => { if (!cancelled) setError(error instanceof Error ? error.message : "Unable to load fighter catalog"); });
+    return () => { cancelled = true; };
+  }, [selected?.id, selected?.is_draft, selected?.can_manage, simulation?.stats?.fighters?.tube_count, itemCatalog.Drones.length]);
+
   const activeCatalogCount = itemCatalog[pickerTab].length;
 
   useEffect(() => {
@@ -1002,7 +1029,7 @@ export function FittingsPage({ currentUser, assets, seed, onDismissLoss, onOpenA
 
   useEffect(() => { setSimulationCharacterId(selected?.character_id ?? simulationCharacterOptions[0]?.character_id ?? ""); }, [selected?.id, simulationCharacterOptions.length]);
 
-  useEffect(() => { void loadSimulation(selected, simulationCharacterId, simulationHeat, simulationImplantChoice); }, [selected?.id, simulationCharacterId, simulationHeat, simulationImplantChoice]);
+  useEffect(() => { void loadSimulation(selected, simulationCharacterId, simulationHeat, simulationImplantChoice); }, [selected?.id, simulationCharacterId, simulationHeat, simulationImplantChoice, fighterSalvos, fighterTarget]);
 
 
 
@@ -1155,6 +1182,10 @@ export function FittingsPage({ currentUser, assets, seed, onDismissLoss, onOpenA
           {selected.description && <p className="muted">{selected.description}</p>}
 
           <FittingContextPanel fitting={selected} assets={assets} assetSummaries={contextAssetSummaries} contextLoading={contextAssetBusy} onOpenAssets={onOpenAssets} onOpenMarket={onOpenMarket} />
+
+          <FighterTubesPanel key={selected.id} fitting={selected} fighters={simulation?.stats?.fighters} catalog={itemCatalog.Drones}
+            busy={editorBusy || simulationBusy} includeSalvos={fighterSalvos} target={fighterTarget} onSalvos={setFighterSalvos} onTarget={setFighterTarget}
+            onLoad={loadFighterTube} onUpdate={(item, changes) => updateDraftItem(selected, item, changes)} />
 
           {selected.can_manage && <div className="fitting-editor-panel fitting-editor-with-picker">
 

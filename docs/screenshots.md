@@ -1,6 +1,17 @@
 # EQM screenshot gallery
 
-**Latest:** [PLEX wallet screenshot import](#plex-wallet-screenshot-import), captured November 24, 2026. Earlier: [Mining Report exports](#mining-report-exports), captured November 19, 2026. Earlier: [zKillboard loss fits in Fittings](#zkillboard-loss-fits-in-fittings), captured November 16, 2026. [v2.4.0 theme gallery](#theme-gallery-for-v240).
+**Latest:** [Fighter tubes](#fighter-tubes), captured November 25, 2026 (unreleased). Earlier: [PLEX wallet screenshot import](#plex-wallet-screenshot-import), captured November 24, 2026. Earlier: [Mining Report exports](#mining-report-exports), captured November 19, 2026. Earlier: [zKillboard loss fits in Fittings](#zkillboard-loss-fits-in-fittings), captured November 16, 2026. [v2.4.0 theme gallery](#theme-gallery-for-v240).
+
+## Fighter tubes
+
+Unreleased **2.4.3 plus fighter-tube changes**, captured November 25, 2026. Actual FittingsPage and fighter controls in desktop Microsoft Edge with an isolated synthetic SQLite API, current CCP SDE subset and newly compiled Rust base-stats core. No player fitting/account data or live ESI; not a complete App bootstrap or in-game comparison. The selected salvo option is a limited-ammunition burst estimate. [Guide](fitting-fighters.md) · [Capture receipt](../static/ss/v2.4.3/capture-receipt.json).
+
+| Preview | Screenshot |
+| --- | --- |
+| Carrier: three deployed light squadrons, a spare tube, primary and optional salvo DPS | [fitting-fighter-tubes-carrier.png](../static/ss/v2.4.3/fitting-fighter-tubes-carrier.png) |
+| Caiman: two light-fighter tubes with its role damage bonus | [fitting-fighter-tubes-caiman.png](../static/ss/v2.4.3/fitting-fighter-tubes-caiman.png) |
+| Supercarrier: five tubes combining heavy and light squadrons | [fitting-fighter-tubes-supercarrier.png](../static/ss/v2.4.3/fitting-fighter-tubes-supercarrier.png) |
+| Mobile: complete carrier controls at a 390px viewport | [fitting-fighter-tubes-mobile.png](../static/ss/v2.4.3/fitting-fighter-tubes-mobile.png) |
 
 ## PLEX wallet screenshot import
 

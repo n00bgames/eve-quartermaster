@@ -44,6 +44,8 @@ export function fittingSlotKey(flag: string): string {
 
   const normalized = flag.toLowerCase();
 
+  if (flag.startsWith("FighterTube")) return "FighterTube";
+
   if (flag.startsWith("HiSlot")) return "HiSlot";
 
   if (flag.startsWith("MedSlot")) return "MedSlot";
@@ -397,6 +399,7 @@ export function FittingStatsPanel({ stats }: { stats?: FittingSimulationStats | 
       <div className="fitting-stat-pair"><span>Turrets</span><b>{fittingStatValue(stats.offense.turret_dps, 1)}</b></div>
 
       <div className="fitting-stat-pair"><span>Drones</span><b>{fittingStatValue(stats.offense.drone_dps, 1)}</b></div>
+      {stats.fighters && <div className="fitting-stat-pair"><span>Fighters{stats.fighters.include_salvos ? " + salvo burst" : ""}</span><b>{fittingStatValue(stats.offense.fighter_dps, 1)}</b></div>}
 
       {stats.offense.weapons.length > 0 && <details><summary>Weapon estimates</summary><div className="mini-list fitting-weapon-list">{stats.offense.weapons.map((weapon, index) => <div key={weapon.item_id ?? `row-${index}`}><strong><EveItemName name={weapon.name} typeId={weapon.type_id}/></strong><span>{fittingStatValue(weapon.dps, 1)} DPS{weapon.charge_name ? ` · ${weapon.charge_name}` : ""}</span></div>)}</div></details>}
 

@@ -179,6 +179,10 @@ Intel corporation/alliance dossiers now show **Organization strength**: characte
 
 ## Screenshots
 
+**Fighter tubes — unreleased development preview:** load and deploy carrier, supercarrier and Caiman squadrons, compare primary and salvo burst DPS, and retain hangar reserves separately. Actual UI with synthetic data. [Guide](docs/fitting-fighters.md).
+
+[![Supercarrier fighter tubes and damage estimates](static/ss/v2.4.3/fitting-fighter-tubes-supercarrier.png)](static/ss/v2.4.3/fitting-fighter-tubes-supercarrier.png)
+
 **PLEX wallet screenshot import:** scan purchases and sales locally, review directions and prices, then save a checked batch. Actual UI captured with synthetic data. [Guide](docs/plex-tracker.md#wallet-screenshot-import-v243-update).
 
 [![PLEX wallet screenshot review](static/ss/v2.4.3/plex-wallet-import-desktop.png)](static/ss/v2.4.3/plex-wallet-import-desktop.png)

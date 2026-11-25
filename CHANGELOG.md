@@ -6,6 +6,8 @@ Version sections are written as user-facing release notes first, with implementa
 
 ## [Unreleased]
 
+- Fix capital fighter simulation with SDE-derived launch tubes, squadron/class limits, loaded/deployed controls and stock-preserving hangar transfers. Add fighter DPS with matching skills, hull bonuses, stacked damage amplifiers/support units, optional salvo burst and target-class reductions; keep reserves out of damage totals and preserve fighter quantities in EFT/ESI exports. Requires matching backend/frontend/Rust rebuilds; no migration or new scope. [Guide](docs/fitting-fighters.md).
+
 - Add a private PLEX wallet screenshot importer for purchases and sales: browser-local OCR, crop and text fallback, editable UTC/quantity/unit-price/fee review, explicit directions and confirmation, possible duplicate checks, and atomic chronological FIFO batch saving. Requires matching frontend/backend; no new migration, dependency or ESI scope. [Guide](docs/plex-tracker.md#wallet-screenshot-import-v243-update).
 
 ## [2.4.3] - 2026-11-23

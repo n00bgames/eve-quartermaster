@@ -21,6 +21,48 @@
       "filename": "plex-wallet-import-mobile.png",
       "size_bytes": 135260,
       "sha256": "7b0ada6e1a3ea49938f38e5020b3da8bd0ebcf390b47ce48c0c4b5ca2d34d165"
+    },
+    {
+      "filename": "fitting-fighter-tubes-caiman.png",
+      "size_bytes": 81033,
+      "sha256": "a49d8b3fa6d9e1141df24fe387f5a05b26ab7bef807ffc0fafcd6a41cb6f1200"
+    },
+    {
+      "filename": "fitting-fighter-tubes-carrier.png",
+      "size_bytes": 101054,
+      "sha256": "4e03973049136ae27111ecfad089200e16da26733cbddb3a1a8716f4bad1a112"
+    },
+    {
+      "filename": "fitting-fighter-tubes-mobile.png",
+      "size_bytes": 107766,
+      "sha256": "d089c8e0ef38807e97787b3fd6b26e7f91e13cfeedd75d9193c34b118a175e5a"
+    },
+    {
+      "filename": "fitting-fighter-tubes-supercarrier.png",
+      "size_bytes": 127762,
+      "sha256": "7e3948ac8605f00dfd66f4233f16d43717851fe5c05e6135f461aeef7be16d52"
     }
-  ]
+  ],
+  "fighter_tubes": {
+    "captured_at": "2026-11-25T08:52:30.044886+00:00",
+    "client_date": "2026-11-25",
+    "application_version": "2.4.3 + unreleased fighter tubes",
+    "source_base_commit": "b64136322c01db578e9e0534d5e6ace37b09602a",
+    "working_tree": "Uncommitted fighter simulator source; no version bump",
+    "method": "Actual FittingsPage and fighter controls, headless Microsoft Edge via Playwright, 1540px desktop and 390px mobile; screenshot of complete fighter panel",
+    "data_provenance": "Synthetic owned pilot/loadouts in an isolated SQLite FastAPI instance; real fitting routes and newly compiled Windows Rust base-stats core; CCP SDE build 3739102, November 24, 2026",
+    "limitations": [
+      "Not a full App bootstrap, live ESI account or in-game damage comparison",
+      "Full signature/velocity/range application; target-class reduction applied; shield/armor resists excluded",
+      "Optional salvo rate is limited-ammunition burst, not sustained sortie DPS",
+      "No PostgreSQL concurrency test"
+    ],
+    "workflow_groups_passed": 12,
+    "files": [
+      "fitting-fighter-tubes-caiman.png",
+      "fitting-fighter-tubes-carrier.png",
+      "fitting-fighter-tubes-mobile.png",
+      "fitting-fighter-tubes-supercarrier.png"
+    ]
+  }
 }

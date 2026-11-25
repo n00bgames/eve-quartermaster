@@ -20,9 +20,15 @@ export type FittingSeed = { text: string; nonce: number } | { loss: LossFittingP
 
 export type FittingSimulationState = "offline" | "online" | "active" | "overheated";
 
-export type FittingItem = { id: number; type_id: number; type_name: string; group_id?: number | null; charge_size?: number | null; compatible_charge_group_ids?: number[]; charge_type_id?: number | null; charge_type_name?: string | null; flag: string; quantity: number; simulation_state?: FittingSimulationState; slot_group: string; volume?: number | null };
+export type FighterClass = "light" | "support" | "heavy";
+export type FighterTarget = "subcapital" | "capital" | "fighter" | "structure";
+export type FighterAbility = { kind: "primary" | "salvo"; name: string; dps: number; cycle_seconds: number; volley: number; selected: boolean; range_m?: number | null };
+export type FighterTube = { index: number; flag: string; item_id: number; type_id: number; name: string; fighter_class: FighterClass | null; size: number; max_size: number; state: FittingSimulationState; active: boolean; valid: boolean; warning: string | null; primary_dps: number; salvo_dps: number; dps: number; abilities: FighterAbility[] };
+export type FittingFighters = { tube_count: number; limits: Record<FighterClass, number>; deployed: Partial<Record<FighterClass, number>>; tubes: FighterTube[]; primary_dps: number; salvo_dps: number; total_dps: number; include_salvos: boolean; target_kind: FighterTarget; warnings: string[] };
 
-export type FittingSearchType = { type_id: number; name: string; group_id?: number | null; group_name?: string | null; category_name?: string | null; volume?: number | null; published?: boolean; charge_size?: number | null; compatible_charge_group_ids?: number[]; bucket?: FittingPickerTab };
+export type FittingItem = { id: number; type_id: number; type_name: string; fighter_max_size?: number | null; fighter_class?: FighterClass | null; group_id?: number | null; charge_size?: number | null; compatible_charge_group_ids?: number[]; charge_type_id?: number | null; charge_type_name?: string | null; flag: string; quantity: number; simulation_state?: FittingSimulationState; slot_group: string; volume?: number | null };
+
+export type FittingSearchType = { type_id: number; name: string; fighter_max_size?: number | null; fighter_class?: FighterClass | null; group_id?: number | null; group_name?: string | null; category_name?: string | null; volume?: number | null; published?: boolean; charge_size?: number | null; compatible_charge_group_ids?: number[]; bucket?: FittingPickerTab };
 
 export const FITTING_PICKER_TABS = ["Modules", "Rigs", "Ammo", "Drones", "Other"] as const;
 
@@ -61,7 +67,8 @@ export type FittingSimulationStats = {
   math_engine_requested?: "python" | "shadow" | "rust";
   math_engine_used?: "python" | "python-shadow" | "python-shadow-error" | "python-fallback" | "rust";
   math_engine_shadow_match?: boolean | null;
-  offense: { turret_dps: number; launcher_dps: number; drone_dps: number; total_dps: number; volley: number; damage_types?: ResistanceProfile; weapon_count: number; max_range_m?: number | null; weapons: FittingWeaponEstimate[] };
+  fighters?: FittingFighters;
+  offense: { fighter_dps?: number; turret_dps: number; launcher_dps: number; drone_dps: number; total_dps: number; volley: number; damage_types?: ResistanceProfile; weapon_count: number; max_range_m?: number | null; weapons: FittingWeaponEstimate[] };
   defense: { shield_hp: number; armor_hp: number; structure_hp: number; ehp: number; shield_ehp: number; armor_ehp: number; structure_ehp: number; shield_resists: ResistanceProfile; armor_resists: ResistanceProfile; structure_resists: ResistanceProfile; shield_peak_recharge?: number | null; active_tank_hps?: number | null; shield_repair_hps?: number | null; armor_repair_hps?: number | null; structure_repair_hps?: number | null };
   mobility: { max_velocity?: number | null; warp_speed?: number | null; align_time?: number | null; signature_radius?: number | null; mass?: number | null };
   capacitor: { capacity?: number | null; recharge_time?: number | null; peak_recharge?: number | null; draw_per_second?: number | null; stable?: boolean; stable_percent?: number | null; depletion_seconds?: number | null; modules?: { name: string; gj_per_second: number; cycle_seconds: number; quantity: number }[] };
