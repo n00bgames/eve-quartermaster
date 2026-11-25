@@ -149,3 +149,8 @@ Rebuild matching backend/frontend. Receipts reuses saved-report JSON storage wit
 ## Fighter-tube simulation (unreleased 2.4.3 addition)
 
 Rebuild matching backend, frontend and Rust core. No migration, new dependency or ESI scope. EQM draft items retain FighterTube positions/states; exports map them to FighterBay stock. Verify a carrier's light/support limits, a mixed supercarrier wing, the Caiman's two light tubes and role bonus, reserve transfers, primary versus ammunition-limited salvo burst, target-class reductions, recall/redeploy and reload persistence. The fighter layer enriches both base-stats engines once; older Rust base engines must also be rebuilt to exclude fighters from the ordinary drone path. [Behavior and validation](fitting-fighters.md). Verify the served revision and readiness after the rollout.
+
+
+## v2.4.4 publication
+
+Application/API/package/export/user-agent version 2.4.4; Android versionName 2.4.4 / versionCode 36. Rebuild matching API/worker/frontend. No new migration beyond existing 0112 from the 2.4.3 feature set, and no new ESI scope. Fighter tubes are only a small improvement to the fitting module; it remains in development with further work planned. [Release notes](releases/v2.4.4.md).

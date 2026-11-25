@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/n00bgames/eve-quartermaster"><img alt="Project" src="https://img.shields.io/badge/project-eve--quartermaster-e8b84d?style=for-the-badge"></a>
-  <img alt="Version" src="https://img.shields.io/badge/version-2.4.3-4fb3c7?style=for-the-badge">
+  <img alt="Version" src="https://img.shields.io/badge/version-2.4.4-4fb3c7?style=for-the-badge">
   <img alt="License" src="https://img.shields.io/badge/license-AGPL--3.0--or--later-70c894?style=for-the-badge">
 </p>
 
@@ -23,7 +23,7 @@
 
 EVE Quartermaster is a containerized, database-first EVE Online quartermaster and alliance operations tool. It tracks characters, corporations, assets, blueprints, recipes, skills, standings/contact sync, wallet snapshots, permissions, audit events, and long-term analytics from EVE ESI plus imported SDE data.
 
-The current application/package version is **v2.4.3** (`2.4.3`). **My Fleet** brings your tracked Journey pilots onto one private map with timestamp-ordered replay and fleet movies. **Hull and fleet insights** adds ship/system/combat rankings, complete private exports and deliberately published aggregate snapshots with hull exclusions. Deploy matching API, worker and frontend builds; upgrading from v2.4.2 applies migration `0112_journey_analytics_views`, with no new ESI scope. [Version notes](docs/releases/v2.4.3.md) · [Journey insights guide](docs/journey-insights.md) · [Changelog](CHANGELOG.md). The latest published Android APK remains [v2.4.2](https://github.com/n00bgames/eve-quartermaster/releases/tag/v2.4.2); Android source is now versionName 2.4.3 / versionCode 35. Coming from before 2.4.1? Also apply migration `0111_local_universe` and run a full SDE import for planet type/radius and stars. Earlier notes: [v2.4.2](docs/releases/v2.4.2.md), [v2.4.1](docs/releases/v2.4.1.md), [v2.4.0](docs/releases/v2.4.md).
+The current application/package version is **v2.4.4** (`2.4.4`). This release includes **My Fleet**, Journey hull/fleet insights, PLEX wallet screenshot imports, and a small fighter-tube improvement to the fitting module. Fittings remain in development, with future work to come. Deploy matching API, worker and frontend builds; upgrading from v2.4.2 applies existing migration `0112_journey_analytics_views`, with no new ESI scope. [Version notes](docs/releases/v2.4.4.md) · [Changelog](CHANGELOG.md). Android **versionName 2.4.4 / versionCode 36**: [download the APK](https://github.com/n00bgames/eve-quartermaster/releases/download/v2.4.4/EQM.apk). Coming from before 2.4.1? Also apply migration `0111_local_universe` and run a full SDE import for planet type/radius and stars. Earlier notes: [v2.4.2](docs/releases/v2.4.2.md), [v2.4.1](docs/releases/v2.4.1.md), [v2.4.0](docs/releases/v2.4.md).
 
 **CCP HTTP SDE import (v2.4.2):** Choose **CCP SDE API (JSONL)** in Settings and queue a full fetch/import. YAML ZIP remains the default/fallback. [Guide](docs/sde-maintenance.md#ccp-http-sde-source-v242).
 
@@ -179,7 +179,7 @@ Intel corporation/alliance dossiers now show **Organization strength**: characte
 
 ## Screenshots
 
-**Fighter tubes — unreleased development preview:** load and deploy carrier, supercarrier and Caiman squadrons, compare primary and salvo burst DPS, and retain hangar reserves separately. Actual UI with synthetic data. [Guide](docs/fitting-fighters.md).
+**Fighter tubes — a small fitting-module improvement:** load and deploy carrier, supercarrier and Caiman squadrons, compare primary and salvo burst DPS, and retain hangar reserves separately. The fitting module remains in development, with more work to come. Actual UI with synthetic data. [Guide](docs/fitting-fighters.md).
 
 [![Supercarrier fighter tubes and damage estimates](static/ss/v2.4.3/fitting-fighter-tubes-supercarrier.png)](static/ss/v2.4.3/fitting-fighter-tubes-supercarrier.png)
 

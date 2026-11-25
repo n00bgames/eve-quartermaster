@@ -40,7 +40,7 @@ async def lifespan(_: FastAPI):
         await close_esi_transport()
 
 
-app = FastAPI(title="eve-quartermaster", version="2.4.3", lifespan=lifespan)
+app = FastAPI(title="eve-quartermaster", version="2.4.4", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

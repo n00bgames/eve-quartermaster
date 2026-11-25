@@ -6,9 +6,14 @@ Version sections are written as user-facing release notes first, with implementa
 
 ## [Unreleased]
 
-- Fix capital fighter simulation with SDE-derived launch tubes, squadron/class limits, loaded/deployed controls and stock-preserving hangar transfers. Add fighter DPS with matching skills, hull bonuses, stacked damage amplifiers/support units, optional salvo burst and target-class reductions; keep reserves out of damage totals and preserve fighter quantities in EFT/ESI exports. Requires matching backend/frontend/Rust rebuilds; no migration or new scope. [Guide](docs/fitting-fighters.md).
+## [2.4.4] - 2026-11-25
+
+- Make a small improvement to the fitting module with SDE-derived launch tubes, squadron/class limits, loaded/deployed controls and stock-preserving hangar transfers. Add fighter DPS with matching skills, hull bonuses, stacked damage amplifiers/support units, optional salvo burst and target-class reductions; keep reserves out of damage totals and preserve fighter quantities in EFT/ESI exports. Requires matching backend/frontend/Rust rebuilds; no migration or new scope. The fitting module remains in development, with future work to come. [Guide](docs/fitting-fighters.md).
 
 - Add a private PLEX wallet screenshot importer for purchases and sales: browser-local OCR, crop and text fallback, editable UTC/quantity/unit-price/fee review, explicit directions and confirmation, possible duplicate checks, and atomic chronological FIFO batch saving. Requires matching frontend/backend; no new migration, dependency or ESI scope. [Guide](docs/plex-tracker.md#wallet-screenshot-import-v243-update).
+
+- Publish the My Fleet replay/export and Journey hull/fleet insights additions introduced in the deployed 2.4.3 application, including private-by-default aggregate sharing with hull/class exclusions.
+- Set application/package/API/export/user-agent version **2.4.4** and Android **versionName 2.4.4 / versionCode 36**. Rebuild matching backend, worker and frontend; upgrades from 2.4.2 apply existing migration **0112_journey_analytics_views**. No additional migration or ESI scope.
 
 ## [2.4.3] - 2026-11-23
 

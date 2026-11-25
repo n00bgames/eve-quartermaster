@@ -1,10 +1,10 @@
 # EQM screenshot gallery
 
-**Latest:** [Fighter tubes](#fighter-tubes), captured November 25, 2026 (unreleased). Earlier: [PLEX wallet screenshot import](#plex-wallet-screenshot-import), captured November 24, 2026. Earlier: [Mining Report exports](#mining-report-exports), captured November 19, 2026. Earlier: [zKillboard loss fits in Fittings](#zkillboard-loss-fits-in-fittings), captured November 16, 2026. [v2.4.0 theme gallery](#theme-gallery-for-v240).
+**Latest:** [Fighter tubes](#fighter-tubes), captured November 25, 2026 before the 2.4.4 release. Earlier: [PLEX wallet screenshot import](#plex-wallet-screenshot-import), captured November 24, 2026. Earlier: [Mining Report exports](#mining-report-exports), captured November 19, 2026. Earlier: [zKillboard loss fits in Fittings](#zkillboard-loss-fits-in-fittings), captured November 16, 2026. [v2.4.0 theme gallery](#theme-gallery-for-v240).
 
 ## Fighter tubes
 
-Unreleased **2.4.3 plus fighter-tube changes**, captured November 25, 2026. Actual FittingsPage and fighter controls in desktop Microsoft Edge with an isolated synthetic SQLite API, current CCP SDE subset and newly compiled Rust base-stats core. No player fitting/account data or live ESI; not a complete App bootstrap or in-game comparison. The selected salvo option is a limited-ammunition burst estimate. [Guide](fitting-fighters.md) · [Capture receipt](../static/ss/v2.4.3/capture-receipt.json).
+**2.4.3 plus fighter-tube changes, subsequently released in 2.4.4**, captured November 25, 2026. Actual FittingsPage and fighter controls in desktop Microsoft Edge with an isolated synthetic SQLite API, current CCP SDE subset and newly compiled Rust base-stats core. No player fitting/account data or live ESI; not a complete App bootstrap or in-game comparison. The selected salvo option is a limited-ammunition burst estimate. [Guide](fitting-fighters.md) · [Capture receipt](../static/ss/v2.4.3/capture-receipt.json).
 
 | Preview | Screenshot |
 | --- | --- |

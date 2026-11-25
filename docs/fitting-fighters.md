@@ -1,7 +1,8 @@
 # Fighter tubes in the fitting simulator
 
-Unreleased development addition to 2.4.3. Matching backend, frontend and Rust
-core must be rebuilt together; no migration, new dependency or ESI scope.
+Available in 2.4.4. This is only a small improvement to the fitting module;
+it remains in development, with more work to come. Matching backend, frontend
+and Rust core must be rebuilt together; no migration, new dependency or ESI scope.
 
 Open **Fittings**, choose a carrier, supercarrier or Caiman, then select a pilot.
 The **Fighter tubes** panel reads the hull's tube count and light/support/heavy
