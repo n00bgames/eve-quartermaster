@@ -9,7 +9,7 @@
 .mining-data-note svg { color: #52c4d4; flex: 0 0 auto; }
 .mining-import-form, .mining-operation-form { display: grid; gap: 12px; padding: 16px; border: 1px solid #2c5660; background: #0c151b; }
 .mining-import-form textarea { min-height: 180px; font-family: "Cascadia Mono", Consolas, monospace; font-size: .83rem; }
-.mining-filter-bar { display: grid; grid-template-columns: minmax(160px, 1.2fr) minmax(150px, 1fr) minmax(180px, 1.2fr) 145px 145px auto; gap: 10px; align-items: end; }
+.mining-filter-bar { display: grid; grid-template-columns: minmax(160px, 1.2fr) minmax(150px, 1fr) minmax(180px, 1.2fr) 145px 145px auto; gap: 10px; align-items: end; border: 0; padding: 0; margin: 0; min-width: 0; }
 .mining-filter-bar label { min-width: 0; }
 .mining-filter-actions { flex-wrap: nowrap; }
 .mining-summary-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
@@ -38,6 +38,16 @@
 .mining-timeline-stack .residue { background: #b85d62; }
 .mining-timeline-stack .recovered { background: #4bb6c7; }
 .mining-timeline-column small { font-size: .62rem; color: #77899e; writing-mode: vertical-rl; transform: rotate(180deg); justify-self: center; white-space: nowrap; }
+.mining-timeline-day { padding: 0; border: 0; border-radius: 0; background: transparent; color: inherit; cursor: pointer; }
+.mining-timeline-day:hover .mining-timeline-stack { outline: 1px solid #73d9e6; outline-offset: -1px; }
+.mining-timeline-day:focus-visible { outline: 2px solid #e5bc4d; outline-offset: 2px; }
+.mining-timeline-chart header { flex-wrap: wrap; align-items: center; }
+.mining-timeline-chart header > div { display: grid; gap: 5px; }
+.mining-timeline-chart header > div > span { text-align: left; }
+.mining-hourly-note { color: #a4b2c3; font-size: .8rem; line-height: 1.5; }
+.mining-hourly-note p { margin: 10px 0 0; }
+.mining-day-context { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid #396a77; background: #0e2027; }
+.mining-day-context p { margin: 4px 0 0; color: #a4b2c3; }
 
 .mining-operations { display: grid; gap: 12px; padding-top: 4px; }
 .mining-operation-basics { grid-template-columns: 1.3fr 1fr 1fr 1fr; }

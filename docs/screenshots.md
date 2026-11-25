@@ -1,6 +1,16 @@
 # EQM screenshot gallery
 
-**Latest:** [Fighter tubes](#fighter-tubes), captured November 25, 2026 before the 2.4.4 release. Earlier: [PLEX wallet screenshot import](#plex-wallet-screenshot-import), captured November 24, 2026. Earlier: [Mining Report exports](#mining-report-exports), captured November 19, 2026. Earlier: [zKillboard loss fits in Fittings](#zkillboard-loss-fits-in-fittings), captured November 16, 2026. [v2.4.0 theme gallery](#theme-gallery-for-v240).
+**Latest development preview:** [Mining Ledger day drill-down](#mining-ledger-day-drill-down), captured November 25, 2026 on 2.4.4 plus then-unreleased changes, before the follow-up rollout. **Earlier:** [Fighter tubes](#fighter-tubes), captured November 25, 2026 before the 2.4.4 release. Earlier: [PLEX wallet screenshot import](#plex-wallet-screenshot-import), captured November 24, 2026. Earlier: [Mining Report exports](#mining-report-exports), captured November 19, 2026. Earlier: [zKillboard loss fits in Fittings](#zkillboard-loss-fits-in-fittings), captured November 16, 2026. [v2.4.0 theme gallery](#theme-gallery-for-v240).
+
+## Mining Ledger day drill-down
+
+**2.4.4 plus day drill-down changes, captured before rollout**, captured November 25, 2026. Actual MiningLedgerPage in Microsoft Edge, using the real Mining Ledger API with an isolated synthetic SQLite account. No real pilot data, live ESI or full authenticated App bootstrap. Hourly bars group imported record timestamps; untimed ESI daily totals remain in day analytics. These are pre-rollout development captures; the feature was subsequently included in the v2.4.4 follow-up. [Guide](mining-report.md#day-drill-down-v244-follow-up) · [Receipt](../static/ss/v2.4.4/capture-receipt.json).
+
+| Preview | Screenshot |
+| --- | --- |
+| Daily bars ready to select | [mining-daily-drilldown.png](../static/ss/v2.4.4/mining-daily-drilldown.png) |
+| Selected day: hourly buckets, untimed totals, filtered summary and rankings | [mining-hourly-drilldown.png](../static/ss/v2.4.4/mining-hourly-drilldown.png) |
+| Mobile hourly graph with horizontal scrolling and return control | [mining-hourly-mobile.png](../static/ss/v2.4.4/mining-hourly-mobile.png) |
 
 ## Fighter tubes
 

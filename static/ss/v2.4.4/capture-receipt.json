@@ -1,0 +1,61 @@
+{
+  "captured_at": "2026-11-25T22:12:45.353799+00:00",
+  "client_date": "2026-11-25",
+  "application_version": "2.4.4 + unreleased Mining Ledger day drill-down",
+  "source_base_commit": "05b66c45cfef499a1a2c937abc7dfbef814ffe41",
+  "working_tree": "Uncommitted day drill-down changes; no version bump or deployment",
+  "method": "Headless Microsoft Edge / Playwright; actual MiningLedgerPage and real FastAPI mining-ledger router against isolated in-memory SQLite; standard application styles",
+  "data_provenance": "Fabricated account, pilots, systems, ores, operation and daily ledger rows. No player data, live ESI or production DB.",
+  "limitations": [
+    "Component harness, not complete authenticated App bootstrap or production infrastructure",
+    "Hourly bars group stored imported record timestamps; rows may summarize a day rather than an event",
+    "ESI daily totals and unusable timestamps stay untimed; no hourly reconstruction or collector",
+    "Desktop captures show the top of the ledger; mobile screenshot shows the hourly chart at its initial horizontal scroll position"
+  ],
+  "verification": {
+    "passed": [
+      "Clicking a daily bar shows 24 UTC hours and filters summaries, charts and ledger rows to that date",
+      "Day totals and hourly analytics include all pages while ledger pagination stays within the day",
+      "Downloaded report matches the selected day with complete hourly and untimed totals",
+      "Back restores the previous date range and its full analytics",
+      "Keyboard selection retains the applied pilot/system/operation filters and ignores unapplied drafts",
+      "Mobile hourly chart scrolls internally and keeps its return control usable",
+      "Pending and failed drill-downs keep previous analytics labeled correctly, disable stale exports, and can be retried",
+      "ESI-only day keeps its total in Hour not recorded without fabricating midnight mining",
+      "An empty range has no invented day bars or ledger rows",
+      "Actual React page has no browser exceptions"
+    ],
+    "errors": []
+  },
+  "viewports": {
+    "mining-daily-drilldown.png": [
+      1540,
+      1260
+    ],
+    "mining-hourly-drilldown.png": [
+      1540,
+      1600
+    ],
+    "mining-hourly-mobile.png": [
+      390,
+      844
+    ]
+  },
+  "files": [
+    {
+      "filename": "mining-daily-drilldown.png",
+      "size_bytes": 149365,
+      "sha256": "2528964d3e35de7b895c7283d328c5dbc6d9c19ba8a35a03f43c5e3749aa921b"
+    },
+    {
+      "filename": "mining-hourly-drilldown.png",
+      "size_bytes": 208436,
+      "sha256": "8381cfcf25964ec860c85512dc9121c112bedd371527678c406d6366bf5fede6"
+    },
+    {
+      "filename": "mining-hourly-mobile.png",
+      "size_bytes": 29813,
+      "sha256": "4342fe802cedb40de28961b035b5b229fed2723ef82c16be666e01badf3f0d4d"
+    }
+  ]
+}

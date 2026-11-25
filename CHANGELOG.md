@@ -8,6 +8,8 @@ Version sections are written as user-facing release notes first, with implementa
 
 ## [2.4.4] - 2026-11-25
 
+- Make Mining Ledger daily bars clickable: drill into 24 UTC hours and filter totals, ore/pilot/system analytics, ledger pages and reports to that day. Return to the previous applied range with one button. Hourly bars group imported record timestamps; ESI daily totals and unusable timestamps remain explicitly untimed. No migration or new ESI scope; deploy matching frontend/backend. [Guide](docs/mining-report.md#day-drill-down-v244-follow-up).
+
 - Make a small improvement to the fitting module with SDE-derived launch tubes, squadron/class limits, loaded/deployed controls and stock-preserving hangar transfers. Add fighter DPS with matching skills, hull bonuses, stacked damage amplifiers/support units, optional salvo burst and target-class reductions; keep reserves out of damage totals and preserve fighter quantities in EFT/ESI exports. Requires matching backend/frontend/Rust rebuilds; no migration or new scope. The fitting module remains in development, with future work to come. [Guide](docs/fitting-fighters.md).
 
 - Add a private PLEX wallet screenshot importer for purchases and sales: browser-local OCR, crop and text fallback, editable UTC/quantity/unit-price/fee review, explicit directions and confirmation, possible duplicate checks, and atomic chronological FIFO batch saving. Requires matching frontend/backend; no new migration, dependency or ESI scope. [Guide](docs/plex-tracker.md#wallet-screenshot-import-v243-update).

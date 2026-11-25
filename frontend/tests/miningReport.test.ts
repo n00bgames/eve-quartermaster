@@ -119,3 +119,28 @@ test("unknown efficiency is distinct from zero and empty periods retain truthful
   assert.equal(csv(buildMiningReportExport(report, "csv").text.slice(1)).length, 2);
   assert.equal(JSON.parse(buildMiningReportExport(report, "json").text).coverage.matching_ledger_rows, 0);
 });
+
+test("single-day reports retain hourly and untimed totals with explicit provenance and safe projection", () => {
+  const data = fixture(), day = "2026-11-19";
+  data.analytics.hourly = { day, timezone: "UTC", basis: "imported_record_timestamps",
+    by_hour: Array.from({ length: 24 }, (_, h) => row(`${String(h).padStart(2, "0")}:00`, h)),
+    untimed: row("Hour not recorded", "untimed"), timestamped_rows: 24, untimed_rows: 5 };
+  Object.assign(data.analytics.hourly.by_hour[0], { private_note: "DO NOT EXPORT HOURLY NOTE" });
+  Object.assign(data.analytics.hourly.untimed, { private_note: "DO NOT EXPORT UNTIMED NOTE" });
+  const scope = { ...allMiningHistory, date_from: day, date_to: day };
+  const report = buildMiningReport(data, scope, loadedAt, stamp);
+  assert.equal(report.hourly?.by_hour.length, 24);
+  assert.equal(report.hourly?.untimed_rows, 5);
+  assert.equal(report.hourly?.untimed.recovered_volume_m3, 123.4567);
+  assert.equal(report.hourly?.basis, "imported_record_timestamps");
+  assert(report.notes.some(note => note.includes("not measured mining rates")));
+  const exported = buildMiningReportExport(report, "csv").text;
+  const [header, ...lines] = csv(exported.slice(1));
+  assert(lines.every(line => line.length === header.length));
+  assert.equal(lines.filter(line => line[0] === "by_hour").length, 24);
+  assert.equal(lines.filter(line => line[0] === "untimed").length, 1);
+  assert(!exported.includes("DO NOT EXPORT"));
+  assert(!buildMiningReportExport(report, "json").text.includes("DO NOT EXPORT"));
+  assert.equal(buildMiningReport(data, allMiningHistory, loadedAt, stamp).hourly, undefined);
+  assert.equal(buildMiningReport(data, { ...scope, date_to: "2026-11-20" }, loadedAt, stamp).hourly, undefined);
+});

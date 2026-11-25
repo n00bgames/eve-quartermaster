@@ -29,3 +29,19 @@ Actual MiningLedgerPage rendered in a local preview with fabricated pilots, oper
 ![Mining Report actions — synthetic mobile preview](../static/ss/v2.4.1/mining-report-mobile.png)
 
 Capture provenance: [receipt](../static/ss/v2.4.1/capture-receipt.json).
+
+## Day drill-down (v2.4.4 follow-up)
+
+Click a day in **Yield over time** to switch to **Hourly activity** and apply that UTC date to the summary cards, ore composition, pilot rankings, system extraction, ledger history and Mining Report. Keyboard users can focus a day and press Enter or Space. Character, System and Operation retain the filters already applied to the visible graph. **Back to date range** restores that previous range and its filters, starting on page one. Editing and applying another date range returns to the daily graph.
+
+The hourly view shows all 24 UTC hours. **ESI only supplies daily totals**, so it cannot reconstruct actual historical hourly mining. Bars group stored imported ledger totals by their recorded timestamp hour; a stored row can summarize a whole day's extraction, so these bars are **record-time buckets, not measured mining rates**. ESI rows, missing timestamps and timestamps inconsistent with the row's UTC ledger date stay in **Hour not recorded**. Untimed volume still contributes to all day totals and rankings. Empty hours do not establish zero mining.
+
+Single-day API responses add `analytics.hourly` with `day`, `timezone`, `basis`, `by_hour`, `untimed`, `timestamped_rows` and `untimed_rows`. JSON reports add an optional `hourly` object; CSV adds `by_hour` and `untimed` sections with provenance metadata. All analytics are calculated before ledger pagination. Exports remain blocked while selection changes are pending or a request fails; a failed selection retains the previous data under its previous label.
+
+Requires matching API and frontend builds. No database migration, new scope, historical backfill or hourly collector. Saved operation and settlement management retain their existing behavior.
+
+These actual UI captures use an isolated synthetic SQLite database and the real Mining Ledger API in Microsoft Edge. They were captured on version 2.4.4 plus the then-unreleased changes, without real pilot data, live ESI or the full authenticated application bootstrap. Verification covers click/back navigation, combined filters, keyboard selection, pagination, downloaded reports, request failure/retry, ESI-only days, empty ranges and mobile layout.
+
+![Hourly Mining Ledger and day analytics — synthetic development preview](../static/ss/v2.4.4/mining-hourly-drilldown.png)
+
+[Daily view](../static/ss/v2.4.4/mining-daily-drilldown.png) · [Mobile hourly view](../static/ss/v2.4.4/mining-hourly-mobile.png) · [Capture receipt](../static/ss/v2.4.4/capture-receipt.json).

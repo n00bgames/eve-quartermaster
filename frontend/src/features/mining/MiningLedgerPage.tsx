@@ -14,6 +14,7 @@ import "./mining.css";
 
 type ApiClient = <T>(path: string, options?: RequestInit) => Promise<T>;
 type SortKey = "date" | "character" | "ore" | "quantity" | "residue" | "volume" | "value" | "system";
+type MiningDayView = { day: string; returnScope: MiningReportScope };
 
 const number = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 });
 const whole = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
@@ -38,22 +39,23 @@ export function MiningLedgerPage({ api }: { api: ApiClient }) {
   const [loadedAt, setLoadedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [dayView, setDayView] = useState<MiningDayView | null>(null);
   const latestLoad = useRef(0);
   const draftScope = { character_id: characterId, system_id: systemId, operation_id: operationId, date_from: dateFrom, date_to: dateTo };
 
-  function queryPath(nextPage = page) {
+  function queryPath(nextPage: number, scope: MiningReportScope) {
     const params = new URLSearchParams({ page: String(nextPage), page_size: "100" });
-    if (characterId) params.set("character_id", characterId);
-    if (systemId) params.set("system_id", systemId);
-    if (operationId) params.set("operation_id", operationId);
-    if (dateFrom) params.set("date_from", dateFrom);
-    if (dateTo) params.set("date_to", dateTo);
+    if (scope.character_id) params.set("character_id", scope.character_id);
+    if (scope.system_id) params.set("system_id", scope.system_id);
+    if (scope.operation_id) params.set("operation_id", scope.operation_id);
+    if (scope.date_from) params.set("date_from", scope.date_from);
+    if (scope.date_to) params.set("date_to", scope.date_to);
     return `/mining-ledger?${params}`;
   }
 
-  async function load(nextPage = page) {
+  async function load(nextPage = page, requestedScope: MiningReportScope = draftScope, requestedView: MiningDayView | null = dayView) {
     const request = ++latestLoad.current;
-    const scope = { ...draftScope };
+    const scope = { ...requestedScope };
     setError(null);
     if (scope.date_from && scope.date_to && scope.date_from > scope.date_to) {
       setLoading(false);
@@ -64,10 +66,11 @@ export function MiningLedgerPage({ api }: { api: ApiClient }) {
     setLoading(true);
     setLoadFailed(false);
     try {
-      const payload = await api<MiningLedgerPayload>(queryPath(nextPage));
+      const payload = await api<MiningLedgerPayload>(queryPath(nextPage, scope));
       if (request !== latestLoad.current) return;
       setData(payload);
       setAppliedScope(scope);
+      setDayView(requestedView && scope.date_from === requestedView.day && scope.date_to === requestedView.day ? requestedView : null);
       setLoadedAt(new Date().toISOString());
       setPage(nextPage);
     } catch (caught) {
@@ -78,6 +81,24 @@ export function MiningLedgerPage({ api }: { api: ApiClient }) {
     } finally {
       if (request === latestLoad.current) setLoading(false);
     }
+  }
+
+  function setScopeFields(scope: MiningReportScope) {
+    setCharacterId(scope.character_id); setSystemId(scope.system_id); setOperationId(scope.operation_id);
+    setDateFrom(scope.date_from); setDateTo(scope.date_to);
+  }
+
+  function openDay(day: string) {
+    const scope = { ...appliedScope, date_from: day, date_to: day };
+    setScopeFields(scope);
+    void load(1, scope, { day, returnScope: { ...(dayView?.returnScope ?? appliedScope) } });
+  }
+
+  function returnToRange() {
+    if (!dayView) return;
+    const scope = { ...dayView.returnScope };
+    setScopeFields(scope);
+    void load(1, scope, null);
   }
 
   async function syncAll() {
@@ -138,7 +159,10 @@ export function MiningLedgerPage({ api }: { api: ApiClient }) {
     }
   }
 
-  useEffect(() => { void load(1).catch((caught) => setError(caught instanceof Error ? caught.message : "Unable to load mining ledger")); }, []);
+  useEffect(() => {
+    void load(1).catch((caught) => setError(caught instanceof Error ? caught.message : "Unable to load mining ledger"));
+    return () => { latestLoad.current += 1; };
+  }, []);
 
   const entries = useMemo(() => [...(data?.entries ?? [])].sort((left, right) => {
     const values: Record<SortKey, [(row: MiningLedgerEntry) => string | number, boolean]> = {
@@ -161,18 +185,20 @@ export function MiningLedgerPage({ api }: { api: ApiClient }) {
   }
 
   return <section className="panel stacked mining-ledger-page">
-    <div className="section-heading"><div><h3>Mining Ledger</h3><p>Persistent per-character extraction history, residue loss, named operations, and mining performance analytics.</p></div><div className="button-row compact"><button type="button" onClick={() => setShowImport((value) => !value)}><Upload size={16} />Import detailed ledger</button><button type="button" disabled={busy || !data?.characters.some((row) => row.can_sync)} onClick={() => void syncAll()}><Download size={16} />{busy ? "Working" : "Sync all mining"}</button><button type="button" disabled={busy} onClick={() => void load()}><RefreshCw size={16} />Refresh</button></div></div>
+    <div className="section-heading"><div><h3>Mining Ledger</h3><p>Persistent per-character extraction history, residue loss, named operations, and mining performance analytics.</p></div><div className="button-row compact"><button type="button" onClick={() => setShowImport((value) => !value)}><Upload size={16} />Import detailed ledger</button><button type="button" disabled={busy || loading || !data?.characters.some((row) => row.can_sync)} onClick={() => void syncAll()}><Download size={16} />{busy ? "Working" : "Sync all mining"}</button><button type="button" disabled={busy || loading} onClick={() => void load()}><RefreshCw size={16} />Refresh</button></div></div>
     <div className="mining-data-note"><Database size={17} /><span>EQM keeps each dated row as history. ESI supplies recovered quantity, system, and ore type; detailed imports add residue and exported valuation.</span></div>
     {message && <div className="notice inline">{message}</div>}{error && <div className="mini-alert">{error}</div>}
     {syncJob && <div className={syncJob.failed_count ? "research-sync-status has-errors" : "research-sync-status"}><div><strong>{syncJob.processed_count} / {syncJob.total_count}</strong><span>{syncJob.current_character_name ? `Syncing ${syncJob.current_character_name}` : `Mining sync ${syncJob.status}`}</span></div><progress max={100} value={syncPercent} /><small>{syncJob.success_count} synced · {syncJob.failed_count} failed · {syncJob.skipped_count} skipped</small></div>}
     {showImport && <form className="mining-import-form" onSubmit={(event) => void importLedger(event)}><div className="form-grid"><label>Character<select name="character_id" required defaultValue=""><option value="" disabled>Select character</option>{data?.characters.filter((row) => !row.sync_opt_out).map((row) => <option value={row.character_id} key={row.character_id}>{row.name}</option>)}</select></label><label>Mining operation<select name="operation_id" defaultValue=""><option value="">No named operation</option>{data?.operations.map((row) => <option value={row.id} key={row.id}>{row.name}</option>)}</select></label></div><label>Mining ledger export<textarea name="text" required rows={8} placeholder="Paste tab-separated or CSV ledger data, including the header row." /></label><div className="button-row compact"><button type="submit" disabled={busy}><Upload size={16} />Import rows</button></div></form>}
-    <div className="mining-filter-bar"><label>Character<select value={characterId} onChange={(event) => setCharacterId(event.target.value)}><option value="">All characters</option>{data?.characters.map((row) => <option key={row.character_id} value={row.character_id}>{row.name}</option>)}</select></label><label>System<select value={systemId} onChange={(event) => setSystemId(event.target.value)}><option value="">All systems</option>{data?.systems.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label><label>Operation<select value={operationId} onChange={(event) => setOperationId(event.target.value)}><option value="">All history</option>{data?.operations.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label><label>From<input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} /></label><label>To<input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} /></label><div className="button-row compact mining-filter-actions"><button type="button" onClick={() => void load(1)}>Apply</button><button type="button" className="danger" disabled={busy || !characterId} onClick={() => void clearSelectedCharacter()} title={characterId ? "Clear this character's complete mining ledger" : "Select a character to clear its ledger"}><Trash2 size={15} />Clear selected</button></div></div>
+    <fieldset className="mining-filter-bar" aria-label="Mining ledger filters" disabled={loading || busy}><label>Character<select value={characterId} onChange={(event) => setCharacterId(event.target.value)}><option value="">All characters</option>{data?.characters.map((row) => <option key={row.character_id} value={row.character_id}>{row.name}</option>)}</select></label><label>System<select value={systemId} onChange={(event) => setSystemId(event.target.value)}><option value="">All systems</option>{data?.systems.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label><label>Operation<select value={operationId} onChange={(event) => setOperationId(event.target.value)}><option value="">All history</option>{data?.operations.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label><label>From<input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} /></label><label>To<input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} /></label><div className="button-row compact mining-filter-actions"><button type="button" onClick={() => void load(1)}>Apply</button><button type="button" className="danger" disabled={busy || !characterId} onClick={() => void clearSelectedCharacter()} title={characterId ? "Clear this character's complete mining ledger" : "Select a character to clear its ledger"}><Trash2 size={15} />Clear selected</button></div></fieldset>
     <OreSplitCalculator />
     <MiningReportExport data={data} scope={appliedScope} loadedAt={loadedAt} loading={loading || busy} pending={!sameMiningScope(draftScope, appliedScope)} failed={loadFailed} />
-    <div className="status-grid mining-summary-grid"><article><Pickaxe size={19} /><span>Recovered</span><strong>{number.format(totals?.volume ?? 0)} m3</strong></article><article><BarChart3 size={19} /><span>Gross extraction</span><strong>{number.format(totals?.gross_volume ?? 0)} m3</strong></article><article className="residue-stat"><span>Residue loss</span><strong>{number.format(totals?.residue_volume ?? 0)} m3</strong></article><article><span>Net value</span><strong>{isk.format(totals?.estimated_price ?? 0)} ISK</strong></article><article><Gauge size={19} /><span>Measured efficiency</span><strong>{totals?.efficiency == null ? "Not reported" : `${totals.efficiency}%`}</strong><small>{totals?.efficiency == null ? "Import residue data to measure" : `${number.format(totals.measured_volume)} m3 measured`}</small></article></div>
-    <div className="mining-chart-grid"><MiningTimeline rows={data?.analytics.by_day ?? []} /><MiningBarChart title="Ore composition" subtitle="Recovered volume by ore" rows={data?.analytics.by_ore ?? []} value={(row) => row.volume} format={(value) => `${number.format(value)} m3`} /><MiningBarChart title="Most mined" subtitle="Recovered volume by character" rows={data?.analytics.by_character ?? []} value={(row) => row.volume} format={(value) => `${number.format(value)} m3`} /><MiningBarChart title="Largest gross extraction" subtitle="Recovered plus residue volume by character" rows={data?.analytics.by_character ?? []} value={(row) => row.gross_volume} format={(value) => `${number.format(value)} m3`} /><MiningBarChart title="Highest net value" subtitle="Estimated recovered ISK by character" rows={valueRanking} value={(row) => row.estimated_price} format={(value) => `${isk.format(value)} ISK`} /><MiningEfficiencyRanking rows={data?.analytics.by_character ?? []} /><MiningBarChart title="System extraction" subtitle="Gross volume by solar system" rows={data?.analytics.by_system ?? []} value={(row) => row.gross_volume} format={(value) => `${number.format(value)} m3`} /></div>
-    {data && <MiningOperations api={api} characters={data.characters} systems={data.systems} operations={data.operations} onChanged={() => load(1)} />}
-    <div className="section-heading"><div><h4>Ledger history</h4><p>{whole.format(data?.entry_count ?? 0)} persistent rows match the current filters.</p></div><div className="button-row compact"><button type="button" disabled={page <= 1} onClick={() => void load(page - 1)}>Previous</button><span>Page {page} / {pageCount}</span><button type="button" disabled={page >= pageCount} onClick={() => void load(page + 1)}>Next</button></div></div>
+    {dayView && <div className="mining-day-context" role="status"><div><strong>Day analytics · {dayView.day} UTC</strong><p>Totals, ore composition, pilot rankings and system extraction cover this day only.</p></div></div>}
+    {loading && <p role="status">Loading mining selection…</p>}
+    <div className="status-grid mining-summary-grid" aria-busy={loading}><article><Pickaxe size={19} /><span>Recovered</span><strong>{number.format(totals?.volume ?? 0)} m3</strong></article><article><BarChart3 size={19} /><span>Gross extraction</span><strong>{number.format(totals?.gross_volume ?? 0)} m3</strong></article><article className="residue-stat"><span>Residue loss</span><strong>{number.format(totals?.residue_volume ?? 0)} m3</strong></article><article><span>Net value</span><strong>{isk.format(totals?.estimated_price ?? 0)} ISK</strong></article><article><Gauge size={19} /><span>Measured efficiency</span><strong>{totals?.efficiency == null ? "Not reported" : `${totals.efficiency}%`}</strong><small>{totals?.efficiency == null ? "Import residue data to measure" : `${number.format(totals.measured_volume)} m3 measured`}</small></article></div>
+    <div className="mining-chart-grid"><MiningTimeline rows={data?.analytics.by_day ?? []} hourly={data?.analytics.hourly} selectedDay={dayView?.day} onDayClick={openDay} onBack={returnToRange} loading={loading || busy} /><MiningBarChart title="Ore composition" subtitle="Recovered volume by ore" rows={data?.analytics.by_ore ?? []} value={(row) => row.volume} format={(value) => `${number.format(value)} m3`} /><MiningBarChart title="Most mined" subtitle="Recovered volume by character" rows={data?.analytics.by_character ?? []} value={(row) => row.volume} format={(value) => `${number.format(value)} m3`} /><MiningBarChart title="Largest gross extraction" subtitle="Recovered plus residue volume by character" rows={data?.analytics.by_character ?? []} value={(row) => row.gross_volume} format={(value) => `${number.format(value)} m3`} /><MiningBarChart title="Highest net value" subtitle="Estimated recovered ISK by character" rows={valueRanking} value={(row) => row.estimated_price} format={(value) => `${isk.format(value)} ISK`} /><MiningEfficiencyRanking rows={data?.analytics.by_character ?? []} /><MiningBarChart title="System extraction" subtitle="Gross volume by solar system" rows={data?.analytics.by_system ?? []} value={(row) => row.gross_volume} format={(value) => `${number.format(value)} m3`} /></div>
+    {data && <MiningOperations api={api} characters={data.characters} systems={data.systems} operations={data.operations} onChanged={() => load(1, appliedScope, dayView)} />}
+    <div className="section-heading"><div><h4>Ledger history</h4><p>{whole.format(data?.entry_count ?? 0)} persistent rows match the current filters.</p></div><div className="button-row compact"><button type="button" disabled={loading || busy || page <= 1} onClick={() => void load(page - 1, appliedScope, dayView)}>Previous</button><span>Page {page} / {pageCount}</span><button type="button" disabled={loading || busy || page >= pageCount} onClick={() => void load(page + 1, appliedScope, dayView)}>Next</button></div></div>
     <div className="table-wrap mining-table-wrap"><table className="mining-table"><thead><tr><th>{sortHeader("date", "Date")}</th><th>{sortHeader("character", "Character")}</th><th>{sortHeader("ore", "Ore")}</th><th>{sortHeader("quantity", "Recovered")}</th><th>{sortHeader("residue", "Residue")}</th><th>{sortHeader("volume", "Volume")}</th><th>{sortHeader("value", "Net value")}</th><th>{sortHeader("system", "System")}</th><th>Operation</th></tr></thead><tbody>{entries.map((row) => <tr key={row.id}><td>{row.date}<span>{row.source.toUpperCase()}</span></td><td>{row.character_name}</td><td><strong>{row.ore_type}</strong><span>Type {row.ore_type_id}</span></td><td>{whole.format(row.quantity)}</td><td>{row.has_residue_data ? whole.format(row.residue_quantity) : <span className="unmeasured">Not reported</span>}</td><td>{number.format(row.volume)} m3<span>{row.has_residue_data && row.residue_volume > 0 ? `${number.format(row.residue_volume)} m3 lost` : ""}</span></td><td>{whole.format(row.estimated_price)} ISK<span>{row.estimated_residue_price > 0 ? `${whole.format(row.estimated_residue_price)} ISK lost` : ""}</span></td><td>{row.solar_system}<span>{row.solar_system_id}</span></td><td>{row.operation_name ?? "Unassigned"}</td></tr>)}{data && entries.length === 0 && <tr><td colSpan={9}>No mining ledger rows match these filters.</td></tr>}</tbody></table></div>
     {data && <MiningSettlements api={api} characters={data.characters} operations={data.operations} />}
   </section>;

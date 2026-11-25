@@ -31,6 +31,10 @@ The current application/package version is **v2.4.4** (`2.4.4`). This release in
 
 **Ore Split Calculator (v2.4.2):** Paste ore names and quantities in Mining Ledger, type a percentage or move the slider, and use 5/10/15/20/25/50% presets. Copy whole-unit cuts or remainders. Included in v2.4.2. [Guide](docs/ore-split-calculator.md) · [v2.4.2 release notes](docs/releases/v2.4.2.md).
 
+**Mining Ledger day drill-down (v2.4.4 follow-up):** Click a daily bar to view hourly record-time buckets and that day's totals, analytics, ledger rows and reports. Return to the prior date range in one click. ESI daily totals stay explicitly untimed; hourly bars use imported timestamps, not measured mining rates. [Guide](docs/mining-report.md#day-drill-down-v244-follow-up) · [Gallery and provenance](docs/screenshots.md#mining-ledger-day-drill-down). Actual UI with synthetic data; screenshots retain their pre-rollout development provenance.
+
+[![Mining Ledger hourly drill-down — synthetic pre-rollout preview](static/ss/v2.4.4/mining-hourly-drilldown.png)](static/ss/v2.4.4/mining-hourly-drilldown.png)
+
 ![Ore Split Calculator — synthetic development preview, released in v2.4.2](static/ss/v2.4.1/ore-split-desktop.png)
 
 **Local universe data:** PI Scout and static object/type lookups use imported SDE data; unknown star positions stay unavailable. Apply migration `0111_local_universe`, then run a full SDE import. [Operator guide and validation](docs/local-universe.md).

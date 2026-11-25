@@ -154,3 +154,7 @@ Rebuild matching backend, frontend and Rust core. No migration, new dependency o
 ## v2.4.4 publication
 
 Application/API/package/export/user-agent version 2.4.4; Android versionName 2.4.4 / versionCode 36. Rebuild matching API/worker/frontend. No new migration beyond existing 0112 from the 2.4.3 feature set, and no new ESI scope. Fighter tubes are only a small improvement to the fitting module; it remains in development with further work planned. [Release notes](releases/v2.4.4.md).
+
+## Mining Ledger day drill-down — v2.4.4 follow-up
+
+Deploy matching backend, worker and frontend from `main`; no new migration, dependency or ESI scope. The original v2.4.4 release tag and Android APK remain unchanged. The existing web wrapper loads the updated interface from its configured server. Verify a daily bar opens 24 UTC record-time buckets, filters summaries/ore/pilot/system analytics and ledger/report scope to that day, then returns to the previous applied range. ESI supplies daily totals only; untimed volume must remain included and labeled. Imported timestamps are record times, not measured hourly mining. [Guide](mining-report.md#day-drill-down-v244-follow-up).

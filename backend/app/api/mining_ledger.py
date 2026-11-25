@@ -130,6 +130,36 @@ def serialize_entry(row: MiningLedgerEntry) -> dict[str, Any]:
     }
 
 
+def hourly_rollup(entries: list[MiningLedgerEntry], selected_day: date) -> dict[str, Any]:
+    """Group imported record timestamps; ESI daily totals never imply an hour.
+
+    A stored row may summarize a day's extraction rather than a mining event.
+    The UI must describe these as record times, not measured hourly rates.
+    """
+    hours: list[list[MiningLedgerEntry]] = [[] for _ in range(24)]
+    untimed: list[MiningLedgerEntry] = []
+    for row in entries:
+        if row.mined_date != selected_day:
+            continue
+        stamp = row.mined_at
+        if row.source == "import" and stamp is not None:
+            stamp = stamp.replace(tzinfo=timezone.utc) if stamp.tzinfo is None else stamp.astimezone(timezone.utc)
+            if stamp.date() == selected_day:
+                hours[stamp.hour].append(row)
+                continue
+        untimed.append(row)
+
+    def bucket(rows: list[MiningLedgerEntry], key: str, name: str) -> dict[str, Any]:
+        return {"id": key, "name": name, **rollup(rows)["totals"]}
+
+    return {
+        "day": selected_day.isoformat(), "timezone": "UTC", "basis": "imported_record_timestamps",
+        "by_hour": [bucket(rows, f"{selected_day.isoformat()}T{hour:02d}:00Z", f"{hour:02d}:00") for hour, rows in enumerate(hours)],
+        "untimed": bucket(untimed, "untimed", "Hour not recorded"),
+        "timestamped_rows": sum(map(len, hours)), "untimed_rows": len(untimed),
+    }
+
+
 def serialize_operation(operation: MiningOperation) -> dict[str, Any]:
     summary = rollup(list(operation.entries))["totals"]
     return {
@@ -170,10 +200,13 @@ def mining_ledger(
     for token in db.scalars(select(EsiToken).where(EsiToken.revoked_at.is_(None)).order_by(EsiToken.created_at.desc())).all():
         token_map.setdefault(token.character_id, token)
     operations = list(db.scalars(select(MiningOperation).options(selectinload(MiningOperation.system), selectinload(MiningOperation.created_by_user), selectinload(MiningOperation.participants).selectinload(MiningOperationParticipant.character), selectinload(MiningOperation.entries).selectinload(MiningLedgerEntry.character)).order_by(MiningOperation.start_at.desc())).unique().all())
+    analytics = rollup(entries)
+    if date_from is not None and date_from == date_to:
+        analytics["hourly"] = hourly_rollup(entries, date_from)
     return {
         "characters": [{"character_id": row.character_id, "name": row.name, "portrait_url": row.portrait_url, "can_sync": bool(token_map.get(row.id) and MINING_SCOPE in set(token_map[row.id].scopes.split())), "sync_opt_out": row.sync_opt_out} for row in characters],
         "systems": [(row.system_id, row.name) for row in db.scalars(select(EveSystem).order_by(EveSystem.name)).all()],
-        "analytics": rollup(entries), "entry_count": len(entries), "page": page, "page_size": page_size,
+        "analytics": analytics, "entry_count": len(entries), "page": page, "page_size": page_size,
         "entries": [serialize_entry(row) for row in entries[(page - 1) * page_size:page * page_size]],
         "operations": [serialize_operation(row) for row in operations],
     }

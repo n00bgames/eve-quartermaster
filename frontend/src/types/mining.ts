@@ -25,6 +25,16 @@ export type MiningTotals = Omit<MiningRollupRow, "id" | "name"> & {
   measured_volume: number;
 };
 
+export type MiningHourlyAnalytics = {
+  day: string;
+  timezone: "UTC";
+  basis: "imported_record_timestamps";
+  by_hour: MiningRollupRow[];
+  untimed: MiningRollupRow;
+  timestamped_rows: number;
+  untimed_rows: number;
+};
+
 export type MiningLedgerEntry = {
   id: number;
   date: string;
@@ -77,6 +87,7 @@ export type MiningLedgerPayload = {
     by_ore: MiningRollupRow[];
     by_character: MiningRollupRow[];
     by_system: MiningRollupRow[];
+    hourly?: MiningHourlyAnalytics;
   };
   entries: MiningLedgerEntry[];
   entry_count: number;

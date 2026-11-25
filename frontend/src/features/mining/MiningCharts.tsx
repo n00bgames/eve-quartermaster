@@ -1,4 +1,4 @@
-import type { MiningRollupRow } from "../../types/mining";
+import type { MiningHourlyAnalytics, MiningRollupRow } from "../../types/mining";
 
 const compact = new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 });
 const decimal = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 });
@@ -39,20 +39,29 @@ export function MiningEfficiencyRanking({ rows }: { rows: MiningRollupRow[] }) {
   />;
 }
 
-export function MiningTimeline({ rows }: { rows: MiningRollupRow[] }) {
-  const maximum = Math.max(1, ...rows.map((row) => row.gross_volume));
-  return <article className="mining-chart mining-timeline-chart">
-    <header><h4>Yield over time</h4><span>Recovered volume with residue loss shown separately</span></header>
-    <div className="mining-timeline">
-      {rows.slice(-31).map((row) => {
+export function MiningTimeline({ rows, hourly, selectedDay, onDayClick, onBack, loading = false }: {
+  rows: MiningRollupRow[];
+  hourly?: MiningHourlyAnalytics;
+  selectedDay?: string | null;
+  onDayClick?: (day: string) => void;
+  onBack?: () => void;
+  loading?: boolean;
+}) {
+  const displayed = selectedDay ? hourly?.by_hour ?? [] : rows.slice(-31);
+  const maximum = Math.max(1, ...displayed.map((row) => row.gross_volume));
+  return <article className="mining-chart mining-timeline-chart" aria-label="Mining activity timeline" aria-busy={loading}>
+    <header><div><h4>{selectedDay ? `Hourly activity · ${selectedDay}` : "Yield over time"}</h4><span>{selectedDay ? "Imported ledger record times · UTC" : "Select a day to view its hours and analytics · UTC dates"}</span></div>{selectedDay && onBack && <div className="button-row compact"><button type="button" disabled={loading} onClick={onBack}>Back to date range</button></div>}</header>
+    <div className="mining-timeline" aria-label={selectedDay ? "Hourly ledger record volume in UTC" : "Daily mining volume"}>
+      {displayed.map((row) => {
         const recoveredHeight = row.volume / maximum * 100;
         const residueHeight = row.residue_volume / maximum * 100;
-        return <div className="mining-timeline-column" key={String(row.id)} title={`${row.name}: ${decimal.format(row.volume)} m3 recovered, ${decimal.format(row.residue_volume)} m3 residue`}>
-          <div className="mining-timeline-stack"><span className="residue" style={{ height: `${residueHeight}%` }} /><span className="recovered" style={{ height: `${recoveredHeight}%` }} /></div>
-          <small>{row.name.slice(5)}</small>
-        </div>;
+        const title = `${row.name}${selectedDay ? " UTC" : ""}: ${decimal.format(row.volume)} m3 recovered, ${decimal.format(row.residue_volume)} m3 residue`;
+        const content = <><span className="mining-timeline-stack"><span className="residue" style={{ height: `${residueHeight}%`, minHeight: row.residue_volume > 0 ? "1px" : "0" }} /><span className="recovered" style={{ height: `${recoveredHeight}%`, minHeight: row.volume > 0 ? "1px" : "0" }} /></span><small>{selectedDay ? row.name : row.name.slice(5)}</small></>;
+        return !selectedDay && onDayClick ? <button type="button" className="mining-timeline-column mining-timeline-day" key={String(row.id)} title={title} aria-label={`View hourly mining for ${row.name}`} disabled={loading} onClick={() => onDayClick(row.name)}>{content}</button>
+          : <div className="mining-timeline-column" key={String(row.id)} title={title}>{content}</div>;
       })}
-      {rows.length === 0 && <p className="empty">No historical yield to graph yet.</p>}
+      {displayed.length === 0 && <p className="empty">{selectedDay ? "Hourly record times are unavailable for this selection." : "No historical yield to graph yet."}</p>}
     </div>
+    {selectedDay && <div className="mining-hourly-note"><p>ESI provides daily totals. Bars group imported ledger totals by their recorded timestamps, rather than measuring mining rates. Empty hours do not establish zero mining.</p>{hourly && hourly.untimed_rows > 0 && <p><strong>Hour not recorded:</strong> {decimal.format(hourly.untimed.volume)} m3 recovered · {decimal.format(hourly.untimed.residue_volume)} m3 residue across {hourly.untimed_rows} rows. Included in all of this day’s analytics.</p>}</div>}
   </article>;
 }

@@ -39,6 +39,13 @@ export function buildMiningReport(
   // Explicit projection: no raw ledger rows, operation notes, full roster or tokens.
   const rows = (items: MiningRollupRow[]) => items.map((row) => ({ name: row.name, ...metrics(row) }));
   const days = data.analytics.by_day.map((row) => row.name).sort();
+  const hourly = data.analytics.hourly;
+  const hourlyReport = hourly && scope.date_from === hourly.day && scope.date_to === hourly.day ? {
+    day: hourly.day, timezone: hourly.timezone, basis: hourly.basis,
+    by_hour: rows(hourly.by_hour),
+    untimed: { name: hourly.untimed.name, ...metrics(hourly.untimed) },
+    timestamped_rows: hourly.timestamped_rows, untimed_rows: hourly.untimed_rows,
+  } : undefined;
   return {
     schema_version: "eqm.mining-report.v1",
     application_version: APP_VERSION,
@@ -67,12 +74,14 @@ export function buildMiningReport(
     by_ore: rows(data.analytics.by_ore),
     by_character: rows(data.analytics.by_character),
     by_system: rows(data.analytics.by_system),
+    ...(hourlyReport ? { hourly: hourlyReport } : {}),
     notes: [
       "Estimated ISK values are stored ledger valuations, not realized profit or a fresh market appraisal.",
       "Residue and efficiency are measured only where residue data was imported. Null efficiency means unmeasured, not zero.",
       "Gross extraction is recovered volume plus reported residue; missing residue can understate extraction.",
       "Recorded days contain retained observations only. Missing days are not evidence of zero mining or complete ESI coverage.",
       "Loaded-from-EQM time is the report fetch time, not the last ESI sync time.",
+      ...(hourlyReport ? ["Hourly buckets group imported ledger totals by recorded timestamps in UTC; they are not measured mining rates. ESI daily totals and other records without a usable hour remain in the untimed bucket and selection totals."] : []),
     ],
   };
 }
@@ -110,6 +119,8 @@ export function buildMiningReportExport(report: MiningReport, format: "csv" | "j
     last_recorded_day: report.coverage.last_recorded_day,
     recorded_day_count: report.coverage.recorded_day_count,
     coverage_basis: report.coverage.basis,
+    hourly_basis: report.hourly?.basis ?? "",
+    hourly_timezone: report.hourly?.timezone ?? "",
     notes: report.notes.join(" "),
   };
   const metricKeys = Object.keys(report.totals);
@@ -119,6 +130,11 @@ export function buildMiningReportExport(report: MiningReport, format: "csv" | "j
     for (const row of report[section]) {
       lines.push([section, row.name, ...metricKeys.map((key) => key in row ? row[key as keyof typeof row] : null), ...Object.values(metadata)]);
     }
+  }
+  if (report.hourly) {
+    for (const row of report.hourly.by_hour) lines.push(["by_hour", row.name, ...metricKeys.map((key) => key in row ? row[key as keyof typeof row] : null), ...Object.values(metadata)]);
+    const row = report.hourly.untimed;
+    lines.push(["untimed", row.name, ...metricKeys.map((key) => key in row ? row[key as keyof typeof row] : null), ...Object.values(metadata)]);
   }
   return { filename, mime: "text/csv;charset=utf-8", text: "\uFEFF" + [header, ...lines].map((line) => line.map(csvCell).join(",")).join("\r\n") + "\r\n" };
 }
